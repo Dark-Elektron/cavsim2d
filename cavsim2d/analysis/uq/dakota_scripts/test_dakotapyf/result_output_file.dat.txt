@@ -1,0 +1,38 @@
+polynomial_chaos/NO_METHOD_ID/1/"Continuous Variable Labels"
+  Data (vector<string>):
+      "A" "B"
+polynomial_chaos/NO_METHOD_ID/1/"Function Labels"
+  Data (vector<string>):
+      "response_fn_1"
+polynomial_chaos/NO_METHOD_ID/1/"Moments: Central: Expansion"
+  Column Labels: "response_fn_1"
+  Row Labels: "Mean" "Standard Deviation" "Skewness" "Kurtosis"
+  Data (RealMatrix):
+    1.0000000000e+00 
+    3.7950248589e-33 
+                 nan 
+                 nan 
+polynomial_chaos/NO_METHOD_ID/1/"Moments: Central: Numerical"
+  Column Labels: "response_fn_1"
+  Row Labels: "Mean" "Standard Deviation" "Skewness" "Kurtosis"
+  Data (RealMatrix):
+    1.0000000000e+00 
+    0.0000000000e+00 
+    0.0000000000e+00 
+    0.0000000000e+00 
+polynomial_chaos/NO_METHOD_ID/1/"PCE Coefficient Labels"
+  Array Spans: "Response Functions"
+  Data (vector<vector<string>>):
+      Array Entry 1:
+      "P0 P0"
+      "P1 P0"
+      "P0 P1"
+
+polynomial_chaos/NO_METHOD_ID/1/"PCE Coefficients: Standardized"
+  Array Spans: "Response Functions"
+  Data (vector<vector<double>>):
+      Array Entry 1:
+                      1.0000000000e+00
+                     -8.3266726847e-17
+                     -6.6721261805e-17
+

@@ -1,0 +1,38 @@
+environment
+	tabular_data
+		tabular_data_file = 'sim_result_table.dat'
+	results_output
+		results_output_file = 'result_output_file.dat'
+
+method
+	polynomial_chaos
+		export_expansion_file ='expansion_file.dat'
+		cubature_integrand = 3
+		samples_on_emulator = 10000
+		seed = 12347
+		variance_based_decomp interaction_order = 1
+
+variables
+	uniform_uncertain = 2
+	descriptors       =   "A"			"B"
+	lower_bounds      =   0			0
+	upper_bounds      =   1			2
+
+interface
+#	common options
+#	fork
+	parameters_file = 'params.in'
+	results_file    = 'results.out'
+	system asynchronous evaluation_concurrency = 1
+	analysis_driver = 'python pycall.py 2 True'
+#	parameters_file = 'params.in'
+#	results_file    = 'results.out'
+#	file_tag
+#	file_save
+#	aprepro
+
+responses
+	response_functions = 2
+	no_gradients
+	no_hessians
+
