@@ -2914,8 +2914,7 @@ class Cavity:
             objectives = uq_config['objectives']
             solver_dict = {'ngsolvemevp': ngsolve_mevp}
             solver_args_dict = {'ngsolvemevp':
-                                    {
-                                        'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
+                                    {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
                                      'beampipes': shape['BP']
                                      },
                                 'parentDir': parentDir,
