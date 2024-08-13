@@ -73,6 +73,12 @@ endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 # create cavity
 tesla = Cavity(9, midcell, endcell_l, endcell_r, beampipe='both')
 ```
+The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`.
+
+```python
+tesla.plot('geometry')
+# cav.inspect()
+```
 
 Now the cavity can be added to the cavities object.
 
@@ -82,12 +88,7 @@ cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 
 The `names` keyword is a list of othe names of the Cavities objects. This is the name under which the simulation results
 related for the Cavity is saved. The `plot_labels` keyword contain the legend labels. If no entry is made, a default 
-name is assigned. The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`.
-
-```python
-tesla.plot('geometry')
-# cav.inspect()
-```
+name is assigned.
 
 Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).
 ### Eigenmode analysis
