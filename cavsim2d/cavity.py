@@ -2298,9 +2298,9 @@ class Cavity:
         self.bc = 33
         self.name = name
         self.n_cells = n_cells
-        self.mid_cell = mid_cell[:7]
-        self.end_cell_left = end_cell_left[:7]
-        self.end_cell_right = end_cell_right[:7]
+        self.mid_cell = np.array(mid_cell)[:7]
+        self.end_cell_left = np.array(end_cell_left)[:7]
+        self.end_cell_right = np.array(end_cell_right)[:7]
         self.cell_type = 'simplecell'
         self.beampipe = beampipe
         self.no_of_modules = 1
@@ -3829,7 +3829,6 @@ class Cavities(Optimisation):
         self.p_qois = None
         self.fm_results = None
         self.hom_results = None
-        
         self.folder = None
             
         self.operating_points = None
@@ -3926,18 +3925,18 @@ class Cavities(Optimisation):
             return
         else:
             try:
-                self.folder = files_path
+                self.folder = project_folder
                 success = self._create_project(overwrite)
                 if not success:
-                    error(f"Project {files_path} could not be created. Please check the folder and try again.")
+                    error(f"Project {project_folder} could not be created. Please check the folder and try again.")
                     return
                 else:
-                    done(f"Project {files_path} created successfully/already exists.")
+                    done(f"Project {project_folder} created successfully/already exists.")
             except Exception as e:
                 error("Exception occurred: ", e)
                 return
 
-        if files_path is None:
+        if project_folder is None:
             self.folder = Path(os.getcwd())
 
     def save_plot_as_json(self, ax):

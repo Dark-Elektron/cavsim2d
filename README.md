@@ -66,9 +66,9 @@ mid cell, left end cell and right end cell dimensions for its initialisation. We
 ```python
 # define geometry parameters
 n_cells = 9
-midcell = np.array([42, 42, 12, 19, 35, 57.7, 103.353])  # <- A, B, a, b, Ri, L, Req
-endcell_l = np.array([40.34, 40.34, 10, 13.5, 39, 55.716, 103.353])
-endcell_r = np.array([42, 42, 9, 12.8, 39, 56.815, 103.353])
+midcell = [42, 42, 12, 19, 35, 57.7, 103.353]  # <- A, B, a, b, Ri, L, Req
+endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
+endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 
 # create cavity
 tesla = Cavity(9, midcell, endcell_l, endcell_r, beampipe='both')
