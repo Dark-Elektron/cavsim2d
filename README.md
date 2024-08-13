@@ -169,3 +169,6 @@ pp.pprint(cavs.eigenmode_qois)
 
 cavs.plot_compare_fm_bar()
 ```
+
+```python
+print(2+3)
