@@ -4341,7 +4341,7 @@ class Cavities(Optimisation):
                     # delete old results
                     shutil.rmtree(os.path.join(folder, "SimulationData", solver_save_dir, cav.name))
                     cav.run_eigenmode(solver, freq_shift=freq_shift, boundary_cond=boundary_cond, uq_config=uq_config)
-                    print(id(cav), cav.eigenmode_qois)
+                    # print(id(cav), cav.eigenmode_qois)
                 else:
                     # check if eigenmode analysis results exist
                     if os.path.exists(os.path.join(folder, "SimulationData", solver_save_dir, cav.name, "monopole",
@@ -7987,7 +7987,7 @@ def uq_multicell(shape_shape, objectives, solver_dict, solver_args_dict, uq_conf
 
     # EXAMPLE: p_true = np.array([1, 2, 3, 4, 5]).T
     p_true = [np.array(shape_space['OC'])[:7], multicell_mid_vars, np.array(shape_space['OC_R'])[:7]]
-    print(shape_space)
+    # print(shape_space)
 
     rdim = len(np.array(shape_space['OC'])[:7]) + multicell_mid_vars.size + len(np.array(shape_space['OC_R'])[:7])
 
