@@ -6,7 +6,6 @@ import subprocess
 import sys
 from distutils import dir_util
 from math import floor
-
 import matplotlib
 import psutil
 import scipy.signal as sps
@@ -3801,7 +3800,7 @@ class Cavities(Optimisation):
     Cavities object is an object containing several Cavity objects.
     """
 
-    def __init__(self, cavities_list=None, names_list=None, save_folder='None'):
+    def __init__(self, cavities_list=None, names_list=None):
         """Constructs all the necessary attributes of the Cavity object
 
         Parameters
@@ -3830,7 +3829,9 @@ class Cavities(Optimisation):
         self.p_qois = None
         self.fm_results = None
         self.hom_results = None
-        self.folder = save_folder
+        
+        self.folder = None
+            
         self.operating_points = None
         self.operating_points_threshold = {}
 
@@ -3906,7 +3907,7 @@ class Cavities(Optimisation):
         """
         self.name = name
 
-    def save(self, files_path, overwrite=False):
+    def save(self, project_folder, overwrite=False):
         """
         Set folder to save cavity analysis results
 
@@ -3920,7 +3921,7 @@ class Cavities(Optimisation):
 
         """
 
-        if files_path is None:
+        if project_folder is None:
             error('Please specify a folder to write the simulation results to.')
             return
         else:

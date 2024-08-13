@@ -308,7 +308,7 @@ class ABCIGeometry(Geometry):
 
             abci_path = os.getcwd()
 
-            exe_path = os.path.join(abci_path, parentDir / Path(fr'exe/ABCI_exe/ABCI_MP64+.exe'))
+            exe_path = os.path.join(abci_path, parentDir / Path(fr'exe/ABCI_exe/ABCI_MP_12_5.exe'))
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
             else:
@@ -621,7 +621,7 @@ class ABCIGeometry(Geometry):
 
             abci_path = os.getcwd()
 
-            exe_path = os.path.join(abci_path, parentDir / fr'exe\ABCI_exe\ABCI_MP64+.exe')
+            exe_path = os.path.join(abci_path, parentDir / fr'exe\ABCI_exe\ABCI_MP_12_5.exe')
 
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])

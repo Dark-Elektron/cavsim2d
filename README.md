@@ -5,54 +5,94 @@
 ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github)
 
 
-Installation
-============
+# Overview
 
-Overview
-=======
+This repository contains Python codes for designing and analysing 2D axisymmetric RF structures. 
+The current capabilities include eigenmode analysis, elliptical cavity tuning and optimisation, wakefield analysis, 
+uncertainty quantification, and quick visualisations and comparisons of results.
 
-This repository contains Python codes for conducting analysis on accelerating
-cavities. Eigenmode analysis, wakefield analysis, and general post-processing.
-
-Each module performs a different operation. The analysis that are currently
-supported in this module are eigenmode analysis, wakefield analysis,
-and multipacting analysis.
-
-* Eigenmode analysis - SLANS [[1]](#1)
-* Wakefield analysis - ABCI [[2]](2#)
-* Optimisation - Python
-* Uncertainty quantification - Python
-* Postprocessing - Python
-
-## Eigenmode Analysis
-
-Eigenmode analysis is performed using the SLANS electromagnetic code. The code
-also calculates most of the figures of merit. Some postprocessing is, however,
-required to transform them to the form that is used in most papers related
-to accelerating cavities design.
-
-The SUPERLANS code is intended to calculate azimuthal-homogenous modes in
-axissymmetric cavities, periodical structure, and cut-off frequencies in
-long homogenous waveguides. SLANS is written by Sergey
-Belomestnykh and it consists of a set of executable files for different
-purposes.
+# Installation
 
 
-## Wakefield Analysis
+To install cadsim2d, clone it into a local directory, `cd` into this directory and run
+
+```python
+python3 setup.py install
+```
+
+for system-wide installation, or
+
+```python
+python3 setup.py --user install
+```
+
+for local installation.
+
+### Third party code
 
 Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
-equations directly in the time domain when a bunched beam goes through an axi-symmetric
-structure on or off axis. An arbitrary charge distribution can be defined 
-by the user (default=Gaussian)
+equations directly in the time domain when a bunched beam goes through an axisymmetric
+structure on or off axis. It is free and can be downloaded from [ABCI](https://abci.kek.jp/abci.htm). Download the latest
+version (currently ABCI_MP_12_5.zip). Copy version `ABCI_MP_12_5.exe` from 
+`<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows` to `<root folder>/cavsim2d/solver/ABCI` or 
+through the command line with 
 
+```python
+copy <root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows\ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI
+```
 
-## References
-   <a id="1">[1]<a/>
-   D. Myakishev and V. Yakovlev, "The new possibilities of SUPERLANS code for evaluation of 
-   axisymmetric cavities", in Proc. of the 1995 Particle Accelerator Conf. 
-   Dallas, TX, 1995, pp. 2348-50, Available: 
-   http://epaper.kek.jp/p95/ARTICLES/MPC/MPC17.PDF.
+Examples - TESLA Elliptical Cavity
+==================================
 
-   <a id="2">[2]<a/>
-   Y. H. Chin, Azimuthal Beam Cavity Interaction (ABCI), https://abci.kek.jp/
-   
+There are two fundamental objects in cavsim2d - the Cavities and Cavity objects. A Cavities objects holds an array 
+of Cavity objects while a Cavity object contains information about a single RF cavity. They are created as follows:
+
+```python
+from cavsim2d.cavity import Cavity, Cavities
+
+# create Cavtities object
+cavs = Cavities()
+# save/point object to simulation directory
+cavs.save(files_path='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+```
+
+> [!IMPORTANT]
+> Cavities().save(<files_path>) must be called first to either create a new project folder or to point to an 
+> existing project folder. An extra parameter 'overwrite=True' can be passed to overwrite the project folder if it 
+> already exists. Default is 'overwrite=False'.
+
+A Cavity object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
+mid cell, left end cell and right end cell dimensions for its initialisation. We use the TESLA cavity geometry 
+dimensions in this example
+
+```python
+# define geometry parameters
+n_cells = 9
+midcell = np.array([42, 42, 12, 19, 35, 57.7, 103.353])  # <- A, B, a, b, Ri, L, Req
+endcell_l = np.array([40.34, 40.34, 10, 13.5, 39, 55.716, 103.353])
+endcell_r = np.array([42, 42, 9, 12.8, 39, 56.815, 103.353])
+
+# create cavity
+cav = Cavity(9, midcell, endcell_l, endcell_r, beampipe='both')
+```
+
+Now the cavity can be added to the cavities object.
+
+```python
+cavs.add_cavity([cav], names=['TESLA'], plot_labels=['TESLA'])
+```
+
+The `names` keyword is a list of othe names of the Cavities objects. This is the name under which the simulation results
+related for the Cavity is saved. The `plot_labels` keyword contain the legend labels. If no entry is made, a default 
+name is assigned. The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`.
+
+```python
+cav.plot('geometry')
+# cav.inspect()
+```
+
+Now we are ready to run our first analysis.
+### Eigenmode analysis
+```python
+
+```
