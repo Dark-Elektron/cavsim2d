@@ -37,8 +37,8 @@ version (currently ABCI_MP_12_5.zip). Copy version `ABCI_MP_12_5.exe` from
 `<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows` to `<root folder>/cavsim2d/solver/ABCI` or 
 through the command line with 
 
-```python
-copy <root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows\ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI
+```
+copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI
 ```
 
 Examples - TESLA Elliptical Cavity
@@ -51,7 +51,7 @@ of `Cavity` objects while a `Cavity` object contains information about a single 
 from cavsim2d.cavity import Cavity, Cavities
 
 cavs = Cavities()
-cavs.save(files_path='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs.save(project_folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 ```
 
 > [!IMPORTANT]
