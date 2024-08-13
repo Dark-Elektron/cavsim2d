@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-
+import os
 from setuptools import setup, find_packages
 
-with open('README.md') as f:
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as f:
     readme = f.read()
 
-with open('LICENSE') as f:
+with open(os.path.join(os.path.dirname(__file__), 'LICENSE')) as f:
     license = f.read()
 
 setup(
@@ -19,9 +19,18 @@ setup(
     license=license,
     python_requires='>=3.0, <4',
     install_requires=[
-        'pandas>=2.0.0',
-        'numpy>=1.14.5',
-        'matplotlib>=2.2.0'
+        'matplotlib>=3.8.4',
+        'pandas>=2.2.2',
+        'numpy==1.26.4',
+        'scipy>=1.13.1',
+        'psutil>=6.0.0',
+        'paretoset',
+        'ipython',
+        'tqdm>=4.66.4',
+        'setuptools>=72.1.0',
+        'termcolor>=2.1.0',
+        'ngsolve==6.2.2402',
+        'openpyxl'
     ],
     packages=find_packages(exclude=('tests', 'docs')),
     classifiers=[

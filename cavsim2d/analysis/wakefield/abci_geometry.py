@@ -4,39 +4,55 @@ import subprocess
 from pathlib import Path
 from cavsim2d.analysis.wakefield.geometry import Geometry
 from cavsim2d.analysis.wakefield.abci_code import ABCI, ABCI_flattop
+from cavsim2d.constants import SOFTWARE_DIRECTORY
+from cavsim2d.utils.printing import info, error, done
 
 
 class ABCIGeometry(Geometry):
     def __init__(self):
         super().__init__()
 
-        # create node_editor folder on initialisation
         self.L_all = None
         self.abci = None
-        path = os.getcwd()
-        path = os.path.join(path, "node_editor")
-        if os.path.exists(path):
-            pass
-        else:
-            os.mkdir(path)
 
         self.fid = 0
         # initiate codes
 
-    def cavity(self, no_of_cells, no_of_modules,
-               mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-               fid="_0", MROT=0, beampipes=None,
-               bunch_length=50, MT=3, NFS=5000, UBT=0,
-               DDZ_SIG=0.1, DDR_SIG=0.1,
-               parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
+    def cavity(self, cav, wakefield_config, MROT = 0,
+               fid="_0", WG_M=None, marker='', **kwargs):
+        no_of_cells = cav.n_cells
+        no_of_modules = 1
+        mid_cells_par = cav.shape['IC']
+        l_end_cell_par = cav.shape['OC']
+        r_end_cell_par = cav.shape['OC_R']
+        beampipes = None
+
+        # wakefield parameters
+        bunch_length = wakefield_config['beam_config']['bunch_length']
+        UBT = 10 * bunch_length * 1e-3 # wakelength
+        MT = wakefield_config['MT']
+        NFS = wakefield_config['NFS']
+        UBT = 0
+        DDZ_SIG = wakefield_config['mesh_config']['DDZ_SIG']
+        DDR_SIG = wakefield_config['mesh_config']['DDR_SIG']
+
+        parentDir = SOFTWARE_DIRECTORY
+        projectDir = cav.projectDir
+        sub_dir = f"{cav.name}"
 
         # defaults
         RDRIVE, ISIG = 5e-3, 5
-        LCRBW = 'F'
+        LCRBW = 'F'  # counter-rotating beam
+        ZSEP = 0.0
+        BSEP = 0
+        NBUNCH = 1
         BETA = 1
         LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
         LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 40
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -69,6 +85,27 @@ class ABCIGeometry(Geometry):
             if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
                 LCPUTM = value
 
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
+
+                if 'wake' in value.keys():
+                    if 'counter_rotating'in value['wake'].keys():
+                        LCRBW = 'T'
+                        if 'separation' in value['wake']['counter_rotating'].keys():
+                            ZSEP = value['wake']['counter_rotating']['separation']
+
+                if 'beam' in value.keys():
+                    if 'beam_offset' in value['beam'].keys():
+                        RDRIVE = value['beam']['beam_offset']
+                    if 'nbunch' in value['beam'].keys():
+                        NBUNCH = value['beam']['nbunch']
+                    if 'separation' in value['beam'].keys():
+                        BSEP = value['beam']['separation']
+
         # Adding parameter arguments here for testing purposes # fid, fileID
         self.fid = f'{fid}'
 
@@ -80,7 +117,6 @@ class ABCIGeometry(Geometry):
 
         if WG_M == '':
             WG_M = self.WG_L
-        # print(WG_M)
 
         self.abci = ABCI(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
                          self.right_beam_pipe)
@@ -132,13 +168,6 @@ class ABCIGeometry(Geometry):
             if end_R == 2:
                 zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
 
-            # print("GUI_ABCI:: zr12_L", zr12_L)
-            # print("GUI_ABCI:: zr12_R", zr12_R)
-            # # print("GUI_ABCI:: zr12_BPL", zr12_BPL)
-            # # print("GUI_ABCI:: zr12_BPR", zr12_BPR)
-            # print("GUI_ABCI:: zr12_M", zr12_M)
-            # #  Write ABCI code
-
             # create folder for file output set
             self.createFolder(self.fid, projectDir, sub_dir, marker)
 
@@ -155,13 +184,11 @@ class ABCIGeometry(Geometry):
                 run_save_directory = projectDir / Path(fr'SimulationData/ABCI/{sub_dir}\{fid}')
 
             fname = Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')
-            # print('filename:: ', fname)
 
             L_all_increment = 0
             self.L_all = 0
-            # print(fname)
             with open(fname, 'w') as f:
-                f.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
                 f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
                 f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
                 f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
@@ -191,7 +218,7 @@ class ABCIGeometry(Geometry):
                                     f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode - 1) * self.L_all))
 
                         if self.Req_L != self.Req_R:
-                            print('Error:: The equator radius of left and right cell are not equal')
+                            error('Error:: The equator radius of left and right cell are not equal')
 
                         # if exist('L_M') != 1:
                         #     L_M = []
@@ -199,7 +226,6 @@ class ABCIGeometry(Geometry):
                         if end_L == 2:
                             self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode - 1) * self.L_all, f)
 
-                        # print("GUI_ABCI::It got here")
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
 
@@ -224,7 +250,6 @@ class ABCIGeometry(Geometry):
                 if n > 1:
                     for i_mode in range(1, module_nu + 1):
 
-                        # print("imode:", i_mode, i_mode)
                         # change waveguide length
                         if module_nu == 2:
                             if i_mode == 1:
@@ -242,7 +267,6 @@ class ABCIGeometry(Geometry):
                                 self.WG_R = 4 * self.L_M
                         # Total length of each cavity
                         L_all_increment = self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M
-                        # print(self.WG_L, self.WG_R, WG_M, self.L_all)
 
                         if i_mode > 1:
                             if self.WG_L > 0:
@@ -294,21 +318,19 @@ class ABCIGeometry(Geometry):
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
-                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
+                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
-                f.write(f' &TIME  MT = {int(MT)} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}. &END \n')  # , NFS = {NFS}
-                # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK}, LCRBW = {LCRBW}, ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
-                f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T. &END \n')
-                f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
-                        f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC= F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
 
-            abci_path = os.getcwd()
-
-            exe_path = os.path.join(abci_path, parentDir / Path(fr'exe/ABCI_exe/ABCI_MP64+.exe'))
+            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
             else:
@@ -324,19 +346,22 @@ class ABCIGeometry(Geometry):
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
     def cavity_flattop(self, no_of_cells, no_of_modules,
-               mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-               fid="_0", MROT=0, beampipes=None,
-               bunch_length=50, MT=3, NFS=5000, UBT=0,
-               DDZ_SIG=0.1, DDR_SIG=0.1,
-               parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
+                       mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
+                       fid="_0", MROT=0, beampipes=None,
+                       bunch_length=50, MT=3, NFS=5000, UBT=0,
+                       DDZ_SIG=0.1, DDR_SIG=0.1,
+                       parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
 
         # defaults
         RDRIVE, ISIG = 5e-3, 5
         LCRBW = 'F'
         BETA = 1
-        LMATPR = 'F',
+        LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
         LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 7
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -369,6 +394,13 @@ class ABCIGeometry(Geometry):
             if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
                 LCPUTM = value
 
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
+
         # Adding parameter arguments here for testing purposes # fid, fileID
         self.fid = f'{fid}'
 
@@ -380,10 +412,9 @@ class ABCIGeometry(Geometry):
 
         if WG_M == '':
             WG_M = self.WG_L
-        # print(WG_M)
 
         self.abci = ABCI_flattop(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
-                         self.right_beam_pipe)
+                                 self.right_beam_pipe)
 
         # output_name = 5
         # SIG = 0.003  # One standard deviation of bunch length
@@ -431,12 +462,6 @@ class ABCIGeometry(Geometry):
 
             if end_R == 2:
                 zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
-
-            # print("GUI_ABCI:: zr12_L", zr12_L)
-            # print("GUI_ABCI:: zr12_R", zr12_R)
-            # # print("GUI_ABCI:: zr12_BPL", zr12_BPL)
-            # # print("GUI_ABCI:: zr12_BPR", zr12_BPR)
-            # print("GUI_ABCI:: zr12_M", zr12_M)
             # #  Write ABCI code
 
             # create folder for file output set
@@ -461,7 +486,7 @@ class ABCIGeometry(Geometry):
             self.L_all = 0
             # print(fname)
             with open(fname, 'w') as f:
-                f.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
                 f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
                 f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
                 f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
@@ -503,7 +528,8 @@ class ABCIGeometry(Geometry):
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
 
                         # add flattop
-                        f.write('{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
 
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
 
@@ -515,10 +541,13 @@ class ABCIGeometry(Geometry):
                                 f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L
                                                           + self.L_R + (i_mode - 1) * self.L_all))
                             else:
-                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (i_mode - 1) * self.L_all))
+                                f.write('{} {} \n'.format(self.ri_R,
+                                                          self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (
+                                                                      i_mode - 1) * self.L_all))
 
                     f.write(
-                        '0 {} \n'.format(self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (module_nu - 1) * self.L_all))
+                        '0 {} \n'.format(
+                            self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (module_nu - 1) * self.L_all))
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
@@ -565,18 +594,22 @@ class ABCIGeometry(Geometry):
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + self.L_all, f)
 
                         # add flattop
-                        f.write('{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
 
                         for i in range(1, n):
                             # self.abci.abci_M(n, zr12_M, self.WG_L + (i_mode-1)*self.L_all, f, i, end_type)
                             self.abci.abci_M(n, zr12_M, self.WG_L + self.L_all, f, i, end_type)
 
-                            if i != n-1:
+                            if i != n - 1:
                                 # add flattop
-                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + self.l_L + i*self.l_M + (i_mode - 1) * self.L_all))
+                                f.write('{} {} \n'.format(self.Req_M,
+                                                          self.WG_L + self.L_L + 2 * i * self.L_M + self.l_L + i * self.l_M + (
+                                                                      i_mode - 1) * self.L_all))
                             else:
                                 # add flattop
-                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + (i_mode - 1) * self.L_all + self.l_L + (i-1)*self.l_M + self.l_R))
+                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + (
+                                            i_mode - 1) * self.L_all + self.l_L + (i - 1) * self.l_M + self.l_R))
 
                         # self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode-1)*self.L_all, f)
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + self.L_all, f)
@@ -589,12 +622,14 @@ class ABCIGeometry(Geometry):
                             if end_R == 2:
                                 # f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R+ self.L_L + self.L_R
                                 # + 2*(n-1)*self.L_M+(i_mode-1)*self.L_all))
-                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (n-2)*self.l_M + self.l_R
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
                                                           + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
                             else:
                                 # f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
                                 # + self.L_R+2*(n-1)*self.L_M + (i_mode-1)*self.L_all))
-                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (n-2)*self.l_M + self.l_R
+                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
                                                           + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
 
                         if i_mode < no_of_modules:
@@ -603,25 +638,24 @@ class ABCIGeometry(Geometry):
                     # f.write('0 {} \n'.format(self.WG_L + self.WG_R+ self.L_L
                     # + self.L_R+2*(n-1)*self.L_M+(module_nu-1)*self.L_all))
                     f.write('0 {} \n'.format(
-                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all + self.l_L + (n-2)*self.l_M + self.l_R))
+                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all + self.l_L + (
+                                    n - 2) * self.l_M + self.l_R))
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
                 f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
-                f.write(f' &TIME  MT = {int(MT)} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}. &END \n')  # , NFS = {NFS}
-                # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
-                f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T. &END \n')
-                f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
-                        f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC=F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
 
-            abci_path = os.getcwd()
-
-            exe_path = os.path.join(abci_path, parentDir / fr'exe\ABCI_exe\ABCI_MP64+.exe')
+            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
 
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])

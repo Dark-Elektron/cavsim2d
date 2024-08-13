@@ -7,17 +7,15 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import scipy.signal as sps
 import numpy as np
-from termcolor import colored
+
+from cavsim2d.constants import MROT_DICT
+from cavsim2d.utils.printing import info, error, done
+
 
 file_color = 'cyan'
 
 # DEBUG = False
 DEBUG = True
-
-
-def print_(*arg):
-    if DEBUG:
-        print(colored(f'\t\t{arg}', file_color))
 
 
 class ABCIData:
@@ -33,15 +31,17 @@ class ABCIData:
         self.checks(fid, MROT)
 
     def checks(self, fid, MROT):
-        dirc = self.dir / fr'{fid}\Cavity_MROT_{MROT}.top'
-        if os.path.exists(dirc):
-            self._get_plot_data(dirc)
-        else:
-            print_("Hey chief, there seems to be a problem with the ABCI file directory. Please check.")
+        dirc = os.path.join(self.dir, fid, MROT_DICT[MROT], 'cavity.top')
+        # try:
+        self._get_plot_data(dirc)
+        # except Exception as e:
+        #     error(f"There seems to be a problem with the ABCI file directory. {e}")
 
     def _get_plot_data(self, dirc):
         frame_objects = {}
         frame_titles_objects = {}
+        line_objects = []
+        frame_title = []
         frame_count = 0
 
         plot_decorations = [r'Cavity Shape Input', r'Cavity Shape Used', r'Wake Potentials',
@@ -79,10 +79,8 @@ class ABCIData:
                 # add titles to frame_title
                 if 'TITLE' in line or 'MORE' in line:
                     frame_title.append(line)
-                    # print(line)
                     # if 'Transverse Wake' in line:
                     #     key = 'Transverse'
-                    #     print('True')
 
                     # get other parameters from title
                     # try:
@@ -90,13 +88,10 @@ class ABCIData:
                         key = 'Azimuthal'
                     if 'Transverse Wake' in line:
                         key = 'Transverse'
-                        # print("it got here to transverse wake")
                     if 'Longitudinal Wake' in line:
                         key = 'Longitudinal'
-                        # print("it got here to longitudinal wake")
 
                     if 'Loss Factor' in line and key:
-                        # print("Got in here", key)
                         indx_0 = line.index('= ')
                         indx_1 = line.index('V/pC')
                         loss_factor = float(line[indx_0 + 2:indx_1])
@@ -167,7 +162,6 @@ class ABCIData:
                     # y = np.insert(y, -1, 0).tolist()
 
                 self.data_dict[key] = [x, y]
-        # print("At least it got here")
         # include impedance magnitude
         if {'Real Part of Longitudinal Impedance', 'Imaginary Part of Longitudinal Impedance'}.issubset(self.data_dict.keys()):
             # longitudinal
@@ -185,7 +179,6 @@ class ABCIData:
             xr = np.array(xr)
             self.data_dict['Transversal Impedance Magnitude'] = [xr, y]
 
-
     def get_data(self, key):
         plot_decorations = [r'Cavity Shape Input', r'Cavity Shape Used', r'Wake Potentials',
                             r'Real Part of Longitudinal Impedance', r'Imaginary Part of Longitudinal Impedance',
@@ -198,7 +191,6 @@ class ABCIData:
         if isinstance(key, int):
             key = plot_decorations[key]
 
-        # print_(self.data_dict)
         self.x = self.data_dict[key][0]
         self.y = self.data_dict[key][1]
 
@@ -295,7 +287,7 @@ class ABCIData:
             # print_(group_dict)
             return group_dict
         except Exception as e:
-            print_(f"Bands cannot be gotten without getting the peaks first. {e}")
+            info(f"Bands cannot be gotten without getting the peaks first. {e}")
 
     def _interp_fl(self):
         fl_list = []
@@ -396,7 +388,8 @@ class ABCIDataExtraction:
     def __init__(self):
         pass
 
-    def multiple_folders_data(self, shape_space, abci_data_dir, request, save_excel, mon_interval=None, dip_interval=None, parallel=False):
+    def multiple_folders_data(self, shape_space, abci_data_dir, request, save_excel, mon_interval=None,
+                              dip_interval=None, parallel=False):
         # process interval
         # Zmax
         if mon_interval is None:
@@ -447,7 +440,6 @@ class ABCIDataExtraction:
 
         def calc_k_loss():
             for key, value in d.items():
-                print(f"Processing for Cavity {key}")
                 abci_data_long = ABCIData(abci_data_dir, key, 0)
                 abci_data_trans = ABCIData(abci_data_dir, key, 1)
 
@@ -456,7 +448,7 @@ class ABCIDataExtraction:
                 k_loss_trans = abci_data_trans.loss_factor['Transverse']
 
                 if math.isnan(k_loss_trans):
-                    print_(f"Encountered an exception: Check shape {key}")
+                    info(f"Encountered an exception: Check shape {key}")
                     continue
 
                 # long
@@ -565,7 +557,7 @@ class ABCIDataExtraction:
                 k_loss_trans = abci_data_dip.loss_factor['Transverse']
 
                 if math.isnan(k_loss_trans):
-                    print_(f"Encountered an exception: Check shape {key}")
+                    info(f"Encountered an exception: Check shape {key}")
                     continue
 
                 # long
@@ -685,7 +677,8 @@ class ABCIDataExtraction:
             except Exception as e:
                 print("Oops! Encountered some error trying to save file: ", e)
 
-    def multiple_folders_data_parallel(self, shape_space, abci_data_folder, proc_count, request, save_excel, temp_folder, mon_interval=None, dip_interval=None):
+    def multiple_folders_data_parallel(self, shape_space, abci_data_folder, proc_count, request,
+                                       save_excel, temp_folder, mon_interval=None, dip_interval=None):
 
         # create temporary folder
         if os.path.exists(fr"{temp_folder}"):
@@ -730,7 +723,8 @@ class ABCIDataExtraction:
         # delete temporary folder
         shutil.rmtree(temp_folder)
 
-    def process_interval(self, interval_list):
+    @staticmethod
+    def process_interval(interval_list):
         interval = []
         for i in range(len(interval_list)-1):
             interval.append([interval_list[i], interval_list[i+1]])
@@ -738,10 +732,10 @@ class ABCIDataExtraction:
         return interval
 
     def join_excel(self, generic_name, proc_count, save_excel, temp_folder):
-        df = fr.excel_reader(fr'{temp_folder}\{generic_name}_{0}.xlsx')['Sheet1']
+        df = self.excel_reader(fr'{temp_folder}\{generic_name}_{0}.xlsx')['Sheet1']
 
         for p in range(1, proc_count):
-            d = fr.excel_reader(fr'{temp_folder}\{generic_name}_{p}.xlsx')
+            d = self.excel_reader(fr'{temp_folder}\{generic_name}_{p}.xlsx')
             d = d['Sheet1']
             df = pd.merge(df, d, how='outer')
 
@@ -750,59 +744,13 @@ class ABCIDataExtraction:
         except Exception as e:
             print("Oops! Encountered some error trying to save file: ", e)
 
+    @staticmethod
+    def excel_reader(filename):
+        file = pd.ExcelFile(filename)
+        # print(file.sheet_names)
+        dd = {}
+        for sheet_name in file.sheet_names:
+            dd[sheet_name] = file.parse(sheet_name)
 
-if __name__ == '__main__':
-    # directory = r"D:\Dropbox\Projects\NewFolder\SimulationData\ABCI"
-    # fid = "Cavity0"  # folder name
-    # MROT = "1"  # 0 for monopole, 1 for dipole
-    #
-    # # create ABCIData object
-    # abci_data = ABCIData(directory, fid, MROT)
-    #
-    # # call get_data method and provide key
-    # keys = {0: r'Cavity Shape Input',
-    #         1: r'Cavity Shape Used',
-    #         2: r'Wake Potentials',
-    #         3: r'Real Part of Longitudinal Impedance',
-    #         4: r'Imaginary Part of Longitudinal Impedance',
-    #         5: 'Frequency Spectrum of Loss Factor',
-    #         6: r'Loss Factor Spectrum Integrated upto F',
-    #         7: r'Real Part of Long. + Log Impedance',
-    #         8: r'Imaginary Part of Long. + Log Impedance',
-    #         9: r'Spectrum of Long. + Log Loss Factor',
-    #         10: r'Long. + Log Factor Integrated up to F',
-    #         11: r'Real Part of Azimuthal Impedance',
-    #         12: r'Imaginary Part of Azimuthal Impedance',
-    #         13: r'Real Part of Transverse Impedance',
-    #         14: r'Imaginary Part of Transverse Impedance'}
-    #
-    # x, y, _ = abci_data.get_data(key=3)  # For the key, either the title of the plot can be given as input or the index
-    # print(x)
-    # print(y)
-    #
-    # import matplotlib.pyplot as plt
-    # plt.plot(x, y)
-    # plt.show()
+        return dd
 
-    abci_de = ABCIDataExtraction()
-
-    # get simulation data from multiple folders
-    dir_path = r'D:\Dropbox\2D_Codes\ABCI_software\Python_ABCI\Data'
-    for path in os.listdir(dir_path):
-        if os.path.exists(fr"{dir_path}/{path}/shape_space.xlsx"):
-            print(path)
-            # load shape space
-            shape_space = pd.read_excel(fr"{dir_path}/{path}/shape_space.xlsx", "Sheet1", index_col=0)
-            shape_space = shape_space.rename('Cavity{}'.format)
-            shape_space = shape_space.to_dict(orient='index')
-            # ic(shape_space)
-            # break
-            abci_data_folder = fr"{dir_path}/{path}/ABCI"
-            temp_folder = fr"{dir_path}/{path}/temp"
-            save_excel = fr"{dir_path}/{path}/results_abci"
-            request = 'all'
-            abci_de.multiple_folders_data_parallel(shape_space, abci_data_folder, 40,
-                                                   request, save_excel, temp_folder,
-                                                   mon_interval=[0.44, 0.77, 1.1, 2.0],
-                                                   dip_interval=[0.54, 0.59, 0.75, 1.05, 2.0])
-            break
