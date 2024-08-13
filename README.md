@@ -77,7 +77,7 @@ endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
 endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 
 # create cavity
-tesla = Cavity(9, midcell, endcell_l, endcell_r, beampipe='both')
+tesla = Cavity(n_cells, midcell, endcell_l, endcell_r, beampipe='both')
 ```
 The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. `plot('geometry')` returns a 
 `matplotlib.axes` object.
@@ -121,7 +121,7 @@ shape_space = {'reentrant':
 
 # create cavity
 shape = shape_space['reentrant']
-reentrant = Cavity(9, shape['IC'], shape['OC'], shape['OC_R'], beampipe='both')
+reentrant = Cavity(n_cells, shape['IC'], shape['OC'], shape['OC_R'], beampipe='both')
 cavs.add_cavity(reentrant, 'reentrant', 'reentrant')
 cavs.plot('geometry')
 ```
@@ -145,7 +145,6 @@ Let's do that again but this time with a single cell without beampipes to compar
 cavs = Cavities()
 cavs.save(project_folder='/user/home/...')
 
-n_cells = 9
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
 
@@ -160,7 +159,9 @@ shape_space = {'reentrant':
 shape = shape_space['reentrant']
 reentrant_mid_cell = Cavity(1, shape['IC'], shape['IC'], shape['IC'], beampipe='none')
 
-cavs.add_cavity([tesla_mid_cell, reentrant_mid_cell], names=['TESLA', 'reentrant'], plot_labels=['TESLA', 'reentrant'])
+cavs.add_cavity([tesla_mid_cell, reentrant_mid_cell], 
+                names=['TESLA', 'reentrant'], 
+                plot_labels=['TESLA', 'reentrant'])
 
 ax = cavs.plot('geometry')
 
@@ -170,5 +171,81 @@ pp.pprint(cavs.eigenmode_qois)
 cavs.plot_compare_fm_bar()
 ```
 
+### Cavity Tuning
+
+Cavity tuning can easily be done using `cavsim2d`. Let's start from the mid cell of a TESLA cavity geometry. We know 
+that the correct eqator radius `Req` equals 103.3. However, we start from an arbitrary `Req` to demonstrate tuning.
+Two arguments are required - the parameter to tune and the target frequency. Other parameters are optional. Since 
+`Cavities` contains several `Cavity` objects, the parameter and frequency arguments can also be a list with length 
+corresponding to the lengths of the len of the `Cavities` object.
+
 ```python
-print(2+3)
+cavs = Cavities()
+cavs.save(project_folder='/user/home/...')
+
+midcell = [42, 42, 12, 19, 35, 57.7, 100]
+tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+
+cavs.add_cavity(tesla_mid_cell, 'TESLA')
+
+cavs.run_tune('Req', 1300)
+pp.pprint(cavs.eigenmode_tune_res)
+```
+
+Confirm from the output that the correct frequency and `Req` is achieved. 
+> [!NOTE]
+> You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm
+
+
+```
+TESLA
+{   'TESLA': {   'CELL TYPE': 'mid cell',
+                 'FREQ': 1300.0007857768796,
+                 'IC': [   42.0,
+                           42.0,
+                           12.0,
+                           19.0,
+                           35.0,
+                           57.7,
+                           103.3702896505612, # <- Req
+                           103.27068613930538],
+                 'OC': [   42.0,
+                           42.0,
+                           12.0,
+                           19.0,
+                           35.0,
+                           57.7,
+                           103.3702896505612,
+                           103.27068613930538],
+                 'OC_R': [   42.0,
+                             42.0,
+                             12.0,
+                             19.0,
+                             35.0,
+                             57.7,
+                             103.3702896505612,
+                             103.27068613930538],
+                 'TUNED VARIABLE': 'Req'}}
+```
+
+Repeat the same calculation. This time retain the correct `Req` and input a wrong `A`.
+
+```python
+cavs = Cavities()
+cavs.save(project_folder='/user/home/...')
+
+midcell = [20, 42, 12, 19, 35, 57.7, 103.353]
+tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+
+cavs.add_cavity(tesla_mid_cell, 'TESLA')
+
+cavs.run_tune('A', 1300)
+pp.pprint(cavs.eigenmode_tune_res)
+```
+
+Confirm from the output that the correct frequency and `A` is achieved.
+
+
+### Wakefield
+### Optimisation
+### Understanding the folder structure

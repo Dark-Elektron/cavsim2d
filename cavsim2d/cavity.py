@@ -4192,7 +4192,7 @@ class Cavities(Optimisation):
             uq_ok[cav.name] = res
         info(uq_ok)
 
-    def run_tune(self, tune_variables, cell_types='Mid Cell', freqs=None, solver='SLANS', proc=0, resume=False,
+    def run_tune(self, tune_variables, freqs, cell_types='mid cell', solver='NGSolveMEVP', proc=0, resume=False,
                  n_cells=1, rerun=True):
         """
         Tune current cavity geometries
@@ -4223,12 +4223,15 @@ class Cavities(Optimisation):
             if isinstance(freqs, float) or isinstance(freqs, int):
                 freq = freqs
             else:
+                assert len(freqs) == len(self.cavities_list), error('Number of target frequencies must correspond to the number of cavities')
                 freq = freqs[i]
 
             if isinstance(tune_variables, str):
                 tune_var = tune_variables
                 cell_type = cell_types
             else:
+                assert len(tune_variables) == len(self.cavities_list), error('Number of tune parameters must correspond to the number of cavities')
+                assert len(cell_types) == len(self.cavities_list), error('Number of cell types must correspond to the number of cavities')
                 tune_var = tune_variables[i]
                 cell_type = cell_types[i]
 
