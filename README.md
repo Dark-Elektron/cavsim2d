@@ -170,6 +170,19 @@ pp.pprint(cavs.eigenmode_qois)
 
 cavs.plot_compare_fm_bar()
 ```
+## Visualising the mesh and field profiles
+
+To visualise the mesh and field profiles use
+
+```python
+cavs[0].plot_mesh()
+cavs['reentrant'].plot_fields(mode=1, which='E')
+cavs['TESLA'].plot_fields(mode=1, which='H')
+```
+
+> [!TIP]
+> Meshes and fields are properties of a Cavity object and not a Cavities object. Therefore, to visualise the mesh
+> and field profiles, use the `Cavity` object `name` or corresponding index.
 
 ## Cavity Tuning
 

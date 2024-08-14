@@ -3582,11 +3582,12 @@ class Cavity:
             except ValueError:
                 info("Convergence data not available.")
 
-    def plot_mesh(self, plotter='matplotlib'):
+    def plot_mesh(self, plotter='ngsolve'):
         ngsolve_mevp.plot_mesh(fr'{self.folder}\SimulationData\NGSolveMEVP\{self.name}\monopole', plotter=plotter)
 
-    def plot_fields(self, mode=1, plotter='matplotlib'):
-        ngsolve_mevp.plot_fields(fr'{self.folder}\SimulationData\NGSolveMEVP\{self.name}\monopole', mode, plotter)
+    def plot_fields(self, mode=1, which='E', plotter='ngsolve'):
+        ngsolve_mevp.plot_fields(fr'{self.folder}\SimulationData\NGSolveMEVP\{self.name}\monopole',
+                                 mode, which, plotter)
 
     def _plot_convergence(self, ax):
         keys = list(ax.keys())
@@ -6401,8 +6402,16 @@ class Cavities(Optimisation):
     def __str__(self):
         return fr"{self.cavities_list}"
 
-    def __getitem__(self, index):
-        return self.cavities_list[index]
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.cavities_list[key]
+        elif isinstance(key, str):
+            if key in self.cavities_dict.keys():
+                return self.cavities_dict[key]
+            else:
+                error('Invalid key. Cavities does not contain a Cavity named {key}.')
+        else:
+            raise TypeError("Invalid argument type. Must be int or str.")
 
 
 class Pillbox(Cavity):

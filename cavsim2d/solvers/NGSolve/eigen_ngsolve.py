@@ -1417,11 +1417,11 @@ class NGSolveMEVP:
 
         return mesh
 
-    def plot_fields(self, folder, mode=1, plotter='matplotlib'):
+    def plot_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
+        mesh = self.load_mesh(folder)
         gfu_E, gfu_H = self.load_fields(folder, mode)
-
+        
         if plotter == 'matplotlib':
-            mesh = self.load_mesh(folder)
             mesh_points = mesh.vertices
             E_values_mesh = []
             mesh_points_grid = []
@@ -1446,9 +1446,12 @@ class NGSolveMEVP:
             plt.gca().set_aspect('equal', 'box')
             plt.show()
         else:
-            Draw(gfu_H)
+            if which == 'E':
+                Draw(Norm(gfu_E[mode]), mesh, order=2)
+            else:
+                Draw(Norm(gfu_E[mode]), mesh, order=2)
 
-    def plot_mesh(self, folder, plotter='matplotlib'):
+    def plot_mesh(self, folder, plotter='ngsolve'):
         mesh = self.load_mesh(folder)
 
         if plotter == 'matplotlib':
