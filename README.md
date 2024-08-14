@@ -253,7 +253,7 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 cavs = Cavities()
-cavs.save(project_folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs.save(project_folder='/user/home/...')
 
 # define geometry parameters
 n_cells = 9
@@ -380,6 +380,11 @@ optimisation_config = {
 ```
 Several other parameters like `method`, can be controlled. The full configuration file can be found in the `config_files` folder.
 
+```python
+cavs = Cavities([])
+# must first save cavities
+cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+```
 ## Uncertainty Quantification Capabilities
 
 Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
