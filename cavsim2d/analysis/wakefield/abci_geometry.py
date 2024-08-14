@@ -13,12 +13,6 @@ class ABCIGeometry(Geometry):
         # create node_editor folder on initialisation
         self.L_all = None
         self.abci = None
-        path = os.getcwd()
-        path = os.path.join(path, "node_editor")
-        if os.path.exists(path):
-            pass
-        else:
-            os.mkdir(path)
 
         self.fid = 0
         # initiate codes
@@ -131,13 +125,6 @@ class ABCIGeometry(Geometry):
 
             if end_R == 2:
                 zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
-
-            # print("GUI_ABCI:: zr12_L", zr12_L)
-            # print("GUI_ABCI:: zr12_R", zr12_R)
-            # # print("GUI_ABCI:: zr12_BPL", zr12_BPL)
-            # # print("GUI_ABCI:: zr12_BPR", zr12_BPR)
-            # print("GUI_ABCI:: zr12_M", zr12_M)
-            # #  Write ABCI code
 
             # create folder for file output set
             self.createFolder(self.fid, projectDir, sub_dir, marker)
@@ -306,9 +293,9 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            abci_path = os.getcwd()
-
-            exe_path = os.path.join(abci_path, parentDir / Path(fr'exe/ABCI_exe/ABCI_MP_12_5.exe'))
+            print(parentDir, projectDir)
+            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI_MP64+.exe'))
+            print('\t', exe_path, run_save_directory)
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
             else:
@@ -619,9 +606,7 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            abci_path = os.getcwd()
-
-            exe_path = os.path.join(abci_path, parentDir / fr'exe\ABCI_exe\ABCI_MP_12_5.exe')
+            exe_path = os.path.join(parentDir / fr'solver\ABCI\ABCI_MP_12_5.exe')
 
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])

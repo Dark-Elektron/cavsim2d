@@ -34,7 +34,7 @@ ngsolve_mevp = NGSolveMEVP()
 abci_geom = ABCIGeometry()
 tuner = Tuner()
 
-SOFTWARE_DIRECTORY = Path(os.getcwd())  # str(Path().parents[0])
+SOFTWARE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))  # str(Path().parents[0])
 VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6}
 TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
@@ -3209,35 +3209,29 @@ class Cavity:
         start_time = time.time()
         # run both polarizations if MROT == 2
         for ii in WG_M:
-            try:
-                if MROT == 2:
-                    for m in tqdm(range(2)):
-                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
-                else:
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                     fid=name, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
+            # run abci code
+            # run both polarizations if MROT == 2
+            if 'OC_R' in list(shape.keys()):
+                OC_R = 'OC_R'
+            else:
+                OC_R = 'OC'
+
+            if MROT == 2:
+                for m in tqdm(range(2)):
+                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                     fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
+                                     projectDir=projectDir,
                                      WG_M=ii, marker=ii)
-            except KeyError:
-                if MROT == 2:
-                    for m in tqdm(range(2)):
-                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
-                else:
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                     fid=name, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
-                                     WG_M=ii, marker=ii)
+            else:
+                abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                 fid=name, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
+                                 WG_M=ii, marker=ii)
 
         done(f'Cavity {name}. Time: {time.time() - start_time}')
-        if len(operating_points.keys()) > 0:
+
+        if operating_points:
             try:
                 if freq != 0 and R_Q != 0:
                     d = {}
@@ -3808,10 +3802,9 @@ class Cavities(Optimisation):
         cavities_list: list, array like
             List containing Cavity objects.
 
-        save_folder: str
-            Folder to save generated images, latex, excel, and text files.
         """
 
+        super().__init__()
         self.sweep_results = None
         self.cavities_list = cavities_list
         self.cavities_dict = {}

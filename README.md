@@ -191,12 +191,6 @@ cavs.add_cavity(tesla_mid_cell, 'TESLA')
 cavs.run_tune('Req', 1300)
 pp.pprint(cavs.eigenmode_tune_res)
 ```
-
-Confirm from the output that the correct frequency and `Req` is achieved. 
-> [!NOTE]
-> You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm
-
-
 ```
 TESLA
 {   'TESLA': {   'CELL TYPE': 'mid cell',
@@ -228,6 +222,10 @@ TESLA
                  'TUNED VARIABLE': 'Req'}}
 ```
 
+Confirm from the output that the correct frequency and `Req` is achieved. 
+> [!NOTE]
+> You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm.
+
 Repeat the same calculation. This time retain the correct `Req` and input a wrong `A`.
 
 ```python
@@ -245,7 +243,44 @@ pp.pprint(cavs.eigenmode_tune_res)
 
 Confirm from the output that the correct frequency and `A` is achieved.
 
-
 ### Wakefield
+
+Running wakefield simulations is as easy as running eigenmode simulations described above. 
+
+```python
+from cavsim2d.cavity import Cavity, Cavities
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
+cavs = Cavities()
+cavs.save(project_folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+
+# define geometry parameters
+n_cells = 9
+midcell = [42, 42, 12, 19, 35, 57.7, 103.353]  # <- A, B, a, b, Ri, L, Req
+endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
+endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
+
+# create cavity
+tesla = Cavity(n_cells, midcell, endcell_l,endcell_r, beampipe='none')
+cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
+
+cavs.run_wakefield(bunch_length=25)
+```
+To make plots of the longitudinal and transverse impedance plots on the same axis, we use the following code
+
+```python
+ax = cavs.plot('ZL')
+ax = cavs.plot('ZT', ax)
+ax.set_yscale('log')
+```
+
+In the example, we passed a single parameter `bunch_length`. However, the simulation would have ran without this 
+argument using internal default arguments for the wakefield solver. 
+
+Oftentimes, we want to analyse the loss and kick factors, and higher-order mode power for particular or several 
+operating points for a cavity geometry. This can easily be done by extending the functionality of the wakefield solver
+to solve for the wakefield impedance for the specified opearting point parameters.
+
 ### Optimisation
 ### Understanding the folder structure
