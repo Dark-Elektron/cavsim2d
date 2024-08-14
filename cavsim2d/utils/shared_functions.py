@@ -4499,6 +4499,84 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
     # plt.legend(by_label.values(), by_label.keys())
 
 
+def f2b_slashes(path):
+    """
+    Replaces forward slashes with backward slashes for windows OS
+
+    Parameters
+    ----------
+    path: str
+        Directory path
+
+    Returns
+    -------
+
+    """
+
+    if os.name == 'nt':
+        path = path.replace("/", "\\")
+    else:
+        path = path.replace('\\', '/')
+    return Path(path)
+
+
+def get_qoi_value(d, obj):
+    """
+    Gets the quantities of interest from simulation results
+    Parameters
+    ----------
+    d: dict
+        Dictionary containing several figures of merits from eigenmode solver
+    obj: list
+        List of objective functions
+    n_cells: int
+        Number of cells
+    norm_length: float
+        Normalisation length for :math: `E_\mathrm{acc}`
+
+    Returns
+    -------
+
+    """
+    # Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
+    # Freq = d['FREQUENCY'][n_cells - 1]
+    # E_stored = d['STORED ENERGY'][n_cells - 1]
+    # # Rsh = d['SHUNT IMPEDANCE'][n_cells-1]  # MOhm
+    # Q = d['QUALITY FACTOR'][n_cells - 1]
+    # Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
+    # Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
+    # # Vacc = dict['ACCELERATION'][0]
+    # # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells-1]  # MV/m
+    # Rsh_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
+    #
+    # Vacc = np.sqrt(
+    #     2 * Rsh_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6
+    # # factor of 2, remember circuit and accelerator definition
+    # # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
+    # Eacc = Vacc / (norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
+    # Epk_Eacc = Epk / Eacc
+    # Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
+    #
+    # d = {
+    #     "Req": Req,
+    #     "freq": Freq,
+    #     "Q": Q,
+    #     "E": E_stored,
+    #     "R/Q": 2 * Rsh_Q,
+    #     "Epk/Eacc": Epk_Eacc,
+    #     "Bpk/Eacc": Bpk_Eacc
+    # }
+
+    objective = []
+
+    # append objective functions
+    for o in obj:
+        if o in d.keys():
+            objective.append(d[o])
+
+    return objective
+
+
 def error(*arg):
     print(colored(f'{arg[0]}', 'red'))
 

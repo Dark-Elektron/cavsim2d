@@ -468,7 +468,7 @@ class Optimisation:
                 elif obj[0] == "max":
                     df[f'rank_{obj[1]}'] = df[obj[1]].rank(ascending=False) * self.weights[i]
                 elif obj[0] == "equal" and obj[1] != 'freq [MHz]':  # define properly later
-                    df[f'rank_{obj[1]}'] = (df[obj[1]] - fshift).abs().rank() * self.weights[i]
+                    df[f'rank_{obj[1]}'] = (df[obj[1]] - obj[2]).abs().rank() * self.weights[i]
 
                 df[f'total_rank'] = df[f'total_rank'] + df[f'rank_{obj[1]}']
 
@@ -983,71 +983,71 @@ class Optimisation:
 
         return surf
 
-    def create_evolution_animation(self, frame):
-        for ax_index in axs:
-            axs[ax_index].clear()
-
-        ################### plot 2d ##################################
-        grid_results_folder = fr'D:\Dropbox\CavityDesignHub\KWT_simulations\PostprocessingData\Data\grid_results.xlsx'
-
-        columns_array = [['Epk/Eacc', 'Bpk/Eacc'], ['Epk/Eacc', 'R/Q'], ['Bpk/Eacc', 'R/Q']]
-        columns_par_array = [['A', 'B'], ['a', 'b'], ['A', 'Ri']]
-        cmap = matplotlib.colormaps['Pastel2_r']
-        norm = matplotlib.colors.Normalize(vmin=0, vmax=49)
-
-        for i, (columns, columns_par) in enumerate(zip(columns_array, columns_par_array)):
-            grid_results = pd.read_excel(grid_results_folder, 'Sheet1')
-            qmc_pareto_shapes = pareto_front(grid_results, columns, axs[i], show='pareto',
-                                             label=f'QMC \n({len(grid_results.index)} geoems.)',
-                                             kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'grey'},
-                                             kwargs_pareto={'c': 'k', 'marker': 'o', 'mec': 'k'})
-
-            for r in [frame]:
-                for lab, opt_code_result_folder, error_file in zip(['LHS2'],
-                                                                   [
-                                                                       fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS\Generation{r}.xlsx'],
-                                                                   [
-                                                                       fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS_LHS2\inerp_error_and_average.txt']):
-                    opt_code_result = pd.read_excel(opt_code_result_folder, 'Sheet1')
-
-                    pareto_shapes = pareto_front(opt_code_result, columns, axs[i], show='pareto',
-                                                 label=f"{lab}: G{r} \n({len(opt_code_result.index)} geoms).",
-                                                 kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'b'},
-                                                 kwargs_pareto={'marker': 'o',
-                                                                'mec': 'k'},
-                                                 # kwargs_pareto={'c': f'{matplotlib.colors.rgb2hex(cmap(norm(r)))}', 'marker': 'o',
-                                                 #                'mec': 'k'}
-                                                 )
-                    axs[i + 3].scatter(grid_results[columns_par[0]], grid_results[columns_par[1]], s=5)
-                    axs[i + 3].scatter(opt_code_result[columns_par[0]], opt_code_result[columns_par[1]], s=5)
-                    axs[i + 3].scatter(qmc_pareto_shapes[columns_par[0]], qmc_pareto_shapes[columns_par[1]], c='r',
-                                       label='qmc', s=5)
-                    axs[i + 3].scatter(pareto_shapes[columns_par[0]], pareto_shapes[columns_par[1]], c='b',
-                                       edgecolor='k',
-                                       label='ea', s=5)
-
-                    # load interpolation error
-                    error = pd.read_csv(error_file, header=None, sep='\s+')
-                    # axs[3].plot(error[0], label=lab)
-                    # axs[4].plot(error[1], label=lab)
-
-            axs[i].set_xlabel(columns[0])
-            axs[i].set_ylabel(columns[1])
-            axs[i + 3].set_xlabel(columns_par[0])
-            axs[i + 3].set_ylabel(columns_par[1])
-
-        # axs[i].legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=10, loc='lower left', mode='expand')
-        axs[0].legend()
-        axs[3].legend()
-
-        # axs[3].set_yscale('log')
-        # axs[4].set_yscale('log')
-        # axs[3].set_xlabel('Interpolation error')
-        # axs[3].set_ylabel()
-        # plot error
-
-        # plt.tight_layout()
-        # plt.show()
+    # def create_evolution_animation(self, frame):
+    #     for ax_index in axs:
+    #         axs[ax_index].clear()
+    #
+    #     ################### plot 2d ##################################
+    #     grid_results_folder = fr'D:\Dropbox\CavityDesignHub\KWT_simulations\PostprocessingData\Data\grid_results.xlsx'
+    #
+    #     columns_array = [['Epk/Eacc', 'Bpk/Eacc'], ['Epk/Eacc', 'R/Q'], ['Bpk/Eacc', 'R/Q']]
+    #     columns_par_array = [['A', 'B'], ['a', 'b'], ['A', 'Ri']]
+    #     cmap = matplotlib.colormaps['Pastel2_r']
+    #     norm = matplotlib.colors.Normalize(vmin=0, vmax=49)
+    #
+    #     for i, (columns, columns_par) in enumerate(zip(columns_array, columns_par_array)):
+    #         grid_results = pd.read_excel(grid_results_folder, 'Sheet1')
+    #         qmc_pareto_shapes = pareto_front(grid_results, columns, axs[i], show='pareto',
+    #                                          label=f'QMC \n({len(grid_results.index)} geoems.)',
+    #                                          kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'grey'},
+    #                                          kwargs_pareto={'c': 'k', 'marker': 'o', 'mec': 'k'})
+    #
+    #         for r in [frame]:
+    #             for lab, opt_code_result_folder, error_file in zip(['LHS2'],
+    #                                                                [
+    #                                                                    fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS\Generation{r}.xlsx'],
+    #                                                                [
+    #                                                                    fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS_LHS2\inerp_error_and_average.txt']):
+    #                 opt_code_result = pd.read_excel(opt_code_result_folder, 'Sheet1')
+    #
+    #                 pareto_shapes = pareto_front(opt_code_result, columns, axs[i], show='pareto',
+    #                                              label=f"{lab}: G{r} \n({len(opt_code_result.index)} geoms).",
+    #                                              kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'b'},
+    #                                              kwargs_pareto={'marker': 'o',
+    #                                                             'mec': 'k'},
+    #                                              # kwargs_pareto={'c': f'{matplotlib.colors.rgb2hex(cmap(norm(r)))}', 'marker': 'o',
+    #                                              #                'mec': 'k'}
+    #                                              )
+    #                 axs[i + 3].scatter(grid_results[columns_par[0]], grid_results[columns_par[1]], s=5)
+    #                 axs[i + 3].scatter(opt_code_result[columns_par[0]], opt_code_result[columns_par[1]], s=5)
+    #                 axs[i + 3].scatter(qmc_pareto_shapes[columns_par[0]], qmc_pareto_shapes[columns_par[1]], c='r',
+    #                                    label='qmc', s=5)
+    #                 axs[i + 3].scatter(pareto_shapes[columns_par[0]], pareto_shapes[columns_par[1]], c='b',
+    #                                    edgecolor='k',
+    #                                    label='ea', s=5)
+    #
+    #                 # load interpolation error
+    #                 error = pd.read_csv(error_file, header=None, sep='\s+')
+    #                 # axs[3].plot(error[0], label=lab)
+    #                 # axs[4].plot(error[1], label=lab)
+    #
+    #         axs[i].set_xlabel(columns[0])
+    #         axs[i].set_ylabel(columns[1])
+    #         axs[i + 3].set_xlabel(columns_par[0])
+    #         axs[i + 3].set_ylabel(columns_par[1])
+    #
+    #     # axs[i].legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=10, loc='lower left', mode='expand')
+    #     axs[0].legend()
+    #     axs[3].legend()
+    #
+    #     # axs[3].set_yscale('log')
+    #     # axs[4].set_yscale('log')
+    #     # axs[3].set_xlabel('Interpolation error')
+    #     # axs[3].set_ylabel()
+    #     # plot error
+    #
+    #     # plt.tight_layout()
+    #     # plt.show()
 
     @staticmethod
     def stroud(p):
@@ -1614,7 +1614,7 @@ class Optimisation:
                 k_loss_trans = abci_data_trans.loss_factor['Transverse']
 
                 if math.isnan(k_loss_trans):
-                    print_(f"Encountered an exception: Check shape {key}")
+                    error(f"Encountered an exception: Check shape {key}")
                     continue
 
                 # long
@@ -2048,192 +2048,12 @@ class Optimisation:
                            n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again #val2
 
     @staticmethod
-    def run_sequential_slans(n_cell, n_modules, processor_shape_space, n_modes, f_shift, bc, pol, parentDir, projectDir,
-                             progress_list, sub_dir='', uq_config=None, solver='slans', mesh=None):
-        """
-        Runs a single instance of SLANS (eigenmode analysis)
-        Parameters
-        ----------
-        n_cell: int
-            Number of cavity cells
-        n_modules: int
-            Number of cavity modules
-        processor_shape_space: dict
-            Dictionary containing geometric dimensions of cavity geometry
-        n_modes: int
-            Number of eigenmodes to be calculated
-        f_shift: float
-            Since the eigenmode solver uses the power method, a shift can be provided
-        bc: int
-            Boundary conditions {1:inner contour, 2:Electric wall Et = 0, 3:Magnetic Wall En = 0, 4:Axis, 5:metal}
-            bc=33 means `Magnetic Wall En = 0` boundary condition at both ends
-        pol: int {Monopole, Dipole}
-            Defines whether to calculate for monopole or dipole modes
-        parentDir: str | path
-            Parent directory
-        projectDir: str|path
-            Project directory
-        progress_list: list
-            Global list to record the progress of each parallel simulation thread
-        sub_dir: dir
-            Sub directory in which to write simulation results
-        uq_config: None | dict
-            Provides inputs required for uncertainty quantification. Default is None and disables uncertainty quantification.
-        solver: str {slans, native}
-            Select the eigenmode solver to use. Default is the SLANS solver
-        mesh: list [Jxy, Jxy_bp, Jxy_bp_y]
-            Mesh definition for logical mesh:
-            Jxy -> Number of elements of logical mesh along JX and JY
-            Jxy_bp -> Number of elements of logical mesh along JX in beampipe
-            Jxy_bp_y -> Number of elements of logical mesh along JY in beampipe
-
-        Returns
-        -------
-
-        """
-        progress = 0
-
-        for key, shape in processor_shape_space.items():
-            if solver.lower() == 'slans':
-
-                # run SLANS code
-                start_time = time.time()
-                expansion = None
-                expansion_r = None
-
-                if "EXPANSION" in shape.keys():
-                    expansion = shape['EXPANSION']
-
-                if 'EXPANSION_R' in shape.keys():
-                    expansion_r = shape['EXPANSION_R']
-
-                # if len(n_cells) == 1:
-                #     n_cells = n_cells[0]
-                #     # # create folders for all keys
-                #     slans_geom.createFolder(key, projectDir, subdir=sub_dir)
-                #
-                #     write_cst_paramters(key, shape['IC'], shape['OC'], projectDir=projectDir, cell_type="None")
-                #
-                # if 'OC_R' in shape.keys(): slans_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'],
-                # shape['OC_R'], n_modes=n_modes, fid=f"{key}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                # parentDir=parentDir, projectDir=projectDir, subdir=sub_dir, expansion=expansion,
-                # expansion_r=expansion_r) else: slans_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'],
-                # shape['OC'], n_modes=n_modes, fid=f"{key}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                # parentDir=parentDir, projectDir=projectDir, subdir=sub_dir, expansion=expansion,
-                # expansion_r=expansion_r) else:
-
-                # # create folders for all keys
-                slans_geom_seq.createFolder(f"{key}_n{n_cell}", projectDir, subdir=sub_dir, opt=True)
-
-                if 'OC_R' in shape.keys():
-                    write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-                                        projectDir=projectDir, cell_type="None", opt=True)
-                    slans_geom_seq.cavity(n_cell, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                          n_modes=n_modes, fid=f"{key}_n{n_cell}", f_shift=f_shift,
-                                          bc=bc, pol=pol, beampipes=shape['BP'],
-                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir,
-                                          expansion=expansion, expansion_r=expansion_r, mesh=mesh, opt=True)
-                else:
-                    write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC'],
-                                        projectDir=projectDir, cell_type="None", opt=True)
-                    slans_geom_seq.cavity(n_cell, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                          n_modes=n_modes, fid=f"{key}_n{n_cell}", f_shift=f_shift,
-                                          bc=bc, pol=pol, beampipes=shape['BP'],
-                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir,
-                                          expansion=expansion, expansion_r=expansion_r, mesh=mesh, opt=True)
-
-                # # run UQ
-                # if uq_config:
-                #     uq(key, shape, ["freq", "R/Q", "Epk/Eacc", "Bpk/Eacc"],
-                #        n_cells=n_cell, n_modules=n_modules, n_modes=n_modes,
-                #        f_shift=f_shift, bc=bc, pol='Monopole', parentDir=parentDir, projectDir=projectDir)
-                #
-                # print_(f'Done with Cavity {key}. Time: {time.time() - start_time}')
-                #
-                # # update progress
-                # progress_list.append(progress + 1)
-
-            # else:
-            #     # run own eigenmode code
-            #     folder = projectDir / fr'SimulationData\NativeEig'
-            #     mod = Model(folder=folder, name=f"{key}", parent_dir=parentDir)
-            #
-            #     try:
-            #         # convert first to m.
-            #         mid_cell = np.array(shape['IC']) * 1e-3
-            #         end_cell_left = np.array(shape['OC']) * 1e-3
-            #         end_cell_right = np.array(shape['OC_R']) * 1e-3
-            #
-            #         mod.run(n_cells, mid_cell, end_cell_left, end_cell_right, beampipe=shape['BP'],
-            #                 req_mode_num=int(n_modes), plot=False)
-            #     except KeyError:
-            #         # convert first to m.
-            #         mid_cell = np.array(shape['IC']) * 1e-3
-            #         end_cell_left = np.array(shape['OC']) * 1e-3
-            #         end_cell_right = np.array(shape['OC']) * 1e-3
-            #
-            #         mod.run(n_cells, mid_cell, end_cell_left, end_cell_right, beampipe=shape['BP'],
-            #                 req_mode_num=int(n_modes), plot=False)
-
-    @staticmethod
     def process_interval(interval_list):
         interval = []
         for i in range(len(interval_list) - 1):
             interval.append([interval_list[i], interval_list[i + 1]])
 
         return interval
-
-    def mode_trap_score(self, invar, mode_list_input):
-        mt_score_list = []
-        for mode in mode_list_input:
-            x, y = [], []
-            path = os.path.join(os.getcwd(),
-                                r"SLANS_data_C{}\Cavity{}\cavity_mm_{}.af".format(mid_cell_cid, invar, mode))
-
-            with open(path, 'r') as f:
-                for ll in f.readlines():
-                    ll = ll.strip()
-                    x.append(float(ll.split(' ')[0]))
-                    y.append(float(ll.split(' ')[1]))
-
-            y_abs = [abs(t) for t in y]
-            # plt.plot(x, y_abs)
-
-            y_flat = []
-            y_mx = max(y_abs)
-
-            for v in y_abs:
-                if v <= 0.1 * y_mx:
-                    y_flat.append(0)
-                else:
-                    y_flat.append(v)
-
-            # plt.plot(x, y_flat)
-
-            peaks, _ = sps.find_peaks(y_flat)
-
-            # calculate mt_score
-            y_peaks = np.array(y_flat)[peaks]
-
-            plt.scatter(np.array(x)[peaks], y_peaks, label="{},{}".format(invar, mode))
-
-            if y_peaks[0] != 0:
-                y_peaks_norm = [abs(t) / y_peaks[0] for t in y_peaks]
-
-                print("\t\t\t", y_peaks_norm)
-
-                if 1.05 * y_peaks[0] >= max(y_peaks):
-                    mt_score = -(sum(y_peaks_norm) - 1) / (len(y_peaks_norm) - 1)
-                else:
-                    mt_score = (sum(y_peaks_norm) - 1) / (len(y_peaks_norm) - 1)
-
-                print("\t\t\t", 1 / mt_score)
-                mt_score_list.append(mt_score)
-                print("MODE LIST:: ", mode_list_input)
-            else:
-                print("\t\t\tDividing by zero, skipped!")
-
-        return mt_score_list
 
     @staticmethod
     def color_pareto(df, no_pareto_optimal):
@@ -2539,84 +2359,84 @@ class Cavity:
                 # replace initial value
                 self.shape_space['IC'][VAR_TO_INDEX_DICT[key]] = current_var
 
-    def check_uq_config(self, uq_config):
-        cell_type = uq_config['cell type']
-        delta = uq_config['delta']
-        method = uq_config['method']
-        uq_vars = uq_config['variables']
-        assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
-
-        rdim = len(uq_vars)
-        degree = 1
-
-        if method[1].lower() == 'stroud3':
-            nodes, weights, bpoly = quad_stroud3(rdim, degree)
-            nodes = 2. * nodes - 1.
-            # nodes, weights = cn_leg_03_1(rdim)  # <- for some reason unknown this gives a less accurate answer. the nodes are not the same as the custom function
-        elif method[1].lower() == 'stroud5':
-            nodes, weights = cn_leg_05_2(rdim)
-        elif method[1].lower() == 'gaussian':
-            nodes, weights = cn_gauss(rdim, 2)
-        elif method[1].lower() == 'lhs':
-            sampler = qmc.LatinHypercube(d=rdim)
-            _ = sampler.reset()
-            nsamp = uq_config['integration'][2]
-            sample = sampler.random(n=nsamp)
-
-            l_bounds = [-1 for _ in range(len(uq_vars))]
-            u_bounds = [1 for _ in range(len(uq_vars))]
-            sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-            nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
-        elif method[0].lower() == 'from file':
-            if len(method) == 2:
-                nodes = pd.read_csv(method[1], sep='\s+').iloc[:, method[1]]
-            else:
-                nodes = pd.read_csv(method[1], sep='\s+')
-
-            nodes = nodes.to_numpy().T
-            weights = np.ones((nodes.shape[1], 1))
-        else:
-            # issue warning
-            warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-            nodes, weights, bpoly = quad_stroud3(rdim, degree)
-            nodes = 2. * nodes - 1.
-
-        perturbed_cell_node = np.array(cell_node)
-        no_parm, no_sims = np.shape(nodes)
-        if delta is None:
-            delta = [0.05 for _ in range(len(uq_vars))]
-
-        for i in range(no_sims):
-            skip = False
-            for j, uq_var in enumerate(uq_vars):
-                uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-                perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * nodes[j, i])
-
-            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-                cell_node = shape['IC']
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-                beampipes = 'none'
-            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-                mid = shape['IC']
-                left = shape['IC']
-                right = perturbed_cell_node
-                beampipes = 'right'
-            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-                beampipes = 'right'
-            else:
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-                beampipes = 'both'
-
-            enforce_Req_continuity(mid, left, right, cell_type)
+    # def check_uq_config(self, uq_config):
+    #     cell_type = uq_config['cell type']
+    #     delta = uq_config['delta']
+    #     method = uq_config['method']
+    #     uq_vars = uq_config['variables']
+    #     assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+    #
+    #     rdim = len(uq_vars)
+    #     degree = 1
+    #
+    #     if method[1].lower() == 'stroud3':
+    #         nodes, weights, bpoly = quad_stroud3(rdim, degree)
+    #         nodes = 2. * nodes - 1.
+    #         # nodes, weights = cn_leg_03_1(rdim)  # <- for some reason unknown this gives a less accurate answer. the nodes are not the same as the custom function
+    #     elif method[1].lower() == 'stroud5':
+    #         nodes, weights = cn_leg_05_2(rdim)
+    #     elif method[1].lower() == 'gaussian':
+    #         nodes, weights = cn_gauss(rdim, 2)
+    #     elif method[1].lower() == 'lhs':
+    #         sampler = qmc.LatinHypercube(d=rdim)
+    #         _ = sampler.reset()
+    #         nsamp = uq_config['integration'][2]
+    #         sample = sampler.random(n=nsamp)
+    #
+    #         l_bounds = [-1 for _ in range(len(uq_vars))]
+    #         u_bounds = [1 for _ in range(len(uq_vars))]
+    #         sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
+    #
+    #         nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
+    #     elif method[0].lower() == 'from file':
+    #         if len(method) == 2:
+    #             nodes = pd.read_csv(method[1], sep='\s+').iloc[:, method[1]]
+    #         else:
+    #             nodes = pd.read_csv(method[1], sep='\s+')
+    #
+    #         nodes = nodes.to_numpy().T
+    #         weights = np.ones((nodes.shape[1], 1))
+    #     else:
+    #         # issue warning
+    #         warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
+    #         nodes, weights, bpoly = quad_stroud3(rdim, degree)
+    #         nodes = 2. * nodes - 1.
+    #
+    #     perturbed_cell_node = np.array(cell_node)
+    #     no_parm, no_sims = np.shape(nodes)
+    #     if delta is None:
+    #         delta = [0.05 for _ in range(len(uq_vars))]
+    #
+    #     for i in range(no_sims):
+    #         skip = False
+    #         for j, uq_var in enumerate(uq_vars):
+    #             uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
+    #             perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * nodes[j, i])
+    #
+    #         if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+    #             cell_node = shape['IC']
+    #             mid = perturbed_cell_node
+    #             left = perturbed_cell_node
+    #             right = perturbed_cell_node
+    #             beampipes = 'none'
+    #         elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+    #             mid = shape['IC']
+    #             left = shape['IC']
+    #             right = perturbed_cell_node
+    #             beampipes = 'right'
+    #         elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+    #               or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+    #             mid = perturbed_cell_node
+    #             left = perturbed_cell_node
+    #             right = perturbed_cell_node
+    #             beampipes = 'right'
+    #         else:
+    #             mid = perturbed_cell_node
+    #             left = perturbed_cell_node
+    #             right = perturbed_cell_node
+    #             beampipes = 'both'
+    #
+    #         enforce_Req_continuity(mid, left, right, cell_type)
 
     def study_convergence(self, step_refinement, max_steps):
         pass
@@ -4730,9 +4550,6 @@ class Cavities(Optimisation):
             # ax.tick_params(axis='x', **tkw)
 
             ax1.minorticks_on()
-            mplcursors.cursor(ax1)
-            mplcursors.cursor(ax2)
-            mplcursors.cursor(ax3)
             # ax.grid(True, which='both', axis='both')
 
         # dummy lines with NO entries, just to create the black style legend
@@ -4950,51 +4767,51 @@ class Cavities(Optimisation):
         self.save_all_plots(f"{fname}_all_bar.png")
 
         return axd
-
-    def plot_cryomodule_comparison(self):
-        """
-        Plot cryomodule power comparison
-
-        Returns
-        -------
-
-        """
-        plt.rcParams["figure.figsize"] = (9, 3)
-        fig, axs = plt.subplots(1, 2)
-        n_cav_per_cryomodule = np.arange(1, 11)
-        for cav in self.cavities_list:
-            n_cryomodules_list = []
-            cryomodules_len_list = []
-            for ncpc in n_cav_per_cryomodule:
-                cryomodule_len = cav.n_cells * (2 * cav.l_cell_mid) * ncpc + (ncpc + 1) * 8 * cav.l_cell_mid
-                cryomodules_len_list.append(cryomodule_len)
-
-                n_cryomodules = cav.n_cav_op_field / ncpc
-                n_cryomodules_list.append(n_cryomodules)
-
-            axs[0].plot(n_cav_per_cryomodule, cryomodules_len_list, marker='o', mec='k', label=f'{cav.name}')
-            axs[1].plot(n_cav_per_cryomodule, n_cryomodules_list, marker='o', mec='k', label=f'{cav.name}')
-            print(n_cav_per_cryomodule)
-            print(cryomodules_len_list, n_cryomodules_list)
-            print(n_cav_per_cryomodule)
-            print()
-        axs[0].set_xlabel("$N_\mathrm{cav}$/mod.")
-        axs[0].set_ylabel("$L_\mathrm{cryo}$ [m]")
-        axs[1].set_xlabel("$N_\mathrm{cav}$/mod.")
-        axs[1].set_ylabel("$N_\mathrm{cryo}$")
-        axs[0].legend()
-        axs[1].legend()
-        mplcursors.cursor(axs[0])
-        mplcursors.cursor(axs[1])
-        plt.tight_layout()
-
-        # save plots
-        fname = [cav.name for cav in self.cavities_list]
-        fname = '_'.join(fname)
-
-        self.save_all_plots(f"{fname}_cryo.png")
-
-        plt.show()
+    #
+    # def plot_cryomodule_comparison(self):
+    #     """
+    #     Plot cryomodule power comparison
+    #
+    #     Returns
+    #     -------
+    #
+    #     """
+    #     plt.rcParams["figure.figsize"] = (9, 3)
+    #     fig, axs = plt.subplots(1, 2)
+    #     n_cav_per_cryomodule = np.arange(1, 11)
+    #     for cav in self.cavities_list:
+    #         n_cryomodules_list = []
+    #         cryomodules_len_list = []
+    #         for ncpc in n_cav_per_cryomodule:
+    #             cryomodule_len = cav.n_cells * (2 * cav.l_cell_mid) * ncpc + (ncpc + 1) * 8 * cav.l_cell_mid
+    #             cryomodules_len_list.append(cryomodule_len)
+    #
+    #             n_cryomodules = cav.n_cav_op_field / ncpc
+    #             n_cryomodules_list.append(n_cryomodules)
+    #
+    #         axs[0].plot(n_cav_per_cryomodule, cryomodules_len_list, marker='o', mec='k', label=f'{cav.name}')
+    #         axs[1].plot(n_cav_per_cryomodule, n_cryomodules_list, marker='o', mec='k', label=f'{cav.name}')
+    #         print(n_cav_per_cryomodule)
+    #         print(cryomodules_len_list, n_cryomodules_list)
+    #         print(n_cav_per_cryomodule)
+    #         print()
+    #     axs[0].set_xlabel("$N_\mathrm{cav}$/mod.")
+    #     axs[0].set_ylabel("$L_\mathrm{cryo}$ [m]")
+    #     axs[1].set_xlabel("$N_\mathrm{cav}$/mod.")
+    #     axs[1].set_ylabel("$N_\mathrm{cryo}$")
+    #     axs[0].legend()
+    #     axs[1].legend()
+    #     mplcursors.cursor(axs[0])
+    #     mplcursors.cursor(axs[1])
+    #     plt.tight_layout()
+    #
+    #     # save plots
+    #     fname = [cav.name for cav in self.cavities_list]
+    #     fname = '_'.join(fname)
+    #
+    #     self.save_all_plots(f"{fname}_cryo.png")
+    #
+    #     plt.show()
 
     def plot_cavities_contour(self, opt='mid'):
         """Plot geometric contour of Cavity objects
@@ -5003,8 +4820,6 @@ class Cavities(Optimisation):
         ----------
         opt: {"mid", "end", "all"}
             Either plot contour for only mid cells or end cells or the entire cavity
-        n_cells: int
-            Option used only when opt is set to "all"
 
         Returns
         -------
@@ -7904,7 +7719,7 @@ def uq(shape_space, objectives, solver_dict, solver_args_dict, uq_config):
                               index=False, sep='\t', float_format='%.32f')
 
 
-def uq_multicell(shape_shape, objectives, solver_dict, solver_args_dict, uq_config):
+def uq_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config):
     """
 
     Parameters
@@ -7987,7 +7802,7 @@ def uq_multicell(shape_shape, objectives, solver_dict, solver_args_dict, uq_conf
                 midcell_var_dict[f'{cav_var_list[i1]}_{i2}_m{i3}'] = [i1, i2, i3]
 
     # create random variables
-    multicell_mid_vars = create_multicell_random_variables(n_cells, np.atleast_2d(np.array(shape_space['IC'])[:7]).T)
+    # multicell_mid_vars = create_multicell_random_variables(n_cells, np.atleast_2d(np.array(shape_space['IC'])[:7]).T)
 
     # EXAMPLE: p_true = np.array([1, 2, 3, 4, 5]).T
     p_true = [np.array(shape_space['OC'])[:7], multicell_mid_vars, np.array(shape_space['OC_R'])[:7]]
@@ -8007,7 +7822,6 @@ def uq_multicell(shape_shape, objectives, solver_dict, solver_args_dict, uq_conf
     elif flag_stroud == 'cn_gauss':
         nodes_, weights_ = cn_gauss(rdim, 2)
     else:
-        ic('flag_stroud==1 or flag_stroud==2')
         return 0
 
     no_parm, no_sims = np.shape(nodes_)
@@ -8017,7 +7831,6 @@ def uq_multicell(shape_shape, objectives, solver_dict, solver_args_dict, uq_conf
 
     sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
     # par_end = shape['OC']
-    ic(nodes_)
     # save nodes
     data_table = pd.DataFrame(nodes_.T, columns=list(eigen_obj_list))
     data_table.to_csv(uq_path / 'nodes.csv', index=False, sep='\t', float_format='%.32f')

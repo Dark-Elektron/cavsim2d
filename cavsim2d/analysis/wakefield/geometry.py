@@ -166,10 +166,6 @@ class Geometry:
     # def write_cst_paramters(self, fid):
     #     print("Writing parameters to file")
     #     cwd = os.getcwd()
-    #     if self.ui.cb_Code.currentText() == 'SLANS':
-    #         path = os.path.join(cwd, "node_editor\SLANS\Cavity{}\cst_parameters.txt".format(fid))
-    #     else:
-    #         path = os.path.join(cwd, "node_editor\ABCI\Cavity{}\cst_parameters.txt".format(fid))
     #
     #     print(path)
     #     with open(path, 'w') as f:
@@ -194,10 +190,6 @@ class Geometry:
     #     print("Writing parameters to file")
     #     cwd = os.getcwd()
     #     print(cwd)
-    #     if self.ui.cb_Code.currentText() == 'SLANS':
-    #         path = os.path.join(cwd, "node_editor\SLANS\Cavity{}\cst_parameters_mid.txt".format(fid))
-    #     else:
-    #         path = os.path.join(cwd, "node_editor\ABCI\Cavity{}\cst_parameters_mid.txt".format(fid))
     #
     #     print(path)
     #     with open(path, 'w') as f:

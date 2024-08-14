@@ -10,7 +10,6 @@ class ABCIGeometry(Geometry):
     def __init__(self):
         super().__init__()
 
-        # create node_editor folder on initialisation
         self.L_all = None
         self.abci = None
 

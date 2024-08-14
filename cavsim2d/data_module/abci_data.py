@@ -185,7 +185,6 @@ class ABCIData:
             xr = np.array(xr)
             self.data_dict['Transversal Impedance Magnitude'] = [xr, y]
 
-
     def get_data(self, key):
         plot_decorations = [r'Cavity Shape Input', r'Cavity Shape Used', r'Wake Potentials',
                             r'Real Part of Longitudinal Impedance', r'Imaginary Part of Longitudinal Impedance',
@@ -763,59 +762,3 @@ class ABCIDataExtraction:
 
         return dd
 
-
-if __name__ == '__main__':
-    # directory = r"D:\Dropbox\Projects\NewFolder\SimulationData\ABCI"
-    # fid = "Cavity0"  # folder name
-    # MROT = "1"  # 0 for monopole, 1 for dipole
-    #
-    # # create ABCIData object
-    # abci_data = ABCIData(directory, fid, MROT)
-    #
-    # # call get_data method and provide key
-    # keys = {0: r'Cavity Shape Input',
-    #         1: r'Cavity Shape Used',
-    #         2: r'Wake Potentials',
-    #         3: r'Real Part of Longitudinal Impedance',
-    #         4: r'Imaginary Part of Longitudinal Impedance',
-    #         5: 'Frequency Spectrum of Loss Factor',
-    #         6: r'Loss Factor Spectrum Integrated upto F',
-    #         7: r'Real Part of Long. + Log Impedance',
-    #         8: r'Imaginary Part of Long. + Log Impedance',
-    #         9: r'Spectrum of Long. + Log Loss Factor',
-    #         10: r'Long. + Log Factor Integrated up to F',
-    #         11: r'Real Part of Azimuthal Impedance',
-    #         12: r'Imaginary Part of Azimuthal Impedance',
-    #         13: r'Real Part of Transverse Impedance',
-    #         14: r'Imaginary Part of Transverse Impedance'}
-    #
-    # x, y, _ = abci_data.get_data(key=3)  # For the key, either the title of the plot can be given as input or the index
-    # print(x)
-    # print(y)
-    #
-    # import matplotlib.pyplot as plt
-    # plt.plot(x, y)
-    # plt.show()
-
-    abci_de = ABCIDataExtraction()
-
-    # get simulation data from multiple folders
-    dir_path = r'D:\Dropbox\2D_Codes\ABCI_software\Python_ABCI\Data'
-    for path in os.listdir(dir_path):
-        if os.path.exists(fr"{dir_path}/{path}/shape_space.xlsx"):
-            print(path)
-            # load shape space
-            shape_space = pd.read_excel(fr"{dir_path}/{path}/shape_space.xlsx", "Sheet1", index_col=0)
-            shape_space = shape_space.rename('Cavity{}'.format)
-            shape_space = shape_space.to_dict(orient='index')
-            # ic(shape_space)
-            # break
-            abci_data_folder = fr"{dir_path}/{path}/ABCI"
-            temp_folder = fr"{dir_path}/{path}/temp"
-            save_excel = fr"{dir_path}/{path}/results_abci"
-            request = 'all'
-            abci_de.multiple_folders_data_parallel(shape_space, abci_data_folder, 40,
-                                                   request, save_excel, temp_folder,
-                                                   mon_interval=[0.44, 0.77, 1.1, 2.0],
-                                                   dip_interval=[0.54, 0.59, 0.75, 1.05, 2.0])
-            break
