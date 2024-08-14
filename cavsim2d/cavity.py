@@ -83,14 +83,13 @@ class Optimisation:
         self.optimisation_config = None
         self.err = None
 
-    def start_optimisation(self, config):
+    def start_optimisation(self, projectDir, config):
         self.err = []
         self.pareto_history = []
         self.optimisation_config = config
         # apply optimisation settings
         self.parentDir = os.getcwd()
-        print(self.parentDir)
-        self.projectDir = config['project dir.']
+        self.projectDir = projectDir
         self.initial_points = config['initial points']
         self.tune_freq = config['tune freq.']
         self.ng_max = config['no. of generation']
@@ -6384,7 +6383,7 @@ class Cavities(Optimisation):
         return f_list
 
     def run_optimisation(self, config):
-        self.start_optimisation(config)
+        self.start_optimisation(self.projectDir, config)
 
     @staticmethod
     def calc_cutoff(Ri, mode):

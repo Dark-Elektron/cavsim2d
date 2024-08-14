@@ -285,8 +285,106 @@ to solve for the wakefield impedance for the specified opearting point parameter
 ## Optimisation
 
 Optimisation of cavity geometry can be carried out using cavsim2d. Objective functions that are currently supported 
-are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, `ZL`, `ZT`. The
-algorithm currently implemented is genetic algorithm.
+are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, `ZL`, `ZT`. 
+`ZL` and `ZT` are longitudinal and transverse impedance peaks in specified frequency intervals obtained from wakefield
+analysis The algorithm currently implemented is genetic algorithm. The optimisation settings are controlled 
+using a configuration dictionary. The most important parameters for the algorithm are 
 
+- `cell type`: The options are `mid-cell`, `end-cell` and `end-end-cell` depending on the parameterisation of the cavity
+               geometry. See Fig []. Default is `mid-cell`.
+  ```
+  'cell type': 'mid-cell'
+  ```
+- `tune variable`: Target operating frequency of the cavity.
+```
+'tune variable': 'Req'
+```
+- 'tune freq.': Target operating frequency of the cavity.
+```
+`tune freq.`: 1300
+```
+- `bounds`: This defines the optimisation search space. All geometric variables must be entered. 
+            Note that variables excluded from optimization should have identical upper and lower bounds..
+```
+'bounds': {'A': [20.0, 80.0],
+               'B': [20.0, 80.0],
+               'a': [10.0, 60.0],
+               'b': [10., 60.0],
+               'Ri': [60.0, 85.0],
+               'L': [93.5, 93.5],
+               'Req': [170.0, 170.0]}
+```
+
+- `objectives`: This defines the objective functions. Objectives could be the minimisation, maximisation of optimisation
+             of an objective function to a particular value. They are defined as:
+```
+'objectives': [
+                ['equal', 'freq [MHz]', 1300],
+                ['min', 'Epk/Eacc []'],
+                ['min', 'Bpk/Eacc [mT/MV/m]'],
+                ['max', 'R/Q [Ohm]'],
+                ['min', 'ZL', [1, 2, 5]],
+                ['min', 'ZT', [1, 2, 3, 5]]
+                ]
+```
+The third parameter for the impedances `ZL`, `ZT` define the frequency interval for which to evaluate the peak impedance.
+The algorithm specific entries include
+- `initial points`: The number of initial points to be genereated.
+- `method`: Method of generating the initial points. Defaults to latin hypercube sampling (LHS).
+- `no. of generations`: The number of generations to be analysed. Defaults to 20.
+- `crossover factor`: The number of crossovers to create offsprings.
+- `elites for crossover`: The number of elites allowed to produce offsprings.
+- `mutation factor`: The number of mutations to create offsprings.
+- `chaos factor`: The number of new random geometries included to improve diversity.
+
+```
+'initial points': 5,
+'method': {
+    'LHS': {'seed': 5},
+    },
+'no. of generations': 5,
+'crossover factor': 5,
+'elites for crossover': 2,
+'mutation factor': 5,
+'chaos factor': 5,
+```
+Putting it all together, we get
+```python
+optimisation_config = {
+    'cell type': 'mid-cell',
+    'tune variable': 'Req',
+    'tune freq.': 1300,
+    'bounds': {'A': [20.0, 80.0],
+               'B': [20.0, 80.0],
+               'a': [10.0, 60.0],
+               'b': [10., 60.0],
+               'Ri': [60.0, 85.0],
+               'L': [93.5, 93.5],
+               'Req': [170.0, 170.0]},
+    'objectives': [
+        # ['equal', 'freq [MHz]', 801.58],
+                      ['min', 'Epk/Eacc []'],
+                      ['min', 'Bpk/Eacc [mT/MV/m]'],
+                      # ['min', 'ZL', [1, 2, 5]],
+                  ],
+    'initial points': 5,
+    'method': {
+        'LHS': {'seed': 5},
+        },
+    'no. of generation': 2,
+    'crossover factor': 5,
+    'elites for crossover': 2,
+    'mutation factor': 5,
+    'chaos factor': 5
+}
+```
+Several other parameters like `method`, can be controlled. The full configuration file can be found in the `config_files` folder.
+
+## Uncertainty Quantification Capabilities
+
+Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
+`uq_config` dictionary. For example, eigenmode 
+analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
+For example, let's revisit our eigenvalue example.
 
 ## Understanding the folder structure
