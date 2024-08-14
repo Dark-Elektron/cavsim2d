@@ -434,4 +434,4 @@ cavs.plot_compare_fm_bar(uq=True)
 > This tool proves invaluable in diagnosing such issues.
 
 
-## Understanding the folder structure
+## Folder structure
