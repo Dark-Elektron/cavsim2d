@@ -99,7 +99,7 @@ name is assigned.
 
 Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).
 
-### Eigenmode analysis
+## Eigenmode analysis
 
 ```python
 cavs.run_eigenmode()
@@ -171,7 +171,7 @@ pp.pprint(cavs.eigenmode_qois)
 cavs.plot_compare_fm_bar()
 ```
 
-### Cavity Tuning
+## Cavity Tuning
 
 Cavity tuning can easily be done using `cavsim2d`. Let's start from the mid cell of a TESLA cavity geometry. We know 
 that the correct eqator radius `Req` equals 103.3. However, we start from an arbitrary `Req` to demonstrate tuning.
@@ -243,7 +243,7 @@ pp.pprint(cavs.eigenmode_tune_res)
 
 Confirm from the output that the correct frequency and `A` is achieved.
 
-### Wakefield
+## Wakefield
 
 Running wakefield simulations is as easy as running eigenmode simulations described above. 
 
