@@ -396,7 +396,8 @@ class ABCIDataExtraction:
     def __init__(self):
         pass
 
-    def multiple_folders_data(self, shape_space, abci_data_dir, request, save_excel, mon_interval=None, dip_interval=None, parallel=False):
+    def multiple_folders_data(self, shape_space, abci_data_dir, request, save_excel, mon_interval=None,
+                              dip_interval=None, parallel=False):
         # process interval
         # Zmax
         if mon_interval is None:
@@ -685,7 +686,8 @@ class ABCIDataExtraction:
             except Exception as e:
                 print("Oops! Encountered some error trying to save file: ", e)
 
-    def multiple_folders_data_parallel(self, shape_space, abci_data_folder, proc_count, request, save_excel, temp_folder, mon_interval=None, dip_interval=None):
+    def multiple_folders_data_parallel(self, shape_space, abci_data_folder, proc_count, request,
+                                       save_excel, temp_folder, mon_interval=None, dip_interval=None):
 
         # create temporary folder
         if os.path.exists(fr"{temp_folder}"):
@@ -730,7 +732,8 @@ class ABCIDataExtraction:
         # delete temporary folder
         shutil.rmtree(temp_folder)
 
-    def process_interval(self, interval_list):
+    @staticmethod
+    def process_interval(interval_list):
         interval = []
         for i in range(len(interval_list)-1):
             interval.append([interval_list[i], interval_list[i+1]])
@@ -738,10 +741,10 @@ class ABCIDataExtraction:
         return interval
 
     def join_excel(self, generic_name, proc_count, save_excel, temp_folder):
-        df = fr.excel_reader(fr'{temp_folder}\{generic_name}_{0}.xlsx')['Sheet1']
+        df = self.excel_reader(fr'{temp_folder}\{generic_name}_{0}.xlsx')['Sheet1']
 
         for p in range(1, proc_count):
-            d = fr.excel_reader(fr'{temp_folder}\{generic_name}_{p}.xlsx')
+            d = self.excel_reader(fr'{temp_folder}\{generic_name}_{p}.xlsx')
             d = d['Sheet1']
             df = pd.merge(df, d, how='outer')
 
@@ -749,6 +752,16 @@ class ABCIDataExtraction:
             df.to_excel(f'{save_excel}.xlsx', index=False)
         except Exception as e:
             print("Oops! Encountered some error trying to save file: ", e)
+
+    @staticmethod
+    def excel_reader(filename):
+        file = pd.ExcelFile(filename)
+        # print(file.sheet_names)
+        dd = {}
+        for sheet_name in file.sheet_names:
+            dd[sheet_name] = file.parse(sheet_name)
+
+        return dd
 
 
 if __name__ == '__main__':
