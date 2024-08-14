@@ -282,5 +282,11 @@ Oftentimes, we want to analyse the loss and kick factors, and higher-order mode 
 operating points for a cavity geometry. This can easily be done by extending the functionality of the wakefield solver
 to solve for the wakefield impedance for the specified opearting point parameters.
 
-### Optimisation
-### Understanding the folder structure
+## Optimisation
+
+Optimisation of cavity geometry can be carried out using cavsim2d. Objective functions that are currently supported 
+are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, `ZL`, `ZT`. The
+algorithm currently implemented is genetic algorithm.
+
+
+## Understanding the folder structure
