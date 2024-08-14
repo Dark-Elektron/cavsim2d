@@ -382,7 +382,7 @@ optimisation_config = {
 Several other parameters like `method`, can be controlled. The full configuration file can be found in the `config_files` folder.
 
 ```python
-cavs = Cavities([])
+cavs = Cavities()
 # must first save cavities
 cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
