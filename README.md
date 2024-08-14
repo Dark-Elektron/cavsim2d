@@ -178,19 +178,7 @@ that the correct eqator radius `Req` equals 103.3. However, we start from an arb
 Two arguments are required - the parameter to tune and the target frequency. Other parameters are optional. Since 
 `Cavities` contains several `Cavity` objects, the parameter and frequency arguments can also be a list with length 
 corresponding to the lengths of the len of the `Cavities` object.
-
-```python
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
-
-midcell = [42, 42, 12, 19, 35, 57.7, 100]
-tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
-
-cavs.add_cavity(tesla_mid_cell, 'TESLA')
-
-cavs.run_tune('Req', 1300)
-pp.pprint(cavs.eigenmode_tune_res)
-```
+ 
 ```
 TESLA
 {   'TESLA': {   'CELL TYPE': 'mid cell',
@@ -384,12 +372,66 @@ Several other parameters like `method`, can be controlled. The full configuratio
 cavs = Cavities([])
 # must first save cavities
 cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+
+cavs.run_optimisation(config=optimisation_config)
 ```
+
 ## Uncertainty Quantification Capabilities
 
 Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
 `uq_config` dictionary. For example, eigenmode 
 analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
 For example, let's revisit our eigenvalue example.
+
+```python
+cavs = Cavities()
+cavs.save(project_folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+
+midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
+tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+
+shape_space = {'reentrant': 
+                   {'IC': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110],
+                    'OC': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110],
+                    'OC_R': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110]
+                    }
+               }
+
+# create cavity
+shape = shape_space['reentrant']
+reentrant_mid_cell = Cavity(1, shape['IC'], shape['IC'], shape['IC'], beampipe='none')
+
+cavs.add_cavity([tesla_mid_cell, reentrant_mid_cell], 
+                names=['TESLA', 'reentrant'], 
+                plot_labels=['TESLA', 'reentrant'])
+
+uq_config = {
+    'option': True,
+    'variables': ['L', 'Req'],
+    'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "G [Ohm]", "kcc [%]", "ff [%]"],
+    'delta': [0.05, 0.05],
+    'method': ['Quadrature', 'Stroud3'],
+    'cell type': 'mid-cell',
+    'cell complexity': 'simplecell'
+}
+
+cavs.run_eigenmode(uq_config=uq_config)
+pp.pprint(cavs.eigenmode_qois)
+
+```
+
+And to plot the results
+
+```python
+cavs.plot_compare_fm_bar(uq=True)
+```
+
+> [!IMPORTANT]
+> Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to 
+> degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm. 
+> These degeneracies can be identified by using the 
+> `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters. 
+> This tool proves invaluable in diagnosing such issues.
+
 
 ## Understanding the folder structure

@@ -2871,7 +2871,7 @@ class Cavity:
     @staticmethod
     def _run_ngsolve(name, n_cells, n_modules, shape, shape_multi, n_modes, f_shift, bc, parentDir, projectDir, sub_dir='',
                      uq_config=None):
-        parallel = True
+        parallel = False
         start_time = time.time()
         # create folders for all keys
         ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
