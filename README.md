@@ -47,6 +47,7 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 ```
 
+--------------------------------------------
 Examples - TESLA Elliptical Cavity
 ==================================
 
@@ -170,6 +171,7 @@ pp.pprint(cavs.eigenmode_qois)
 
 cavs.plot_compare_fm_bar()
 ```
+
 ## Visualising the mesh and field profiles
 
 To visualise the mesh and field profiles use
@@ -184,6 +186,7 @@ cavs['TESLA'].plot_fields(mode=1, which='H')
 > Meshes and fields are properties of a Cavity object and not a Cavities object. Therefore, to visualise the mesh
 > and field profiles, use the `Cavity` object `name` or corresponding index.
 
+---------------
 ## Cavity Tuning
 
 Cavity tuning can easily be done using `cavsim2d`. Let's start from the mid cell of a TESLA cavity geometry. We know 
@@ -244,6 +247,7 @@ pp.pprint(cavs.eigenmode_tune_res)
 
 Confirm from the output that the correct frequency and `A` is achieved.
 
+-------------------------------------------
 ## Wakefield
 
 Running wakefield simulations is as easy as running eigenmode simulations described above. 
@@ -266,7 +270,7 @@ endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 tesla = Cavity(n_cells, midcell, endcell_l,endcell_r, beampipe='none')
 cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 
-cavs.run_wakefield(bunch_length=25)
+cavs.run_wakefield()
 ```
 To make plots of the longitudinal and transverse impedance plots on the same axis, we use the following code
 
@@ -276,12 +280,50 @@ ax = cavs.plot('ZT', ax)
 ax.set_yscale('log')
 ```
 
-In the example, we passed a single parameter `bunch_length`. However, the simulation would have ran without this 
+In the example, we passed a single parameter `bunch_length`. However, the simulation would have run without this 
 argument using internal default arguments for the wakefield solver. 
 
 Oftentimes, we want to analyse the loss and kick factors, and higher-order mode power for particular or several 
-operating points for a cavity geometry. This can easily be done by extending the functionality of the wakefield solver
-to solve for the wakefield impedance for the specified opearting point parameters.
+operating points for a cavity geometry. This can easily be done by passing an operating points dictionary to the 
+`run_wakefield()` function.
+
+```python
+op_points = {
+            "Z": {
+                "freq [MHz]": 400.79,  # Operating frequency
+                "E [GeV]": 45.6,  # <- Beam energy
+                "I0 [mA]": 1280,  # <- Beam current
+                "V [GV]": 0.12,  # <- Total voltage
+                "Eacc [MV/m]": 5.72,  # <- Accelerating field
+                "nu_s []": 0.0370,  # <- Synchrotron oscillation tune
+                "alpha_p [1e-5]": 2.85,  # <- Momentum compaction factor
+                "tau_z [ms]": 354.91,  # <- Longitudinal damping time
+                "tau_xy [ms]": 709.82,  # <- Transverse damping time
+                "f_rev [kHz]": 3.07,  # <- Revolution frequency
+                "beta_xy [m]": 56,  # <- Beta function
+                "N_c []": 56,  # <- Number of cavities
+                "T [K]": 4.5,  # <- Operating tempereature
+                "sigma_SR [mm]": 4.32,  # <- Bunch length
+                "sigma_BS [mm]": 15.2,  # <- Bunch length
+                "Nb [1e11]": 2.76  # <- Bunch population
+            }
+}
+cavs.run_wakefield(operating_points=op_points)
+pp.pprint(cavs.abci_qois)
+```
+
+And to view the results
+
+```python
+cavs.plot_compare_hom_bar('Z_SR_4.32mm')
+```
+> [!IMPORTANT]
+> Simulation results are saved in a folder named using the operating point, a specified suffix, 
+> and the sigma value (format: <operating point name>_<suffix>_<sigma value>mm). To compute higher-order mode 
+> power, R/Q values are necessary, requiring a prior eigenmode analysis if results are unavailable.
+
+
+------------------------------------------------------
 
 ## Optimisation
 
@@ -305,7 +347,7 @@ using a configuration dictionary. The most important parameters for the algorith
 `tune freq.`: 1300
 ```
 - `bounds`: This defines the optimisation search space. All geometric variables must be entered. 
-            Note that variables excluded from optimization should have identical upper and lower bounds..
+            Note that variables excluded from optimisation should have identical upper and lower bounds..
 ```
 'bounds': {'A': [20.0, 80.0],
                'B': [20.0, 80.0],
@@ -440,11 +482,20 @@ cavs.plot_compare_fm_bar(uq=True)
 ```
 
 > [!IMPORTANT]
+> UQ is not yet available for wakefield analysis and cavity tuning.
+
+> [!IMPORTANT]
 > Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to 
 > degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm. 
 > These degeneracies can be identified by using the 
 > `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters. 
 > This tool proves invaluable in diagnosing such issues.
 
+
+## Parallelisation
+
+Simulations using `cavsim2d` are easily parallelised by specifying a value for the argument `processes`
+specifying the amount of processes the analysis should use. If UQ is enabled, an extra level of parallelisation 
+can be achieved by passing `processes` also in the uq configuration dictionary. The number of processes defaults to 1.
 
 ## Folder structure

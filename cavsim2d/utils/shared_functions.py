@@ -4577,6 +4577,22 @@ def get_qoi_value(d, obj):
     return objective
 
 
+def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
+    if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+        par_mid[6] = par_end_r[6]
+        par_end_l[6] = par_end_r[6]
+    elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+        par_end_l[6] = par_mid[6]
+        par_end_r[6] = par_mid[6]
+    elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+          or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+        par_mid[6] = par_end_r[6]
+        par_end_l[6] = par_end_r[6]
+    else:
+        par_mid[6] = par_end_r[6]
+        par_end_l[6] = par_end_r[6]
+
+
 def error(*arg):
     print(colored(f'{arg[0]}', 'red'))
 
