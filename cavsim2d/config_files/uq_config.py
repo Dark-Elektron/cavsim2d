@@ -15,5 +15,5 @@ uq_config = {
     # 'gaussian': ['Quadrature', 'Gaussian'],
     # 'from file': ['<file path>', columns],
     'cell type': 'mid-cell',
-    'cell complexity': 'multicell'
+    'cell_complexity': 'multicell'
 }

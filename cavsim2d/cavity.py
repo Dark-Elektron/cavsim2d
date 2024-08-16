@@ -62,7 +62,7 @@ class Optimisation:
         self.chaos_factor = None
         self.tune_parameter = None
         self.uq_config = None
-        self.constraints = None
+        self.constraints = []
         self.df = None
         self.df_global = None
         self.objs_dict = None
@@ -107,7 +107,8 @@ class Optimisation:
             self.weights = weights
 
         self.bounds = config['bounds']
-        self.constraints = self.process_constraints(config['constraints'])
+        if 'constraints' in config:
+            self.constraints = self.process_constraints(config['constraints'])
         self.processes_count = 1
         if 'processes' in config.keys():
             assert config['processes'] > 0, error('Number of processes must be greater than zero!')
@@ -2829,8 +2830,8 @@ class Cavity:
                                 }
 
             uq_cell_complexity = 'simplecell'
-            if 'cell complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell complexity']
+            if 'cell_complexity' in uq_config.keys():
+                uq_cell_complexity = uq_config['cell_complexity']
 
             # if not parallel:
             #     # convert to proper shape space
@@ -4301,7 +4302,7 @@ class Cavities(Optimisation):
                     # 'gaussian': ['Quadrature', 'Gaussian'],
                     # 'from file': ['<file path>', columns],
                     'cell type': 'mid-cell',
-                    'cell complexity': 'simplecell'
+                    'cell_complexity': 'simplecell'
                     }
             }
 
@@ -4706,7 +4707,7 @@ class Cavities(Optimisation):
     #             cav.run_wakefield(MROT, MT, NFS, wakelength, bunch_length,
     #                               DDR_SIG, DDZ_SIG, WG_M, marker, operating_points, solver)
     #
-    #         self.wakefield_qois[cav.name] = cav.abci_qois
+    #         self.wakefield_qois[cav.name] = cav.wakefield_qois
 
     def plot(self, what, ax=None, **kwargs):
         for cav in self.cavities_list:
@@ -6332,7 +6333,7 @@ class Cavities(Optimisation):
                     f.write(ll + '\n')
         except KeyError as e:
             print("Either SLANS or ABCI results not available. Please use '<cav>.set_eigenmode_qois(<folder>)' "
-                  "or '<cav>.set_abci_qois(<folder>)' to fix this. Error: ", e)
+                  "or '<cav>.set_wakefield_qois(<folder>)' to fix this. Error: ", e)
 
     def make_excel_summary(self):
         try:
@@ -6391,8 +6392,8 @@ class Cavities(Optimisation):
                 fr"D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\Summaries\{self.projectDir}_excel_summary.xlsx",
                 sheet_name='Cavities')
         except Exception as e:
-            print("Either SLANS or ABCI results not available. Please use '<cav>.set_slans_qois(<folder>)' "
-                  "or '<cav>.set_abci_qois(<folder>)' to fix this.")
+            error("Either SLANS or ABCI results not available. Please use '<cav>.set_slans_qois(<folder>)' "
+                  "or '<cav>.set_wakefield_qois(<folder>)' to fix this.")
             print(e)
 
     def remove_cavity(self, cav):
@@ -8074,8 +8075,8 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, freq_shifts=0, b
                                 }
 
             uq_cell_complexity = 'simplecell'
-            if 'cell complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell complexity']
+            if 'cell_complexity' in uq_config.keys():
+                uq_cell_complexity = uq_config['cell_complexity']
 
             # if not parallel:
             #     # convert to proper shape space

@@ -211,7 +211,7 @@ Optional parameters can further refine the tuning process.
 cavs = Cavities()
 cavs.save(project_folder='/user/home/...')
 
-midcell = [42, 42, 12, 19, 35, 57.7, 1000]
+midcell = [42, 42, 12, 19, 35, 57.7, 100]
 tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
 
 cavs.add_cavity(tesla_mid_cell, 'TESLA')
@@ -219,7 +219,6 @@ tune_config = {
     'freqs': 1300,
     'parameters': 'Req',
     'cell_types': 'mid-cell',
-    'processes': 1,
     'rerun': True
 }
 cavs.run_tune(tune_config)
@@ -352,7 +351,7 @@ wakefield_config = {
     'operating_points': op_points,
 }
 cavs.run_wakefield(wakefield_config)
-pp.pprint(cavs.abci_qois)
+pp.pprint(cavs.wakefield_qois)
 ```
 
 And to view the results
@@ -465,15 +464,15 @@ optimisation_config = {
                       ['min', 'Bpk/Eacc [mT/MV/m]'],
                       # ['min', 'ZL', [1, 2, 5]],
                   ],
-    'initial points': 5,
+    'initial_points': 5,
     'method': {
         'LHS': {'seed': 5},
         },
-    'no. of generation': 2,
-    'crossover factor': 5,
-    'elites for crossover': 2,
-    'mutation factor': 5,
-    'chaos factor': 5
+    'no_of_generation': 2,
+    'crossover_factor': 5,
+    'elites_for_crossover': 2,
+    'mutation_factor': 5,
+    'chaos_factor': 5
 }
 ```
 Several other parameters like `method`, can be controlled. The full configuration file can be found in the `config_files` folder.
@@ -481,21 +480,21 @@ Several other parameters like `method`, can be controlled. The full configuratio
 ```python
 cavs = Cavities()
 # must first save cavities
-cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs.save('/user/home/...')
 
 cavs.run_optimisation(optimisation_config)
 ```
 
-## Uncertainty Quantification Capabilities
+## Uncertainty Quantification
 
 Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
-`uq_config` dictionary. For example, eigenmode 
+`uq_config` dictionary. For example, eigenmode F
 analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
 For example, let's revisit our eigenvalue example.
 
 ```python
 cavs = Cavities()
-cavs.save(project_folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs.save(project_folder='/user/home/...')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
@@ -521,8 +520,8 @@ uq_config = {
     'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "G [Ohm]", "kcc [%]", "ff [%]"],
     'delta': [0.05, 0.05],
     'method': ['Quadrature', 'Stroud3'],
-    'cell type': 'mid-cell',
-    'cell complexity': 'simplecell'
+    'cell_type': 'mid-cell',
+    'cell_complexity': 'simplecell'
 }
 eigenmode_config = {
     'processes': 3,
