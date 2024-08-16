@@ -60,6 +60,9 @@ from cavsim2d.cavity import Cavity, Cavities
 cavs = Cavities()
 cavs.save(project_folder='/user/home/...')
 ```
+The default name for `Cavities` object is `cavities`. Enter `name` keyword to enter custom name i.e.
+`cavs = Cavities('custom_name')`.
+This is recommended if you want to run different sets of analysis.
 
 > [!TIP]
 > The location from which you run the program might require adding its directory to the system path using 

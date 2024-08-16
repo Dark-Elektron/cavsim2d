@@ -3694,7 +3694,7 @@ class Cavities(Optimisation):
     Cavities object is an object containing several Cavity objects.
     """
 
-    def __init__(self, cavities_list=None, names_list=None):
+    def __init__(self, name=None, cavities_list=None, names_list=None):
         """Constructs all the necessary attributes of the Cavity object
 
         Parameters
@@ -3716,6 +3716,9 @@ class Cavities(Optimisation):
             self.add_cavity(cavities_list, names_list)
 
         self.name = 'cavities'
+        if name:
+            assert isinstance(name, str), error('Please enter valid project name.')
+            self.name = name
         self.eigenmode_qois = {}
         self.wakefield_qois = {}
         self.eigenmode_tune_res = {}
