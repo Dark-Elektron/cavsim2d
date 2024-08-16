@@ -36,7 +36,7 @@ Third party code
 
 Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
 equations directly in the time domain when a bunched beam goes through an axisymmetric
-structure on or off axis. It is free and can be downloaded from [ABCI](https://abci.kek.jp/abci.htm). Download the latest
+structure on or off axis. It is free and can be downloaded from `ABCI <https://abci.kek.jp/abci.htm>`_. Download the latest
 version (currently ABCI_MP_12_5.zip). Copy version `ABCI_MP_12_5.exe` from
 `<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows` to `<root folder>/cavsim2d/solver/ABCI` or
 through the command line with
@@ -89,9 +89,10 @@ This is recommended if you want to run different sets of analysis.
 
 A `Cavity` object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
 mid cell, left end cell and right end cell dimensions for its initialisation. We use the
-[TESLA](https://cds.cern.ch/record/429906/files/0003011.pdf) cavity geometry dimensions in this example
+`TESLA <https://cds.cern.ch/record/429906/files/0003011.pdf>`_ cavity geometry dimensions in this example
 
 .. code-block::
+
     n_cells = 9
     midcell = [42, 42, 12, 19, 35, 57.7, 103.353]  # <- A, B, a, b, Ri, L, Req
     endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
@@ -132,7 +133,7 @@ Eigenmode analysis
 
 
 Let uss try that again but this time using adding a cavity to `cavs`. We will use the a re-entrant cavity geometry. The
-dimensions can be found [here](https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf)
+dimensions can be found `here <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>`_
 in Table 2. We will use the parameters corresponding to `$\delta e=+30$`. This time we will enter the geometry by defining first a `shape_space`.
 
 
@@ -167,7 +168,7 @@ We can now do is make a comparative bar plot of some FM qois of the two geometri
     cavs.plot_compare_fm_bar()
 
 
-Let's do that again but this time with a single cell without beampipes to compare with [this](https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf).
+Let's do that again but this time with a single cell without beampipes to compare with `this <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>`_.
 
 .. code-block::
 
@@ -405,49 +406,61 @@ using a configuration dictionary. The most important parameters for the algorith
 
 - `cell_type`: The options are `mid-cell`, `end-cell` and `end-end-cell` depending on the parameterisation of the cavity
                geometry. See Fig []. Default is `mid-cell`.
-  
-  'cell_type': 'mid-cell'
+
+.. code-block::
+
+  "cell_type": 'mid-cell'
   
 - `freqs`: Target operating frequency of the cavity.
 
-'parameters': 'Req'
+.. code-block::
+
+    'parameters': 'Req'
 
 - 'tune freq.': Target operating frequency of the cavity.
 
-`freqs`: 1300
+.. code-block::
+
+    "freqs": 1300
 
 
 The preceeding parameters belong to the tune_config dictionary and so are entered this way in the optimisation_config
 
-'tune_config': {
-    'freqs': 801.58,
-    'parameters': 'Req',
-    'cell_types': cell_type
-}
+.. code-block::
+
+    'tune_config': {
+        'freqs': 801.58,
+        'parameters': 'Req',
+        'cell_types': cell_type
+    }
 
 - `bounds`: This defines the optimisation search space. All geometric variables must be entered.
             Note that variables excluded from optimisation should have identical upper and lower bounds..
 
-'bounds': {'A': [20.0, 80.0],
-               'B': [20.0, 80.0],
-               'a': [10.0, 60.0],
-               'b': [10., 60.0],
-               'Ri': [60.0, 85.0],
-               'L': [93.5, 93.5],
-               'Req': [170.0, 170.0]}
+.. code-block::
+
+    'bounds': {'A': [20.0, 80.0],
+                   'B': [20.0, 80.0],
+                   'a': [10.0, 60.0],
+                   'b': [10., 60.0],
+                   'Ri': [60.0, 85.0],
+                   'L': [93.5, 93.5],
+                   'Req': [170.0, 170.0]}
 
 
 - `objectives`: This defines the objective functions. Objectives could be the minimisation, maximisation of optimisation
              of an objective function to a particular value. They are defined as:
 
-'objectives': [
-                ['equal', 'freq [MHz]', 1300],
-                ['min', 'Epk/Eacc []'],
-                ['min', 'Bpk/Eacc [mT/MV/m]'],
-                ['max', 'R/Q [Ohm]'],
-                ['min', 'ZL', [1, 2, 5]],
-                ['min', 'ZT', [1, 2, 3, 5]]
-                ]
+.. code-block::
+
+    'objectives': [
+                    ['equal', 'freq [MHz]', 1300],
+                    ['min', 'Epk/Eacc []'],
+                    ['min', 'Bpk/Eacc [mT/MV/m]'],
+                    ['max', 'R/Q [Ohm]'],
+                    ['min', 'ZL', [1, 2, 5]],
+                    ['min', 'ZT', [1, 2, 3, 5]]
+                    ]
 
 The third parameter for the impedances `ZL`, `ZT` define the frequency interval for which to evaluate the peak impedance.
 The algorithm specific entries include
@@ -460,15 +473,17 @@ The algorithm specific entries include
 - `chaos_factor`: The number of new random geometries included to improve diversity.
 
 
-'initial_points': 5,
-'method': {
-    'LHS': {'seed': 5},
-    },
-'no_of_generations': 5,
-'crossover_factor': 5,
-'elites_for_crossover': 2,
-'mutation_factor': 5,
-'chaos_factor': 5,
+.. code-block::
+
+    'initial_points': 5,
+    'method': {
+        'LHS': {'seed': 5},
+        },
+    'no_of_generations': 5,
+    'crossover_factor': 5,
+    'elites_for_crossover': 2,
+    'mutation_factor': 5,
+    'chaos_factor': 5,
 
 Putting it all together, we get
 
