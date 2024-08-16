@@ -246,6 +246,7 @@ Optional parameters can further refine the tuning process.
 
 
 .. code-block::
+
     TESLA
     {   'TESLA': {   'CELL TYPE': 'mid cell',
                      'FREQ': 1300.0007857768796,
@@ -387,6 +388,7 @@ And to view the results
     cavs.plot_compare_hom_bar('Z_SR_4.32mm')
 
 .. important::
+
     Simulation results are saved in a folder named using the operating point, a specified suffix,
     and the sigma value (format: <operating point name>_<suffix>_<sigma value>mm). To compute higher-order mode
     power, R/Q values are necessary, requiring a prior eigenmode analysis if results are unavailable.

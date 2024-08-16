@@ -3922,6 +3922,7 @@ class Cavities(Optimisation):
         Parameters
         ----------
         tune_config: dict
+
         .. code-block:: python
 
             tune_config = {
@@ -4096,38 +4097,42 @@ class Cavities(Optimisation):
 
     def run_eigenmode(self, eigenmode_config=None):
         """
+        Runs the eigenmode analysis with the given configuration.
 
         Parameters
         ----------
-        eigenmode_config: dict
-        .. code-block:: python
+        eigenmode_config : dict
+            Configuration for running the eigenmode analysis. Example structure:
 
-            eigenmode_config = {
-                'processes': 3,
-                'rerun': True,
-                'boundary_conditions': 'mm',
-                'uq_config': {
-                    'variables': ['A', 'B', 'a', 'b'],
-                    # 'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "G [Ohm]", "kcc [%]", "ff [%]"],
-                    'objectives': ["Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]"],
-                    # 'objectives': ["ZL"],
-                    'delta': [0.05, 0.05, 0.05, 0.05],
-                    'processes': 4,
-                    'distribution': 'gaussian',
-                    # 'method': ['QMC', 'LHS', 1000],
-                    # 'method': ['QMC', 'Sobol', 1000],
-                    # 'method': ['Qudrature', 'Gaussian', 1000],
-                    'method': ['Quadrature', 'Stroud3'],
-                    # 'method': ['Quadrature', 'Stroud5'],
-                    # 'gaussian': ['Quadrature', 'Gaussian'],
-                    # 'from file': ['<file path>', columns],
-                    'cell type': 'mid-cell',
-                    'cell_complexity': 'simplecell'
+            .. code-block:: python
+
+                eigenmode_config = {
+                    'processes': 3,
+                    'rerun': True,
+                    'boundary_conditions': 'mm',
+                    'uq_config': {
+                        'variables': ['A', 'B', 'a', 'b'],
+                        # 'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "G [Ohm]", "kcc [%]", "ff [%]"],
+                        'objectives': ["Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]"],
+                        # 'objectives': ["ZL"],
+                        'delta': [0.05, 0.05, 0.05, 0.05],
+                        'processes': 4,
+                        'distribution': 'gaussian',
+                        # 'method': ['QMC', 'LHS', 1000],
+                        # 'method': ['QMC', 'Sobol', 1000],
+                        # 'method': ['Qudrature', 'Gaussian', 1000],
+                        'method': ['Quadrature', 'Stroud3'],
+                        # 'method': ['Quadrature', 'Stroud5'],
+                        # 'gaussian': ['Quadrature', 'Gaussian'],
+                        # 'from file': ['<file path>', columns],
+                        'cell type': 'mid-cell',
+                        'cell_complexity': 'simplecell'
                     }
-            }
+                }
 
         Returns
         -------
+        None
 
         """
         if eigenmode_config is None:
@@ -4326,6 +4331,7 @@ class Cavities(Optimisation):
         wakefield_config:
 
         .. code-block:: python
+
             op_points = {
                         "Z": {
                             "freq [MHz]": 400.79,  # Operating frequency
