@@ -530,7 +530,7 @@ eigenmode_config = {
     'uq_config': uq_config
 }
 
-cavs.run_eigenmode(uq_config=uq_config)
+cavs.run_eigenmode(eigenmode_config)
 pp.pprint(cavs.eigenmode_qois)
 
 ```
