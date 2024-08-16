@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import scipy.signal as sps
 import numpy as np
-from termcolor import colored
 
 from cavsim2d.utils.shared_functions import info, error, done
 

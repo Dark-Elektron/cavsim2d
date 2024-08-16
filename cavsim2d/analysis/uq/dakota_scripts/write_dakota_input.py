@@ -1,6 +1,8 @@
 import os
 import subprocess
 
+from cavsim2d.utils.shared_functions import error
+
 
 class Dakota:
     def __init__(self, folder, name):
