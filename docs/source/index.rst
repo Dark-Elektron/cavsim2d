@@ -10,7 +10,23 @@ Welcome to cavsim2d's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+Introduction
+============
+.. toctree::
+   :maxdepth: 6
+   :caption: Introduction
 
+   introduction
+   quickstart
+
+Modules
+========
+
+.. toctree::
+   :maxdepth: 6
+   :caption: Modules:
+
+   modules
 
 Indices and tables
 ==================
