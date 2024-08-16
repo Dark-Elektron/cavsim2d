@@ -38,6 +38,8 @@ class ABCIData:
     def _get_plot_data(self, dirc):
         frame_objects = {}
         frame_titles_objects = {}
+
+        frame_title = []
         frame_count = 0
 
         plot_decorations = [r'Cavity Shape Input', r'Cavity Shape Used', r'Wake Potentials',
