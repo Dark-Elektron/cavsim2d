@@ -61,6 +61,15 @@ cavs = Cavities()
 cavs.save(project_folder='/user/home/...')
 ```
 
+> [!TIP]
+> Depending on the folder from where you are using the program you might want to append the folder to system path
+> using sys.path.append(<cavsim2d_path>). I run my notebooks from the notebooks folder so I use
+> ```python
+import sys
+sys.path.append("..")
+```
+
+
 > [!IMPORTANT]
 > Cavities().save(<files_path>) must be called first to either create a new project folder or to point to an 
 > existing project folder. An extra parameter 'overwrite=True' can be passed to overwrite the project folder if it 
