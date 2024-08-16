@@ -539,6 +539,8 @@ Optimisation configurations include a `tune_config` section to ensure frequency 
 Depending on the optimisation goals, `eigenmode_config` and `wakefield_config` sections can be nested 
 within the optimisation configuration, potentially also incorporating UQ through `uq_config` sub-dictionaries. 
 
+To view the complete configuration dictionaries for each analysis, use the `help()` function, 
+e.g. `help(cavs.run_eigenmode)`.
 
 > [!NOTE]
 > Default configuration settings are applied for eigenmode and wakefield analyses when no custom 
