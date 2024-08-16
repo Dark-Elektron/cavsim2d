@@ -1,6 +1,4 @@
 import sys
-
-
 from cavsim2d.utils.shared_functions import *
 
 # Get current path

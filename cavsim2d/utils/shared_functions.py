@@ -163,7 +163,7 @@ def ellipse_tangent(z, *data):
     .. figure:: ../images/ellipse_tangent.png
        :alt: ellipse tangent
        :align: center
-       :width: 200px
+       :width: 500px
 
     Parameters
     ----------
@@ -750,7 +750,6 @@ def normal_dist(x, mean, sd):
     return prob_density
 
 
-
 def linspace(start, stop, step=1.):
     """
     Like np.linspace but uses step instead of num
@@ -865,6 +864,7 @@ def arcTo(h, k, a, b, step, start, end, plot=False):
 
 def arcToTheta(h, k, a, b, start, end, t1, t2, step, plot=False):
     """
+    Calculates the points on an arc from a start angle to an end angle
 
     Parameters
     ----------
@@ -913,6 +913,19 @@ def arcToTheta(h, k, a, b, start, end, t1, t2, step, plot=False):
 
 
 def shortest_direction(start_angle, end_angle):
+    """
+
+    Parameters
+    ----------
+    start_angle: float, int
+        Start angle in radians
+    end_angle: float, int
+        End angle in radians
+
+    Returns
+    -------
+
+    """
     # Ensure the angles are in the range [0, 2*pi]
     start_angle = np.mod(start_angle, 2 * np.pi)
     end_angle = np.mod(end_angle, 2 * np.pi)
@@ -935,7 +948,8 @@ def shortest_direction(start_angle, end_angle):
 
 def plot_cavity_geometry(IC, OC, OC_R, BP, n_cell, bc, scale=1, plot=None):
     """
-    Plot cavity geometry for display in w_GeometryView
+    Plot cavity geometry
+
     Parameters
     ----------
     plot: Plot object
@@ -1651,7 +1665,8 @@ def plot_cavity_geometry(IC, OC, OC_R, BP, n_cell, bc, scale=1, plot=None):
 def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
                              ignore_degenerate=False, **kwargs):
     """
-    Plot cavity geometry for display in w_GeometryView
+    Plot cavity geometry
+
     Parameters
     ----------
     tangent_check
@@ -2030,7 +2045,8 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
 def orig_writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none',
                                 plot=False, unit=1e-3, scale=1):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -2359,7 +2375,8 @@ def orig_writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None,
 def writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none',
                            plot=True, unit=1e-3, scale=1):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -2376,6 +2393,9 @@ def writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_
         Specify if beam pipe is on one or both ends or at no end at all
     plot: bool
         If True, the cavity geometry is plotted for viewing
+
+    scale
+    unit
 
     Returns
     -------
@@ -2704,7 +2724,8 @@ def writeCavityForMultipac_multicell(file_path, n_cell, mid_cell, end_cell_left=
                                      beampipe='none',
                                      plot=False, unit=1e-3, scale=1):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -3131,7 +3152,8 @@ def orig_writeCavityForMultipac_flat_top(file_path, n_cell, mid_cell, end_cell_l
                                          beampipe='none',
                                          plot=False, unit=1e-3, scale=1):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -3493,7 +3515,8 @@ def writeCavityForMultipac_flat_top(file_path, n_cell, mid_cell, end_cell_left=N
                                     beampipe='none',
                                     plot=False, unit=1e-3, scale=1):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -3854,7 +3877,8 @@ def writeCavityForMultipac_flat_top(file_path, n_cell, mid_cell, end_cell_left=N
 def write_geometry_ngsolve(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none',
                            plot=False):
     """
-    Write cavity geometry to be used by Multipac for multipacting analysis
+    Write cavity geometry
+
     Parameters
     ----------
     file_path: str
@@ -4162,6 +4186,24 @@ def write_geometry_ngsolve(file_path, n_cell, mid_cell, end_cell_left=None, end_
 
 
 def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=False, **kwargs):
+    """
+
+    Parameters
+    ----------
+    n_cell
+    L
+    Req
+    Ri
+    S
+    L_bp
+    beampipe
+    plot
+    kwargs
+
+    Returns
+    -------
+
+    """
     L, Req, Ri, S, L_bp = np.array([L, Req, Ri, S, L_bp])*1e-3
 
     step = 0.001
@@ -4266,6 +4308,12 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
 
 
 def plot_gun():
+    """
+
+    Returns
+    -------
+
+    """
     y1, R2, T2, L3, R4, L5, R6, L7, R8,  T9, R10, T10, L11, R12, L13, R14, x = \
         [1.5, 3, np.deg2rad(45), 24, 5, 11, 6, 19, 4, np.deg2rad(8), 3, np.deg2rad(40), 5, 3, 3, 3, 1]
 
@@ -4395,6 +4443,21 @@ def plot_gun():
 
 
 def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=False, **kwargs):
+    """
+
+    Parameters
+    ----------
+    file_path
+    n_cell
+    cell_par
+    beampipe
+    plot
+    kwargs
+
+    Returns
+    -------
+
+    """
     L, Req, Ri, S, L_bp = np.array(cell_par)*1e-3
 
     step = 0.001
@@ -4519,16 +4582,13 @@ def f2b_slashes(path):
 def get_qoi_value(d, obj):
     """
     Gets the quantities of interest from simulation results
+
     Parameters
     ----------
     d: dict
         Dictionary containing several figures of merits from eigenmode solver
     obj: list
         List of objective functions
-    n_cells: int
-        Number of cells
-    norm_length: float
-        Normalisation length for :math: `E_\mathrm{acc}`
 
     Returns
     -------
@@ -4574,6 +4634,20 @@ def get_qoi_value(d, obj):
 
 
 def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
+    """
+    Enforce continuity at iris and equator of cavities
+
+    Parameters
+    ----------
+    par_mid
+    par_end_l
+    par_end_r
+    cell_type
+
+    Returns
+    -------
+
+    """
     if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
         par_mid[6] = par_end_r[6]
         par_end_l[6] = par_end_r[6]
@@ -4588,9 +4662,11 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
         par_mid[6] = par_end_r[6]
         par_end_l[6] = par_end_r[6]
 
+
 def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
     with open(fr"{projectDir}\SimulationData\{sim_folder}\{key}\{filename}", 'w') as file:
         file.write(json.dumps(d, indent=4, separators=(',', ': ')))
+
 
 def error(*arg):
     print(colored(f'{arg[0]}', 'red'))

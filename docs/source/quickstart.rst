@@ -5,15 +5,12 @@
 ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github)
 
 
-Quickstart
-##########
+Installation
+############
 
 This repository contains Python codes for designing and analysing 2D axisymmetric RF structures.
 The current capabilities include eigenmode analysis, elliptical cavity tuning and optimisation, wakefield analysis,
 uncertainty quantification, and quick visualisations and comparisons of results.
-
-Installation
-************
 
 To install cadsim2d, clone it into a local directory, `cd` into this directory and run
 
@@ -53,13 +50,14 @@ Before diving in, I would install `pprintpp`. It is not necessay but it sure doe
     pp = pprint.PrettyPrinter(indent=4)
 
 
-Examples - TESLA Elliptical Cavity
-**********************************
+Examples
+########
 
 The core components of `cavsim2d` are `Cavities` and `Cavity` objects. `Cavities` is a container for multiple `Cavity`
 instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:
 
 .. code-block::
+
     from cavsim2d.cavity import Cavity, Cavities
 
     cavs = Cavities()
@@ -124,7 +122,7 @@ If not provided, default labels will be generated.
 Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).
 
 Eigenmode analysis
-==================
+******************
 
 .. code-block::
 
@@ -202,7 +200,7 @@ Let's do that again but this time with a single cell without beampipes to compar
 
 
 Visualising the mesh and field profiles
-=======================================
+***************************************
 
 To visualise the mesh and field profiles use
 
@@ -219,7 +217,7 @@ To visualise the mesh and field profiles use
     and field profiles, use the `Cavity` object `name` or corresponding index.
 
 Cavity Tuning
-=============
+*************
 
 Cavity tuning is straightforward using `cavsim2d`. We'll demonstrate this with a TESLA cavity's mid-cell,
 initially using an arbitrary equator radius (Req) before converging to the correct value of 103.3 mm.
@@ -310,7 +308,7 @@ Confirm from the output that the correct frequency and `A` is achieved.
 
 
 Wakefield
-=========
+*********
 
 Running wakefield simulations is as easy as running eigenmode simulations described above.
 
@@ -396,7 +394,7 @@ And to view the results
 
 
 Optimisation
-============
+************
 
 Optimisation of cavity geometry can be carried out using cavsim2d. Objective functions that are currently supported
 are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, `ZL`, `ZT`.
@@ -532,7 +530,7 @@ Several other parameters like `method`, can be controlled. The full configuratio
 
 
 Uncertainty Quantification
-===========================
+**************************
 
 Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
 `uq_config` dictionary. For example, eigenmode F
@@ -603,7 +601,7 @@ And to plot the results
 
 
 Configuration dictionaries
-===========================
+**************************
 
 Simulation inputs are defined through configuration dictionaries, with specific formats for different simulation types.
 These dictionaries are structured logically. For instance, a simple eigenmode simulation uses a straightforward

@@ -3,24 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to cavsim2d's documentation!
-====================================
+cavsim2d documentation!
+======================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-Introduction
-============
 .. toctree::
    :maxdepth: 6
-   :caption: Introduction
+   :caption: Quickstart
 
    introduction
    quickstart
-
-Modules
-========
 
 .. toctree::
    :maxdepth: 6
