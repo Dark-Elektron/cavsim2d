@@ -38,7 +38,7 @@ class ABCIData:
     def _get_plot_data(self, dirc):
         frame_objects = {}
         frame_titles_objects = {}
-
+        line_objects = []
         frame_title = []
         frame_count = 0
 
