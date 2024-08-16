@@ -51,8 +51,8 @@ pp = pprint.PrettyPrinter(indent=4)
 Examples - TESLA Elliptical Cavity
 ==================================
 
-There are two fundamental objects in `cavsim2d` - the `Cavities` and `Cavity` objects. A `Cavities` objects holds an array 
-of `Cavity` objects while a `Cavity` object contains information about a single RF cavity. They are created as follows:
+The core components of `cavsim2d` are `Cavities` and `Cavity` objects. `Cavities` is a container for multiple `Cavity` 
+instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:
 
 ```python
 from cavsim2d.cavity import Cavity, Cavities
@@ -62,18 +62,18 @@ cavs.save(project_folder='/user/home/...')
 ```
 
 > [!TIP]
-> Depending on the folder from where you are using the program you might want to append the folder to system path
-> using sys.path.append(<cavsim2d_path>). I run my notebooks from the notebooks folder so I use
+> The location from which you run the program might require adding its directory to the system path using 
+> `sys.path.append(<cavsim2d_path>)`. For instance, when working from a "notebooks" folder, I typically use:
 > ```python
-import sys
-sys.path.append("..")
-```
+> import sys
+> sys.path.append("..")
+> ```
 
 
 > [!IMPORTANT]
-> Cavities().save(<files_path>) must be called first to either create a new project folder or to point to an 
-> existing project folder. An extra parameter 'overwrite=True' can be passed to overwrite the project folder if it 
-> already exists. Default is 'overwrite=False'.
+> The `Cavities().save(<files_path>)` function initializes or specifies a project folder. 
+> An optional `overwrite=True` argument can be included to replace an existing folder. 
+> By default, overwriting is disabled.
 
 A `Cavity` object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
 mid cell, left end cell and right end cell dimensions for its initialisation. We use the 
@@ -89,7 +89,7 @@ endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 # create cavity
 tesla = Cavity(n_cells, midcell, endcell_l, endcell_r, beampipe='both')
 ```
-The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. `plot('geometry')` returns a 
+The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. All `plot()` functions return a 
 `matplotlib.axes` object.
 
 ```python
@@ -103,9 +103,9 @@ Now the cavity can be added to the cavities object.
 cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 ```
 
-The `names` keyword is a list of othe names of the Cavities objects. This is the name under which the simulation results
-related for the Cavity is saved. The `plot_labels` keyword contain the legend labels. If no entry is made, a default 
-name is assigned.
+The `names` parameter is a list of custom names for each `Cavity` object. These names are used to label 
+corresponding simulation results. The optional `plot_labels` parameter specifies legend labels for visualizations. 
+If not provided, default labels will be generated.
 
 Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).
 
@@ -116,7 +116,7 @@ cavs.run_eigenmode()
 pp.pprint(cavs.eigenmode_qois)
 ```
 
-Let's try that again but this time using adding a cavity to `cavs`. We will use the a re-entrant cavity geometry. The 
+Let uss try that again but this time using adding a cavity to `cavs`. We will use the a re-entrant cavity geometry. The 
 dimensions can be found [here](https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf)
 in Table 2. We will use the parameters corresponding to `$\delta e=+30$`. This time we will enter the geometry by defining first a `shape_space`.
 
@@ -192,39 +192,18 @@ cavs['TESLA'].plot_fields(mode=1, which='H')
 ```
 
 > [!TIP]
-> Meshes and fields are properties of a Cavity object and not a Cavities object. Therefore, to visualise the mesh
+> Meshes and fields are properties of a `Cavity` object and not a `Cavities` object. Therefore, to visualise the mesh
 > and field profiles, use the `Cavity` object `name` or corresponding index.
-
----------------
-
-## Configuration dictionaries
-
-Configuration dictionaries are used to specify simulation inputs. Each simulation has its specific configuration dictonary
-format and content. The configuration files are written so that it is logical. For example, a simple eigenmode simulation
-config file is shown below:
-
-
-We will talk about uncertainty quantification (UQ) later but if we were to equip the eigenmode analysis with UQ,
-we only need include a uq_config dictioanry as an entry into the eigenmode_config dictionary. For example:
-
-
-The same goes for wakefield analysis and tuning. For optimisation control, consider that in an optimisation, we
-want to optimise for a particular frequency so for any parameter set generated, we want to first tunr. Therefore,
-an optimisation_config dictionary will contain a tune_config. The depending on the objectives the optimisation_config
-then includes an eigenmode_config and or a wakefield_config field. It also follows that the eigenmode_config and 
-wakefield_config can also contain uq_config fields.
-
-> [!NOTE]
-> For eigenmode and wakefield analysis, if a configuration dictionary is not entered, default values are used.
 
 ---------------
 ## Cavity Tuning
 
-Cavity tuning can easily be done using `cavsim2d`. Let's start from the mid cell of a TESLA cavity geometry. We know 
-that the correct eqator radius `Req` equals 103.3. However, we start from an arbitrary `Req` to demonstrate tuning.
-Two arguments are required - the parameter to tune and the target frequency. Other parameters are optional. Since 
-`Cavities` contains several `Cavity` objects, the parameter and frequency arguments can also be a list with length 
-corresponding to the lengths of the len of the `Cavities` object.
+Cavity tuning is straightforward using `cavsim2d`. We'll demonstrate this with a TESLA cavity's mid-cell, 
+initially using an arbitrary equator radius (Req) before converging to the correct value of 103.3 mm. 
+The tuning function requires at least a tuning parameter and target frequency. For multiple cavities 
+within a `Cavities` object, these arguments can be provided as lists matching the number of cavities.
+Optional parameters can further refine the tuning process. 
+
  
 ```
 TESLA
@@ -257,7 +236,8 @@ TESLA
                  'TUNED VARIABLE': 'Req'}}
 ```
 
-Confirm from the output that the correct frequency and `Req` is achieved. 
+Confirm from the output that the correct frequency and `Req` is achieved.
+
 > [!NOTE]
 > You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm.
 
@@ -303,6 +283,7 @@ cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 
 cavs.run_wakefield()
 ```
+
 To make plots of the longitudinal and transverse impedance plots on the same axis, we use the following code
 
 ```python
@@ -310,9 +291,6 @@ ax = cavs.plot('ZL')
 ax = cavs.plot('ZT', ax)
 ax.set_yscale('log')
 ```
-
-In the example, we passed a single parameter `bunch_length`. However, the simulation would have run without this 
-argument using internal default arguments for the wakefield solver. 
 
 Oftentimes, we want to analyse the loss and kick factors, and higher-order mode power for particular or several 
 operating points for a cavity geometry. This can easily be done by passing an operating points dictionary to the 
@@ -548,11 +526,31 @@ cavs.plot_compare_fm_bar(uq=True)
 > This tool proves invaluable in diagnosing such issues.
 
 
+---------------
+
+## Configuration dictionaries
+
+Simulation inputs are defined through configuration dictionaries, with specific formats for different simulation types. 
+These dictionaries are structured logically. For instance, a simple eigenmode simulation uses a straightforward 
+configuration. Uncertainty quantification (UQ) can be integrated by adding a `uq_config` dictionary within the 
+eigenmode configuration. Wakefield analysis and tuning configurations follow a similar pattern.
+
+Optimisation configurations include a `tune_config` section to ensure frequency optimisation prior to other parameters.
+Depending on the optimisation goals, `eigenmode_config` and `wakefield_config` sections can be nested 
+within the optimisation configuration, potentially also incorporating UQ through `uq_config` sub-dictionaries. 
+
+
+> [!NOTE]
+> Default configuration settings are applied for eigenmode and wakefield analyses when no custom 
+> configuration dictionary is provided. 
+
 ## Parallelisation
 
-Simulations using `cavsim2d` are easily parallelised by specifying a value for the argument `processes`
-specifying the amount of processes the analysis should use. If UQ is enabled, an extra level of parallelisation 
-can be achieved by passing `processes` also in the uq configuration dictionary. The number of processes defaults to 1.
+`cavsim2d` simulations can be parallelised easily by setting the `processes` parameter within relevant 
+configuration dictionaries. This controls the number of processes used for the analysis. 
+For simulations with uncertainty quantification (UQ) enabled, an additional level of parallelisation can 
+be achieved by specifying `processes` within the UQ configuration. The default number of processes is one. 
+
 
 ## Understanding the geometry types
 
