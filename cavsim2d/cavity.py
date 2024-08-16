@@ -3567,8 +3567,9 @@ class Cavities(Optimisation):
         Adds cavity to cavities
         Parameters
         ----------
-        plot_label
-        cav: Cavity, list
+        plot_labels: list, str
+            Plot labels
+        cavs: Cavity, list
             Cavity object or list of cavity objects
         names: list, str
             Cavity name or list of cavity names
@@ -3923,15 +3924,15 @@ class Cavities(Optimisation):
         ----------
         tune_config: dict
 
-        .. code-block:: python
+            .. code-block:: python
 
-            tune_config = {
-                        'freqs': 801.58,
-                        'parameters': 'Req',
-                        'cell_types': 'mid-cell',
-                        'processes': 1,
-                        'rerun': True
-                    }
+                tune_config = {
+                            'freqs': 801.58,
+                            'parameters': 'Req',
+                            'cell_types': 'mid-cell',
+                            'processes': 1,
+                            'rerun': True
+                        }
 
         Returns
         -------
@@ -4330,35 +4331,35 @@ class Cavities(Optimisation):
         ----------
         wakefield_config:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            op_points = {
-                        "Z": {
-                            "freq [MHz]": 400.79,  # Operating frequency
-                            "E [GeV]": 45.6,  # <- Beam energy
-                            "I0 [mA]": 1280,  # <- Beam current
-                            "V [GV]": 0.12,  # <- Total voltage
-                            "Eacc [MV/m]": 5.72,  # <- Accelerating field
-                            "nu_s []": 0.0370,  # <- Synchrotron oscillation tune
-                            "alpha_p [1e-5]": 2.85,  # <- Momentum compaction factor
-                            "tau_z [ms]": 354.91,  # <- Longitudinal damping time
-                            "tau_xy [ms]": 709.82,  # <- Transverse damping time
-                            "f_rev [kHz]": 3.07,  # <- Revolution frequency
-                            "beta_xy [m]": 56,  # <- Beta function
-                            "N_c []": 56,  # <- Number of cavities
-                            "T [K]": 4.5,  # <- Operating tempereature
-                            "sigma_SR [mm]": 4.32,  # <- Bunch length
-                            "sigma_BS [mm]": 15.2,  # <- Bunch length
-                            "Nb [1e11]": 2.76  # <- Bunch population
-                        }
-            }
-            wakefield_config = {
-                'bunch_length': 25,
-                'wakelength': 50,
-                'processes': 2,
-                'rerun': True,
-                'operating_points': op_points,
-            }
+                op_points = {
+                            "Z": {
+                                "freq [MHz]": 400.79,  # Operating frequency
+                                "E [GeV]": 45.6,  # <- Beam energy
+                                "I0 [mA]": 1280,  # <- Beam current
+                                "V [GV]": 0.12,  # <- Total voltage
+                                "Eacc [MV/m]": 5.72,  # <- Accelerating field
+                                "nu_s []": 0.0370,  # <- Synchrotron oscillation tune
+                                "alpha_p [1e-5]": 2.85,  # <- Momentum compaction factor
+                                "tau_z [ms]": 354.91,  # <- Longitudinal damping time
+                                "tau_xy [ms]": 709.82,  # <- Transverse damping time
+                                "f_rev [kHz]": 3.07,  # <- Revolution frequency
+                                "beta_xy [m]": 56,  # <- Beta function
+                                "N_c []": 56,  # <- Number of cavities
+                                "T [K]": 4.5,  # <- Operating tempereature
+                                "sigma_SR [mm]": 4.32,  # <- Bunch length
+                                "sigma_BS [mm]": 15.2,  # <- Bunch length
+                                "Nb [1e11]": 2.76  # <- Bunch population
+                            }
+                }
+                wakefield_config = {
+                    'bunch_length': 25,
+                    'wakelength': 50,
+                    'processes': 2,
+                    'rerun': True,
+                    'operating_points': op_points,
+                }
 
         Returns
         -------
@@ -4765,10 +4766,6 @@ class Cavities(Optimisation):
     def plot_power_comparison(self, fig=None, ax_list=None):
         """
         Can be called using ``cavities.plot_power_comparison()``
-
-        .. math::
-
-           W^{3 \\beta}_{\delta}
 
         Parameters
         ----------
