@@ -29,7 +29,6 @@ class Geometry:
         self.u = None
 
     def set_geom_parameters(self, n_cells, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None):
-        # print(n_cells, mid_cells_par, l_end_cell_par, r_end_cell_par)
 
         if l_end_cell_par is None:
             l_end_cell_par = []
@@ -39,7 +38,6 @@ class Geometry:
         self.cell_structure = 2
         self.n = n_cells
 
-        # print("Sets value")
         self.A_M, self.B_M, self.a_M, self.b_M, self.ri_M, self.L_M, self.Req_M = \
             [i * self.u for i in mid_cells_par][0:7]
         self.A_L, self.B_L, self.a_L, self.b_L, self.ri_L, self.L_L, self.Req_L = \
@@ -57,7 +55,6 @@ class Geometry:
         self.mid_cell = [self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M]
         self.left_end_cell = [self.Req_L, self.ri_L, self.L_L, self.A_L, self.B_L, self.a_L, self.b_L]
         self.right_end_cell = [self.Req_R, self.ri_R, self.L_R, self.A_R, self.B_R, self.a_R, self.b_R]
-        # print(self.mid_cell)
 
         # beam pipe
         self.WG_L = 4 * self.L_M  # self.ui.dsb_Lbp_L.value()*self.u # Length of the beam pipe connecting to the cavity
@@ -84,7 +81,6 @@ class Geometry:
 
         # Slans mesh parameters
         self.WG_mesh = round(self.WG_L / 5) * self.u  # /5 for ende_type 1
-        # print(self.L_M, self.WG_L, self.WG_mesh)
         self.Jxy = 44  # 60 for end type 1
         self.Jx1 = round((19 / 50) * self.Jxy)  # 19/50 for end_type 1
         self.Jx2 = self.Jxy / 2 - self.Jx1
@@ -107,7 +103,6 @@ class Geometry:
         self.Jxy_all_bp = [0, self.Jxy_bp, self.Jx1_bp, self.Jx2_bp, self.Jy0_bp, self.Jy1_bp, self.Jy2_bp, self.Jy3_bp]
 
     def set_geom_parameters_flattop(self, n_cells, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None):
-        # print(n_cells, mid_cells_par, l_end_cell_par, r_end_cell_par)
 
         if l_end_cell_par is None:
             l_end_cell_par = []
@@ -117,7 +112,6 @@ class Geometry:
         self.cell_structure = 2
         self.n = n_cells
 
-        # print("Sets value")
         self.A_M, self.B_M, self.a_M, self.b_M, self.ri_M, self.L_M, self.Req_M, self.l_M = \
             [i * self.u for i in mid_cells_par][0:8]
         self.A_L, self.B_L, self.a_L, self.b_L, self.ri_L, self.L_L, self.Req_L, self.l_L = \
@@ -135,7 +129,6 @@ class Geometry:
         self.mid_cell = [self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M, self.l_M]
         self.left_end_cell = [self.Req_L, self.ri_L, self.L_L, self.A_L, self.B_L, self.a_L, self.b_L, self.l_L]
         self.right_end_cell = [self.Req_R, self.ri_R, self.L_R, self.A_R, self.B_R, self.a_R, self.b_R, self.l_R]
-        # print(self.mid_cell)
 
         # beam pipe
         self.WG_L = 4 * self.L_M  # self.ui.dsb_Lbp_L.value()*self.u # Length of the beam pipe connecting to the cavity
@@ -164,7 +157,6 @@ class Geometry:
         self.WG_mesh = round(self.WG_L / 5) * self.u  # /5 for ende_type 1
 
     # def write_cst_paramters(self, fid):
-    #     print("Writing parameters to file")
     #     cwd = os.getcwd()
     #
     #     print(path)
@@ -184,10 +176,8 @@ class Geometry:
     #         for i in range(len(name_list)):
     #             f.write("{}={}\n".format(name_list[i], value_list[i]))
     #
-    #     print("Writing to file complete.")
     #
     # def write_cst_paramters_mid(self, fid):
-    #     print("Writing parameters to file")
     #     cwd = os.getcwd()
     #     print(cwd)
     #

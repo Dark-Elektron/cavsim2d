@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from cavsim2d.analysis.wakefield.geometry import Geometry
 from cavsim2d.analysis.wakefield.abci_code import ABCI, ABCI_flattop
+from cavsim2d.utils.shared_functions import error
 
 
 class ABCIGeometry(Geometry):
@@ -73,7 +74,6 @@ class ABCIGeometry(Geometry):
 
         if WG_M == '':
             WG_M = self.WG_L
-        # print(WG_M)
 
         self.abci = ABCI(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
                          self.right_beam_pipe)
@@ -141,11 +141,9 @@ class ABCIGeometry(Geometry):
                 run_save_directory = projectDir / Path(fr'SimulationData/ABCI/{sub_dir}\{fid}')
 
             fname = Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')
-            # print('filename:: ', fname)
 
             L_all_increment = 0
             self.L_all = 0
-            # print(fname)
             with open(fname, 'w') as f:
                 f.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
                 f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
@@ -177,7 +175,7 @@ class ABCIGeometry(Geometry):
                                     f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode - 1) * self.L_all))
 
                         if self.Req_L != self.Req_R:
-                            print('Error:: The equator radius of left and right cell are not equal')
+                            error('Error:: The equator radius of left and right cell are not equal')
 
                         # if exist('L_M') != 1:
                         #     L_M = []
@@ -185,7 +183,6 @@ class ABCIGeometry(Geometry):
                         if end_L == 2:
                             self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode - 1) * self.L_all, f)
 
-                        # print("GUI_ABCI::It got here")
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
 
@@ -210,7 +207,6 @@ class ABCIGeometry(Geometry):
                 if n > 1:
                     for i_mode in range(1, module_nu + 1):
 
-                        # print("imode:", i_mode, i_mode)
                         # change waveguide length
                         if module_nu == 2:
                             if i_mode == 1:
@@ -228,7 +224,6 @@ class ABCIGeometry(Geometry):
                                 self.WG_R = 4 * self.L_M
                         # Total length of each cavity
                         L_all_increment = self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M
-                        # print(self.WG_L, self.WG_R, WG_M, self.L_all)
 
                         if i_mode > 1:
                             if self.WG_L > 0:
@@ -292,9 +287,7 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            print(parentDir, projectDir)
             exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI_MP64+.exe'))
-            print('\t', exe_path, run_save_directory)
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
             else:
@@ -366,7 +359,6 @@ class ABCIGeometry(Geometry):
 
         if WG_M == '':
             WG_M = self.WG_L
-        # print(WG_M)
 
         self.abci = ABCI_flattop(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
                          self.right_beam_pipe)
@@ -417,12 +409,6 @@ class ABCIGeometry(Geometry):
 
             if end_R == 2:
                 zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
-
-            # print("GUI_ABCI:: zr12_L", zr12_L)
-            # print("GUI_ABCI:: zr12_R", zr12_R)
-            # # print("GUI_ABCI:: zr12_BPL", zr12_BPL)
-            # # print("GUI_ABCI:: zr12_BPR", zr12_BPR)
-            # print("GUI_ABCI:: zr12_M", zr12_M)
             # #  Write ABCI code
 
             # create folder for file output set

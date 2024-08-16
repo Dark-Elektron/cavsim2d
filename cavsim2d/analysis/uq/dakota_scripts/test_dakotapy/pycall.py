@@ -5,8 +5,6 @@ import sys
 # Get current path
 sCurPath = os.path.abspath(".")
 
-print(sCurPath)
-
 # Get the command line arguments passed by DAKOTA
 num_resp = sys.argv[1]
 nodes_only = sys.argv[2]

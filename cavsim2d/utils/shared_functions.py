@@ -298,10 +298,8 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
         folder = 'Optimisation'
 
     if cell_type is None:
-        # print("Writing parameters to file")
         path = fr'{projectDir}/SimulationData/{folder}/{key}/{key}.txt'
 
-        # print(path)
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
                          'L_e', 'Req', 'alpha_e', 'key']
@@ -316,11 +314,9 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
 
     else:
-        # print("Writing parameters to file")
         path = fr'{projectDir}/SimulationData/{folder}/{key}/{key}.txt'
         path_mc = fr'{projectDir}/SimulationData/{folder}/{key}/{key}_Multicell.txt'
 
-        # print(path)
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
                          'L_e', 'Req_e', 'alpha_e', 'key']
@@ -361,8 +357,6 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
                     f.write(f'{name_list[i]} = "{0}" "{value_list[i]}"\n')
                 else:
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
-
-        # print("Writing to file complete.")
 
 
 def stroud(p):
@@ -445,9 +439,9 @@ def quad_stroud3(rdim, degree):
 
 def c1_leg_monomial_integral(expon):
     if expon < 0:
-        print("\n")
-        print("C1_LEG_MONOMIAL_INTEGRAL - Fatal error!")
-        print("EXPON < 0.")
+        error("\n")
+        error("C1_LEG_MONOMIAL_INTEGRAL - Fatal error!")
+        error("EXPON < 0.")
         raise ValueError("C1_LEG_MONOMIAL_INTEGRAL - Fatal error!")
 
     if expon % 2 == 1:
@@ -533,16 +527,16 @@ def r8_mop(i):
 def cn_leg_05_1(n, option=1):
     # Check if the value of n is 4, 5, or 6
     if n not in [4, 5, 6]:
-        print("\n")
-        print("CN_LEG_05_1 - Fatal error!")
-        print("The value of N must be 4, 5, or 6.")
+        error("\n")
+        error("CN_LEG_05_1 - Fatal error!")
+        error("The value of N must be 4, 5, or 6.")
         raise ValueError("CN_LEG_05_1 - Fatal error!")
 
     # Check for valid option when n = 4 or 5
     if n in [4, 5] and option not in [1, 2]:
-        print("\n")
-        print("CN_LEG_05_1 - Fatal error!")
-        print("When N = 4 or 5, OPTION must be 1 or 2.")
+        error("\n")
+        error("CN_LEG_05_1 - Fatal error!")
+        error("When N = 4 or 5, OPTION must be 1 or 2.")
         raise ValueError("CN_LEG_05_1 - Fatal error!")
 
     o = n ** 2 + n + 2
@@ -4592,6 +4586,9 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
         par_mid[6] = par_end_r[6]
         par_end_l[6] = par_end_r[6]
 
+def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
+    with open(fr"{projectDir}\SimulationData\{sim_folder}\{key}\{filename}", 'w') as file:
+        file.write(json.dumps(d, indent=4, separators=(',', ': ')))
 
 def error(*arg):
     print(colored(f'{arg[0]}', 'red'))

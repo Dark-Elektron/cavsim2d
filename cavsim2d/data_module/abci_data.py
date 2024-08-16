@@ -9,15 +9,12 @@ import scipy.signal as sps
 import numpy as np
 from termcolor import colored
 
+from cavsim2d.utils.shared_functions import info, error, done
+
 file_color = 'cyan'
 
 # DEBUG = False
 DEBUG = True
-
-
-def print_(*arg):
-    if DEBUG:
-        print(colored(f'\t\t{arg}', file_color))
 
 
 class ABCIData:
@@ -37,7 +34,7 @@ class ABCIData:
         if os.path.exists(dirc):
             self._get_plot_data(dirc)
         else:
-            print_("Hey chief, there seems to be a problem with the ABCI file directory. Please check.")
+            info("Hey chief, there seems to be a problem with the ABCI file directory. Please check.")
 
     def _get_plot_data(self, dirc):
         frame_objects = {}
@@ -79,10 +76,8 @@ class ABCIData:
                 # add titles to frame_title
                 if 'TITLE' in line or 'MORE' in line:
                     frame_title.append(line)
-                    # print(line)
                     # if 'Transverse Wake' in line:
                     #     key = 'Transverse'
-                    #     print('True')
 
                     # get other parameters from title
                     # try:
@@ -90,13 +85,10 @@ class ABCIData:
                         key = 'Azimuthal'
                     if 'Transverse Wake' in line:
                         key = 'Transverse'
-                        # print("it got here to transverse wake")
                     if 'Longitudinal Wake' in line:
                         key = 'Longitudinal'
-                        # print("it got here to longitudinal wake")
 
                     if 'Loss Factor' in line and key:
-                        # print("Got in here", key)
                         indx_0 = line.index('= ')
                         indx_1 = line.index('V/pC')
                         loss_factor = float(line[indx_0 + 2:indx_1])
@@ -167,7 +159,6 @@ class ABCIData:
                     # y = np.insert(y, -1, 0).tolist()
 
                 self.data_dict[key] = [x, y]
-        # print("At least it got here")
         # include impedance magnitude
         if {'Real Part of Longitudinal Impedance', 'Imaginary Part of Longitudinal Impedance'}.issubset(self.data_dict.keys()):
             # longitudinal
@@ -197,7 +188,6 @@ class ABCIData:
         if isinstance(key, int):
             key = plot_decorations[key]
 
-        # print_(self.data_dict)
         self.x = self.data_dict[key][0]
         self.y = self.data_dict[key][1]
 
@@ -294,7 +284,7 @@ class ABCIData:
             # print_(group_dict)
             return group_dict
         except Exception as e:
-            print_(f"Bands cannot be gotten without getting the peaks first. {e}")
+            info(f"Bands cannot be gotten without getting the peaks first. {e}")
 
     def _interp_fl(self):
         fl_list = []
@@ -447,7 +437,6 @@ class ABCIDataExtraction:
 
         def calc_k_loss():
             for key, value in d.items():
-                print(f"Processing for Cavity {key}")
                 abci_data_long = ABCIData(abci_data_dir, key, 0)
                 abci_data_trans = ABCIData(abci_data_dir, key, 1)
 
@@ -456,7 +445,7 @@ class ABCIDataExtraction:
                 k_loss_trans = abci_data_trans.loss_factor['Transverse']
 
                 if math.isnan(k_loss_trans):
-                    print_(f"Encountered an exception: Check shape {key}")
+                    info(f"Encountered an exception: Check shape {key}")
                     continue
 
                 # long
@@ -565,7 +554,7 @@ class ABCIDataExtraction:
                 k_loss_trans = abci_data_dip.loss_factor['Transverse']
 
                 if math.isnan(k_loss_trans):
-                    print_(f"Encountered an exception: Check shape {key}")
+                    info(f"Encountered an exception: Check shape {key}")
                     continue
 
                 # long

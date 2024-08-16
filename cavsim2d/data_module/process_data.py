@@ -9,6 +9,8 @@ import pandas as pd
 from utils.file_reader import FileReader
 from utils.shared_functions import ellipse_tangent
 
+from cavsim2d.utils.shared_functions import error
+
 fr = FileReader()
 
 
@@ -63,7 +65,7 @@ class ProcessData:
             try:
                 d = fr.svl_reader(fr"{dirc}\{key}\cavity_33.svl")
                 freq = d['FREQUENCY'][0]
-                print(key, freq)
+
                 ic = [A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, alpha_ic]
                 oc = [A_le, B_le, a_le, b_le, Ri_le, L_le, Req_le, alpha_oc]
                 cell_type = val['IC'], val['OC'], 'Mid Cell'
@@ -92,7 +94,6 @@ class ProcessData:
         d_HOM = fr.excel_reader(dir2)
         d_FM = d_FM['Sheet1']
         d_HOM = d_HOM['Sheet1']
-        # print(d_HOM.iloc[0])
 
         ob_FM_key_align_dict, ob_HOM_key_align_dict = {}, {}
         for key, val in d_FM.iterrows():
@@ -100,10 +101,6 @@ class ProcessData:
 
         for key, val in d_HOM.iterrows():
             ob_HOM_key_align_dict[int(val['key'])] = list(val)[2:]
-
-        # print(ob_FM_key_align_dict)
-        # print()
-        # print(ob_HOM_key_align_dict)
 
         save_new = {'key': [], 'A': [], 'B': [], 'a': [], 'b': [], 'Ri': [], 'L': [], 'Req': [], 'alpha': [],
                     'E_stored': [], 'Rsh': [], 'Q': [], 'Epk': [], 'Hpk': [], 'Eacc': [],
@@ -118,7 +115,6 @@ class ProcessData:
             try:
                 A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, L_bp = val[0], val[1], val[2], val[3], val[4], val[5], val[6], 0
                 alpha = self._calculate_alpha(A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, L_bp)
-                # print(key, alpha, val[-10])
 
                 if key in list(ob_HOM_key_align_dict.keys()):
                     # update save new
@@ -150,11 +146,8 @@ class ProcessData:
                     self.write_cst_paramters(key, A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m)
 
             except Exception as e:
-                print(f"Key not in both -> {e}")
+                error(f"Key not in both -> {e}")
                 problem_keys.append(key)
-
-        print(len(problem_keys), problem_keys)
-        print(len(save_new['k_loss_M0']))
 
         df = pd.DataFrame.from_dict(save_new)
         df.to_excel(f'{save_excel}.xlsx', sheet_name='Sheet1')
@@ -165,7 +158,6 @@ class ProcessData:
         d_2 = fr.excel_reader(dir2)
         d_1 = d_1['Sheet1']
         d_2 = d_2['Sheet1']
-        # print(d_2.iloc[0])
 
         d1_key_align_dict, d2_key_align_dict = {}, {}
         for key, val in d_1.iterrows():
@@ -173,10 +165,6 @@ class ProcessData:
 
         for key, val in d_2.iterrows():
             d2_key_align_dict[int(val['key'])] = list(val)[2:]
-
-        # print(ob_FM_key_align_dict)
-        # print()
-        # print(ob_HOM_key_align_dict)
 
         save_new = {'key': [], 'A': [], 'B': [], 'a': [], 'b': [], 'Ri': [], 'L': [], 'Req': [], 'alpha': [],
                     'E_stored': [], 'Rsh': [], 'Q': [], 'Epk': [], 'Hpk': [], 'Eacc': [],
@@ -190,7 +178,6 @@ class ProcessData:
             try:
                 A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, L_bp = val[0], val[1], val[2], val[3], val[4], val[5], val[6], 0
                 alpha = self._calculate_alpha(A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, L_bp)
-                # print(key, alpha, val[-10])
 
                 if key in list(d2_key_align_dict.keys()):
                     # update save new
@@ -223,11 +210,8 @@ class ProcessData:
                     self.write_cst_paramters(key, A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m)
 
             except Exception as e:
-                print(f"Key not in both -> {e}")
+                error(f"Key not in both -> {e}")
                 problem_keys.append(key)
-
-        print(len(problem_keys), problem_keys)
-        print(len(save_new['k_loss_M0']))
 
         df = pd.DataFrame.from_dict(save_new)
         df.to_excel(f'{save_excel}.xlsx', sheet_name='Sheet1')
@@ -274,9 +258,6 @@ class ProcessData:
                     d_combine['Req'].append(val[8])
                     d_combine[f'Z_long[max(f>{0.5})]'].append(val[9])
                     d_combine[f'Z_trans[max(f>{0.6})]'].append(val[10])
-
-        # print(len(list(d_combine)))
-        # print(d_combine)
 
         df = pd.DataFrame.from_dict(d_combine)
         df.to_excel(f'{save_excel}.xlsx', sheet_name='Sheet1')

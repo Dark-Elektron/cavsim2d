@@ -25,8 +25,8 @@ class PyTuneNGSolve:
         self.plot = None
 
     def tune(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
-             sim_folder, parentDir, projectDir, iter_set, proc=0, conv_list=None):
-
+             sim_folder, parentDir, projectDir, proc=0):
+        convergence_list = []
         # tv => tune variable
         indx = VAR_TO_INDEX_DICT[tune_var]
 
@@ -73,12 +73,12 @@ class PyTuneNGSolve:
             beampipes = 'both'
 
         res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                            n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                            sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+                                  n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+                                  sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
         if not res:
             # make functionality later for restart for the tune variable
             error('\tCannot continue with the tuning geometry -> Skipping degenerate geometry')
-            return 0, 0, 0
+            return 0, 0, [], []
 
         tv = tuned_cell[indx]
 
@@ -90,19 +90,19 @@ class PyTuneNGSolve:
         tv_list.append(tv)
 
         # first shot
-        tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var]*0.05*tuned_cell[indx]
+        tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var] * 0.05 * tuned_cell[indx]
         tuned_cell[indx] = tv
 
         enforce_Req_continuity(mid, left, right, cell_type)
 
         # run
         res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                            n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                            sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+                                  n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+                                  sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
         if not res:
             # make functionality later for restart for the tune variable
             error('Cannot continue with the tuning geometry -> Skipping degenerate geometry')
-            return 0, 0, 0
+            return 0, 0, [], []
 
         # get results and compare with set value
         with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
@@ -112,7 +112,6 @@ class PyTuneNGSolve:
         freq_list.append(freq)
         tv_list.append(tv)
 
-        tol = iter_set[1]
         tol = 1e-2  # for testing purposes to reduce tuning time.
         # max_iter = iter_set[2]
 
@@ -125,7 +124,7 @@ class PyTuneNGSolve:
             # solve for coefficients
             coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
 
-            max_step = 0.2*tuned_cell[indx]  # control order of convergence/stability with maximum step
+            max_step = 0.2 * tuned_cell[indx]  # control order of convergence/stability with maximum step
             # bound_factor = 0.1
             # bound the maximum step
             if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
@@ -145,8 +144,8 @@ class PyTuneNGSolve:
 
             # run
             res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                                n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+                                      n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+                                      sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
             if not res:
                 # make functionality later for restart for the tune variable
                 error('Cannot continue with the tuning of this geometry -> Skipping degenerate geometry')
@@ -188,10 +187,11 @@ class PyTuneNGSolve:
         # plt.scatter(tv_list, freq_list)
         # plt.show()
         # update convergence list
-        if conv_list is not None:
-            conv_list.extend([tv_list, freq_list])
+        convergence_list.extend([tv_list, freq_list])
 
-        return tv_list[key], freq_list[key], abs_err_list
+        # save convergence information
+        conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
+        return tv_list[key], freq_list[key], conv_dict, abs_err_list
 
     @staticmethod
     def all_equal(iterable):
@@ -204,4 +204,3 @@ class PyTuneNGSolve:
 
         with open(fr"{projectDir}\SimulationData\SLANS_opt\{fid}\convergence_output.json", "w") as outfile:
             json.dump(dd, outfile, indent=4, separators=(',', ': '))
-

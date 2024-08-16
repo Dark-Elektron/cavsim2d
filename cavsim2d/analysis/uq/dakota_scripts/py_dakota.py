@@ -10,7 +10,6 @@ def read_output_from_cst_sweep(sim_folder, folders, requests):
         d = pd.DataFrame()
         for folder in folders:
             d = pd.concat([d, pd.read_csv(fr"{sim_folder}\{folder}\Export\{request}.txt", sep="\t", header=None)])
-            # print(d)
 
         df_[request] = d.loc[:, 1]
 
@@ -53,12 +52,9 @@ if nodes_only != 'ONLY_NODES':
     df_data = pd.read_excel(fr"{filename}", 'Sheet1', engine='openpyxl')
 
     for indx, row in df_data.iterrows():
-        # print(indx, row.tolist(), pars_in.tolist())
         # match input parameters to output
-        # print(np.around(row.tolist()[:num_in_vars], 3), np.around(pars_in.tolist(), 3))
         tolerance = 1e-3
         if np.allclose(np.around(row.tolist()[:num_in_vars], 3), np.around(pars_in.tolist(), 3), rtol=tolerance, atol=tolerance):
-            print("Got here")
             # write output
             out = row.tolist()[num_in_vars:]
             with open(output_file, 'w') as f:

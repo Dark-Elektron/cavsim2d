@@ -187,6 +187,28 @@ cavs['TESLA'].plot_fields(mode=1, which='H')
 > and field profiles, use the `Cavity` object `name` or corresponding index.
 
 ---------------
+
+## Configuration dictionaries
+
+Configuration dictionaries are used to specify simulation inputs. Each simulation has its specific configuration dictonary
+format and content. The configuration files are written so that it is logical. For example, a simple eigenmode simulation
+config file is shown below:
+
+
+We will talk about uncertainty quantification (UQ) later but if we were to equip the eigenmode analysis with UQ,
+we only need include a uq_config dictioanry as an entry into the eigenmode_config dictionary. For example:
+
+
+The same goes for wakefield analysis and tuning. For optimisation control, consider that in an optimisation, we
+want to optimise for a particular frequency so for any parameter set generated, we want to first tunr. Therefore,
+an optimisation_config dictionary will contain a tune_config. The depending on the objectives the optimisation_config
+then includes an eigenmode_config and or a wakefield_config field. It also follows that the eigenmode_config and 
+wakefield_config can also contain uq_config fields.
+
+> [!NOTE]
+> For eigenmode and wakefield analysis, if a configuration dictionary is not entered, default values are used.
+
+---------------
 ## Cavity Tuning
 
 Cavity tuning can easily be done using `cavsim2d`. Let's start from the mid cell of a TESLA cavity geometry. We know 
@@ -308,7 +330,14 @@ op_points = {
                 "Nb [1e11]": 2.76  # <- Bunch population
             }
 }
-cavs.run_wakefield(operating_points=op_points)
+wakefield_config = {
+    'bunch_length': 25,
+    'wakelength': 50,
+    'processes': 2,
+    'rerun': True,
+    'operating_points': op_points,
+}
+cavs.run_wakefield(wakefield_config)
 pp.pprint(cavs.abci_qois)
 ```
 
@@ -333,18 +362,27 @@ are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm
 analysis The algorithm currently implemented is genetic algorithm. The optimisation settings are controlled 
 using a configuration dictionary. The most important parameters for the algorithm are 
 
-- `cell type`: The options are `mid-cell`, `end-cell` and `end-end-cell` depending on the parameterisation of the cavity
+- `cell_type`: The options are `mid-cell`, `end-cell` and `end-end-cell` depending on the parameterisation of the cavity
                geometry. See Fig []. Default is `mid-cell`.
   ```
-  'cell type': 'mid-cell'
+  'cell_type': 'mid-cell'
   ```
-- `tune variable`: Target operating frequency of the cavity.
+- `freqs`: Target operating frequency of the cavity.
 ```
-'tune variable': 'Req'
+'parameters': 'Req'
 ```
 - 'tune freq.': Target operating frequency of the cavity.
 ```
-`tune freq.`: 1300
+`freqs`: 1300
+```
+
+The preceeding parameters belong to the tune_config dictionary and so are entered this way in the optimisation_config
+```
+'tune_config': {
+    'freqs': 801.58,
+    'parameters': 'Req',
+    'cell_types': cell_type
+}
 ```
 - `bounds`: This defines the optimisation search space. All geometric variables must be entered. 
             Note that variables excluded from optimisation should have identical upper and lower bounds..
@@ -372,31 +410,34 @@ using a configuration dictionary. The most important parameters for the algorith
 ```
 The third parameter for the impedances `ZL`, `ZT` define the frequency interval for which to evaluate the peak impedance.
 The algorithm specific entries include
-- `initial points`: The number of initial points to be genereated.
+- `initial_points`: The number of initial points to be genereated.
 - `method`: Method of generating the initial points. Defaults to latin hypercube sampling (LHS).
-- `no. of generations`: The number of generations to be analysed. Defaults to 20.
-- `crossover factor`: The number of crossovers to create offsprings.
-- `elites for crossover`: The number of elites allowed to produce offsprings.
-- `mutation factor`: The number of mutations to create offsprings.
-- `chaos factor`: The number of new random geometries included to improve diversity.
+- `no_of_generations`: The number of generations to be analysed. Defaults to 20.
+- `crossover_factor`: The number of crossovers to create offsprings.
+- `elites_for_crossover`: The number of elites allowed to produce offsprings.
+- `mutation_factor`: The number of mutations to create offsprings.
+- `chaos_factor`: The number of new random geometries included to improve diversity.
 
 ```
-'initial points': 5,
+'initial_points': 5,
 'method': {
     'LHS': {'seed': 5},
     },
-'no. of generations': 5,
-'crossover factor': 5,
-'elites for crossover': 2,
-'mutation factor': 5,
-'chaos factor': 5,
+'no_of_generations': 5,
+'crossover_factor': 5,
+'elites_for_crossover': 2,
+'mutation_factor': 5,
+'chaos_factor': 5,
 ```
 Putting it all together, we get
 ```python
 optimisation_config = {
-    'cell type': 'mid-cell',
-    'tune variable': 'Req',
-    'tune freq.': 1300,
+    'tune_config': {
+        'freqs': 1300,
+        'parameters': 'Req',
+        'cell_types': 'mid-cell',
+        'processes': 1
+    },
     'bounds': {'A': [20.0, 80.0],
                'B': [20.0, 80.0],
                'a': [10.0, 60.0],
@@ -428,7 +469,7 @@ cavs = Cavities()
 # must first save cavities
 cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
-cavs.run_optimisation(config=optimisation_config)
+cavs.run_optimisation(optimisation_config)
 ```
 
 ## Uncertainty Quantification Capabilities
@@ -469,6 +510,12 @@ uq_config = {
     'cell type': 'mid-cell',
     'cell complexity': 'simplecell'
 }
+eigenmode_config = {
+    'processes': 3,
+    'rerun': True,
+    'boundary_conditions': 'mm',
+    'uq_config': uq_config
+}
 
 cavs.run_eigenmode(uq_config=uq_config)
 pp.pprint(cavs.eigenmode_qois)
@@ -497,5 +544,9 @@ cavs.plot_compare_fm_bar(uq=True)
 Simulations using `cavsim2d` are easily parallelised by specifying a value for the argument `processes`
 specifying the amount of processes the analysis should use. If UQ is enabled, an extra level of parallelisation 
 can be achieved by passing `processes` also in the uq configuration dictionary. The number of processes defaults to 1.
+
+## Understanding the geometry types
+
+
 
 ## Folder structure

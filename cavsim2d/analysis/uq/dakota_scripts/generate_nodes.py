@@ -5,12 +5,13 @@ import sys
 import numpy as np
 import pandas as pd
 
+from cavsim2d.utils.shared_functions import *
 
 # Get current path
 sCurPath = os.path.abspath(".")
 
 if len(sys.argv) != 3:
-    print("Usage: python myscript.py param_file output_file partitions")
+    error("Usage: python myscript.py param_file output_file partitions")
     sys.exit(1)
 
 param_file = sys.argv[1]

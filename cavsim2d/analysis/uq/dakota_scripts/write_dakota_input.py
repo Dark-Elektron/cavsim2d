@@ -13,7 +13,7 @@ class Dakota:
             try:
                 os.mkdir(os.path.join(self.folder, self.name))
             except:
-                print("Could not create folder. Make sure target location exists.")
+                error("Could not create folder. Make sure target location exists.")
 
         with open(os.path.join(self.folder, self.name, f'{self.name}.in'), 'w') as f:
             self.environment(f)

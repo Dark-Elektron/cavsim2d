@@ -599,13 +599,10 @@ class NGSolveMEVP:
                 evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=mesh_args[1],
                                               printrates=False)
 
-            # print out eigenvalues
-            # print("Eigenvalues")
             freq_fes = []
             evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-                # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
             # plot results
             gfu_E = []
@@ -625,13 +622,11 @@ class NGSolveMEVP:
             # u = GridFunction(fes, multidim=30, name='resonances')
             # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
             #                         list(u.vecs), shift=300)
-            # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
 
             # save json file
             shape = {'IC': update_alpha(mid_cells_par),
                      'OC': update_alpha(l_end_cell_par),
                      'OC_R': update_alpha(r_end_cell_par)}
-            # print(run_save_directory)
             with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
@@ -808,12 +803,10 @@ class NGSolveMEVP:
 
         # ic('Time to complete sim: ', time.time()-start)
         # print out eigenvalues
-        # print("Eigenvalues")
         # freq_fes = []
         evals[0] = 1  # <- replace nan with zero
         # for i, lam in enumerate(evals):
         freq_fes = c0 * np.sqrt(evals) / (2 * np.pi) * 1e-6
-        # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
         # plot results
         gfu_E = []
@@ -833,13 +826,12 @@ class NGSolveMEVP:
         # u = GridFunction(fes, multidim=30, name='resonances')
         # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
         #                         list(u.vecs), shift=300)
-        # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
 
         # save json file
         shape = {'IC': mid_cells_par.tolist(),
                  'OC': l_end_cell_par.tolist(),
                  'OC_R': r_end_cell_par.tolist()}
-        # print(run_save_directory)
+
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
 
@@ -921,7 +913,6 @@ class NGSolveMEVP:
         # write
         self.write_geometry(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes,
                             cell_type='flattop', plot=False)
-        # print('done writing geometry')
 
         # read geometry
         cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
@@ -1005,7 +996,6 @@ class NGSolveMEVP:
         evals[0] = 1  # <- replace nan with zero
         for i, lam in enumerate(evals):
             freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-            # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
         # plot results
         gfu_E = []

@@ -10,7 +10,6 @@ def read_output_from_cst_sweep(sim_folder, folders, requests):
         d = pd.DataFrame()
         for folder in folders:
             d = pd.concat([d, pd.read_csv(fr"{sim_folder}\{folder}\Export\{request}.txt", sep="\t", header=None)])
-            # print(d)
 
         df_[request] = d.loc[:, 1]
 
