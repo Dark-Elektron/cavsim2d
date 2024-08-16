@@ -10,7 +10,7 @@ import matplotlib
 import psutil
 import scipy.signal as sps
 from scipy.interpolate import griddata
-from IPython.core.display import HTML
+from IPython.core.display import HTML, Image
 from IPython.core.display_functions import display
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.special import jn_zeros, jnp_zeros
@@ -9425,9 +9425,29 @@ def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoo
 
 
 def show_welcome():
-    # display(Image(filename='.\cav_images\G0_C3_CO.png'))
-    message = (
-        "<style>p{background: -webkit-linear-gradient(#eee, #333);-webkit-background-clip: text; webkit-text-fill-color: transparent; }</style> <p><b>CAV-SIM-2D</b> loaded successfully!</p>")
+    import base64
+    filename = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    image_path = os.path.join(filename, 'docs/images/cavsim2d_logo_1x.png')
+    print(image_path)
+
+    # Convert the image to base64
+    with open(image_path, "rb") as img_file:
+        encoded_image = base64.b64encode(img_file.read()).decode('utf-8')
+
+    # HTML and CSS to display image and colourful text on the same line
+    message = f"""
+    <div style="display: flex; align-items: center;">
+        <img src="data:image/png;base64,{encoded_image}" style="height: 32px;">
+        <p style="margin: 0; font-size: 16px; 
+                  background: -webkit-linear-gradient(left, #EFC3CA, #5DE2E7, #FE9900, #E7DDFF, #FFDE59);
+                  -webkit-background-clip: text; 
+                  -webkit-text-fill-color: transparent;">
+            <b>CAV-SIM-2D</b> loaded successfully!
+        </p>
+    </div>
+    """
+
+    # Display the HTML
     display(HTML(message))
 
 

@@ -2,6 +2,11 @@ import subprocess
 import os
 import sys
 
+
+if len(sys.argv) < 5:
+    print("Error: Not enough arguments provided.")
+    sys.exit(1)  # Exit the script with an error code
+
 # Get current path
 sCurPath = os.path.abspath(".")
 

@@ -12,14 +12,6 @@ cavsim2d.data\_module.abci\_data module
    :undoc-members:
    :show-inheritance:
 
-cavsim2d.data\_module.process\_data module
-------------------------------------------
-
-.. automodule:: cavsim2d.data_module.process_data
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 
