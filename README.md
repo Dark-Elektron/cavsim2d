@@ -207,6 +207,24 @@ The tuning function requires at least a tuning parameter and target frequency. F
 within a `Cavities` object, these arguments can be provided as lists matching the number of cavities.
 Optional parameters can further refine the tuning process. 
 
+```python
+cavs = Cavities()
+cavs.save(project_folder='/user/home/...')
+
+midcell = [42, 42, 12, 19, 35, 57.7, 1000]
+tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+
+cavs.add_cavity(tesla_mid_cell, 'TESLA')
+tune_config = {
+    'freqs': 1300,
+    'parameters': 'Req',
+    'cell_types': 'mid-cell',
+    'processes': 1,
+    'rerun': True
+}
+cavs.run_tune(tune_config)
+pp.pprint(cavs.eigenmode_tune_res)
+```
  
 ```
 TESLA
@@ -254,8 +272,14 @@ midcell = [20, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
 
 cavs.add_cavity(tesla_mid_cell, 'TESLA')
-
-cavs.run_tune('A', 1300)
+tune_config = {
+    'freqs': 1300,
+    'parameters': 'A',
+    'cell_types': 'mid-cell',
+    'processes': 1,
+    'rerun': True
+}
+cavs.run_tune(tune_config)
 pp.pprint(cavs.eigenmode_tune_res)
 ```
 
