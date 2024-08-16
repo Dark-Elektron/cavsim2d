@@ -1654,8 +1654,10 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
     Plot cavity geometry for display in w_GeometryView
     Parameters
     ----------
-    plot: Plot object
-        Matplotlib plot object from plotter
+    tangent_check
+    bc
+    ax
+    ignore_degenerate
     IC: list, ndarray
         Inner Cell geometric parameters list
     OC: list, ndarray
