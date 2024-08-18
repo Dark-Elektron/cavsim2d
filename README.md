@@ -542,9 +542,6 @@ cavs.plot_compare_fm_bar(uq=True)
 ```
 
 > [!IMPORTANT]
-> UQ is not yet available for wakefield analysis and cavity tuning.
-
-> [!IMPORTANT]
 > Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to 
 > degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm. 
 > These degeneracies can be identified by using the 
