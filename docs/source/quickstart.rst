@@ -1,9 +1,3 @@
-![GitHub all releases](https://img.shields.io/github/downloads/Dark-Elektron/CavityDesignHub/total?logo=Github)
-![GitHub issues](https://img.shields.io/github/issues-raw/Dark-Elektron/CavityDesignHub?logo=Github)
-![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/Dark-Elektron/CavityDesignHub?logo=Github)
-![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github)
-
 
 Installation
 ############
@@ -12,7 +6,7 @@ This repository contains Python codes for designing and analysing 2D axisymmetri
 The current capabilities include eigenmode analysis, elliptical cavity tuning and optimisation, wakefield analysis,
 uncertainty quantification, and quick visualisations and comparisons of results.
 
-To install cadsim2d, clone it into a local directory, `cd` into this directory and run
+To install cadsim2d, clone it into a local directory, ``cd`` into this directory and run
 
 .. code-block::
 
@@ -33,16 +27,16 @@ Third party code
 
 Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
 equations directly in the time domain when a bunched beam goes through an axisymmetric
-structure on or off axis. It is free and can be downloaded from `ABCI <https://abci.kek.jp/abci.htm>`_. Download the latest
-version (currently ABCI_MP_12_5.zip). Copy version `ABCI_MP_12_5.exe` from
-`<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows` to `<root folder>/cavsim2d/solver/ABCI` or
+structure on or off axis. It is free and can be downloaded from ``ABCI <https://abci.kek.jp/abci.htm>``_. Download the latest
+version (currently ABCI_MP_12_5.zip). Copy version ``ABCI_MP_12_5.exe`` from
+``<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows`` to ``<root folder>/cavsim2d/solver/ABCI`` or
 through the command line with
 
 
-copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI
+``copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI``
 
 
-Before diving in, I would install `pprintpp`. It is not necessay but it sure does makes the print readable.
+Before diving in, I would install ``pprintpp``. It is not necessay but it sure does makes the print readable.
 
 .. code-block::
 
@@ -53,7 +47,7 @@ Before diving in, I would install `pprintpp`. It is not necessay but it sure doe
 Examples
 ########
 
-The core components of `cavsim2d` are `Cavities` and `Cavity` objects. `Cavities` is a container for multiple `Cavity`
+The core components of ``cavsim2d`` are ``Cavities`` and ``Cavity`` objects. ``Cavities`` is a container for multiple ``Cavity``
 instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:
 
 .. code-block::
@@ -63,15 +57,15 @@ instances, each representing a single RF cavity and its associated data. These o
     cavs = Cavities()
     cavs.save(project_folder='/user/home/...')
 
-The default name for `Cavities` object is `cavities`. Enter `name` keyword to enter custom name i.e.
-`cavs = Cavities('custom_name')`.
+The default name for ``Cavities`` object is ``cavities``. Enter ``name`` keyword to enter custom name i.e.
+``cavs = Cavities('custom_name')``.
 This is recommended if you want to run different sets of analysis.
 
 
 .. tip::
 
     The location from which you run the program might require adding its directory to the system path using
-    `sys.path.append(<cavsim2d_path>)`. For instance, when working from a "notebooks" folder, I typically use:
+    ``sys.path.append(<cavsim2d_path>)``. For instance, when working from a "notebooks" folder, I typically use:
 
 .. code-block::
 
@@ -81,13 +75,13 @@ This is recommended if you want to run different sets of analysis.
 
 .. important::
 
-    The `Cavities().save(<files_path>)` function initialises or specifies a project folder.
-    An optional `overwrite=True` argument can be included to replace an existing folder.
+    The ``Cavities().save(<files_path>)`` function initialises or specifies a project folder.
+    An optional ``overwrite=True`` argument can be included to replace an existing folder.
     By default, overwriting is disabled.
 
-A `Cavity` object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
+A ``Cavity`` object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
 mid cell, left end cell and right end cell dimensions for its initialisation. We use the
-`TESLA <https://cds.cern.ch/record/429906/files/0003011.pdf>`_ cavity geometry dimensions in this example
+``TESLA <https://cds.cern.ch/record/429906/files/0003011.pdf>``_ cavity geometry dimensions in this example
 
 .. code-block::
 
@@ -99,8 +93,8 @@ mid cell, left end cell and right end cell dimensions for its initialisation. We
 # create cavity
 tesla = Cavity(n_cells, midcell, endcell_l, endcell_r, beampipe='both')
 
-The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. All `plot()` functions return a
-`matplotlib.axes` object.
+The cavity geometry can be viewed using ``plot('geometry')`` or ``cav.inspect()``. All ``plot()`` functions return a
+``matplotlib.axes`` object.
 
 .. code-block::
 
@@ -115,8 +109,8 @@ Now the cavity can be added to the cavities object.
     cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 
 
-The `names` parameter is a list of custom names for each `Cavity` object. These names are used to label
-corresponding simulation results. The optional `plot_labels` parameter specifies legend labels for visualizations.
+The ``names`` parameter is a list of custom names for each ``Cavity`` object. These names are used to label
+corresponding simulation results. The optional ``plot_labels`` parameter specifies legend labels for visualizations.
 If not provided, default labels will be generated.
 
 Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).
@@ -130,9 +124,9 @@ Eigenmode analysis
     pp.pprint(cavs.eigenmode_qois)
 
 
-Let uss try that again but this time using adding a cavity to `cavs`. We will use the a re-entrant cavity geometry. The
-dimensions can be found `here <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>`_
-in Table 2. We will use the parameters corresponding to `$\delta e=+30$`. This time we will enter the geometry by defining first a `shape_space`.
+Let uss try that again but this time using adding a cavity to ``cavs``. We will use the a re-entrant cavity geometry. The
+dimensions can be found ``here <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>``_
+in Table 2. We will use the parameters corresponding to ``$\delta e=+30$``. This time we will enter the geometry by defining first a ``shape_space``.
 
 
 .. code-block::
@@ -166,7 +160,7 @@ We can now do is make a comparative bar plot of some FM qois of the two geometri
     cavs.plot_compare_fm_bar()
 
 
-Let's do that again but this time with a single cell without beampipes to compare with `this <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>`_.
+Let's do that again but this time with a single cell without beampipes to compare with ``this <https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf>``_.
 
 .. code-block::
 
@@ -213,16 +207,16 @@ To visualise the mesh and field profiles use
 
 .. tip::
 
-    Meshes and fields are properties of a `Cavity` object and not a `Cavities` object. Therefore, to visualise the mesh
-    and field profiles, use the `Cavity` object `name` or corresponding index.
+    Meshes and fields are properties of a ``Cavity`` object and not a ``Cavities`` object. Therefore, to visualise the mesh
+    and field profiles, use the ``Cavity`` object ``name`` or corresponding index.
 
 Cavity Tuning
 *************
 
-Cavity tuning is straightforward using `cavsim2d`. We'll demonstrate this with a TESLA cavity's mid-cell,
+Cavity tuning is straightforward using ``cavsim2d``. We'll demonstrate this with a TESLA cavity's mid-cell,
 initially using an arbitrary equator radius (Req) before converging to the correct value of 103.3 mm.
 The tuning function requires at least a tuning parameter and target frequency. For multiple cavities
-within a `Cavities` object, these arguments can be provided as lists matching the number of cavities.
+within a ``Cavities`` object, these arguments can be provided as lists matching the number of cavities.
 Optional parameters can further refine the tuning process.
 
 .. code-block::
@@ -276,13 +270,13 @@ Optional parameters can further refine the tuning process.
                      'TUNED VARIABLE': 'Req'}}
 
 
-Confirm from the output that the correct frequency and `Req` is achieved.
+Confirm from the output that the correct frequency and ``Req`` is achieved.
 
 .. note::
 
     You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm.
 
-Repeat the same calculation. This time retain the correct `Req` and input a wrong `A`.
+Repeat the same calculation. This time retain the correct ``Req`` and input a wrong ``A``.
 
 .. code-block::
 
@@ -304,7 +298,7 @@ Repeat the same calculation. This time retain the correct `Req` and input a wron
     pp.pprint(cavs.eigenmode_tune_res)
 
 
-Confirm from the output that the correct frequency and `A` is achieved.
+Confirm from the output that the correct frequency and ``A`` is achieved.
 
 
 Wakefield
@@ -345,7 +339,7 @@ To make plots of the longitudinal and transverse impedance plots on the same axi
 
 Oftentimes, we want to analyse the loss and kick factors, and higher-order mode power for particular or several
 operating points for a cavity geometry. This can easily be done by passing an operating points dictionary to the
-`run_wakefield()` function.
+``run_wakefield()`` function.
 
 .. code-block::
 
@@ -397,19 +391,19 @@ Optimisation
 ************
 
 Optimisation of cavity geometry can be carried out using cavsim2d. Objective functions that are currently supported
-are the fundamental `freq [MHz]`, `Epk/Eacc []`, `Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, `ZL`, `ZT`.
-`ZL` and `ZT` are longitudinal and transverse impedance peaks in specified frequency intervals obtained from wakefield
+are the fundamental ``freq [MHz]``, ``Epk/Eacc []``, ``Bpk/Eacc [mT/MV/m]``, ``R/Q [Ohm]``, ``G [Ohm]``, ``Q []``, ``ZL``, ``ZT``.
+``ZL`` and ``ZT`` are longitudinal and transverse impedance peaks in specified frequency intervals obtained from wakefield
 analysis The algorithm currently implemented is genetic algorithm. The optimisation settings are controlled
 using a configuration dictionary. The most important parameters for the algorithm are
 
-- `cell_type`: The options are `mid-cell`, `end-cell` and `end-end-cell` depending on the parameterisation of the cavity
-               geometry. See Fig []. Default is `mid-cell`.
+- ``cell_type``: The options are ``mid-cell``, ``end-cell`` and ``end-end-cell`` depending on the parameterisation of the cavity
+               geometry. See Fig []. Default is ``mid-cell``.
 
 .. code-block::
 
   "cell_type": 'mid-cell'
   
-- `freqs`: Target operating frequency of the cavity.
+- ``freqs``: Target operating frequency of the cavity.
 
 .. code-block::
 
@@ -432,7 +426,7 @@ The preceeding parameters belong to the tune_config dictionary and so are entere
         'cell_types': cell_type
     }
 
-- `bounds`: This defines the optimisation search space. All geometric variables must be entered.
+- ``bounds``: This defines the optimisation search space. All geometric variables must be entered.
             Note that variables excluded from optimisation should have identical upper and lower bounds..
 
 .. code-block::
@@ -446,7 +440,7 @@ The preceeding parameters belong to the tune_config dictionary and so are entere
                    'Req': [170.0, 170.0]}
 
 
-- `objectives`: This defines the objective functions. Objectives could be the minimisation, maximisation of optimisation
+- ``objectives``: This defines the objective functions. Objectives could be the minimisation, maximisation of optimisation
              of an objective function to a particular value. They are defined as:
 
 .. code-block::
@@ -460,15 +454,15 @@ The preceeding parameters belong to the tune_config dictionary and so are entere
                     ['min', 'ZT', [1, 2, 3, 5]]
                     ]
 
-The third parameter for the impedances `ZL`, `ZT` define the frequency interval for which to evaluate the peak impedance.
+The third parameter for the impedances ``ZL``, ``ZT`` define the frequency interval for which to evaluate the peak impedance.
 The algorithm specific entries include
-- `initial_points`: The number of initial points to be genereated.
-- `method`: Method of generating the initial points. Defaults to latin hypercube sampling (LHS).
-- `no_of_generations`: The number of generations to be analysed. Defaults to 20.
-- `crossover_factor`: The number of crossovers to create offsprings.
-- `elites_for_crossover`: The number of elites allowed to produce offsprings.
-- `mutation_factor`: The number of mutations to create offsprings.
-- `chaos_factor`: The number of new random geometries included to improve diversity.
+- ``initial_points``: The number of initial points to be genereated.
+- ``method``: Method of generating the initial points. Defaults to latin hypercube sampling (LHS).
+- ``no_of_generations``: The number of generations to be analysed. Defaults to 20.
+- ``crossover_factor``: The number of crossovers to create offsprings.
+- ``elites_for_crossover``: The number of elites allowed to produce offsprings.
+- ``mutation_factor``: The number of mutations to create offsprings.
+- ``chaos_factor``: The number of new random geometries included to improve diversity.
 
 
 .. code-block::
@@ -518,7 +512,7 @@ Putting it all together, we get
         'chaos_factor': 5
     }
 
-Several other parameters like `method`, can be controlled. The full configuration file can be found in the `config_files` folder.
+Several other parameters like ``method``, can be controlled. The full configuration file can be found in the ``config_files`` folder.
 
 .. code-block::
 
@@ -533,7 +527,7 @@ Uncertainty Quantification
 **************************
 
 Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
-`uq_config` dictionary. For example, eigenmode F
+``uq_config`` dictionary. For example, eigenmode F
 analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
 For example, let's revisit our eigenvalue example.
 
@@ -590,9 +584,9 @@ And to plot the results
 .. important::
 
     Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
-    degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm.
+    degenerate geometries in its vicinity. Therefore, the ``Req`` was changed to 110 mm.
     These degeneracies can be identified by using the
-    `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters.
+    ``reentrant_mid_cell.inspect()`` to examine and manipulate the cavity's parameters.
     This tool proves invaluable in diagnosing such issues.
 
 
@@ -666,9 +660,9 @@ And to plot the results
 
 > [!IMPORTANT]
 > Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
-> degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm.
+> degenerate geometries in its vicinity. Therefore, the ``Req`` was changed to 110 mm.
 > These degeneracies can be identified by using the
-> `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters.
+> ``reentrant_mid_cell.inspect()`` to examine and manipulate the cavity's parameters.
 > This tool proves invaluable in diagnosing such issues.
 
 
@@ -677,15 +671,15 @@ Configuration dictionaries
 
 Simulation inputs are defined through configuration dictionaries, with specific formats for different simulation types.
 These dictionaries are structured logically. For instance, a simple eigenmode simulation uses a straightforward
-configuration. Uncertainty quantification (UQ) can be integrated by adding a `uq_config` dictionary within the
+configuration. Uncertainty quantification (UQ) can be integrated by adding a ``uq_config`` dictionary within the
 eigenmode configuration. Wakefield analysis and tuning configurations follow a similar pattern.
 
-Optimisation configurations include a `tune_config` section to ensure frequency optimisation prior to other parameters.
-Depending on the optimisation goals, `eigenmode_config` and `wakefield_config` sections can be nested
-within the optimisation configuration, potentially also incorporating UQ through `uq_config` sub-dictionaries.
+Optimisation configurations include a ``tune_config`` section to ensure frequency optimisation prior to other parameters.
+Depending on the optimisation goals, ``eigenmode_config`` and ``wakefield_config`` sections can be nested
+within the optimisation configuration, potentially also incorporating UQ through ``uq_config`` sub-dictionaries.
 
-To view the complete configuration dictionaries for each analysis, use the `help()` function,
-e.g. `help(cavs.run_eigenmode)`.
+To view the complete configuration dictionaries for each analysis, use the ``help()`` function,
+e.g. ``help(cavs.run_eigenmode)``.
 
 
 The tree structure below shows how configuration dictionaries can be stacked.
@@ -801,9 +795,9 @@ See optimisation example below
 Parallelisation
 ###############
 
-`cavsim2d` simulations can be parallelised easily by setting the `processes` parameter within relevant
+``cavsim2d`` simulations can be parallelised easily by setting the ``processes`` parameter within relevant
 configuration dictionaries. This controls the number of processes used for the analysis.
 For simulations with uncertainty quantification (UQ) enabled, an additional level of parallelisation can
-be achieved by specifying `processes` within the UQ configuration. The default number of processes is one.
+be achieved by specifying ``processes`` within the UQ configuration. The default number of processes is one.
 
 
