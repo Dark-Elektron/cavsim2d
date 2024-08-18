@@ -50,6 +50,7 @@ eps0 = 8.85418782e-12
 class Optimisation:
 
     def __init__(self):
+        self.eigenmode_config = {}
         self.mid_cell = None
         self.wakefield_config = None
         self.tune_config = None
@@ -95,7 +96,7 @@ class Optimisation:
         self.initial_points = config['initial_points']
         self.ng_max = config['no_of_generation']
         self.objectives_unprocessed = config['objectives']
-        self.objectives, weights = self.process_objectives(config['objectives'])
+        self.objectives, weights = process_objectives(config['objectives'])
         self.objective_vars = [obj[1] for obj in self.objectives]
         if 'weights' in config.keys():
             self.weights = config['weights']
@@ -120,13 +121,7 @@ class Optimisation:
         self.crossover_factor = config['crossover_factor']
         self.elites_to_crossover = config['elites_for_crossover']
         self.chaos_factor = config['chaos_factor']
-        if 'uq_config' in config.keys():
-            self.uq_config = config['uq_config']
-            if self.uq_config['delta']:
-                assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                    "The number of deltas must "
-                    "be equal to the number of "
-                    "variables.")
+
         self.tune_config = config['tune_config']
         tune_config_keys = self.tune_config.keys()
         assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
@@ -149,6 +144,29 @@ class Optimisation:
                                                               'Please include a field for wakefield_config. An empty'
                                                               ' config entry implies that default values will be used.')
             self.wakefield_config = config['wakefield_config']
+
+            if 'uq_config' in self.wakefield_config.keys():
+                self.uq_config = self.wakefield_config['uq_config']
+                # replace objectives with processed objectives
+                self.wakefield_config['uq_config']['objectives'] = self.objectives
+                self.wakefield_config['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
+
+                if self.uq_config['delta']:
+                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
+                        "The number of deltas must "
+                        "be equal to the number of "
+                        "variables.")
+
+        if 'eigenmode_config' in config.keys():
+            self.eigenmode_config = config['eigenmode_config']
+
+            if 'uq_config' in self.eigenmode_config.keys():
+                self.uq_config = self.eigenmode_config['uq_config']
+                if self.uq_config['delta']:
+                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
+                        "The number of deltas must "
+                        "be equal to the number of "
+                        "variables.")
 
         self.df = None
 
@@ -199,12 +217,12 @@ class Optimisation:
 
             if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'none',
-                                             'FREQ': self.tune_freq}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
 
             elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
 
                 assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell type is set as 'mid-end cell', the mid cell geometry parameters must "
+                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
                      "be provided in the optimisation_config dictionary.")
                 assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
                                                                        "At least 7 geometric parameters "
@@ -216,17 +234,17 @@ class Optimisation:
                                      "Please check.")
 
                 pseudo_shape_space[rw[0]] = {'IC': IC, 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
 
             elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
                   or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
 
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
 
             else:
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'both',
-                                             'FREQ': self.tune_freq}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
 
         pseudo_shape_space = self.remove_duplicate_values(pseudo_shape_space)
 
@@ -349,41 +367,35 @@ class Optimisation:
                 wake_shape_space = self.run_wakefield_opt(df, self.wakefield_config)
 
                 # process wakefield results
-                df_wake, processed_keys = self.get_wakefield_objectives_value(wake_shape_space,
-                                                                              self.projectDir / fr'SimulationData\ABCI')
+                df_wake, processed_keys = get_wakefield_objectives_value(wake_shape_space,
+                                                                         self.objectives_unprocessed,
+                                                                         self.projectDir / fr'SimulationData\ABCI')
 
                 df = df.merge(df_wake, on='key', how='inner')
                 break
 
         # apply UQ
         if self.uq_config:
-            solver_dict = {'ngsolvemevp': ngsolve_mevp, 'abci': abci_geom}
-            # beampipes = {'Mid Cell': 'none', 'End-End Cell': 'left', 'End-Mid Cell': 'left', 'Single Cell': 'both'}
-            beampipe = 'none'
+            # solver_dict = {'eigenmode': ngsolve_mevp, 'abci': abci_geom}
+            # # beampipes = {'Mid Cell': 'none', 'End-End Cell': 'left', 'End-Mid Cell': 'left', 'Single Cell': 'both'}
+            # beampipe = 'none'
 
-            solver_args_dict = {'ngsolvemevp': {'n_cells': n_cells,
-                                                'n_modules': 1,
-                                                'f_shift': 0,
-                                                'bc': 33,
-                                                'beampipes': beampipe
-                                                },
-                                'abci': {'n_cells': n_cells, 'n_modules': 1,
-                                         'MROT': 2, 'MT': 4, 'NFS': 10000, 'UBT': 50, 'bunch_length': 25,
-                                         'DDR_SIG': 0.1, 'DDZ_SIG': 0.1,
-                                         'progress_list': None,
-                                         'WG_M': None, 'marker': ''},
-                                'parentDir': self.parentDir,
-                                'projectDir': self.projectDir,
-                                'analysis folder': 'Optimisation',
-                                'cell type': self.cell_type,
-                                'optimisation': True
-                                }
-
-            shape_space = self.run_uq(df, self.objective_vars, solver_dict, solver_args_dict, self.uq_config)
+            # solver_args_dict = {'eigenmode': self.eigenmode_config,
+            #                     'wakefield': self.wakefield_config,
+            #                     'n_cells': 1,
+            #                     'n_modules': 1,
+            #                     'parentDir': SOFTWARE_DIRECTORY,
+            #                     'projectDir': self.projectDir,
+            #                     'analysis folder': 'Optimisation',
+            #                     'cell_type': self.cell_type,
+            #                     'optimisation': True
+            #                     }
+            #
+            # shape_space = self.run_uq(df, self.objectives, solver_dict, solver_args_dict, self.uq_config)
 
             # get uq_parameters
             uq_result_dict = {}
-            for key in shape_space.keys():
+            for key in df['key']:
                 filename_eigen = self.projectDir / fr'SimulationData\Optimisation\{key}\uq.json'
                 filename_abci = self.projectDir / fr'SimulationData\ABCI\{key}\uq.json'
                 if os.path.exists(filename_eigen):  # and os.path.exists(filename_abci):
@@ -637,7 +649,7 @@ class Optimisation:
             elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
 
                 assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell type is set as 'mid-end cell', the mid cell geometry parameters must "
+                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
                      "be provided in the optimisation_config dictionary.")
                 assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
                                                                        "At least 7 geometric parameters "
@@ -657,7 +669,17 @@ class Optimisation:
 
             else:
                 shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-        uq_ngsolve_parallel(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+
+        if solver_args_dict['eigenmode']:
+            if 'uq_config' in solver_args_dict['eigenmode'].keys():
+                solver_args_dict['eigenmode']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
+                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
+
+        if solver_args_dict['wakefield']:
+            if 'uq_config' in solver_args_dict['wakefield'].keys():
+                solver_args_dict['wakefield']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
+                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'wakefield')
+
         return shape_space
 
     @staticmethod
@@ -966,9 +988,7 @@ class Optimisation:
             tune_variables = np.array(tune_parameters)
             cell_types = np.array(cell_types)
 
-        run_tune_parallel(pseudo_shape_space, tune_variables, freqs, cell_types, self.projectDir,
-                          solver='NGSolveMEVP', resume=False,
-                          n_cells=1, processes=processes, rerun=True)
+        run_tune_parallel(pseudo_shape_space, tune_config, self.projectDir, solver='NGSolveMEVP')
 
     # def run_tune_parallel(self, pseudo_shape_space, n_cells):
     #     # split shape_space for different processes/ MPI share process by rank
@@ -1052,7 +1072,7 @@ class Optimisation:
 
         processes = 1
         if 'processes' in wakefield_config.keys():
-            assert wakefield_config['processes']> 0, error('Number of proceses must be greater than zero.')
+            assert wakefield_config['processes'] > 0, error('Number of proceses must be greater than zero.')
             processes = wakefield_config['processes']
         else:
             wakefield_config['processes'] = processes
@@ -1084,6 +1104,7 @@ class Optimisation:
 
         if 'DDZ_SIG' not in wakefield_config_keys:
             wakefield_config['DDZ_SIG'] = DDZ_SIG
+
         df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
         shape_space = {}
 
@@ -1092,7 +1113,7 @@ class Optimisation:
             rw = row.tolist()
             if self.cell_type.lower() == 'end-mid Cell':
 
-                A_i, B_i, a_i, b_i, Ri_i , L_i, Req_i = self.mid_cell
+                A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i = self.mid_cell
 
                 IC = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i]
 
@@ -1333,342 +1354,318 @@ class Optimisation:
 
         return processed_constraints
 
-    def process_objectives(self, objectives):
-        # objectives, weights, constraints, n, ng_max = [["min", "Epk/Eacc"], ["min", "Bpk/Eacc"], ["max", "R/Q"]], [5, 1, 1], \
-        #                                               ["Bpk/Eacc < 6.5", "freq > 400.58", 'freq < 400.99'], 1, 4
-        # obj_vars = [obj[1] for obj in objectives]
-        processed_objectives = []
-        weights = []
-
-        for i, obj in enumerate(objectives):
-            if obj[1] == "ZL" or obj[1] == "ZT":
-                goal = obj[0]
-                freq_ranges = self.process_interval(obj[2])
-                for f in freq_ranges:
-                    processed_objectives.append([goal, f"{obj[1]} [max({f[0]}<f<{f[1]})]", f])
-                    weights.append(1)
-            else:
-                goal = obj[0]
-                if goal == 'equal':
-                    processed_objectives.append(obj)
-                else:
-                    processed_objectives.append(obj)
-                weights.append(1)
-
-        return processed_objectives, weights
-
-    def get_objectives_value(self, d, obj, norm_length, n_cells):
-        Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
-        L = d['LENGTH'][n_cells - 1] * 10  # convert to mm
-        Freq = d['FREQUENCY'][n_cells - 1]
-        E_stored = d['STORED ENERGY'][n_cells - 1]
-        Rsh = d['SHUNT IMPEDANCE'][n_cells - 1]  # MOhm
-        Q = d['QUALITY FACTOR'][n_cells - 1]
-        Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
-        Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
-        # Vacc = dict['ACCELERATION'][n_cells - 1]
-        Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells - 1]  # MV/m
-        r_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
-        G = 0.00948 * Q * (Freq / 1300)
-        GR_Q = G * 2 * r_Q
-
-        Vacc = np.sqrt(
-            2 * r_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6  # factor of 2, remember circuit and accelerator definition
-        # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
-        Eacc = Vacc / (
-                n_cells * norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
-        Epk_Eacc = Epk / Eacc
-        Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
-
-        d = {
-            "Req": Req,
-            "L": L,
-            "freq": Freq,
-            "Q": Q,
-            "E": E_stored,
-            "R/Q": 2 * r_Q,
-            "Epk/Eacc": Epk_Eacc,
-            "Bpk/Eacc": Bpk_Eacc,
-            "G": G,
-            "GR/Q": GR_Q
-        }
-
-        objective = []
-        # tune_result = []
-
-        # # append freq and Req
-        # if self.ui.cb_Tune_Variable.currentText() == "Req":
-        #     tune_result.append(Req)
-        # else:
-        #     tune_result.append(L)
-        #
-        # tune_result.append(Freq)
-
-        # append objective functions
-        for o in obj:
-            if o[1] in d.keys():
-                objective.append(d[o[1]])
-
-        return objective  # , tune_result
-
-    def get_wakefield_objectives_value(self, d, abci_data_dir):
-        k_loss_array_transverse = []
-        k_loss_array_longitudinal = []
-        k_loss_M0 = []
-        key_list = []
-
-        # create list to hold Z
-        Zmax_mon_list = []
-        Zmax_dip_list = []
-        xmax_mon_list = []
-        xmax_dip_list = []
-        processed_keys_mon = []
-        processed_keys_dip = []
-
-        def calc_k_loss():
-            for key, value in d.items():
-                abci_data_long = ABCIData(abci_data_dir, key, 0)
-                abci_data_trans = ABCIData(abci_data_dir, key, 1)
-
-                # trans
-                x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-                k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-                if math.isnan(k_loss_trans):
-                    print(f"Encountered an exception: Check shape {key}")
-                    continue
-
-                # long
-                x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-                abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
-
-                k_M0 = abci_data_long.y_peaks[0]
-                k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-                k_loss_HOM = k_loss_long - k_M0
-
-                # append only after successful run
-                k_loss_M0.append(k_M0)
-                k_loss_array_longitudinal.append(k_loss_HOM)
-                k_loss_array_transverse.append(k_loss_trans)
-
-            return [k_loss_M0, k_loss_array_longitudinal, k_loss_array_transverse]
-
-        def get_Zmax_L(mon_interval=None):
-            if mon_interval is None:
-                mon_interval = [0.0, 2e10]
-
-            for key, value in d.items():
-                try:
-                    abci_data_mon = ABCIData(abci_data_dir, f"{key}", 0)
-
-                    # get longitudinal and transverse impedance plot data
-                    xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
-                    xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
-
-                    # Zmax
-                    if mon_interval is None:
-                        mon_interval = [[0.0, 10]]
-
-                    # calculate magnitude
-                    ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-
-                    # get peaks
-                    peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-                    xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-
-                    for i, z_bound in enumerate(mon_interval):
-                        # get mask
-                        msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                        if len(yp_mon[msk_mon]) != 0:
-                            Zmax_mon = max(yp_mon[msk_mon])
-
-                            Zmax_mon_list[i].append(Zmax_mon)
-                        elif len(yp_mon) != 0:
-                            Zmax_mon_list[i].append(0)
-                        else:
-                            print("skipped, yp_mon = [], raise exception")
-                            raise Exception()
-
-                    processed_keys_mon.append(key)
-                except:
-                    print("skipped, yp_mon = []")
-                    # for i, z_bound in enumerate(mon_interval):
-                    #     Zmax_mon_list[i].append(-1)
-
-            # print("2g", Zmax_mon_list)
-
-            return Zmax_mon_list
-
-        def get_Zmax_T(dip_interval=None):
-            if dip_interval is None:
-                dip_interval = [0.0, 2e10]
-
-            for key, value in d.items():
-                try:
-                    abci_data_dip = ABCIData(abci_data_dir, f"{key}", 1)
-
-                    xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
-                    xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
-
-                    # Zmax
-                    if dip_interval is None:
-                        dip_interval = [[0.0, 10]]
-
-                    # calculate magnitude
-                    ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-
-                    # get peaks
-                    peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-                    xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-
-                    for i, z_bound in enumerate(dip_interval):
-                        # get mask
-                        msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                        if len(yp_dip[msk_dip]) != 0:
-                            Zmax_dip = max(yp_dip[msk_dip])
-
-                            Zmax_dip_list[i].append(Zmax_dip)
-                        elif len(yp_dip) != 0:
-                            Zmax_dip_list[i].append(0)
-                        else:
-                            print("skipped, yp_dip = [], raise exception")
-                            raise Exception()
-
-                    processed_keys_dip.append(key)
-                except:
-                    print("skipped, yp_dip = []")
-                    # for i, z_bound in enumerate(dip_interval):
-                    #     Zmax_dip_list[i].append(-1)
-
-            return Zmax_dip_list
-
-        def all(mon_interval, dip_interval):
-            for key, value in d.items():
-                abci_data_long = ABCIData(abci_data_dir, f"{key}_", 0)
-                abci_data_trans = ABCIData(abci_data_dir, f"{key}_", 1)
-
-                # get longitudinal and transverse impedance plot data
-                xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-                xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
-
-                xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-                xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
-
-                # loss factors
-                # trans
-                k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-                if math.isnan(k_loss_trans):
-                    error(f"Encountered an exception: Check shape {key}")
-                    continue
-
-                # long
-                abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
-
-                k_M0 = abci_data_long.y_peaks[0]
-                k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-                k_loss_HOM = k_loss_long - k_M0
-
-                # calculate magnitude
-                ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-                ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-
-                # get peaks
-                peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-                xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-
-                peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-                xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-
-                for i, z_bound in enumerate(mon_interval):
-                    # get mask
-                    msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                    if len(yp_mon[msk_mon]) != 0:
-                        Zmax_mon = max(yp_mon[msk_mon])
-                        xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
-
-                        Zmax_mon_list[i].append(Zmax_mon)
-                        xmax_mon_list[i].append(xmax_mon)
-                    elif len(yp_mon) != 0:
-                        Zmax_mon_list[i].append(0.0)
-                        xmax_mon_list[i].append(0.0)
-                    else:
-                        continue
-
-                for i, z_bound in enumerate(dip_interval):
-                    # get mask
-                    msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                    if len(yp_dip[msk_dip]) != 0:
-                        Zmax_dip = max(yp_dip[msk_dip])
-                        xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
-
-                        Zmax_dip_list[i].append(Zmax_dip)
-                        xmax_dip_list[i].append(xmax_dip)
-                    elif len(yp_dip) != 0:
-                        Zmax_dip_list[i].append(0.0)
-                        xmax_dip_list[i].append(0.0)
-                    else:
-                        continue
-
-                # append only after successful run
-
-                k_loss_M0.append(k_M0)
-                k_loss_array_longitudinal.append(k_loss_HOM)
-                k_loss_array_transverse.append(k_loss_trans)
-
-        ZL, ZT = [], []
-        df_ZL, df_ZT = pd.DataFrame(), pd.DataFrame()
-        for obj in self.objectives_unprocessed:
-            if "ZL" in obj[1]:
-                freq_range = self.process_interval(obj[2])
-                for i in range(len(freq_range)):
-                    Zmax_mon_list.append([])
-                    xmax_mon_list.append([])
-                    df_ZL[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
-
-                ZL = get_Zmax_L(freq_range)
-
-            elif "ZT" in obj[1]:
-                freq_range = self.process_interval(obj[2])
-
-                for i in range(len(freq_range)):
-                    Zmax_dip_list.append([])
-                    xmax_dip_list.append([])
-                    df_ZT[obj[1]] = 0
-
-                ZT = get_Zmax_T(freq_range)
-
-            elif obj[1] == "k_loss":
-                pass
-            elif obj[1] == "k_kick":
-                pass
-
-        # create dataframes from list
-        print(processed_keys_mon, processed_keys_dip)
-        df_ZL.loc[:, :] = np.array(ZL).T
-        df_ZT.loc[:, :] = np.array(ZT).T
-        df_ZL['key'] = processed_keys_mon
-        df_ZT['key'] = processed_keys_dip
-
-        processed_keys = list(set(processed_keys_mon) & set(processed_keys_dip))
-
-        # ZL, ZT = np.array(ZL).T, np.array(ZT).T
-
-        if len(ZL) != 0 and len(ZT) != 0:
-            df_wake = df_ZL.merge(df_ZT, on='key', how='inner')
-            # obj_result = np.hstack((ZL, ZT))
-        elif len(ZL) != 0:
-            df_wake = df_ZL
-            # obj_result = ZL
-        else:
-            df_wake = df_ZT
-            # obj_result = ZT
-
-        return df_wake, processed_keys
+    # def get_objectives_value(self, d, obj, norm_length, n_cells):
+    #     Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
+    #     L = d['LENGTH'][n_cells - 1] * 10  # convert to mm
+    #     Freq = d['FREQUENCY'][n_cells - 1]
+    #     E_stored = d['STORED ENERGY'][n_cells - 1]
+    #     Rsh = d['SHUNT IMPEDANCE'][n_cells - 1]  # MOhm
+    #     Q = d['QUALITY FACTOR'][n_cells - 1]
+    #     Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
+    #     Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
+    #     # Vacc = dict['ACCELERATION'][n_cells - 1]
+    #     Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells - 1]  # MV/m
+    #     r_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
+    #     G = 0.00948 * Q * (Freq / 1300)
+    #     GR_Q = G * 2 * r_Q
+    #
+    #     Vacc = np.sqrt(
+    #         2 * r_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6  # factor of 2, remember circuit and accelerator definition
+    #     # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
+    #     Eacc = Vacc / (
+    #             n_cells * norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
+    #     Epk_Eacc = Epk / Eacc
+    #     Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
+    #
+    #     d = {
+    #         "Req": Req,
+    #         "L": L,
+    #         "freq": Freq,
+    #         "Q": Q,
+    #         "E": E_stored,
+    #         "R/Q": 2 * r_Q,
+    #         "Epk/Eacc": Epk_Eacc,
+    #         "Bpk/Eacc": Bpk_Eacc,
+    #         "G": G,
+    #         "GR/Q": GR_Q
+    #     }
+    #
+    #     objective = []
+    #     # tune_result = []
+    #
+    #     # # append freq and Req
+    #     # if self.ui.cb_Tune_Variable.currentText() == "Req":
+    #     #     tune_result.append(Req)
+    #     # else:
+    #     #     tune_result.append(L)
+    #     #
+    #     # tune_result.append(Freq)
+    #
+    #     # append objective functions
+    #     for o in obj:
+    #         if o[1] in d.keys():
+    #             objective.append(d[o[1]])
+    #
+    #     return objective  # , tune_result
+    #
+    # def get_wakefield_objectives_value(self, d, abci_data_dir):
+    #     k_loss_array_transverse = []
+    #     k_loss_array_longitudinal = []
+    #     k_loss_M0 = []
+    #     key_list = []
+    #
+    #     # create list to hold Z
+    #     Zmax_mon_list = []
+    #     Zmax_dip_list = []
+    #     xmax_mon_list = []
+    #     xmax_dip_list = []
+    #     processed_keys_mon = []
+    #     processed_keys_dip = []
+    #
+    #     def calc_k_loss():
+    #         for key, value in d.items():
+    #             abci_data_long = ABCIData(abci_data_dir, key, 0)
+    #             abci_data_trans = ABCIData(abci_data_dir, key, 1)
+    #
+    #             # trans
+    #             x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
+    #             k_loss_trans = abci_data_trans.loss_factor['Transverse']
+    #
+    #             if math.isnan(k_loss_trans):
+    #                 print(f"Encountered an exception: Check shape {key}")
+    #                 continue
+    #
+    #             # long
+    #             x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
+    #             abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
+    #
+    #             k_M0 = abci_data_long.y_peaks[0]
+    #             k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
+    #             k_loss_HOM = k_loss_long - k_M0
+    #
+    #             # append only after successful run
+    #             k_loss_M0.append(k_M0)
+    #             k_loss_array_longitudinal.append(k_loss_HOM)
+    #             k_loss_array_transverse.append(k_loss_trans)
+    #
+    #         return [k_loss_M0, k_loss_array_longitudinal, k_loss_array_transverse]
+    #
+    #     def get_Zmax_L(mon_interval=None):
+    #         if mon_interval is None:
+    #             mon_interval = [0.0, 2e10]
+    #
+    #         for key, value in d.items():
+    #             try:
+    #                 abci_data_mon = ABCIData(abci_data_dir, f"{key}", 0)
+    #
+    #                 # get longitudinal and transverse impedance plot data
+    #                 xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
+    #                 xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
+    #
+    #                 # Zmax
+    #                 if mon_interval is None:
+    #                     mon_interval = [[0.0, 10]]
+    #
+    #                 # calculate magnitude
+    #                 ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
+    #
+    #                 # get peaks
+    #                 peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
+    #                 xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
+    #
+    #                 for i, z_bound in enumerate(mon_interval):
+    #                     # get mask
+    #                     msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
+    #
+    #                     if len(yp_mon[msk_mon]) != 0:
+    #                         Zmax_mon = max(yp_mon[msk_mon])
+    #
+    #                         Zmax_mon_list[i].append(Zmax_mon)
+    #                     elif len(yp_mon) != 0:
+    #                         Zmax_mon_list[i].append(0)
+    #                     else:
+    #                         print("skipped, yp_mon = [], raise exception")
+    #                         raise Exception()
+    #
+    #                 processed_keys_mon.append(key)
+    #             except:
+    #                 print("skipped, yp_mon = []")
+    #                 # for i, z_bound in enumerate(mon_interval):
+    #                 #     Zmax_mon_list[i].append(-1)
+    #
+    #         # print("2g", Zmax_mon_list)
+    #
+    #         return Zmax_mon_list
+    #
+    #     def get_Zmax_T(dip_interval=None):
+    #         if dip_interval is None:
+    #             dip_interval = [0.0, 2e10]
+    #
+    #         for key, value in d.items():
+    #             try:
+    #                 abci_data_dip = ABCIData(abci_data_dir, f"{key}", 1)
+    #
+    #                 xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
+    #                 xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
+    #
+    #                 # Zmax
+    #                 if dip_interval is None:
+    #                     dip_interval = [[0.0, 10]]
+    #
+    #                 # calculate magnitude
+    #                 ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
+    #
+    #                 # get peaks
+    #                 peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
+    #                 xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
+    #
+    #                 for i, z_bound in enumerate(dip_interval):
+    #                     # get mask
+    #                     msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
+    #
+    #                     if len(yp_dip[msk_dip]) != 0:
+    #                         Zmax_dip = max(yp_dip[msk_dip])
+    #
+    #                         Zmax_dip_list[i].append(Zmax_dip)
+    #                     elif len(yp_dip) != 0:
+    #                         Zmax_dip_list[i].append(0)
+    #                     else:
+    #                         print("skipped, yp_dip = [], raise exception")
+    #                         raise Exception()
+    #
+    #                 processed_keys_dip.append(key)
+    #             except:
+    #                 print("skipped, yp_dip = []")
+    #                 # for i, z_bound in enumerate(dip_interval):
+    #                 #     Zmax_dip_list[i].append(-1)
+    #
+    #         return Zmax_dip_list
+    #
+    #     def all(mon_interval, dip_interval):
+    #         for key, value in d.items():
+    #             abci_data_long = ABCIData(abci_data_dir, f"{key}_", 0)
+    #             abci_data_trans = ABCIData(abci_data_dir, f"{key}_", 1)
+    #
+    #             # get longitudinal and transverse impedance plot data
+    #             xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
+    #             xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
+    #
+    #             xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
+    #             xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
+    #
+    #             # loss factors
+    #             # trans
+    #             k_loss_trans = abci_data_trans.loss_factor['Transverse']
+    #
+    #             if math.isnan(k_loss_trans):
+    #                 error(f"Encountered an exception: Check shape {key}")
+    #                 continue
+    #
+    #             # long
+    #             abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
+    #
+    #             k_M0 = abci_data_long.y_peaks[0]
+    #             k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
+    #             k_loss_HOM = k_loss_long - k_M0
+    #
+    #             # calculate magnitude
+    #             ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
+    #             ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
+    #
+    #             # get peaks
+    #             peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
+    #             xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
+    #
+    #             peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
+    #             xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
+    #
+    #             for i, z_bound in enumerate(mon_interval):
+    #                 # get mask
+    #                 msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
+    #
+    #                 if len(yp_mon[msk_mon]) != 0:
+    #                     Zmax_mon = max(yp_mon[msk_mon])
+    #                     xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
+    #
+    #                     Zmax_mon_list[i].append(Zmax_mon)
+    #                     xmax_mon_list[i].append(xmax_mon)
+    #                 elif len(yp_mon) != 0:
+    #                     Zmax_mon_list[i].append(0.0)
+    #                     xmax_mon_list[i].append(0.0)
+    #                 else:
+    #                     continue
+    #
+    #             for i, z_bound in enumerate(dip_interval):
+    #                 # get mask
+    #                 msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
+    #
+    #                 if len(yp_dip[msk_dip]) != 0:
+    #                     Zmax_dip = max(yp_dip[msk_dip])
+    #                     xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
+    #
+    #                     Zmax_dip_list[i].append(Zmax_dip)
+    #                     xmax_dip_list[i].append(xmax_dip)
+    #                 elif len(yp_dip) != 0:
+    #                     Zmax_dip_list[i].append(0.0)
+    #                     xmax_dip_list[i].append(0.0)
+    #                 else:
+    #                     continue
+    #
+    #             # append only after successful run
+    #
+    #             k_loss_M0.append(k_M0)
+    #             k_loss_array_longitudinal.append(k_loss_HOM)
+    #             k_loss_array_transverse.append(k_loss_trans)
+    #
+    #     ZL, ZT = [], []
+    #     df_ZL, df_ZT = pd.DataFrame(), pd.DataFrame()
+    #     for obj in self.objectives_unprocessed:
+    #         if "ZL" in obj[1]:
+    #             freq_range = process_interval(obj[2])
+    #             for i in range(len(freq_range)):
+    #                 Zmax_mon_list.append([])
+    #                 xmax_mon_list.append([])
+    #                 df_ZL[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
+    #
+    #             ZL = get_Zmax_L(freq_range)
+    #
+    #         elif "ZT" in obj[1]:
+    #             freq_range = process_interval(obj[2])
+    #
+    #             for i in range(len(freq_range)):
+    #                 Zmax_dip_list.append([])
+    #                 xmax_dip_list.append([])
+    #                 df_ZT[obj[1]] = 0
+    #
+    #             ZT = get_Zmax_T(freq_range)
+    #
+    #         elif obj[1] == "k_loss":
+    #             pass
+    #         elif obj[1] == "k_kick":
+    #             pass
+    #
+    #     # create dataframes from list
+    #     print(processed_keys_mon, processed_keys_dip)
+    #     df_ZL.loc[:, :] = np.array(ZL).T
+    #     df_ZT.loc[:, :] = np.array(ZT).T
+    #     df_ZL['key'] = processed_keys_mon
+    #     df_ZT['key'] = processed_keys_dip
+    #
+    #     processed_keys = list(set(processed_keys_mon) & set(processed_keys_dip))
+    #
+    #     # ZL, ZT = np.array(ZL).T, np.array(ZT).T
+    #
+    #     if len(ZL) != 0 and len(ZT) != 0:
+    #         df_wake = df_ZL.merge(df_ZT, on='key', how='inner')
+    #         # obj_result = np.hstack((ZL, ZT))
+    #     elif len(ZL) != 0:
+    #         df_wake = df_ZL
+    #         # obj_result = ZL
+    #     else:
+    #         df_wake = df_ZT
+    #         # obj_result = ZT
+    #
+    #     return df_wake, processed_keys
 
     def crossover(self, df, generation, f):  # , rq, grq
         elites = {}
@@ -1688,8 +1685,6 @@ class Optimisation:
                 elif o[0] == "max":
                     elites[f'{o[1]}'] = df.sort_values(f'{o[1]}', ascending=False)
                 elif o[0] == "equal":
-                    # print(df[o[1]] - float(o[2]))
-                    # print((df[o[1]] - float(o[2])).abs().sort_values())
                     elites[f'{o[1]}'] = df.sort_values(f'{o[1]}')
 
         obj_dict = {}
@@ -1744,24 +1739,8 @@ class Optimisation:
                     # inf_dict[key] = [o[1] for o in self.objectives if o[0] != 'equal']
                     inf_dict[key] = self.objective_vars
 
-        # print(elites.keys())
-        # print(elites)
-        # print(inf_dict)
         n_elites_to_cross = self.elites_to_crossover
-        # print(n_elites_to_cross, len(elites), df.shape[0])
-        # print(np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1))
-        # print(np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1))
-        # print(np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1))
-        # print(np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1))
-        # print(obj['mts dipole'])
-        # print(obj['mts dipole'].loc[0])
-        # print(obj['mts dipole'].loc[1])
-        # print(obj['Epk/Eacc'].loc[1])
-        # print(obj['mts dipole'].loc[np.random.randint(
-        #     n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)])
 
-        # print(sum([obj[key].loc[np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["A"] for key in inf_dict["A"]]))
-        # print(sum([obj[key].loc[np.random.randint(n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["A"] for key in inf_dict["A"]]))
         for i in range(f):
             # (<obj>[<rank>][<variable>] -> (b[c[1]][0]
 
@@ -1894,7 +1873,6 @@ class Optimisation:
                 elif o[0] == 'equal':
                     obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
 
-            # print(obj)
             datapoints = df.loc[:, obj]
         else:
             datapoints = df.loc[:, self.objective_vars]
@@ -1985,22 +1963,22 @@ class Optimisation:
 
         dir_util.copy_tree(src, dst)
 
-    @staticmethod
-    def run_sequential(pseudo_shape_space_proc, resume, p, bc, parentDir, projectDir, filename, sim_folder,
-                       tune_variable, iter_set, cell_type, progress_list, convergence_list, save_last, n_cells):
-        tuner.tune_ngsolve(pseudo_shape_space_proc, bc, parentDir, projectDir, filename, resume=resume, proc=p,
-                           sim_folder=sim_folder, tune_variable=tune_variable, iter_set=iter_set,
-                           cell_type=cell_type, progress_list=progress_list, convergence_list=convergence_list,
-                           save_last=save_last,
-                           n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again #val2
+    # @staticmethod
+    # def run_sequential(pseudo_shape_space_proc, resume, p, bc, parentDir, projectDir, filename, sim_folder,
+    #                    tune_variable, iter_set, cell_type, progress_list, convergence_list, save_last, n_cells):
+    #     tuner.tune_ngsolve(pseudo_shape_space_proc, bc, parentDir, projectDir, filename, resume=resume, proc=p,
+    #                        sim_folder=sim_folder, tune_variable=tune_variable, iter_set=iter_set,
+    #                        cell_type=cell_type, progress_list=progress_list, convergence_list=convergence_list,
+    #                        save_last=save_last,
+    #                        n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again #val2
 
-    @staticmethod
-    def process_interval(interval_list):
-        interval = []
-        for i in range(len(interval_list) - 1):
-            interval.append([interval_list[i], interval_list[i + 1]])
-
-        return interval
+    # @staticmethod
+    # def process_interval(interval_list):
+    #     interval = []
+    #     for i in range(len(interval_list) - 1):
+    #         interval.append([interval_list[i], interval_list[i + 1]])
+    #
+    #     return interval
 
     @staticmethod
     def color_pareto(df, no_pareto_optimal):
@@ -2307,7 +2285,7 @@ class Cavity:
                 self.shape['IC'][VAR_TO_INDEX_DICT[key]] = current_var
 
     # def check_uq_config(self, uq_config):
-    #     cell_type = uq_config['cell type']
+    #     cell_type = uq_config['cell_type']
     #     delta = uq_config['delta']
     #     method = uq_config['method']
     #     uq_vars = uq_config['variables']
@@ -2423,7 +2401,7 @@ class Cavity:
     #             freq = beta * c0 / (4 * self.mid_cell[5])
     #             info("Calculated freq from mid cell half length: ", freq)
     #
-    #         # create new shape space based on cell type
+    #         # create new shape space based on cell_type
     #         # if cell_type.lower() == 'mid cell':
     #         shape_space = {
     #             f'{self.name}':
@@ -2637,15 +2615,15 @@ class Cavity:
         # run UQ
         if uq_config:
             objectives = uq_config['objectives']
-            solver_dict = {'ngsolvemevp': ngsolve_mevp}
-            solver_args_dict = {'ngsolvemevp':
+            solver_dict = {'eigenmode': ngsolve_mevp}
+            solver_args_dict = {'eigenmode':
                                     {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
                                      'beampipes': shape['BP']
                                      },
                                 'parentDir': parentDir,
                                 'projectDir': projectDir,
                                 'analysis folder': 'NGSolveMEVP',
-                                'cell type': 'mid cell',
+                                'cell_type': 'mid cell',
                                 'optimisation': False
                                 }
 
@@ -2665,10 +2643,10 @@ class Cavity:
             # else:
             if uq_cell_complexity == 'multicell':
                 shape_space = {name: shape_multi}
-                uq_ngsolve_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
             else:
                 shape_space = {name: shape}
-                uq_ngsolve_parallel(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
 
         done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
 
@@ -3863,14 +3841,14 @@ class Cavities(Optimisation):
                     return True
                 except Exception as e:
                     self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                    print("An exception occurred in created project: ", e)
+                    error("An exception occurred in created project: ", e)
                     return False
             else:
                 # self.projectDir = os.path.join(project_dir, project_name)
                 self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
                 return True
         else:
-            print('\tPlease enter a valid project name')
+            error('\tPlease enter a valid project name')
             self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
             return False
 
@@ -3892,12 +3870,12 @@ class Cavities(Optimisation):
                         shutil.rmtree(path)
                         return True
                     else:
-                        print('\tIt seems that the folder specified is not a cavity project folder. Please check folder'
+                        error('\tIt seems that the folder specified is not a cavity project folder. Please check folder'
                               'again to avoid deleting important files.')
                         return False
 
                 except Exception as e:
-                    print("Exception occurred: ", e)
+                    error("Exception occurred: ", e)
                     return False
             else:
                 return False
@@ -3939,53 +3917,8 @@ class Cavities(Optimisation):
 
         """
 
-        if tune_config is None:
-            tune_config = {}
-
-        tune_config_keys = tune_config.keys()
-
-        assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
-        assert 'parameters' in tune_config_keys, error('Please enter the tune variable in tune_config_dict')
-        assert 'cell_types' in tune_config_keys, error('Please enter the cell_type in tune_config_dict')
-        freqs = tune_config['freqs']
-        tune_parameters = tune_config['parameters']
-        cell_types = tune_config['cell_types']
-
-        # perform all necessary checks
-        if 'processes' in tune_config.keys():
-            processes = tune_config['processes']
-            assert processes > 0, error('Number of proceses must be greater than zero.')
-        else:
-            processes = 1
-
-        rerun = True
-        if 'rerun' in tune_config_keys:
-            if isinstance(tune_config['rerun'], bool):
-                rerun = tune_config['rerun']
-
-        if isinstance(freqs, float) or isinstance(freqs, int):
-            freqs = np.array([freqs for _ in range(len(self.shape_space))])
-        else:
-            assert len(freqs) == len(self.shape_space), error(
-                'Number of target frequencies must correspond to the number of cavities')
-            freqs = np.array(freqs)
-
-        if isinstance(tune_parameters, str):
-            assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
-                'Please enter a valid tune parameter')
-            tune_variables = np.array([tune_parameters for _ in range(len(self.shape_space))])
-            cell_types = np.array([cell_types for _ in range(len(self.shape_space))])
-        else:
-            assert len(tune_parameters) == len(self.shape_space), error(
-                'Number of tune parameters must correspond to the number of cavities')
-            assert len(cell_types) == len(self.shape_space), error(
-                'Number of cell types must correspond to the number of cavities')
-            tune_variables = np.array(tune_parameters)
-            cell_types = np.array(cell_types)
-
-        run_tune_parallel(self.shape_space, tune_variables, freqs, cell_types, self.projectDir, solver='NGSolveMEVP',
-                          resume=False, n_cells=1, processes=processes, rerun=rerun)
-
+        run_tune_parallel(self.shape_space, tune_config, self.projectDir, solver='NGSolveMEVP',
+                          resume=False)
         # get tune results
         self.get_tune_res()
 
@@ -4095,7 +4028,6 @@ class Cavities(Optimisation):
     #         else:
     #             cav.run_tune(tune_variables[i], freq=freqs[i], cell_type=cell_types[i],
     #                          solver='ngsolvemevp', n_cells=n_cells)
-
     def run_eigenmode(self, eigenmode_config=None):
         """
         Runs the eigenmode analysis with the given configuration.
@@ -4126,7 +4058,7 @@ class Cavities(Optimisation):
                         # 'method': ['Quadrature', 'Stroud5'],
                         # 'gaussian': ['Quadrature', 'Gaussian'],
                         # 'from file': ['<file path>', columns],
-                        'cell type': 'mid-cell',
+                        'cell_type': 'mid-cell',
                         'cell_complexity': 'simplecell'
                     }
                 }
@@ -4139,29 +4071,12 @@ class Cavities(Optimisation):
         if eigenmode_config is None:
             eigenmode_config = {}
 
-        rerun = True
-        if 'rerun' in eigenmode_config.keys():
-            assert isinstance(eigenmode_config['rerun'], bool), error('rerun must be boolean.')
-            rerun = eigenmode_config['rerun']
+        # add save directory field to eigenmode_config
+        eigenmode_config['solver_save_directory'] = 'NGSolveMEVP'
+        eigenmode_config['opt'] = False
 
-        # perform all necessary checks
-        processes = 1
-        if 'processes' in eigenmode_config.keys():
-            assert eigenmode_config['processes'] > 0, error('Number of proceses must be greater than zero.')
-            assert isinstance(eigenmode_config['processes'], int), error('Number of proceses must be integer.')
-            processes = eigenmode_config['processes']
-        else:
-            eigenmode_config['processes'] = processes
-
-        freq_shifts = 0
-        if 'f_shifts' in eigenmode_config.keys():
-            freq_shifts = eigenmode_config['f_shifts']
-
-        boundary_conds = 'mm'
-        if 'boundary_conditions' in eigenmode_config.keys():
-            boundary_conds = eigenmode_config['boundary_conditions']
-        else:
-            eigenmode_config['boundary_conditions'] = boundary_conds
+        run_eigenmode_parallel(self.shape_space, self.shape_space_multicell, eigenmode_config,
+                               self.projectDir)
 
         uq_config = None
         if 'uq_config' in eigenmode_config.keys():
@@ -4170,9 +4085,6 @@ class Cavities(Optimisation):
                 assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
                                                                                      "be equal to the number of "
                                                                                      "variables.")
-
-        run_eigenmode_parallel(self.shape_space, self.shape_space_multicell, eigenmode_config, freq_shifts,
-                               self.projectDir, boundary_conds, uq_config, rerun)
         self.get_eigenmode_qois(uq_config)
 
     # def run_eigenmode_(self, eigenmode_config):
@@ -4367,6 +4279,7 @@ class Cavities(Optimisation):
         """
         if wakefield_config is None:
             wakefield_config = {}
+
         wakefield_config_keys = wakefield_config.keys()
         MROT = 2
         MT = 10
@@ -4390,7 +4303,7 @@ class Cavities(Optimisation):
 
         processes = 1
         if 'processes' in wakefield_config.keys():
-            assert wakefield_config['processes']> 0, error('Number of proceses must be greater than zero.')
+            assert wakefield_config['processes'] > 0, error('Number of proceses must be greater than zero.')
             processes = wakefield_config['processes']
         else:
             wakefield_config['processes'] = processes
@@ -4422,6 +4335,18 @@ class Cavities(Optimisation):
 
         if 'DDZ_SIG' not in wakefield_config_keys:
             wakefield_config['DDZ_SIG'] = DDZ_SIG
+
+        uq_config = None
+        if 'uq_config' in wakefield_config_keys:
+            assert 'objectives' in wakefield_config['uq_config'].keys(), error('Please enter objectives in uq_config.')
+
+            # adjust objectives to match signature with optimisation
+            objectives_unprocessed = [['', obj[0], obj[1]] for obj in wakefield_config['uq_config']['objectives']]
+            objectives, weights = process_objectives(objectives_unprocessed)
+            wakefield_config['uq_config']['objectives_unprocessed'] = objectives_unprocessed
+            wakefield_config['uq_config']['objectives'] = objectives
+        else:
+            wakefield_config['uq_config'] = uq_config
 
         run_wakefield_parallel(self.shape_space, self.shape_space_multicell, wakefield_config,
                                self.projectDir, marker='', rerun=rerun)
@@ -4626,7 +4551,6 @@ class Cavities(Optimisation):
             # r"$Rs_\mathrm{0} \mathrm{[10^7]}$": np.average(cavity.Rs[ind])
         }
 
-        print(qois)
         return qois_norm_units
 
     def qois_fm(self):
@@ -5292,7 +5216,6 @@ class Cavities(Optimisation):
             axs = [ax1, ax2, ax3]
 
         else:
-            print("in here")
             fig, axs = plt.subplots(1, 1)
             axs = [axs]
 
@@ -5341,7 +5264,7 @@ class Cavities(Optimisation):
                     return
 
                 if ok1 * ok2 == 0:
-                    cl = print('Counter functions or impact energy missing.')
+                    cl = error('Counter functions or impact energy missing.')
                 else:
                     # if ss > 0:
                     #     cl = print(np.array(['Plotting the triplot (counter, enhanced ', 'counter and impact energy).']))
@@ -5450,352 +5373,6 @@ class Cavities(Optimisation):
 
         plt.show()
 
-    def write_contour(self, cav, opt='mid', n_cells=1):
-        """
-        Write geometric contour for cavities
-
-        Parameters
-        ----------
-        cav: Cavity object
-            Cavity object
-        opt: str
-
-        n_cells: int
-            Number of cavity cells
-
-        Returns
-        -------
-
-        """
-
-        if opt.lower() == 'mid':
-            A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, _ = np.array(cav.shape_space['IC']) * 1e-3
-            A_el, B_el, a_el, b_el, Ri_el, L_el, Req_el, _ = np.array(cav.shape_space['IC']) * 1e-3
-            A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er, _ = np.array(cav.shape_space['IC']) * 1e-3
-            n_cell = 1
-            L_bp_l = 0.001
-            L_bp_r = 0.001
-
-            # calculate shift
-            shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
-
-        elif opt.lower() == 'end':
-            A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, _ = np.array(cav.shape_space['IC']) * 1e-3
-            A_el, B_el, a_el, b_el, Ri_el, L_el, Req_el, _ = np.array(cav.shape_space['IC']) * 1e-3
-            A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er, _ = np.array(cav.shape_space['OC']) * 1e-3
-            L_bp_l = 0.001
-            L_bp_r = 1 * L_m
-
-            n_cell = 1
-
-            # calculate shift
-            shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m) / 2
-        else:
-            A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, _ = np.array(cav.shape_space['IC']) * 1e-3
-            A_el, B_el, a_el, b_el, Ri_el, L_el, Req_el, _ = np.array(cav.shape_space['OC']) * 1e-3
-            try:
-                A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er, _ = np.array(cav.shape_space['OC_R']) * 1e-3
-            except KeyError:
-                A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er, _ = np.array(cav.shape_space['OC']) * 1e-3
-
-            L_bp_l = 4 * L_m
-            L_bp_r = 4 * L_m
-
-            n_cell = n_cells
-
-            # calculate shift
-            shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
-
-        step = 2  # step in boundary points in mm
-        # shift = 0
-        # shift = L_m  # for end cell
-
-        # calculate angles outside loop
-        # CALCULATE x1_el, y1_el, x2_el, y2_el
-        data = ([0 + L_bp_l, Ri_el + b_el, L_el + L_bp_l, Req_el - B_el],
-                [a_el, b_el, A_el, B_el])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-
-        x1el, y1el, x2el, y2el = fsolve(ellipse_tangent, np.array(
-            [a_el + L_bp_l, Ri_el + 0.85 * b_el, L_el - A_el + L_bp_l, Req_el - 0.85 * B_el]),
-                                        args=data,
-                                        xtol=1.49012e-12)  # [a_m, b_m-0.3*b_m, L_m-A_m, Req_m-0.7*B_m] initial guess
-
-        # CALCULATE x1, y1, x2, y2
-        data = ([0 + L_bp_l, Ri_m + b_m, L_m + L_bp_l, Req_m - B_m],
-                [a_m, b_m, A_m, B_m])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-        x1, y1, x2, y2 = fsolve(ellipse_tangent,
-                                np.array([a_m + L_bp_l, Ri_m + 0.85 * b_m, L_m - A_m + L_bp_l, Req_m - 0.85 * B_m]),
-                                args=data, xtol=1.49012e-12)  # [a_m, b_m-0.3*b_m, L_m-A_m, Req_m-0.7*B_m] initial guess
-
-        # CALCULATE x1_er, y1_er, x2_er, y2_er
-        data = ([0 + L_bp_r, Ri_er + b_er, L_er + L_bp_r, Req_er - B_er],
-                [a_er, b_er, A_er, B_er])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-        x1er, y1er, x2er, y2er = fsolve(ellipse_tangent, np.array(
-            [a_er + L_bp_r, Ri_er + 0.85 * b_er, L_er - A_er + L_bp_r, Req_er - 0.85 * B_er]),
-                                        args=data,
-                                        xtol=1.49012e-12)  # [a_m, b_m-0.3*b_m, L_m-A_m, Req_m-0.7*B_m] initial guess
-
-        with open(fr'{cav.slans_dir}\contour.txt', 'w') as fil:
-            # SHIFT POINT TO START POINT
-            start_point = [-shift, 0]
-            fil.write(f"  {start_point[1]:.7E}  {start_point[0]:.7E}   3.0000000e+00   0.0000000e+00\n")
-
-            self.lineTo(start_point, [-shift, Ri_el], step)
-            pt = [-shift, Ri_el]
-            fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-            # ADD BEAM PIPE LENGTH
-            self.lineTo(pt, [L_bp_l - shift, Ri_el], step)
-            pt = [L_bp_l - shift, Ri_el]
-            fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-            for n in range(1, n_cell + 1):
-                if n == 1:
-                    # DRAW ARC:
-                    pts = self.arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
-                    pt = [-shift + x1el, y1el]
-                    for pp in pts:
-                        fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW LINE CONNECTING ARCS
-                    self.lineTo(pt, [-shift + x2el, y2el], step)
-                    pt = [-shift + x2el, y2el]
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
-                    pts = self.arcTo(L_el + L_bp_l - shift, Req_el - B_el, A_el, B_el, step, pt,
-                                     [L_bp_l + L_el - shift, Req_el])
-                    pt = [L_bp_l + L_el - shift, Req_el]
-                    for pp in pts:
-                        fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    if n_cell == 1:
-                        # EQUATOR ARC TO NEXT POINT
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
-                        print(pt, 1)
-                        pts = self.arcTo(L_el + L_bp_l - shift, Req_er - B_er, A_er, B_er, step, [pt[0], Req_er - B_er],
-                                         [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, Req_er])
-                        pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-                        print(pt, 2)
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                            else:
-                                print("Found one")
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        print(pt, 3)
-
-                        # STRAIGHT LINE TO NEXT POINT
-                        self.lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                        pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        print(pt, 4, L_el + L_er - x1er + L_bp_l + L_bp_r - shift)
-
-                        # ARC
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
-                        # print(shift)
-                        pts = self.arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, [pt[0], Ri_er],
-                                         [L_bp_l + L_el + L_er - shift, y1er])
-                        print(pt, 5, L_el + L_er + L_bp_l - shift)
-
-                        pt = [L_bp_l + L_el + L_er - shift, Ri_er]
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                            else:
-                                print("Found one")
-                        print(pt, 6)
-
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                        # calculate new shift
-                        shift = shift - (L_el + L_er)
-                        # print(shift)
-                    else:
-                        print("if else")
-                        # EQUATOR ARC TO NEXT POINT
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
-                        pts = self.arcTo(L_el + L_bp_l - shift, Req_m - B_m, A_m, B_m, step, [pt[0], Req_m - B_m],
-                                         [L_el + L_m - x2 + 2 * L_bp_l - shift, Req_m])
-                        pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                            else:
-                                print("Found one")
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                        # STRAIGHT LINE TO NEXT POINT
-                        self.lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
-                        pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                        # ARC
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
-                        pts = self.arcTo(L_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
-                                         [L_bp_l + L_el + L_m - shift, y1])
-                        pt = [L_bp_l + L_el + L_m - shift, Ri_m]
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                            else:
-                                print("Found one")
-                        fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                        # calculate new shift
-                        shift = shift - (L_el + L_m)
-                        # print(shift)
-
-                elif n > 1 and n != n_cell:
-                    print("elif")
-                    # DRAW ARC:
-                    pts = self.arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
-                    pt = [-shift + x1, y1]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW LINE CONNECTING ARCS
-                    self.lineTo(pt, [-shift + x2, y2], step)
-                    pt = [-shift + x2, y2]
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
-                    pts = self.arcTo(L_m + L_bp_l - shift, Req_m - B_m, A_m, B_m, step, pt,
-                                     [L_bp_l + L_m - shift, Req_m])
-                    pt = [L_bp_l + L_m - shift, Req_m]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # EQUATOR ARC TO NEXT POINT
-                    # half of bounding box is required,
-                    # start is the lower coordinate of the bounding box and end is the upper
-                    pts = self.arcTo(L_m + L_bp_l - shift, Req_m - B_m, A_m, B_m, step, [pt[0], Req_m - B_m],
-                                     [L_m + L_m - x2 + 2 * L_bp_l - shift, Req_m])
-                    pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # STRAIGHT LINE TO NEXT POINT
-                    self.lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
-                    pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # ARC
-                    # half of bounding box is required,
-                    # start is the lower coordinate of the bounding box and end is the upper
-                    pts = self.arcTo(L_m + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
-                                     [L_bp_l + L_m + L_m - shift, y1])
-                    pt = [L_bp_l + L_m + L_m - shift, Ri_m]
-                    print(pt)
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # calculate new shift
-                    shift = shift - 2 * L_m
-                else:
-                    print("else")
-                    # DRAW ARC:
-                    pts = self.arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
-                    pt = [-shift + x1, y1]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW LINE CONNECTING ARCS
-                    self.lineTo(pt, [-shift + x2, y2], step)
-                    pt = [-shift + x2, y2]
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
-                    pts = self.arcTo(L_m + L_bp_l - shift, Req_m - B_m, A_m, B_m, step, pt,
-                                     [L_bp_l + L_m - shift, Req_m])
-                    pt = [L_bp_l + L_m - shift, Req_m]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # EQUATOR ARC TO NEXT POINT
-                    # half of bounding box is required,
-                    # start is the lower coordinate of the bounding box and end is the upper
-                    pts = self.arcTo(L_m + L_bp_l - shift, Req_er - B_er, A_er, B_er, step, [pt[0], Req_er - B_er],
-                                     [L_m + L_er - x2er + 2 * L_bp_l - shift, Req_er])
-                    pt = [L_m + L_er - x2er + 2 * L_bp_l - shift, y2er]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # STRAIGHT LINE TO NEXT POINT
-                    self.lineTo(pt, [L_m + L_er - x1er + 2 * L_bp_l - shift, y1er], step)
-                    pt = [L_m + L_er - x1er + 2 * L_bp_l - shift, y1er]
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-                    # ARC
-                    # half of bounding box is required,
-                    # start is the lower coordinate of the bounding box and end is the upper
-                    pts = self.arcTo(L_m + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, [pt[0], Ri_er],
-                                     [L_bp_l + L_m + L_er - shift, y1er])
-                    pt = [L_bp_l + L_m + L_er - shift, Ri_er]
-                    for pp in pts:
-                        if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            fil.write(f"  {pp[1]:.7E}  {pp[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-                        else:
-                            print("Found one")
-                    fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   1.0000000e+00   1.0000000e+00\n")
-
-            # BEAM PIPE
-            # reset shift
-            print("pt before", pt)
-            shift = (L_bp_r + L_bp_l + (n_cell - 1) * 2 * L_m + L_el + L_er) / 2
-            self.lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
-            pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
-            fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   3.0000000e+00   0.0000000e+00\n")
-            print("pt after", pt)
-
-            # END PATH
-            self.lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
-                        step)  # to add beam pipe to right
-            pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
-            # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
-            # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
-            fil.write(f"  {pt[1]:.7E}  {pt[0]:.7E}   0.0000000e+00   0.0000000e+00\n")
-
-            # CLOSE PATH
-            self.lineTo(pt, start_point, step)
-            fil.write(f"  {start_point[1]:.7E}  {start_point[0]:.7E}   0.0000000e+00   0.0000000e+00\n")
-
-        # plt.show()
-
     # def ql_pin(self, labels, geometry, RF, QOI, Machine, p_data=None):
     #     """
     #     Calculate the value of input power as a function of loaded quality factor
@@ -5862,7 +5439,6 @@ class Cavities(Optimisation):
     #     U_loss = 88.46 * E0 ** 4 / rho * 1e-6  # GeV # energy lost per turn per beam
     #     v_loss = U_loss * 1e9  # V # v loss per beam
     #
-    #     print(v_loss, Vrf, v_loss / Vrf)
     #     phi = np.arccos(v_loss / Vrf)
     #     delta_f = -R_Q * f0 * I0 * np.sin(phi) / (2 * v_cav)  # optimal df
     #     QL_0_x = v_cav / (R_Q * I0 * np.cos(phi))  # optimal Q loaded
@@ -5872,7 +5448,7 @@ class Cavities(Optimisation):
     #     xy_list = [(0.15, 0.13), (0.1, 0.16), (0.1, 0.19), (0.1, 0.21)]
     #     for i in range(len(E_acc)):
     #         f1_2 = f0[i] / (2 * QL_0)  # 380.6
-    #         print(R_Q[i], v_cav[i], Vrf[i])
+
     #         pin = v_cav[i] ** 2 / (4 * R_Q[i] * QL_0) * \
     #               ((1 + ((R_Q[i] * QL_0 * I0[i]) / v_cav[i]) * np.cos(phi[i])) ** 2 +
     #                ((delta_f[i] / f1_2) + ((R_Q[i] * QL_0 * I0[i]) / v_cav[i]) * np.sin(phi[i])) ** 2)
@@ -5889,7 +5465,6 @@ class Cavities(Optimisation):
     #             l = ax.plot(QL_0, pin * 1e-3, label=txt, lw=4)
     #
     #         # add annotations
-    #         print(l_active)
     #
     #         # annotext = ax.annotate(txt, xy=xy_list[i], xycoords='figure fraction', size=8, rotation=0,
     #         #                        c=l[0].get_color())
@@ -6012,12 +5587,6 @@ class Cavities(Optimisation):
             if ea not in t:
                 t = np.append(t, ea)
 
-        # print("t0 ", [(u + a * np.cos(t))[0], (v + b * np.sin(t))[0]])
-        # print([u + a * np.cos(t), v + b * np.sin(t)])
-        # print()
-
-        # plt.plot(u + a * np.cos(t), v + b * np.sin(t))
-
         return [x_end, y_end]
 
     @staticmethod
@@ -6121,7 +5690,7 @@ class Cavities(Optimisation):
 
             if len(phom_values) % 2 == 0:
                 result_array = phom_values[1::2] - phom_values[::2]
-                print(result_array)
+
                 Phom_diff = r"$\Delta P_\mathrm{HOM}$/cav [W] & \multicolumn{2}{c|}{" + " & \multicolumn{2}{c|}{".join(
                     [fr"{'/'.join([str(round(val * 1e3, 2)) for val in arr])} " + '}' for arr in result_array]) + r" \\"
 
@@ -6150,12 +5719,11 @@ class Cavities(Optimisation):
             # save plots
             fname = [cav.name for cav in self.cavities_list]
             fname = '_'.join(fname)
-            print(fname)
             with open(fr"D:\Dropbox\Quick presentation files\{self.projectDir}\{fname}_latex_summary.txt", 'w') as f:
                 for ll in all_lines:
                     f.write(ll + '\n')
         except KeyError as e:
-            print("Either SLANS or ABCI results not available. Please use '<cav>.set_eigenmode_qois(<folder>)' "
+            error("Either SLANS or ABCI results not available. Please use '<cav>.set_eigenmode_qois(<folder>)' "
                   "or '<cav>.set_wakefield_qois(<folder>)' to fix this. Error: ", e)
 
     def make_excel_summary(self):
@@ -6217,7 +5785,6 @@ class Cavities(Optimisation):
         except Exception as e:
             error("Either SLANS or ABCI results not available. Please use '<cav>.set_slans_qois(<folder>)' "
                   "or '<cav>.set_wakefield_qois(<folder>)' to fix this.")
-            print(e)
 
     def remove_cavity(self, cav):
         """
@@ -6316,7 +5883,7 @@ class Cavities(Optimisation):
                         Z_list.append(np.array(Z) * 1e-3)  # convert to kOhm
 
                 except ZeroDivisionError:
-                    print("ZeroDivisionError, check input")
+                    error("ZeroDivisionError, check input")
                 return f_list, Z_list, cols
 
             elif which == 'transversal':
@@ -6329,11 +5896,11 @@ class Cavities(Optimisation):
                         Z_list.append(np.array(ZT) * 1e-3)  # convert to kOhm/m
 
                 except ZeroDivisionError:
-                    print("ZeroDivisionError, check input")
+                    error("ZeroDivisionError, check input")
 
                 return f_list, Z_list, cols
         else:
-            print("Please load a valid operating point(s) file.")
+            error("Please load a valid operating point(s) file.")
 
     def plot_thresholds(self, which, selection, ax=None):
         self.threshold_texts_objects = []
@@ -6390,7 +5957,6 @@ class Cavities(Optimisation):
         # self._adjust_texts(threshold_texts_objects, ax)
 
     def _adjust_texts(self, texts, ax, separation=0.01, iterations=1):
-        print('It is here')
         renderer = ax.figure.canvas.get_renderer()
 
         def get_text_bbox(text):
@@ -6437,7 +6003,6 @@ class Cavities(Optimisation):
                     if i == j:
                         continue
                     bbox2 = get_text_bbox(text2)
-                    print(bbox1, bbox2, text1.get_text(), text2.get_text())
 
                     if bbox1.overlaps(bbox2):
                         pos1, pos2 = calculate_adjustment(bbox1, bbox2)
@@ -6629,7 +6194,7 @@ class Pillbox(Cavity):
                 freq = beta * c0 / (4 * self.mid_cell[5])
                 info("Calculated freq from mid cell half length: ", freq)
 
-            # create new shape space based on cell type
+            # create new shape space based on cell_type
             # if cell_type.lower() == 'mid cell':
             shape_space = {
                 f'{self.name}':
@@ -6973,7 +6538,7 @@ class RFGun(Cavity):
                 freq = beta * c0 / (4 * self.mid_cell[5])
                 info("Calculated freq from mid cell half length: ", freq)
 
-            # create new shape space based on cell type
+            # create new shape space based on cell_type
             # if cell_type.lower() == 'mid cell':
             shape_space = {
                 f'{self.name}':
@@ -7297,7 +6862,7 @@ class Dakota:
             try:
                 os.mkdir(os.path.join(self.projectDir, self.name))
             except FileExistsError:
-                print("Could not create folder. Make sure target location exists.")
+                error("Could not create folder. Make sure target location exists.")
 
         with open(os.path.join(self.projectDir, self.name, f'{self.name}.in'), 'w') as f:
             self.environment(f)
@@ -7438,7 +7003,8 @@ class Dakota:
             else:
                 df_part = self.nodes.loc[i * row_partition:]
 
-            df_part.to_csv(fr"{self.projectDir}/{self.name}/cst_sweep_files/cst_par_in_{i + 1}.txt", sep="\t", index=None)
+            df_part.to_csv(fr"{self.projectDir}/{self.name}/cst_sweep_files/cst_par_in_{i + 1}.txt", sep="\t",
+                           index=None)
 
     def run_analysis(self, write_cst=True, partitions=1):
         cwd = os.path.join(self.projectDir, self.name)
@@ -7724,9 +7290,42 @@ class OperationPoints:
         })
 
 
-def run_tune_parallel(shape_space, tune_variables, freqs, cell_types, projectDir, solver='NGSolveMEVP',
-                      resume=False,
-                      n_cells=1, processes=1, rerun=True):
+def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP',
+                      resume=False):
+    tune_config_keys = tune_config.keys()
+    if 'processes' in tune_config_keys:
+        processes = tune_config['processes']
+        assert processes > 0, error('Number of proceses must be greater than zero.')
+    else:
+        processes = 1
+
+    assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
+    assert 'parameters' in tune_config_keys, error('Please enter the tune variable in tune_config_dict')
+    assert 'cell_types' in tune_config_keys, error('Please enter the cell_type in tune_config_dict')
+    freqs = tune_config['freqs']
+    tune_parameters = tune_config['parameters']
+    cell_types = tune_config['cell_types']
+
+    if isinstance(freqs, float) or isinstance(freqs, int):
+        freqs = np.array([freqs for _ in range(len(shape_space))])
+    else:
+        assert len(freqs) == len(shape_space), error(
+            'Number of target frequencies must correspond to the number of cavities')
+        freqs = np.array(freqs)
+
+    if isinstance(tune_parameters, str):
+        assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
+            'Please enter a valid tune parameter')
+        tune_parameters = np.array([tune_parameters for _ in range(len(shape_space))])
+        cell_types = np.array([cell_types for _ in range(len(shape_space))])
+    else:
+        assert len(tune_parameters) == len(shape_space), error(
+            'Number of tune parameters must correspond to the number of cavities')
+        assert len(cell_types) == len(shape_space), error(
+            'Number of cell types must correspond to the number of cavities')
+        tune_parameters = np.array(tune_parameters)
+        cell_types = np.array(cell_types)
+
     # split shape_space for different processes/ MPI share process by rank
     keys = list(shape_space.keys())
 
@@ -7741,19 +7340,18 @@ def run_tune_parallel(shape_space, tune_variables, freqs, cell_types, projectDir
         # try:
         if p < processes - 1:
             proc_keys_list = keys[p * share:p * share + share]
-            proc_tune_variables = tune_variables[p * share:p * share + share]
+            proc_tune_variables = tune_parameters[p * share:p * share + share]
             proc_freqs = freqs[p * share:p * share + share]
             proc_cell_types = cell_types[p * share:p * share + share]
         else:
             proc_keys_list = keys[p * share:]
-            proc_tune_variables = tune_variables[p * share:]
+            proc_tune_variables = tune_parameters[p * share:]
             proc_freqs = freqs[p * share:]
             proc_cell_types = cell_types[p * share:]
 
         processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
         service = mp.Process(target=run_tune_s, args=(processor_shape_space, proc_tune_variables,
-                                                      proc_freqs, proc_cell_types, projectDir, resume, n_cells, p,
-                                                      rerun))
+                                                      proc_freqs, proc_cell_types, tune_config, projectDir, resume, p))
 
         service.start()
         jobs.append(service)
@@ -7762,8 +7360,54 @@ def run_tune_parallel(shape_space, tune_variables, freqs, cell_types, projectDir
         job.join()
 
 
-def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell_types, projectDir, resume, n_cells, p,
-               rerun):
+def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell_types, tune_config, projectDir, resume,
+               p):
+    # perform necessary checks
+    if tune_config is None:
+        tune_config = {}
+    tune_config_keys = tune_config.keys()
+
+    rerun = True
+    if 'rerun' in tune_config_keys:
+        if isinstance(tune_config['rerun'], bool):
+            rerun = tune_config['rerun']
+
+    def _run_tune():
+        sim_folder = 'Optimisation'
+        tuned_shape_space, d_tune_res, conv_dict, abs_err_dict = tuner.tune_ngsolve({key: shape}, 33,
+                                                                                    SOFTWARE_DIRECTORY,
+                                                                                    projectDir, key,
+                                                                                    resume=resume, proc=p,
+                                                                                    tune_variable=
+                                                                                    proc_tune_variables[i],
+                                                                                    cell_type=proc_cell_types[
+                                                                                        i],
+                                                                                    sim_folder=sim_folder)
+
+        if d_tune_res:
+            n_cells = processor_shape_space[key]['n_cells']
+            tuned_shape_space[key]['n_cells'] = n_cells
+            tuned_shape_space[key]['CELL TYPE'] = processor_shape_space[key]['CELL TYPE']
+            tuned_shape_space_multi = {kk: to_multicell(n_cells, tuned_shape) for kk, tuned_shape in
+                                       tuned_shape_space.items()}
+
+            eigenmode_config = {}
+            if 'eigenmode_config' in tune_config_keys:
+                eigenmode_config = tune_config['eigenmode_config']
+            else:
+                info('tune_config not contain eigenmode_config. Default values are used for eigenmode analysis.')
+
+            eigenmode_config['solver_save_directory'] = 'Optimisation'
+            eigenmode_config['opt'] = True
+            run_eigenmode_parallel(tuned_shape_space, tuned_shape_space_multi, eigenmode_config, projectDir)
+
+            # save tune results
+            save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
+
+            # save convergence information
+            save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
+            save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
+
     for i, (key, shape) in enumerate(tqdm(processor_shape_space.items())):
         shape['FREQ'] = proc_freqs[i]
         if os.path.exists(os.path.join(projectDir, "SimulationData", "Optimisation", key)):
@@ -7771,23 +7415,19 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
                 # clear previous results
                 shutil.rmtree(os.path.join(projectDir, "SimulationData", "Optimisation", key))
                 os.mkdir(os.path.join(projectDir, "SimulationData", "Optimisation", key))
-
-                tuner.tune_ngsolve({key: shape}, 33, SOFTWARE_DIRECTORY, projectDir, key, resume=resume, proc=p,
-                                   tune_variable=proc_tune_variables[i],
-                                   cell_type=proc_cell_types[i], sim_folder='Optimisation',
-                                   save_last=True,
-                                   n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again#val2
+                _run_tune()
         else:
-            tuner.tune_ngsolve({key: shape}, 33, SOFTWARE_DIRECTORY, projectDir, key, resume=resume, proc=p,
-                               tune_variable=proc_tune_variables[i],
-                               cell_type=proc_cell_types[i], sim_folder='Optimisation',
-                               save_last=True,
-                               n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again#val2
+            _run_tune()
 
 
-def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config, freq_shifts,
-                           projectDir, boundary_conds, uq_config, rerun):
-    processes = eigenmode_config['processes']
+def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config,
+                           projectDir):
+    if 'processes' in eigenmode_config.keys():
+        processes = eigenmode_config['processes']
+        assert processes > 0, error('Number of proceses must be greater than zero.')
+    else:
+        processes = 1
+
     # split shape_space for different processes/ MPI share process by rank
     keys = list(shape_space.keys())
 
@@ -7809,9 +7449,7 @@ def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config, fre
         processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
         processor_shape_space_multi = {key: shape_space_multi[key] for key in proc_keys_list}
         service = mp.Process(target=run_eigenmode_s, args=(processor_shape_space, processor_shape_space_multi,
-                                                           projectDir,
-                                                           freq_shifts, boundary_conds, '',
-                                                           uq_config, rerun))
+                                                           projectDir, eigenmode_config))
 
         service.start()
         jobs.append(service)
@@ -7820,13 +7458,13 @@ def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config, fre
         job.join()
 
 
-def run_eigenmode_s(shape_space, shape_space_multi, projectDir, freq_shifts=0, boundary_conds=None, subdir='',
-                    uq_config=None, rerun=True):
+def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config):
     """
         Run eigenmode analysis on cavity
 
         Parameters
         ----------
+        shape_space
         solver: {'SLANS', 'NGSolve'}
             Solver to be used. Native solver is still under development. Results are not as accurate as that of SLANS.
         freq_shifts:
@@ -7843,13 +7481,48 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, freq_shifts=0, b
 
         """
 
-    def _run_ngsolve(name, n_cells, n_modules, shape, shape_multi, n_modes, f_shift, bc, parentDir, projectDir,
-                     sub_dir='',
-                     uq_config=None):
+    rerun = True
+    if 'rerun' in eigenmode_config.keys():
+        assert isinstance(eigenmode_config['rerun'], bool), error('rerun must be boolean.')
+        rerun = eigenmode_config['rerun']
+
+    # perform all necessary checks
+    processes = 1
+    if 'processes' in eigenmode_config.keys():
+        assert eigenmode_config['processes'] > 0, error('Number of proceses must be greater than zero.')
+        assert isinstance(eigenmode_config['processes'], int), error('Number of proceses must be integer.')
+        processes = eigenmode_config['processes']
+    else:
+        eigenmode_config['processes'] = processes
+
+    freq_shifts = 0
+    if 'f_shifts' in eigenmode_config.keys():
+        freq_shifts = eigenmode_config['f_shifts']
+
+    boundary_conds = 'mm'
+    if 'boundary_conditions' in eigenmode_config.keys():
+        boundary_conds = eigenmode_config['boundary_conditions']
+    else:
+        eigenmode_config['boundary_conditions'] = boundary_conds
+
+    uq_config = None
+    if 'uq_config' in eigenmode_config.keys():
+        uq_config = eigenmode_config['uq_config']
+        if uq_config:
+            assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+                                                                                 "be equal to the number of "
+                                                                                 "variables.")
+    else:
+        eigenmode_config['uq_config'] = uq_config
+
+    def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir):
         parallel = False
+        n_cells = shape['n_cells']
+        n_modules = 1
+
         start_time = time.time()
         # create folders for all keys
-        ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
+        ngsolve_mevp.createFolder(name, projectDir, subdir='', opt=eigenmode_config['opt'])
 
         if 'OC_R' in shape.keys():
             OC_R = 'OC_R'
@@ -7864,82 +7537,76 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, freq_shifts=0, b
             #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
 
             ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                        n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                        beampipes=shape['BP'],
-                                        parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+                                        n_modes=n_cells, fid=f"{name}", f_shift=0, bc=33,
+                                        beampipes=shape['BP'], sim_folder=solver_save_dir,
+                                        parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
 
         elif shape['CELL TYPE'] == 'multicell':
             # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
             #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
             ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
-                                          n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                          beampipes=shape['BP'],
-                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+                                          n_modes=n_cells, fid=f"{name}", f_shift=0, bc=33,
+                                          beampipes=shape['BP'], sim_folder=solver_save_dir,
+                                          parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
         else:
             # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
             #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
             ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                                parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+                                n_modes=n_cells, fid=f"{name}", f_shift=0, bc=33, beampipes=shape['BP'],
+                                sim_folder=solver_save_dir,
+                                parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
 
         # run UQ
-        if uq_config:
-            objectives = uq_config['objectives']
-            solver_dict = {'ngsolvemevp': ngsolve_mevp}
-            solver_args_dict = {'ngsolvemevp':
-                                    {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
-                                     'beampipes': shape['BP']
-                                     },
-                                'parentDir': parentDir,
-                                'projectDir': projectDir,
-                                'analysis folder': 'NGSolveMEVP',
-                                'cell type': 'mid cell',
-                                'optimisation': False
-                                }
+        if 'uq_config' in eigenmode_config.keys():
+            uq_config = eigenmode_config['uq_config']
+            if uq_config:
+                opt = False
+                if eigenmode_config['solver_save_directory'].lower() == 'optimisation':
+                    opt = True
+                objectives = uq_config['objectives']
+                solver_dict = {'ngsolvemevp': ngsolve_mevp}
+                solver_args_dict = {'eigenmode': eigenmode_config,
+                                    'n_cells': n_cells,
+                                    'n_modules': n_modules,
+                                    'parentDir': SOFTWARE_DIRECTORY,
+                                    'projectDir': projectDir,
+                                    'analysis folder': eigenmode_config['solver_save_directory'],
+                                    'cell_type': 'mid-cell',
+                                    'optimisation': opt
+                                    }
 
-            uq_cell_complexity = 'simplecell'
-            if 'cell_complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell_complexity']
+                uq_cell_complexity = 'simplecell'
+                if 'cell_complexity' in uq_config.keys():
+                    uq_cell_complexity = uq_config['cell_complexity']
 
-            # if not parallel:
-            #     # convert to proper shape space
-            #     if uq_cell_complexity == 'multicell':
-            #         print('it is in here now owow ow')
-            #         shape_space = {name: shape_multi}
-            #         uq_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            #     else:
-            #         shape_space = {name: shape}
-            #         uq(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            # else:
-            if uq_cell_complexity == 'multicell':
-                shape_space = {name: shape_multi}
-                uq_ngsolve_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            else:
-                shape_space = {name: shape}
-                uq_ngsolve_parallel(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+                if uq_cell_complexity == 'multicell':
+                    shape_space = {name: shape_multi}
+                    uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+                else:
+                    shape_space = {name: shape}
+                    uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
 
         done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
 
     for i, (key, shape) in enumerate(tqdm(list(shape_space.items()))):
-        if isinstance(freq_shifts, int) or isinstance(freq_shifts, float):
-            freq_shift = freq_shifts
-        else:
-            freq_shift = freq_shifts[i]
+        # if isinstance(freq_shifts, int) or isinstance(freq_shifts, float):
+        #     freq_shift = freq_shifts
+        # else:
+        #     freq_shift = freq_shifts[i]
+        #
+        # if isinstance(boundary_conds, str) or boundary_conds is None:
+        #     boundary_cond = boundary_conds
+        # else:
+        #     boundary_cond = boundary_conds[i]
 
-        if isinstance(boundary_conds, str) or boundary_conds is None:
-            boundary_cond = boundary_conds
-        else:
-            boundary_cond = boundary_conds[i]
-
-        solver_save_dir = 'NGSolveMEVP'
+        solver_save_dir = eigenmode_config['solver_save_directory']
 
         if os.path.exists(os.path.join(projectDir, "SimulationData", solver_save_dir, key)):
             if rerun:
                 # delete old results
                 shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                _run_ngsolve(key, shape['n_cells'], 1, shape, shape_space_multi[key], shape['n_cells'], freq_shift,
-                             boundary_cond, SOFTWARE_DIRECTORY, projectDir, sub_dir='', uq_config=uq_config)
-                # print(id(cav), cav.eigenmode_qois)
+                _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
+
             else:
                 # check if eigenmode analysis results exist
                 if os.path.exists(os.path.join(projectDir, "SimulationData", solver_save_dir, key, "monopole",
@@ -7947,33 +7614,13 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, freq_shifts=0, b
                     pass
                 else:
                     shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                    _run_ngsolve(key, shape['n_cells'], 1, shape, shape_space_multi[key], shape['n_cells'], freq_shift,
-                                 boundary_cond, SOFTWARE_DIRECTORY, projectDir, sub_dir='', uq_config=uq_config)
+                    _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
         else:
-            _run_ngsolve(key, shape['n_cells'], 1, shape, shape_space_multi[key], shape['n_cells'], freq_shift,
-                         boundary_cond, SOFTWARE_DIRECTORY, projectDir, sub_dir='', uq_config=uq_config)
+            _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
 
 
 def run_wakefield_parallel(shape_space, shape_space_multi, wakefield_config, projectDir, marker='', rerun=True):
     processes = wakefield_config['processes']
-    MROT = wakefield_config['polarisation']
-    MT = wakefield_config['MT']
-    NFS = wakefield_config['NFS']
-    UBT = wakefield_config['wakelength']
-    bunch_length = wakefield_config['bunch_length']
-    DDR_SIG = wakefield_config['DDR_SIG']
-    DDZ_SIG = wakefield_config['DDZ_SIG']
-    op_points = None
-    if 'operating_points' in wakefield_config.keys():
-        op_points = wakefield_config['operating_points']
-
-    uq_config = None
-    if 'uq_config' in wakefield_config.keys():
-        uq_config = wakefield_config['uq_config']
-        assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                             "be equal to the number of "
-                                                                             "variables.")
-    WG_M = None
     # split shape_space for different processes/ MPI share process by rank
     keys = list(shape_space.keys())
 
@@ -7994,9 +7641,7 @@ def run_wakefield_parallel(shape_space, shape_space_multi, wakefield_config, pro
         processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
         processor_shape_space_multi = {key: shape_space_multi[key] for key in proc_keys_list}
         service = mp.Process(target=run_wakefield_s, args=(processor_shape_space, processor_shape_space_multi,
-                                                           MROT, MT, NFS, UBT, bunch_length,
-                                                           DDR_SIG, DDZ_SIG, projectDir, op_points,
-                                                           WG_M, marker, rerun))
+                                                           wakefield_config, projectDir, marker, rerun))
 
         service.start()
         jobs.append(service)
@@ -8005,14 +7650,31 @@ def run_wakefield_parallel(shape_space, shape_space_multi, wakefield_config, pro
         job.join()
 
 
-def run_wakefield_s(shape_space, shape_space_multi,
-                    MROT, MT, NFS, UBT, bunch_length,
-                    DDR_SIG, DDZ_SIG, projectDir, operating_points,
-                    WG_M, marker, rerun):
-    def _run_abci(name, n_cells, n_modules, shape, MROT, MT, NFS, UBT, bunch_length,
-                  DDR_SIG, DDZ_SIG, projectDir=None, WG_M=None, marker='',
-                  operating_points=None, freq=0, R_Q=0):
+def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir, marker, rerun):
+    MROT = wakefield_config['polarisation']
+    MT = wakefield_config['MT']
+    NFS = wakefield_config['NFS']
+    UBT = wakefield_config['wakelength']
+    bunch_length = wakefield_config['bunch_length']
+    DDR_SIG = wakefield_config['DDR_SIG']
+    DDZ_SIG = wakefield_config['DDZ_SIG']
 
+    operating_points = None
+    if 'operating_points' in wakefield_config.keys():
+        operating_points = wakefield_config['operating_points']
+
+    uq_config = wakefield_config['uq_config']
+    if uq_config:
+        assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+                                                                             "be equal to the number of "
+                                                                             "variables.")
+
+    WG_M = None
+
+    def _run_abci(name, n_cells, n_modules, shape, shape_multi, wakefield_config, projectDir, WG_M=None, marker=''):
+
+        freq = 0
+        R_Q = 0
         # run abci code
         if WG_M is None:
             WG_M = ['']
@@ -8043,6 +7705,30 @@ def run_wakefield_s(shape_space, shape_space_multi,
                                      WG_M=ii, marker=ii)
 
         done(f'Cavity {name}. Time: {time.time() - start_time}')
+
+        if uq_config:
+            objectives = uq_config['objectives']
+            solver_dict = {'abci': abci_geom}
+            solver_args_dict = {'wakefield': wakefield_config,
+                                'n_cells': n_cells,
+                                'n_modules': n_modules,
+                                'parentDir': SOFTWARE_DIRECTORY,
+                                'projectDir': projectDir,
+                                'analysis folder': 'ABCI',
+                                # 'cell_type': cell_type,
+                                'optimisation': False
+                                }
+
+            uq_cell_complexity = 'simplecell'
+            if 'cell_complexity' in uq_config.keys():
+                uq_cell_complexity = uq_config['cell_complexity']
+
+            if uq_cell_complexity == 'multicell':
+                shape_space = {name: shape_multi}
+                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+            else:
+                shape_space = {name: shape}
+                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'wakefield')
 
         if operating_points:
             try:
@@ -8090,9 +7776,8 @@ def run_wakefield_s(shape_space, shape_space_multi,
                                 # except:
                                 #     k_loss = 0
                                 #     k_kick = 0
-                                print('here now')
+
                                 d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, n_cells)
-                                print('after here', d)
 
                     # save qoi dictionary
                     run_save_directory = fr'{projectDir}\SimulationData\ABCI\{name}{marker}'
@@ -8114,62 +7799,59 @@ def run_wakefield_s(shape_space, shape_space_multi,
                 shutil.rmtree(os.path.join(projectDir, "SimulationData", "ABCI", key))
                 os.mkdir(os.path.join(projectDir, "SimulationData", "ABCI", key))
 
-                _run_abci(key, shape['n_cells'], 1, shape, MROT, MT, NFS, UBT, bunch_length,
-                          DDR_SIG, DDZ_SIG, projectDir, WG_M, marker, operating_points)
+                _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir, WG_M,
+                          marker)
             else:
                 # check if eigenmode analysis results exist
                 if os.path.exists(os.path.join(projectDir, "SimulationData", "ABCI", key, "qois.json")):
                     pass
                 else:
-                    _run_abci(key, shape['n_cells'], 1, shape, MROT, MT, NFS, UBT, bunch_length,
-                              DDR_SIG, DDZ_SIG, projectDir, WG_M, marker, operating_points)
+                    _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir,
+                              WG_M, marker)
         else:
-            _run_abci(key, shape['n_cells'], 1, shape, MROT, MT, NFS, UBT, bunch_length,
-                      DDR_SIG, DDZ_SIG, projectDir, WG_M, marker, operating_points)
+            _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir, WG_M,
+                      marker)
 
 
-def run_sequential_wakefield(n_cells, n_modules, processor_shape_space,
-                             MROT=0, MT=4, NFS=10000, UBT=50, bunch_length=20,
-                             DDR_SIG=0.1, DDZ_SIG=0.1,
-                             parentDir=None, projectDir=None, progress_list=None,
-                             WG_M=None, marker=''):
-    progress = 0
-    # get length of processor
-    total_no_of_shapes = len(list(processor_shape_space.keys()))
-    for key, shape in processor_shape_space.items():
-        skip = False
-        if os.path.exists(fr'{projectDir}\SimulationData\ABCI\{key}'):
-            skip = True
-
-        start_time = time.time()
-        if not skip:
-            # run abci code
-            # run both polarizations if MROT == 2
-            if 'OC_R' in list(shape.keys()):
-                OC_R = 'OC_R'
-            else:
-                OC_R = 'OC'
-
-            if MROT == 2:
-                for m in range(2):
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                     fid=key, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                     projectDir=projectDir,
-                                     WG_M='', marker='')
-            else:
-                abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                 fid=key, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
-                                 WG_M='', marker='')
-
-        print(f'Cavity {key}. Time: {time.time() - start_time}')
-
-        # update progress
-        progress_list.append((progress + 1) / total_no_of_shapes)
-
-
-def uq_ngsolve_parallel(shape_space, objectives, solver_dict, solver_args_dict, uq_config):
+# def run_sequential_wakefield(n_cells, n_modules, processor_shape_space,
+#                              MROT=0, MT=4, NFS=10000, UBT=50, bunch_length=20,
+#                              DDR_SIG=0.1, DDZ_SIG=0.1,
+#                              parentDir=None, projectDir=None, progress_list=None,
+#                              WG_M=None, marker=''):
+#     progress = 0
+#     # get length of processor
+#     total_no_of_shapes = len(list(processor_shape_space.keys()))
+#     for key, shape in processor_shape_space.items():
+#         skip = False
+#         if os.path.exists(fr'{projectDir}\SimulationData\ABCI\{key}'):
+#             skip = True
+#
+#         start_time = time.time()
+#         if not skip:
+#             # run abci code
+#             # run both polarizations if MROT == 2
+#             if 'OC_R' in list(shape.keys()):
+#                 OC_R = 'OC_R'
+#             else:
+#                 OC_R = 'OC'
+#
+#             if MROT == 2:
+#                 for m in range(2):
+#                     abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+#                                      fid=key, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+#                                      DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
+#                                      projectDir=projectDir,
+#                                      WG_M='', marker='')
+#             else:
+#                 abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+#                                  fid=key, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+#                                  DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
+#                                  WG_M='', marker='')
+#
+#         info(f'Cavity {key}. Time: {time.time() - start_time}')
+#
+def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
+                solver):
     """
 
     Parameters
@@ -8204,156 +7886,289 @@ def uq_ngsolve_parallel(shape_space, objectives, solver_dict, solver_args_dict, 
 
     """
 
-    parentDir = solver_args_dict['parentDir']
-    projectDir = solver_args_dict['projectDir']
-    cell_type = uq_config['cell type']
-    analysis_folder = solver_args_dict['analysis folder']
-    opt = solver_args_dict['optimisation']
-    delta = uq_config['delta']
-    method = uq_config['method']
-    uq_vars = uq_config['variables']
-    n_cells = solver_args_dict['ngsolvemevp']['n_cells']
-    assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+    if solver == 'eigenmode':
+        parentDir = solver_args_dict['parentDir']
+        projectDir = solver_args_dict['projectDir']
+        uq_config = solver_args_dict['eigenmode']['uq_config']
+        cell_type = uq_config['cell_type']
+        analysis_folder = solver_args_dict['analysis folder']
+        opt = solver_args_dict['optimisation']
+        delta = uq_config['delta']
+        method = uq_config['method']
+        uq_vars = uq_config['variables']
+        assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
-    for key, shape in shape_space.items():
-        # n_cells = shape['IC'].shape[1] + 1
-        uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
-        result_dict_eigen, result_dict_abci = {}, {}
-        eigen_obj_list, abci_obj_list = [], []
+        for key, shape in shape_space.items():
+            # n_cells = shape['IC'].shape[1] + 1
+            uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
+            result_dict_eigen, result_dict_abci = {}, {}
+            eigen_obj_list, abci_obj_list = [], []
 
-        for o in objectives:
-            if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                     "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
-                run_eigen = True
-                eigen_obj_list.append(o)
+            for o in objectives:
+                if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
+                         "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
+                    result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                    eigen_obj_list.append(o)
 
-            if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
-                result_dict_abci[o] = {'expe': [], 'stdDev': []}
-                run_abci = True
-                abci_obj_list.append(o)
+                # if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
+                #     result_dict_abci[o] = {'expe': [], 'stdDev': []}
+                #     run_abci = True
+                #     abci_obj_list.append(o)
 
-        cav_var_list = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
-        midcell_var_dict = dict()
-        for i1 in range(len(cav_var_list)):
-            for i2 in range(n_cells):
-                for i3 in range(2):
-                    midcell_var_dict[f'{cav_var_list[i1]}_{i2}_m{i3}'] = [i1, i2, i3]
+            rdim = len(uq_vars)
+            degree = 1
+            flag_stroud = 'stroud3'
 
-        rdim = len(uq_vars)
-        degree = 1
-        flag_stroud = 'stroud3'
+            if flag_stroud == 'stroud3':
+                nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
+                nodes_ = 2. * nodes_ - 1.
+                # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
+                # gives a less accurate answer. the nodes are not the same as the custom function
+            elif flag_stroud == 'stroud5':
+                nodes_, weights_ = cn_leg_05_2(rdim)
+            elif flag_stroud == 'cn_gauss':
+                nodes_, weights_ = cn_gauss(rdim, 2)
+            elif flag_stroud == 'lhc':
+                sampler = qmc.LatinHypercube(d=rdim)
+                _ = sampler.reset()
+                nsamp = 2500
+                sample = sampler.random(n=nsamp)
+                # ic(qmc.discrepancy(sample))
+                l_bounds = [-1, -1, -1, -1, -1, -1]
+                u_bounds = [1, 1, 1, 1, 1, 1]
+                sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
 
-        if flag_stroud == 'stroud3':
-            nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
-            nodes_ = 2. * nodes_ - 1.
-            # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
-            # gives a less accurate answer. the nodes are not the same as the custom function
-        elif flag_stroud == 'stroud5':
-            nodes_, weights_ = cn_leg_05_2(rdim)
-        elif flag_stroud == 'cn_gauss':
-            nodes_, weights_ = cn_gauss(rdim, 2)
-        elif flag_stroud == 'lhc':
-            sampler = qmc.LatinHypercube(d=rdim)
-            _ = sampler.reset()
-            nsamp = 2500
-            sample = sampler.random(n=nsamp)
-            # ic(qmc.discrepancy(sample))
-            l_bounds = [-1, -1, -1, -1, -1, -1]
-            u_bounds = [1, 1, 1, 1, 1, 1]
-            sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-            nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
-        else:
-            # issue warning
-            warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-            nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
-            nodes_ = 2. * nodes_ - 1.
-
-        # save nodes
-        data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
-        data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
-                          index=False, sep='\t', float_format='%.32f')
-
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            cell_node = shape['IC']
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            cell_node = shape['OC']
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            cell_node = shape['OC']
-        else:
-            cell_node = shape['OC']
-
-        no_parm, no_sims = np.shape(nodes_)
-        if delta is None:
-            delta = [0.05 for _ in range(len(uq_vars))]
-
-        sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
-
-        proc_count = 1
-        if 'processes' in uq_config.keys():
-            assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
-            assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
-            proc_count = uq_config['processes']
-        if proc_count > no_sims:
-            proc_count = no_sims
-
-        share = round(no_sims / proc_count)
-        jobs = []
-        for p in range(proc_count):
-            # try:
-            end_already = False
-            if p != proc_count - 1:
-                if (p + 1) * share < no_sims:
-                    proc_keys_list = np.arange(p * share, p * share + share)
-                else:
-                    proc_keys_list = np.arange(p * share, no_sims)
-                    end_already = True
-
-            if p == proc_count - 1 and not end_already:
-                proc_keys_list = np.arange(p * share, no_sims)
-
-            processor_nodes = nodes_[:, proc_keys_list]
-            processor_weights = weights_[proc_keys_list]
-            service = mp.Process(target=uq, args=(key, objectives, 'monopole', uq_config, uq_path,
-                                                  solver_args_dict, sub_dir,
-                                                  proc_keys_list, processor_nodes, p, cell_node))
-
-            service.start()
-            jobs.append(service)
-
-        for job in jobs:
-            job.join()
-
-        # combine results from processes
-        qois_result_dict = {}
-        Ttab_val_f = []
-        keys = []
-        for i1 in range(proc_count):
-            if i1 == 0:
-                df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
+                nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
             else:
-                df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
+                # issue warning
+                warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
+                nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
+                nodes_ = 2. * nodes_ - 1.
 
-        df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
-        df.to_excel(uq_path / 'table.xlsx', index=False)
+            # save nodes
+            data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
+            data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
+                              index=False, sep='\t', float_format='%.32f')
 
-        Ttab_val_f = df.to_numpy()
-        v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+                cell_node = shape['IC']
+            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+                cell_node = shape['OC']
+            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+                cell_node = shape['OC']
+            else:
+                cell_node = shape['OC']
 
-        # append results to dict
-        for i, o in enumerate(eigen_obj_list):
-            result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-            result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            no_parm, no_sims = np.shape(nodes_)
+            if delta is None:
+                delta = [0.05 for _ in range(len(uq_vars))]
 
-        with open(uq_path / fr'uq.json', 'w') as file:
-            file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
+            sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
+
+            proc_count = 1
+            if 'processes' in uq_config.keys():
+                assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
+                assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
+                proc_count = uq_config['processes']
+            if proc_count > no_sims:
+                proc_count = no_sims
+
+            share = round(no_sims / proc_count)
+            jobs = []
+            for p in range(proc_count):
+                # try:
+                end_already = False
+                if p != proc_count - 1:
+                    if (p + 1) * share < no_sims:
+                        proc_keys_list = np.arange(p * share, p * share + share)
+                    else:
+                        proc_keys_list = np.arange(p * share, no_sims)
+                        end_already = True
+
+                if p == proc_count - 1 and not end_already:
+                    proc_keys_list = np.arange(p * share, no_sims)
+                processor_nodes = nodes_[:, proc_keys_list]
+                processor_weights = weights_[proc_keys_list]
+                service = mp.Process(target=uq, args=(key, objectives, uq_config, uq_path,
+                                                      solver_args_dict, sub_dir,
+                                                      proc_keys_list, processor_nodes, p, cell_node, solver))
+
+                service.start()
+                jobs.append(service)
+
+            for job in jobs:
+                job.join()
+
+            # combine results from processes
+            qois_result_dict = {}
+            Ttab_val_f = []
+            keys = []
+            for i1 in range(proc_count):
+                if i1 == 0:
+                    df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
+                else:
+                    df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
+
+            df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
+            df.to_excel(uq_path / 'table.xlsx', index=False)
+
+            Ttab_val_f = df.to_numpy()
+            v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+
+            # append results to dict
+            for i, o in enumerate(eigen_obj_list):
+                result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
+                result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+
+            with open(uq_path / fr'uq.json', 'w') as file:
+                file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
+    elif solver == 'wakefield':
+        # parentDir = solver_args_dict['parentDir']
+        projectDir = solver_args_dict['projectDir']
+        solver_args = solver_args_dict['wakefield']
+        # n_cells = solver_args['n_cells']
+        uq_config = solver_args['uq_config']
+        delta = uq_config['delta']
+        method = uq_config['method']
+        uq_vars = uq_config['variables']
+        cell_type = uq_config['cell_type']
+        analysis_folder = solver_args_dict['analysis folder']
+
+        assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+
+        for key, shape in shape_space.items():
+            # n_cells = shape['IC'].shape[1] + 1
+            uq_path = projectDir / fr'SimulationData\ABCI\{key}'
+            result_dict_wakefield = {}
+            wakefield_obj_list = []
+
+            for o in objectives:
+                if o[1].split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
+                    result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
+                    wakefield_obj_list.append(o[1])
+
+            # cav_var_list = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
+            # midcell_var_dict = dict()
+            # for i1 in range(len(cav_var_list)):
+            #     for i2 in range(n_cells):
+            #         for i3 in range(2):
+            #             midcell_var_dict[f'{cav_var_list[i1]}_{i2}_m{i3}'] = [i1, i2, i3]
+
+            rdim = len(uq_vars)
+            degree = 1
+            flag_stroud = 'stroud3'
+
+            if flag_stroud == 'stroud3':
+                nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
+                nodes_ = 2. * nodes_ - 1.
+                # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
+                # gives a less accurate answer. the nodes are not the same as the custom function
+            elif flag_stroud == 'stroud5':
+                nodes_, weights_ = cn_leg_05_2(rdim)
+            elif flag_stroud == 'cn_gauss':
+                nodes_, weights_ = cn_gauss(rdim, 2)
+            elif flag_stroud == 'lhc':
+                sampler = qmc.LatinHypercube(d=rdim)
+                _ = sampler.reset()
+                nsamp = 2500
+                sample = sampler.random(n=nsamp)
+                # ic(qmc.discrepancy(sample))
+                l_bounds = [-1, -1, -1, -1, -1, -1]
+                u_bounds = [1, 1, 1, 1, 1, 1]
+                sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
+
+                nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
+            else:
+                # issue warning
+                warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
+                nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
+                nodes_ = 2. * nodes_ - 1.
+
+            # save nodes
+            data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
+            data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
+                              index=False, sep='\t', float_format='%.32f')
+
+            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+                cell_node = shape['IC']
+            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+                cell_node = shape['OC']
+            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+                cell_node = shape['OC']
+            else:
+                cell_node = shape['OC']
+
+            no_parm, no_sims = np.shape(nodes_)
+            if delta is None:
+                delta = [0.05 for _ in range(len(uq_vars))]
+
+            sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
+
+            proc_count = 1
+            if 'processes' in uq_config.keys():
+                assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
+                assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
+                proc_count = uq_config['processes']
+            if proc_count > no_sims:
+                proc_count = no_sims
+
+            share = round(no_sims / proc_count)
+            jobs = []
+            for p in range(proc_count):
+                # try:
+                end_already = False
+                if p != proc_count - 1:
+                    if (p + 1) * share < no_sims:
+                        proc_keys_list = np.arange(p * share, p * share + share)
+                    else:
+                        proc_keys_list = np.arange(p * share, no_sims)
+                        end_already = True
+
+                if p == proc_count - 1 and not end_already:
+                    proc_keys_list = np.arange(p * share, no_sims)
+
+                processor_nodes = nodes_[:, proc_keys_list]
+                processor_weights = weights_[proc_keys_list]
+                service = mp.Process(target=uq, args=(key, objectives, uq_config, uq_path,
+                                                      solver_args_dict, sub_dir, proc_keys_list, processor_nodes,
+                                                      p, cell_node, solver))
+
+                service.start()
+                jobs.append(service)
+
+            for job in jobs:
+                job.join()
+
+            # combine results from processes
+            qois_result_dict = {}
+            Ttab_val_f = []
+            keys = []
+            for i1 in range(proc_count):
+                if i1 == 0:
+                    df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
+                else:
+                    df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
+
+            df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
+            df.to_excel(uq_path / 'table.xlsx', index=False)
+
+            Ttab_val_f = df.to_numpy()
+            v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+            # append results to dict
+            for i, o in enumerate(wakefield_obj_list):
+                result_dict_wakefield[o]['expe'].append(v_expe_fobj[i])
+                result_dict_wakefield[o]['stdDev'].append(v_stdDev_fobj[i])
+            with open(uq_path / fr'uq.json', 'w') as file:
+                file.write(json.dumps(result_dict_wakefield, indent=4, separators=(',', ': ')))
+
+    else:
+        pass
 
 
-def uq(key, objectives, pol, uq_config, uq_path,
-       solver_args_dict, sub_dir,
-       proc_keys_list, processor_nodes, proc_num, cell_node):
+def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
+       proc_keys_list, processor_nodes, proc_num, cell_node, solver):
     """
 
     Parameters
@@ -8375,259 +8190,193 @@ def uq(key, objectives, pol, uq_config, uq_path,
 
     """
 
-    parentDir = solver_args_dict['parentDir']
-    projectDir = solver_args_dict['projectDir']
-    cell_type = uq_config['cell type']
-    analysis_folder = solver_args_dict['analysis folder']
-    opt = solver_args_dict['optimisation']
-    delta = uq_config['delta']
-    method = uq_config['method']
-    uq_vars = uq_config['variables']
-    n_cells = solver_args_dict['ngsolvemevp']['n_cells']
-    err = False
-    result_dict_eigen, result_dict_abci = {}, {}
-    run_eigen, run_abci = False, False
-    eigen_obj_list = objectives
-    Ttab_val_f = []
+    if solver == 'eigenmode':
+        parentDir = solver_args_dict['parentDir']
+        projectDir = solver_args_dict['projectDir']
+        cell_type = uq_config['cell_type']
+        analysis_folder = solver_args_dict['analysis folder']
+        opt = solver_args_dict['optimisation']
+        delta = uq_config['delta']
+        method = uq_config['method']
+        uq_vars = uq_config['variables']
+        err = False
+        result_dict_eigen = {}
+        Ttab_val_f = []
 
-    for o in objectives:
-        result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+        # eigen_obj_list = objectives
+        eigen_obj_list = []
 
-    # for o in objectives:
-    #     if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-    #              "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-    #         result_dict_eigen[o] = {'expe': [], 'stdDev': []}
-    #
-    #         eigen_obj_list.append(o)
-    #
-    #     if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
-    #         result_dict_abci[o] = {'expe': [], 'stdDev': []}
-    #         run_abci = True
-    #         abci_obj_list.append(o)
+        for o in objectives:
+            if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
+                     "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
+                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                eigen_obj_list.append(o)
 
-    # rdim = len(uq_vars)
-    # degree = 1
-    #
-    # if method[1].lower() == 'stroud3':
-    #     nodes, weights, bpoly = quad_stroud3(rdim, degree)
-    #     nodes = 2. * nodes - 1.
-    #     # nodes, weights = cn_leg_03_1(rdim)  # <- for some reason unknown this gives a less accurate answer. the nodes are not the same as the custom function
-    # elif method[1].lower() == 'stroud5':
-    #     nodes, weights = cn_leg_05_2(rdim)
-    # elif method[1].lower() == 'gaussian':
-    #     nodes, weights = cn_gauss(rdim, 2)
-    # elif method[1].lower() == 'lhs':
-    #     sampler = qmc.LatinHypercube(d=rdim)
-    #     _ = sampler.reset()
-    #     nsamp = uq_config['integration'][2]
-    #     sample = sampler.random(n=nsamp)
-    #
-    #     l_bounds = [-1 for _ in range(len(uq_vars))]
-    #     u_bounds = [1 for _ in range(len(uq_vars))]
-    #     sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-    #
-    #     nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
-    # elif method[0].lower() == 'from file':
-    #     if len(method) == 2:
-    #         nodes = pd.read_csv(method[1], sep='\s+').iloc[:, method[1]]
-    #     else:
-    #         nodes = pd.read_csv(method[1], sep='\s+')
-    #
-    #     nodes = nodes.to_numpy().T
-    #     weights = np.ones((nodes.shape[1], 1))
-    # else:
-    #     # issue warning
-    #     warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-    #     nodes, weights, bpoly = quad_stroud3(rdim, degree)
-    #     nodes = 2. * nodes - 1.
-    #
-    # # save nodes
-    # data_table = pd.DataFrame(nodes.T, columns=uq_vars)
-    # data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
-    #                   index=False, sep='\t', float_format='%.32f')
-    #
-    # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-    #     cell_node = shape['IC']
-    # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-    #     cell_node = shape['OC']
-    # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-    #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-    #     cell_node = shape['OC']
-    # else:
-    #     cell_node = shape['OC']
-    #
-    # perturbed_cell_node = np.array(cell_node)
-    # no_parm, no_sims = np.shape(nodes)
-    # if delta is None:
-    #     delta = [0.05 for _ in range(len(uq_vars))]
+        # for o in objectives:
+        #     result_dict_eigen[o] = {'expe': [], 'stdDev': []}
 
-    perturbed_cell_node = np.array(cell_node)
-    for i1, proc_key in enumerate(proc_keys_list):
-        skip = False
-        for j, uq_var in enumerate(uq_vars):
-            uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-            perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+        perturbed_cell_node = np.array(cell_node)
+        for i1, proc_key in enumerate(proc_keys_list):
+            skip = False
+            for j, uq_var in enumerate(uq_vars):
+                uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
+                perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
 
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            # cell_node = shape['IC']
-            mid = perturbed_cell_node
-            left = perturbed_cell_node
-            right = perturbed_cell_node
-            beampipes = 'none'
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            mid = cell_node
-            left = cell_node
-            right = perturbed_cell_node
-            beampipes = 'right'
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            mid = perturbed_cell_node
-            left = perturbed_cell_node
-            right = perturbed_cell_node
-            beampipes = 'right'
-        else:
-            mid = perturbed_cell_node
-            left = perturbed_cell_node
-            right = perturbed_cell_node
-            beampipes = 'both'
+            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+                # cell_node = shape['IC']
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'none'
+            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+                mid = cell_node
+                left = cell_node
+                right = perturbed_cell_node
+                beampipes = 'right'
+            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'right'
+            else:
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'both'
 
-        enforce_Req_continuity(mid, left, right, cell_type)
+            enforce_Req_continuity(mid, left, right, cell_type)
 
-        # perform checks on geometry
-        fid = fr'{key}_Q{proc_key}'
+            # perform checks on geometry
+            fid = fr'{key}_Q{proc_key}'
 
-        # check if folder exists and skip if it does
-        if os.path.exists(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\{fid}'):
-            skip = True
-            info(["Skipped: ", fid, fr'{projectDir}\SimulationData\ABCI\{key}\{fid}'])
+            # check if folder exists and skip if it does
+            if os.path.exists(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\{fid}'):
+                skip = True
+                info(["Skipped: ", fid, fr'{projectDir}\SimulationData\ABCI\{key}\{fid}'])
 
-        if not skip:
-            ngsolve_mevp.createFolder(fid, projectDir, subdir=sub_dir, opt=opt)
-            # it does not seem to make sense to perform uq on a multi cell by repeating the same perturbation
-            # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
-            # independent perturbations to all cells individually
-            ngsolve_mevp.cavity(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
-                                fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                projectDir=projectDir,
-                                subdir=sub_dir)
+            if not skip:
+                ngsolve_mevp.createFolder(fid, projectDir, subdir=sub_dir, opt=opt)
+                # it does not seem to make sense to perform uq on a multi cell by repeating the same perturbation
+                # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
+                # independent perturbations to all cells individually
+                ngsolve_mevp.cavity(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
+                                    fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                    projectDir=projectDir,
+                                    subdir=sub_dir)
 
-        filename = uq_path / f'{fid}/monopole/qois.json'
-        if os.path.exists(filename):
-            qois_result_dict = dict()
+            filename = uq_path / f'{fid}/monopole/qois.json'
+            if os.path.exists(filename):
+                qois_result_dict = dict()
 
-            with open(filename) as json_file:
-                qois_result_dict.update(json.load(json_file))
-            qois_result = get_qoi_value(qois_result_dict, eigen_obj_list)
+                with open(filename) as json_file:
+                    qois_result_dict.update(json.load(json_file))
+                qois_result = get_qoi_value(qois_result_dict, eigen_obj_list)
 
-            tab_val_f = qois_result
-            Ttab_val_f.append(tab_val_f)
-        else:
-            err = True
+                tab_val_f = qois_result
+                Ttab_val_f.append(tab_val_f)
+            else:
+                err = True
 
-    data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
-    data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
+        data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
+        data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
 
-    # if run_abci:
-    #     Ttab_val_f = []
-    #     solver, solver_args = solver_dict['abci'], solver_args_dict['abci']
-    #     n_cells = solver_args['n_cells']
-    #     n_modules = solver_args['n_modules']
-    #     MROT = solver_args['MROT']
-    #     MT = solver_args['MT']
-    #     NFS = solver_args['NFS']
-    #     UBT = solver_args['UBT']
-    #     bunch_length = solver_args['bunch_length']
-    #     DDR_SIG = solver_args['DDR_SIG']
-    #     DDZ_SIG = solver_args['DDZ_SIG']
-    #     progress_list = solver_args['progress_list']
-    #     WG_M = solver_args['WG_M']
-    #     # marker = solver_args['marker']
-    #
-    #     # proc = solver_args['proc']
-    #     sub_dir = fr'{key}'
-    #     no_error = True
-    #     for i in range(no_sims):
-    #         skip = False
-    #         for j, uq_var in enumerate(uq_vars):
-    #             uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-    #             perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * nodes[j, i])
-    #
-    #         if (cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or
-    #                 cell_type.lower() == 'mid_cell'):
-    #             cell_node = shape['IC']
-    #             mid = perturbed_cell_node
-    #             left = perturbed_cell_node
-    #             right = perturbed_cell_node
-    #             beampipes = 'none'
-    #         elif (cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell'
-    #               or cell_type.lower() == 'mid_end_cell'):
-    #             mid = shape['IC']
-    #             left = shape['IC']
-    #             right = perturbed_cell_node
-    #             beampipes = 'right'
-    #         elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-    #               or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-    #             mid = perturbed_cell_node
-    #             left = perturbed_cell_node
-    #             right = perturbed_cell_node
-    #             beampipes = 'right'
-    #         else:
-    #             mid = perturbed_cell_node
-    #             left = perturbed_cell_node
-    #             right = perturbed_cell_node
-    #             beampipes = 'both'
-    #
-    #         enforce_Req_continuity(mid, left, right, cell_type)
-    #
-    #         fid = fr'{key}_Q{i}'
-    #
-    #         # check if folder exists and skip if it does
-    #         if os.path.exists(fr'{projectDir}\SimulationData\ABCI\{key}\{fid}'):
-    #             skip = True
-    #
-    #         if not skip:
-    #             solver.createFolder(fid, projectDir, subdir=sub_dir)
-    #             for wi in range(MROT):
-    #                 solver.cavity(n_cells, n_modules, mid, left, right, fid=fid, MROT=wi,
-    #                               DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
-    #                               bunch_length=bunch_length,
-    #                               MT=MT, NFS=NFS, UBT=UBT,
-    #                               parentDir=parentDir, projectDir=projectDir, WG_M='',
-    #                               marker='', sub_dir=sub_dir
-    #                               )
-    #
-    #         # get objective function values
-    #         abci_folder = fr'{projectDir}\SimulationData\ABCI\{key}'
-    #         if os.path.exists(abci_folder):
-    #             obj_result = get_wakefield_objectives_value(fid, abci_obj_list, abci_folder)
-    #
-    #             tab_val_f = obj_result
-    #             if 'error' in obj_result:
-    #                 no_error = False
-    #                 error("Encountered an error in one or more objective function result.")
-    #                 break
-    #             Ttab_val_f.append(tab_val_f)
-    #         else:
-    #             no_error = False
-    #
-    #     if no_error:
-    #         v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(np.atleast_2d(np.array(Ttab_val_f)), weights)
-    #         for i, o in enumerate(abci_obj_list):
-    #             result_dict_abci[o]['expe'].append(v_expe_fobj[i])
-    #             result_dict_abci[o]['stdDev'].append(v_stdDev_fobj[i])
-    #
-    #         with open(fr"{projectDir}\SimulationData\ABCI\{key}\uq.json", 'w') as file:
-    #             file.write(json.dumps(result_dict_abci, indent=4, separators=(',', ': ')))
-    #
-    #     data_table.to_csv(fr'{projectDir}\SimulationData\ABCI\{key}\nodes.csv',
-    #                       index=False, sep='\t', float_format='%.32f')
-    #
-    #     data_table = pd.DataFrame(Ttab_val_f, columns=abci_obj_list)
-    #     data_table.to_csv(fr'{projectDir}\SimulationData\ABCI\{key}\table.csv',
-    #                       index=False, sep='\t', float_format='%.32f')
+    elif solver == 'wakefield':
+        Ttab_val_f = []
+        parentDir = solver_args_dict['parentDir']
+        projectDir = solver_args_dict['projectDir']
+        solver_args = solver_args_dict['wakefield']
+        # n_cells = solver_args_dict['n_cells']
+        # n_modules = solver_args_dict['n_modules']
+        MROT = solver_args['polarisation']
+        MT = solver_args['MT']
+        NFS = solver_args['NFS']
+        UBT = solver_args['wakelength']
+        bunch_length = solver_args['bunch_length']
+        DDR_SIG = solver_args['DDR_SIG']
+        DDZ_SIG = solver_args['DDZ_SIG']
+        # WG_M = solver_args['WG_M']
+        delta = uq_config['delta']
+        # method = uq_config['method']
+        uq_vars = uq_config['variables']
+        cell_type = uq_config['cell_type']
+        analysis_folder = solver_args_dict['analysis folder']
+        # marker = solver_args['marker']
+
+        result_dict_wakefield = {}
+        # wakefield_obj_list = objectives
+        wakefield_obj_list = []
+
+        for o in objectives:
+            if o[1].split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
+                result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
+                wakefield_obj_list.append(o)
+
+        Ttab_val_f = []
+
+        perturbed_cell_node = np.array(cell_node)
+        uq_shape_space = {}
+        for i1, proc_key in enumerate(proc_keys_list):
+            skip = False
+            for j, uq_var in enumerate(uq_vars):
+                uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
+                perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+
+            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+                # cell_node = shape['IC']
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'none'
+            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+                mid = cell_node
+                left = cell_node
+                right = perturbed_cell_node
+                beampipes = 'right'
+            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'right'
+            else:
+                mid = perturbed_cell_node
+                left = perturbed_cell_node
+                right = perturbed_cell_node
+                beampipes = 'both'
+
+            enforce_Req_continuity(mid, left, right, cell_type)
+
+            # perform checks on geometry
+            fid = fr'{key}_Q{proc_key}'
+
+            # check if folder exists and skip if it does
+            if os.path.exists(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\{fid}'):
+                skip = True
+                info(["Skipped: ", fid, fr'{projectDir}\SimulationData\ABCI\{key}\{fid}'])
+
+            if not skip:
+                abci_geom.createFolder(fid, projectDir, subdir=sub_dir)
+                for wi in range(MROT):
+                    abci_geom.cavity(1, 1, mid, left, right, fid=fid, MROT=wi,
+                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
+                                     bunch_length=bunch_length,
+                                     MT=MT, NFS=NFS, UBT=UBT,
+                                     parentDir=parentDir, projectDir=projectDir, WG_M='',
+                                     marker='', sub_dir=sub_dir
+                                     )
+
+            uq_shape_space[fid] = {'IC': mid, 'OC': left, 'OC_R': right, 'BP': beampipes}
+
+        wakefield_folder = fr'{projectDir}\SimulationData\ABCI\{key}'
+        data_table, _ = get_wakefield_objectives_value(uq_shape_space, uq_config['objectives_unprocessed'],
+                                                       wakefield_folder)
+
+        data_table = data_table.set_index('key')
+        data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
 
 
-def uq_ngsolve_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config):
+def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config):
     """
 
     Parameters
@@ -8649,13 +8398,13 @@ def uq_ngsolve_parallel_multicell(shape_space, objectives, solver_dict, solver_a
     """
     parentDir = solver_args_dict['parentDir']
     projectDir = solver_args_dict['projectDir']
-    cell_type = uq_config['cell type']
+    cell_type = uq_config['cell_type']
     analysis_folder = solver_args_dict['analysis folder']
     opt = solver_args_dict['optimisation']
     delta = uq_config['delta']
     method = uq_config['method']
     uq_vars = uq_config['variables']
-    n_cells = solver_args_dict['ngsolvemevp']['n_cells']
+    n_cells = solver_args_dict['eigenmode']['n_cells']
     assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
     for key, shape in shape_space.items():
@@ -8910,163 +8659,141 @@ def uq_multicell_sequential(n_cells, n_modules, shape, qois, n_modes, f_shift, b
         else:
             err = True
 
-    # # add original point
-    # obj_result, tune_result = get_objectives_value(params, slans_obj_list)
-    # tab_val_f = obj_result
-    # Ttab_val_f.append(tab_val_f)
     # save table
-    # print(f'\tDone with proc {proc_num} ', time.time()-start)
     data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
     data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
 
-    # print(np.atleast_2d(Ttab_val_f), processor_weights)
 
 
-def to_multicell(n_cells, shape):
-    shape_multicell = {}
-    mid_cell = shape['IC']
-    mid_cell_multi = np.array([[[a, a] for _ in range(n_cells - 1)] for a in mid_cell])
+# def get_objectives_value(d, obj, norm_length, n_cells):
+#     Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
+#     Freq = d['FREQUENCY'][n_cells - 1]
+#     E_stored = d['STORED ENERGY'][n_cells - 1]
+#     # Rsh = d['SHUNT IMPEDANCE'][n_cells - 1]  # MOhm
+#     Q = d['QUALITY FACTOR'][n_cells - 1]
+#     Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
+#     Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
+#     # Vacc = dict['ACCELERATION'][n_cells - 1]
+#     # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells - 1]  # MV/m
+#     r_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
+#     G = 0.00948 * Q * (Freq / 1300)
+#     GR_Q = G * 2 * r_Q
+#
+#     Vacc = np.sqrt(
+#         2 * r_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6  # factor of 2, remember circuit and accelerator definition
+#     # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
+#     Eacc = Vacc / (n_cells * norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
+#     Epk_Eacc = Epk / Eacc
+#     Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
+#
+#     d = {
+#         "Req": Req,
+#         "freq": Freq,
+#         "Q": Q,
+#         "E": E_stored,
+#         "R/Q": 2 * r_Q,
+#         "Epk/Eacc": Epk_Eacc,
+#         "Bpk/Eacc": Bpk_Eacc,
+#         "G": G,
+#         "GR/Q": GR_Q
+#     }
+#
+#     objective = []
+#     # append freq and Req
+#     tune_result = [Req, Freq]
+#
+#     # append objective functions
+#     for o in obj:
+#         if o[1] in d.keys():
+#             objective.append(d[o[1]])
+#
+#     return objective, tune_result
 
-    shape_multicell['OC'] = shape['OC']
-    shape_multicell['OC_R'] = shape['OC_R']
-    shape_multicell['IC'] = mid_cell_multi
-    # shape_multicell['BP'] = shape['BP']
-    shape_multicell['n_cells'] = shape['n_cells']
-    shape_multicell['CELL TYPE'] = 'multicell'
+def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
 
-    return shape_multicell
-
-def get_objectives_value(d, obj, norm_length, n_cells):
-    Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
-    Freq = d['FREQUENCY'][n_cells - 1]
-    E_stored = d['STORED ENERGY'][n_cells - 1]
-    # Rsh = d['SHUNT IMPEDANCE'][n_cells - 1]  # MOhm
-    Q = d['QUALITY FACTOR'][n_cells - 1]
-    Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
-    Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
-    # Vacc = dict['ACCELERATION'][n_cells - 1]
-    # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells - 1]  # MV/m
-    r_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
-    G = 0.00948 * Q * (Freq / 1300)
-    GR_Q = G * 2 * r_Q
-
-    Vacc = np.sqrt(
-        2 * r_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6  # factor of 2, remember circuit and accelerator definition
-    # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
-    Eacc = Vacc / (n_cells * norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
-    Epk_Eacc = Epk / Eacc
-    Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
-
-    d = {
-        "Req": Req,
-        "freq": Freq,
-        "Q": Q,
-        "E": E_stored,
-        "R/Q": 2 * r_Q,
-        "Epk/Eacc": Epk_Eacc,
-        "Bpk/Eacc": Bpk_Eacc,
-        "G": G,
-        "GR/Q": GR_Q
-    }
-
-    objective = []
-    # append freq and Req
-    tune_result = [Req, Freq]
-
-    # append objective functions
-    for o in obj:
-        if o[1] in d.keys():
-            objective.append(d[o[1]])
-
-    return objective, tune_result
-
-
-def get_wakefield_objectives_value(key, obj, abci_data_dir):
-    # k_loss_transverse = []
-    # k_loss_longitudinal = []
-    # k_loss_M0 = []
-    # key_list = []
+    k_loss_array_transverse = []
+    k_loss_array_longitudinal = []
+    k_loss_M0 = []
+    key_list = []
 
     # create list to hold Z
     Zmax_mon_list = []
     Zmax_dip_list = []
     xmax_mon_list = []
     xmax_dip_list = []
-    processed_keys = []
+    processed_keys_mon = []
+    processed_keys_dip = []
 
-    # def calc_k_loss():
-    #     print(f"Processing for Cavity {key}")
-    #     abci_data_long = ABCIData(abci_data_dir, key, 0)
-    #     abci_data_trans = ABCIData(abci_data_dir, key, 1)
-    #
-    #     # trans
-    #     x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-    #     k_loss_trans = abci_data_trans.loss_factor['Transverse']
-    #
-    #     if math.isnan(k_loss_trans):
-    #         print_(f"Encountered an exception: Check shape {key}")
-    #         return [0, 0, 0]
-    #
-    #     # long
-    #     x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-    #     abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
-    #
-    #     k_M0 = abci_data_long.y_peaks[0]
-    #     k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-    #     k_loss_HOM = k_loss_long - k_M0
-    #
-    #     # append only after successful run
-    #     k_loss_M0.append(k_M0)
-    #     k_loss_longitudinal.append(k_loss_HOM)
-    #     k_loss_transverse.append(k_loss_trans)
-    #
-    #     return [k_loss_M0, k_loss_longitudinal, k_loss_transverse]
+    def calc_k_loss():
+        for key, value in d.items():
+            abci_data_long = ABCIData(abci_data_dir, key, 0)
+            abci_data_trans = ABCIData(abci_data_dir, key, 1)
+
+            # trans
+            x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
+            k_loss_trans = abci_data_trans.loss_factor['Transverse']
+
+            if math.isnan(k_loss_trans):
+                error(f"Encountered an exception: Check shape {key}")
+                continue
+
+            # long
+            x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
+            abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
+
+            k_M0 = abci_data_long.y_peaks[0]
+            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
+            k_loss_HOM = k_loss_long - k_M0
+
+            # append only after successful run
+            k_loss_M0.append(k_M0)
+            k_loss_array_longitudinal.append(k_loss_HOM)
+            k_loss_array_transverse.append(k_loss_trans)
+
+        return [k_loss_M0, k_loss_array_longitudinal, k_loss_array_transverse]
 
     def get_Zmax_L(mon_interval=None):
-        # print("2a")
         if mon_interval is None:
             mon_interval = [0.0, 2e10]
 
-        print(f"Processing for Cavity {key}")
-        try:
-            abci_data_mon = ABCIData(abci_data_dir, f"{key}", 0)
+        for key, value in d.items():
+            try:
+                abci_data_mon = ABCIData(abci_data_dir, f"{key}", 0)
 
-            # get longitudinal and transverse impedance plot data
-            xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
-            xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
+                # get longitudinal and transverse impedance plot data
+                xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
+                xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
 
-            # print("2d")
-            # Zmax
-            if mon_interval is None:
-                mon_interval = [[0.0, 10]]
+                # Zmax
+                if mon_interval is None:
+                    mon_interval = [[0.0, 10]]
 
-            # calculate magnitude
-            ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
+                # calculate magnitude
+                ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
 
-            # print("2e")
-            # get peaks
-            peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-            xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
+                # get peaks
+                peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
+                xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
 
-            # print("2f", mon_interval)
-            for n, z_bound in enumerate(mon_interval):
-                # get mask
-                msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
+                for i, z_bound in enumerate(mon_interval):
+                    # get mask
+                    msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
 
-                if len(yp_mon[msk_mon]) != 0:
-                    Zmax_mon = max(yp_mon[msk_mon])
+                    if len(yp_mon[msk_mon]) != 0:
+                        Zmax_mon = max(yp_mon[msk_mon])
 
-                    Zmax_mon_list[n].append(Zmax_mon)
-                elif len(yp_mon) != 0:
-                    Zmax_mon_list[n].append(0)
-                else:
-                    return ['Error']
+                        Zmax_mon_list[i].append(Zmax_mon)
+                    elif len(yp_mon) != 0:
+                        Zmax_mon_list[i].append(0)
+                    else:
+                        error("skipped, yp_mon = [], raise exception")
+                        raise Exception()
 
-            processed_keys.append(key)
-        except KeyError as e:
-            return ['Exception occurred', e]
-
-        # print("2g", Zmax_mon_list)
+                processed_keys_mon.append(key)
+            except:
+                info("skipped, yp_mon = []")
+                # for i, z_bound in enumerate(mon_interval):
+                #     Zmax_mon_list[i].append(-1)
 
         return Zmax_mon_list
 
@@ -9074,158 +8801,171 @@ def get_wakefield_objectives_value(key, obj, abci_data_dir):
         if dip_interval is None:
             dip_interval = [0.0, 2e10]
 
-        try:
-            print(f"Processing for Cavity {key}")
-            abci_data_dip = ABCIData(abci_data_dir, f"{key}", 1)
+        for key, value in d.items():
+            try:
+                abci_data_dip = ABCIData(abci_data_dir, f"{key}", 1)
 
-            xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
-            xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
+                xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
+                xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
 
-            # Zmax
-            if dip_interval is None:
-                dip_interval = [[0.0, 10]]
+                # Zmax
+                if dip_interval is None:
+                    dip_interval = [[0.0, 10]]
+
+                # calculate magnitude
+                ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
+
+                # get peaks
+                peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
+                xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
+
+                for i, z_bound in enumerate(dip_interval):
+                    # get mask
+                    msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
+
+                    if len(yp_dip[msk_dip]) != 0:
+                        Zmax_dip = max(yp_dip[msk_dip])
+
+                        Zmax_dip_list[i].append(Zmax_dip)
+                    elif len(yp_dip) != 0:
+                        Zmax_dip_list[i].append(0)
+                    else:
+                        error("skipped, yp_dip = [], raise exception")
+                        raise Exception()
+
+                processed_keys_dip.append(key)
+            except:
+                error("skipped, yp_dip = []")
+                # for i, z_bound in enumerate(dip_interval):
+                #     Zmax_dip_list[i].append(-1)
+
+        return Zmax_dip_list
+
+    def all(mon_interval, dip_interval):
+        for key, value in d.items():
+            abci_data_long = ABCIData(abci_data_dir, f"{key}_", 0)
+            abci_data_trans = ABCIData(abci_data_dir, f"{key}_", 1)
+
+            # get longitudinal and transverse impedance plot data
+            xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
+            xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
+
+            xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
+            xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
+
+            # loss factors
+            # trans
+            k_loss_trans = abci_data_trans.loss_factor['Transverse']
+
+            if math.isnan(k_loss_trans):
+                error(f"Encountered an exception: Check shape {key}")
+                continue
+
+            # long
+            abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
+
+            k_M0 = abci_data_long.y_peaks[0]
+            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
+            k_loss_HOM = k_loss_long - k_M0
 
             # calculate magnitude
+            ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
             ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
 
             # get peaks
+            peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
+            xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
+
             peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
             xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
 
-            for n, z_bound in enumerate(dip_interval):
+            for i, z_bound in enumerate(mon_interval):
+                # get mask
+                msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
+
+                if len(yp_mon[msk_mon]) != 0:
+                    Zmax_mon = max(yp_mon[msk_mon])
+                    xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
+
+                    Zmax_mon_list[i].append(Zmax_mon)
+                    xmax_mon_list[i].append(xmax_mon)
+                elif len(yp_mon) != 0:
+                    Zmax_mon_list[i].append(0.0)
+                    xmax_mon_list[i].append(0.0)
+                else:
+                    continue
+
+            for i, z_bound in enumerate(dip_interval):
                 # get mask
                 msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
 
                 if len(yp_dip[msk_dip]) != 0:
                     Zmax_dip = max(yp_dip[msk_dip])
+                    xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
 
-                    Zmax_dip_list[n].append(Zmax_dip)
+                    Zmax_dip_list[i].append(Zmax_dip)
+                    xmax_dip_list[i].append(xmax_dip)
                 elif len(yp_dip) != 0:
-                    Zmax_dip_list[n].append(0)
+                    Zmax_dip_list[i].append(0.0)
+                    xmax_dip_list[i].append(0.0)
                 else:
-                    return ['Error']
+                    continue
 
-            processed_keys.append(key)
-        except KeyError as e:
-            return ['Exception occurred', e]
+            # append only after successful run
 
-        return Zmax_dip_list
-
-    # def eval_all(mon_interval, dip_interval):
-    #     print(f"Processing for Cavity {key}")
-    #     abci_data_long = ABCIData(abci_data_dir, f"{key}_", 0)
-    #     abci_data_trans = ABCIData(abci_data_dir, f"{key}_", 1)
-    #
-    #     # get longitudinal and transverse impedance plot data
-    #     xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-    #     xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
-    #
-    #     xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-    #     xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
-    #
-    #     # loss factors
-    #     # trans
-    #     k_loss_trans = abci_data_trans.loss_factor['Transverse']
-    #
-    #     if math.isnan(k_loss_trans):
-    #         print_(f"Encountered an exception: Check shape {key}")
-    #         return 0
-    #
-    #     # long
-    #     abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
-    #
-    #     k_M0 = abci_data_long.y_peaks[0]
-    #     k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-    #     k_loss_HOM = k_loss_long - k_M0
-    #
-    #     # calculate magnitude
-    #     ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-    #     ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-    #
-    #     # get peaks
-    #     peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-    #     xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-    #
-    #     peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-    #     xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-    #
-    #     for n, z_bound in enumerate(mon_interval):
-    #         # get mask
-    #         msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-    #
-    #         if len(yp_mon[msk_mon]) != 0:
-    #             Zmax_mon = max(yp_mon[msk_mon])
-    #             xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
-    #
-    #             Zmax_mon_list[n].append(Zmax_mon)
-    #             xmax_mon_list[n].append(xmax_mon)
-    #         elif len(yp_mon) != 0:
-    #             Zmax_mon_list[n].append(0.0)
-    #             xmax_mon_list[n].append(0.0)
-    #         else:
-    #             continue
-    #
-    #     for n, z_bound in enumerate(dip_interval):
-    #         # get mask
-    #         msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-    #
-    #         if len(yp_dip[msk_dip]) != 0:
-    #             Zmax_dip = max(yp_dip[msk_dip])
-    #             xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
-    #
-    #             Zmax_dip_list[n].append(Zmax_dip)
-    #             xmax_dip_list[n].append(xmax_dip)
-    #         elif len(yp_dip) != 0:
-    #             Zmax_dip_list[n].append(0.0)
-    #             xmax_dip_list[n].append(0.0)
-    #         else:
-    #             continue
-    #
-    #     # append only after successful run
-    #
-    #     k_loss_M0.append(k_M0)
-    #     k_loss_longitudinal.append(k_loss_HOM)
-    #     k_loss_transverse.append(k_loss_trans)
+            k_loss_M0.append(k_M0)
+            k_loss_array_longitudinal.append(k_loss_HOM)
+            k_loss_array_transverse.append(k_loss_trans)
 
     ZL, ZT = [], []
-    freq_range_ZL, freq_range_ZT = [], []
-    # print("here here here")
-    for i, o in enumerate(obj):
-        if o[1].split(' ')[0] == 'ZL':
-            freq_range_ZL.append(o[2])
-        elif o[1].split(' ')[0] == 'ZT':
-            freq_range_ZT.append(o[2])
+    df_ZL, df_ZT = pd.DataFrame(), pd.DataFrame()
+    for obj in objectives_unprocessed:
+        if "ZL" in obj[1]:
+            freq_range = process_interval(obj[2])
+            for i in range(len(freq_range)):
+                Zmax_mon_list.append([])
+                xmax_mon_list.append([])
+                df_ZL[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
 
-        elif o[1] == "k_loss":
+            ZL = get_Zmax_L(freq_range)
+
+        elif "ZT" in obj[1]:
+            freq_range = process_interval(obj[2])
+
+            for i in range(len(freq_range)):
+                Zmax_dip_list.append([])
+                xmax_dip_list.append([])
+                # df_ZT[obj[1]] = 0
+                df_ZT[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
+
+            ZT = get_Zmax_T(freq_range)
+
+        elif obj[1] == "k_loss":
             pass
-        elif o[1] == "k_kick":
+        elif obj[1] == "k_kick":
             pass
 
-    # print("about to evaluate ZL", freq_range_ZL)
-    if freq_range_ZL:
-        for _ in range(len(freq_range_ZL)):
-            Zmax_mon_list.append([])
-            xmax_mon_list.append([])
+    # create dataframes from list
+    df_ZL.loc[:, :] = np.array(ZL).T
+    df_ZT.loc[:, :] = np.array(ZT).T
+    df_ZL['key'] = processed_keys_mon
+    df_ZT['key'] = processed_keys_dip
 
-        ZL = get_Zmax_L(freq_range_ZL)
+    processed_keys = list(set(processed_keys_mon) & set(processed_keys_dip))
 
-    if freq_range_ZT:
-        for _ in range(len(freq_range_ZT)):
-            Zmax_dip_list.append([])
-            xmax_dip_list.append([])
+    # ZL, ZT = np.array(ZL).T, np.array(ZT).T
 
-        ZT = get_Zmax_T(freq_range_ZT)
-
-    ZL, ZT = np.array(ZL).T, np.array(ZT).T
-
-    if ZL.size != 0 and ZT.size != 0:
-        obj_result = np.hstack((ZL, ZT))
-    elif ZL.size != 0:
-        obj_result = ZL
+    if len(ZL) != 0 and len(ZT) != 0:
+        df_wake = df_ZL.merge(df_ZT, on='key', how='inner')
+        # obj_result = np.hstack((ZL, ZT))
+    elif len(ZL) != 0:
+        df_wake = df_ZL
+        # obj_result = ZL
     else:
-        obj_result = ZT
+        df_wake = df_ZT
+        # obj_result = ZT
 
-    return list(obj_result[0])
+    return df_wake, processed_keys
 
 
 def process_interval(interval_list):
@@ -9258,6 +8998,42 @@ def get_qois_value(f_fm, R_Q, k_loss, k_kick, sigma_z, I0, Nb, n_cell):
         "P_HOM [kW]": p_hom * 1e-3
     }
     return d
+
+
+def process_objectives(objectives):
+    # objectives, weights, constraints, n, ng_max = [["min", "Epk/Eacc"], ["min", "Bpk/Eacc"], ["max", "R/Q"]], [5, 1, 1], \
+    #                                               ["Bpk/Eacc < 6.5", "freq > 400.58", 'freq < 400.99'], 1, 4
+    # obj_vars = [obj[1] for obj in objectives]
+
+    # if where_from == 'wakefield':
+    #     processed_objectives = []
+    #     weights = []
+    #     for i, obj in enumerate(objectives):
+    #         if obj[0] == "ZL" or obj[0] == "ZT":
+    #             freq_ranges = process_interval(obj[2])
+    #             for f in freq_ranges:
+    #                 processed_objectives.append(['', f"{obj[1]} [max({f[0]}<f<{f[1]})]", f])
+    #                 weights.append(1)
+    # else:
+    processed_objectives = []
+    weights = []
+
+    for i, obj in enumerate(objectives):
+        if obj[1] == "ZL" or obj[1] == "ZT":
+            goal = obj[0]
+            freq_ranges = process_interval(obj[2])
+            for f in freq_ranges:
+                processed_objectives.append([goal, f"{obj[1]} [max({f[0]}<f<{f[1]})]", f])
+                weights.append(1)
+        else:
+            goal = obj[0]
+            if goal == 'equal':
+                processed_objectives.append(obj)
+            else:
+                processed_objectives.append(obj)
+            weights.append(1)
+
+    return processed_objectives, weights
 
 
 def show_valid_operating_point_structure():
@@ -9428,7 +9204,6 @@ def show_welcome():
     import base64
     filename = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     image_path = os.path.join(filename, 'docs/images/cavsim2d_logo_1x.png')
-    print(image_path)
 
     # Convert the image to base64
     with open(image_path, "rb") as img_file:
@@ -9451,5 +9226,4 @@ def show_welcome():
     display(HTML(message))
 
 
-# Call the function when the module is imported
-show_welcome()
+

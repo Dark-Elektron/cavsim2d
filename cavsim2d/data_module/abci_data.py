@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import scipy.signal as sps
 import numpy as np
+from cavsim2d.utils.printing import info, error, done
 
-from cavsim2d.utils.shared_functions import info, error, done
 
 file_color = 'cyan'
 

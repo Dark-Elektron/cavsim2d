@@ -15,15 +15,14 @@ class Tuner:
         pass
 
     def tune_ngsolve(self, pseudo_shape_space, bc, parentDir, projectDir, filename, resume="No",
-                     proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell',
-                     save_last=True, n_cell_last_run=1):
+                     proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell'):
 
         # tuner
         abs_err_list, conv_dict = [], []
         pytune_ngsolve = PyTuneNGSolve()
 
         start = time.time()
-        population = {}
+        tuned_shape_space = {}
         total_no_of_shapes = len(list(pseudo_shape_space.keys()))
 
         # check for already processed shapes
@@ -32,9 +31,9 @@ class Tuner:
         if resume == "Yes":
             # check if value set is already written. This is to enable continuation in case of break in program
             if os.path.exists(os.path.join(projectDir, 'Cavities', filename)):
-                population = json.load(open(os.path.join(projectDir, 'Cavities', filename), 'r'))
+                tuned_shape_space = json.load(open(os.path.join(projectDir, 'Cavities', filename), 'r'))
 
-                existing_keys = list(population.keys())
+                existing_keys = list(tuned_shape_space.keys())
 
         error_msg1 = 1
         error_msg2 = 1
@@ -114,59 +113,63 @@ class Tuner:
                     inner_cell = [*tuned_mid_cell, alpha_i]
                     outer_cell = [*tuned_end_cell, alpha_o]
 
+            # clear folder after every run. This is to avoid copying of wrong values to save folder
+            # processor folder
+            proc_fold = os.path.join(projectDir, 'SimulationData', f'{sim_folder}', f'_process_{proc}')
+            shutil.rmtree(proc_fold)
+
             result = "Failed"
+            d_tune_res = {}
+            abs_err_dict = {}
             if tune_var != 0 and freq != 0:
                 if (1 - 0.001) * target_freq < round(freq, 2) < (1 + 0.001) * target_freq \
                         and (90.0 <= alpha_i <= 180) \
                         and (90.0 <= alpha_o <= 180) and error_msg1 == 1 and error_msg2 == 1:
                     result = f"Success: {target_freq, freq}"
 
-                    population[key] = {"IC": inner_cell, "OC": outer_cell, "BP": 'both', 'FREQ': freq}
+                    tuned_shape_space[key] = {"IC": inner_cell, "OC": outer_cell, "OC_R": outer_cell, "BP": 'both', 'FREQ': freq}
+
+                    # write tune results
+                    d_tune_res = {'IC': list(tuned_mid_cell), 'OC': list(tuned_end_cell),
+                                  'OC_R': list(tuned_end_cell),
+                                  'TUNED VARIABLE': tune_variable, 'CELL TYPE': cell_type, 'FREQ': freq}
+
+                    abs_err_dict = {'abs_err': abs_err_list}
 
                     # save last slans run if activated. Save only when condition is fulfilled
-                    if save_last:
-                        beampipes = 'both'
-                        if 'mid' in cell_type.lower():
-                            beampipes = 'none'
-
-                        # make directory
-                        if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{key}"):
-                            shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
-
-                        os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
-
-                        ngsolve_mevp.cavity(n_cell_last_run, 1, tuned_mid_cell, tuned_end_cell, tuned_end_cell,
-                                            f_shift=0, bc=bc,
-                                            beampipes=beampipes, n_modes=n_cell_last_run + 1, fid=key,
-                                            sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-
-                        # write cst_studio parameters
-                        write_cst_paramters(key, tuned_mid_cell, tuned_end_cell, tuned_end_cell, projectDir, cell_type,
-                                            solver='Optimisation')
-
-                        # write tune results
-                        d_tune_res = {'IC': list(tuned_mid_cell), 'OC': list(tuned_end_cell),
-                                      'OC_R': list(tuned_end_cell),
-                                      'TUNED VARIABLE': tune_variable, 'CELL TYPE': cell_type, 'FREQ': freq}
-                        save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
-
-                        # save convergence information
-                        abs_err_dict = {'abs_err': abs_err_list}
-                        save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
-                        save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
+                    # if save_last:
+                    #     beampipes = 'both'
+                    #     if 'mid' in cell_type.lower():
+                    #         beampipes = 'none'
+                    #
+                    #     # make directory
+                    #     if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{key}"):
+                    #         shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
+                    #
+                    #     os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
+                    #
+                    #     ngsolve_mevp.cavity(n_cell_last_run, 1, tuned_mid_cell, tuned_end_cell, tuned_end_cell,
+                    #                         f_shift=0, bc=bc,
+                    #                         beampipes=beampipes, n_modes=n_cell_last_run + 1, fid=key,
+                    #                         sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+                    #
+                    #     # write cst_studio parameters
+                    #     write_cst_paramters(key, tuned_mid_cell, tuned_end_cell, tuned_end_cell, projectDir, cell_type,
+                    #                         solver='Optimisation')
+                    #
+                    #     # write tune results
+                    #     d_tune_res = {'IC': list(tuned_mid_cell), 'OC': list(tuned_end_cell),
+                    #                   'OC_R': list(tuned_end_cell),
+                    #                   'TUNED VARIABLE': tune_variable, 'CELL TYPE': cell_type, 'FREQ': freq}
+                    #     save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
+                    #
+                    #     # save convergence information
+                    #     abs_err_dict = {'abs_err': abs_err_list}
+                    #     save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
+                    #     save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
 
             done(f'Done Tuning Cavity {key}: {result}')
-
-            # clear folder after every run. This is to avoid copying of wrong values to save folder
-            # processor folder
-            proc_fold = os.path.join(projectDir, 'SimulationData', f'{sim_folder}', f'_process_{proc}')
-            keep = ['SLANS_exe']
-            for item in os.listdir(proc_fold):
-                if item not in keep:  # If it isn't in the list for retaining
-                    try:
-                        os.remove(item)
-                    except FileNotFoundError:
-                        continue
+            return tuned_shape_space, d_tune_res, conv_dict, abs_err_dict
 
         end = time.time()
 

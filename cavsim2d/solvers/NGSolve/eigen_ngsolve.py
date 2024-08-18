@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
+from cavsim2d.utils.printing import *
 
 mu0 = 4 * pi * 1e-7
 eps0 = 8.85418782e-12
@@ -149,7 +150,7 @@ class NGSolveMEVP:
             try:
                 os.mkdir(folder)
             except FileNotFoundError:
-                ic("There was a problem creating the directory for the simulation files. Please check folder.")
+                error("There was a problem creating the directory for the simulation files. Please check folder.")
                 exit()
 
         file_path = fr"{folder}\geodata.n"
@@ -211,7 +212,7 @@ class NGSolveMEVP:
             try:
                 os.mkdir(folder)
             except FileNotFoundError:
-                ic("There was a problem creating the directory for the simulation files. Please check folder.")
+                error("There was a problem creating the directory for the simulation files. Please check folder.")
                 exit()
 
         file_path = fr"{folder}\geodata.n"
@@ -632,7 +633,7 @@ class NGSolveMEVP:
 
             # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
             qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-            # ic(qois)
+            # error(qois)
 
             with open(fr'{run_save_directory}\qois.json', "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -715,10 +716,10 @@ class NGSolveMEVP:
         # st1 = time.time()
         self.write_geometry_multicell(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par,
                                       beampipes, plot=False)
-        # ic('Time to write geom: ', time.time()-st1)
+        # error('Time to write geom: ', time.time()-st1)
 
         # read geometry
-        # ic(run_save_directory)
+        # error(run_save_directory)
         cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
                                header=None, skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0, 2]]
 
@@ -759,7 +760,7 @@ class NGSolveMEVP:
         # mesh
         A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(l_end_cell_par[:7])
         maxh = L / mesh_args[0] * 1e-3
-        # ic(maxh)
+        # error(maxh)
         # st1 = time.time()
         ngmesh = geo.GenerateMesh(maxh=maxh)
         mesh = Mesh(ngmesh)
@@ -767,7 +768,7 @@ class NGSolveMEVP:
 
         # save mesh
         self.save_mesh(run_save_directory, mesh)
-        # ic('Time to write geom: ', time.time()-st1)
+        # error('Time to write geom: ', time.time()-st1)
 
         # define finite element space
         fes = HCurl(mesh, order=1, dirichlet='default')
@@ -801,7 +802,7 @@ class NGSolveMEVP:
             evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=mesh_args[1],
                                           printrates=False)
 
-        # ic('Time to complete sim: ', time.time()-start)
+        # error('Time to complete sim: ', time.time()-start)
         # print out eigenvalues
         # freq_fes = []
         evals[0] = 1  # <- replace nan with zero
@@ -837,7 +838,7 @@ class NGSolveMEVP:
 
         # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-        # ic(qois)
+        # error(qois)
 
         with open(fr'{run_save_directory}\qois.json', "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -1027,7 +1028,7 @@ class NGSolveMEVP:
 
         # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-        # ic(qois)
+        # error(qois)
 
         with open(fr'{run_save_directory}\qois.json', "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))

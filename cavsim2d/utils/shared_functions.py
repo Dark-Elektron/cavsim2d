@@ -12,6 +12,7 @@ from matplotlib.patches import Ellipse
 from scipy.optimize import fsolve, least_squares
 import numpy as np
 from termcolor import colored
+from cavsim2d.utils.printing import *
 
 
 def update_alpha(cell, cell_type='normal'):
@@ -4668,22 +4669,37 @@ def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
         file.write(json.dumps(d, indent=4, separators=(',', ': ')))
 
 
-def error(*arg):
-    print(colored(f'{arg[0]}', 'red'))
+def to_multicell(n_cells, shape):
+    shape_multicell = {}
+    mid_cell = shape['IC']
+    mid_cell_multi = np.array([[[a, a] for _ in range(n_cells - 1)] for a in mid_cell])
+
+    shape_multicell['OC'] = shape['OC']
+    shape_multicell['OC_R'] = shape['OC_R']
+    shape_multicell['IC'] = mid_cell_multi
+    # shape_multicell['BP'] = shape['BP']
+    shape_multicell['n_cells'] = shape['n_cells']
+    shape_multicell['CELL TYPE'] = 'multicell'
+
+    return shape_multicell
 
 
-def warning(*arg):
-    print(colored(f'{arg[0]}', 'yellow'))
-
-
-def running(*arg):
-    print(colored(f'{arg[0]}', 'cyan'))
-
-
-def info(*arg):
-    print(colored(f'{arg[0]}', 'blue'))
-
-
-def done(*arg):
-    print(colored(f'{arg[0]}', 'green'))
+# def error(*arg):
+#     print(colored(f'{arg[0]}', 'red'))
+#
+#
+# def warning(*arg):
+#     print(colored(f'{arg[0]}', 'yellow'))
+#
+#
+# def running(*arg):
+#     print(colored(f'{arg[0]}', 'cyan'))
+#
+#
+# def info(*arg):
+#     print(colored(f'{arg[0]}', 'blue'))
+#
+#
+# def done(*arg):
+#     print(colored(f'{arg[0]}', 'green'))
 

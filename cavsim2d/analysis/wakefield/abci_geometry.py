@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from cavsim2d.analysis.wakefield.geometry import Geometry
 from cavsim2d.analysis.wakefield.abci_code import ABCI, ABCI_flattop
-from cavsim2d.utils.shared_functions import error
+from cavsim2d.utils.printing import info, error, done
 
 
 class ABCIGeometry(Geometry):
