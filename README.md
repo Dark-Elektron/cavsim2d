@@ -570,10 +570,11 @@ e.g. `help(cavs.run_eigenmode)`.
 The tree structure below shows how configuration dictionaries can be stacked.
 ```html
 <pre>
+cavsim2d    
 ├── tune
 │   ├── eigen
 │   │   └── uq
-│   └── <span style="color:red;">&#9474;   └── uq</span>
+│   └── <h1 style="color:red;">   └── uq</h1>
 ├── eigen
 │   └── uq
 ├── wakefield
