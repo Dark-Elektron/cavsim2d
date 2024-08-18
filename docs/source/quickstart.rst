@@ -39,8 +39,24 @@ version (currently ABCI_MP64_12_5.zip). Copy version ``ABCI_MP64+.exe`` from
 ``<root folder>\ABCI_MP_12_5\ABCI_MP64_12_5\ABCI_MP application for Windows`` to ``<root folder>/cavsim2d/solver/ABCI`` or
 through the command line with
 
+.. important::
 
-``copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP_12_5.exe <root folder>/cavsim2d/solver/ABCI``
+    For some reason, at the time of writing this, the link on the ABCI page to download the 64 bit version is broken.
+    However, it can be downloaded using `wget` from Windows PowerShell using
+
+    .. code-block::
+
+        wget http://abci.kek.jp/ABCI_MP64_12_5.zip -O ABCI_MP64_12_5.zip
+
+Copy and rename version `ABCI_MP64_12_5.exe` from
+``<root folder>\ABCI_MP_12_5\ABCI_MP4_12_5\ABCI_MP application for Windows`` to ``<root folder>/cavsim2d/solver/ABCI`` and rename to ``ABCI.exe``.
+
+Or through the command line with
+
+.. code-block::
+    copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP64_12_5.exe <root folder>/cavsim2d/solver/ABCI
+    cd <root folder>/cavsim2d/solver/ABCI
+    ren ABCI_MP64_12_5.exe ABCI.exe
 
 
 Before diving in, I would install ``pprintpp``. It is not necessay but it sure does makes the print readable.

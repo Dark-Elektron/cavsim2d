@@ -287,7 +287,7 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI_MP64+.exe'))
+            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
             else:
