@@ -14,7 +14,13 @@ uncertainty quantification, and quick visualisations and comparisons of results.
 # Installation
 
 
-To install cadsim2d, clone it into a local directory, `cd` into this directory and run
+To install cadsim2d, clone it into a local directory
+
+```
+git clone https://github.com/Dark-Elektron/cavsim2d.git
+```
+
+`cd` into this directory and run
 
 ```python
 python3 setup.py install

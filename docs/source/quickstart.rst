@@ -6,7 +6,14 @@ This repository contains Python codes for designing and analysing 2D axisymmetri
 The current capabilities include eigenmode analysis, elliptical cavity tuning and optimisation, wakefield analysis,
 uncertainty quantification, and quick visualisations and comparisons of results.
 
-To install cadsim2d, clone it into a local directory, ``cd`` into this directory and run
+To install cadsim2d, clone it into a local directory
+
+.. code-block::
+
+    git clone https://github.com/Dark-Elektron/cavsim2d.git
+
+
+``cd`` into this directory and run
 
 .. code-block::
 
@@ -27,9 +34,9 @@ Third party code
 
 Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
 equations directly in the time domain when a bunched beam goes through an axisymmetric
-structure on or off axis. It is free and can be downloaded from ``ABCI <https://abci.kek.jp/abci.htm>``_. Download the latest
-version (currently ABCI_MP_12_5.zip). Copy version ``ABCI_MP_12_5.exe`` from
-``<root folder>\ABCI_MP_12_5\ABCI_MP_12_5\ABCI_MP application for Windows`` to ``<root folder>/cavsim2d/solver/ABCI`` or
+structure on or off axis. It is free and can be downloaded from ``ABCI <https://abci.kek.jp/abci.htm>``_. Download the latest 64 bit
+version (currently ABCI_MP64_12_5.zip). Copy version ``ABCI_MP64+.exe`` from
+``<root folder>\ABCI_MP_12_5\ABCI_MP64_12_5\ABCI_MP application for Windows`` to ``<root folder>/cavsim2d/solver/ABCI`` or
 through the command line with
 
 
