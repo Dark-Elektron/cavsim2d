@@ -15,9 +15,12 @@ class Tuner:
         pass
 
     def tune_ngsolve(self, pseudo_shape_space, bc, parentDir, projectDir, filename, resume="No",
-                     proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell'):
+                     proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell', tune_config=None):
 
         # tuner
+        if tune_config is None:
+            tune_config = {}
+
         abs_err_list, conv_dict = [], []
         pytune_ngsolve = PyTuneNGSolve()
 
@@ -73,7 +76,7 @@ class Tuner:
                                                                                       cell_type, beampipes, bc,
                                                                                       sim_folder,
                                                                                       parentDir, projectDir,
-                                                                                      proc=proc)
+                                                                                      proc=proc, tune_config=tune_config)
                     except FileNotFoundError:
                         tune_var, freq = 0, 0
 

@@ -7382,7 +7382,8 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
                                                                                     proc_tune_variables[i],
                                                                                     cell_type=proc_cell_types[
                                                                                         i],
-                                                                                    sim_folder=sim_folder)
+                                                                                    sim_folder=sim_folder,
+                                                                                    tune_config=tune_config)
 
         if d_tune_res:
             n_cells = processor_shape_space[key]['n_cells']
@@ -8662,9 +8663,6 @@ def uq_multicell_sequential(n_cells, n_modules, shape, qois, n_modes, f_shift, b
     # save table
     data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
     data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
-
-
-
 # def get_objectives_value(d, obj, norm_length, n_cells):
 #     Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
 #     Freq = d['FREQUENCY'][n_cells - 1]
