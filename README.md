@@ -551,7 +551,6 @@ cavs.plot_compare_fm_bar(uq=True)
 > `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters. 
 > This tool proves invaluable in diagnosing such issues.
 
-
 ---------------
 
 ## Configuration dictionaries
@@ -567,6 +566,27 @@ within the optimisation configuration, potentially also incorporating UQ through
 
 To view the complete configuration dictionaries for each analysis, use the `help()` function, 
 e.g. `help(cavs.run_eigenmode)`.
+
+The tree structure below shows how configuration dictionaries can be stacked.
+```html
+<pre>
+├── tune
+│   ├── eigen
+│   │   └── uq
+│   └── <span style="color:red;">&#9474;   └── uq</span>
+├── eigen
+│   └── uq
+├── wakefield
+│   └── uq
+└── optimisation
+    ├── tune
+    │   ├── eigen
+    │   │   └── uq
+    │   └── <span style="color:red;">&#9474;   └── uq</span>
+    └── wakefield
+        └── uq
+</pre>
+```
 
 > [!NOTE]
 > Default configuration settings are applied for eigenmode and wakefield analyses when no custom 
