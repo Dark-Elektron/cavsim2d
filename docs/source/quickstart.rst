@@ -587,10 +587,6 @@ And to plot the results
     cavs.plot_compare_fm_bar(uq=True)
 
 
-.. warning::
-
-    UQ is not yet available for wakefield analysis and cavity tuning.
-
 .. important::
 
     Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
@@ -598,6 +594,82 @@ And to plot the results
     These degeneracies can be identified by using the
     `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters.
     This tool proves invaluable in diagnosing such issues.
+
+
+
+Understanding the geometry types
+################################
+
+Advanced
+########
+
+Uncertainty Quantification
+**************************
+
+Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
+``uq_config`` dictionary. For example, eigenmode F
+analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
+For example, let's revisit our eigenvalue example.
+
+
+.. code-block::
+
+    cavs = Cavities()
+    cavs.save(project_folder='/user/home/...')
+
+    midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
+    tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+
+    shape_space = {'reentrant':
+                       {'IC': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110],
+                        'OC': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110],
+                        'OC_R': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 110]
+                        }
+                   }
+
+    # create cavity
+    shape = shape_space['reentrant']
+    reentrant_mid_cell = Cavity(1, shape['IC'], shape['IC'], shape['IC'], beampipe='none')
+
+    cavs.add_cavity([tesla_mid_cell, reentrant_mid_cell],
+                    names=['TESLA', 'reentrant'],
+                    plot_labels=['TESLA', 'reentrant'])
+
+    uq_config = {
+        'option': True,
+        'variables': ['L', 'Req'],
+        'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "G [Ohm]", "kcc [%]", "ff [%]"],
+        'delta': [0.05, 0.05],
+        'method': ['Quadrature', 'Stroud3'],
+        'cell_type': 'mid-cell',
+        'cell_complexity': 'simplecell'
+    }
+    eigenmode_config = {
+        'processes': 3,
+        'rerun': True,
+        'boundary_conditions': 'mm',
+        'uq_config': uq_config
+    }
+
+    cavs.run_eigenmode(eigenmode_config)
+    pp.pprint(cavs.eigenmode_qois)
+
+
+
+And to plot the results
+
+
+.. code-block::
+
+    cavs.plot_compare_fm_bar(uq=True)
+
+
+> [!IMPORTANT]
+> Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
+> degenerate geometries in its vicinity. Therefore, the `Req` was changed to 110 mm.
+> These degeneracies can be identified by using the
+> `reentrant_mid_cell.inspect()` to examine and manipulate the cavity's parameters.
+> This tool proves invaluable in diagnosing such issues.
 
 
 Configuration dictionaries
@@ -616,13 +688,118 @@ To view the complete configuration dictionaries for each analysis, use the `help
 e.g. `help(cavs.run_eigenmode)`.
 
 
+The tree structure below shows how configuration dictionaries can be stacked.
+
+.. raw:: html
+
+    <pre>
+        <b>cavsim2d</b>
+        ├── tune
+        │   ├── eigen
+        │   │   └── uq
+        │   └── uq
+        ├── eigen
+        │   └── uq
+        ├── wakefield
+        │   └── uq
+        └── optimisation
+            ├── tune
+            │   ├── eigen
+            │   │   └── uq
+            │   └── uq
+            └── wakefield
+                └── uq
+    </pre>
+
+See optimisation example below
+
+
+.. code-block::
+
+    cavs = Cavities()
+    cavs.save('/user/home/...')
+    cell_type = 'end-end-cell'
+
+    optimisation_config = {
+        'initial_points': 5,
+        'method': {
+            'LHS': {'seed': 5},
+            # 'Sobol Sequence': {'index': 2},
+            # 'Random': {},
+            # 'Uniform': {},
+            },
+        # 'mid-cell': [1, 2, 3, 3, 6, 5, 2],  # must enter if mid-end cell selected
+        'tune_config': {
+            'freqs': 801.58,
+            'parameters': 'Req',
+            'cell_types': cell_type,
+            'processes': 4,
+            'eigenmode_config': {'n_cells': 1,
+                                 'n_modules': 1,
+                                 'f_shift': 0,
+                                 'bc': 33,
+                                 'beampipes': 'both',
+                                 'uq_config': {
+                                     'variables': ['A'],
+                                     'objectives': ["Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]"],
+                                     'delta': [0.05],
+                                     'processes': 4,
+                                     'distribution': 'gaussian',
+                                     'method': ['Quadrature', 'Stroud3'],
+                                     'cell_type': 'mid-cell',
+                                     'cell complexity': 'simplecell'
+                                    }
+                                },
+        },
+        'wakefield_config': {'n_cells': 1, 'n_modules': 1,
+                             'MROT': 2, 'MT': 4, 'NFS': 10000, 'UBT': 50, 'bunch_length': 25,
+                             'DDR_SIG': 0.1, 'DDZ_SIG': 0.1,
+                             'WG_M': None, 'marker': '',
+                            'uq_config': {
+                                'variables': ['A'],
+                                'objectives': [["ZL", [1, 2, 5]], ["ZT", [2, 3, 4]]],
+                                'delta': [0.05],
+                                'processes': 4,
+                                'distribution': 'gaussian',
+                                'method': ['Quadrature', 'Stroud3'],
+                                'cell_type': 'mid-cell',
+                                'cell complexity': 'simplecell'
+                                }
+                            },
+        'optimisation by': 'pareto',
+        'crossover_factor': 5,
+        'elites_for_crossover': 2,
+        'mutation_factor': 5,
+        'chaos_factor': 5,
+        'processes': 3,
+        'no_of_generation': 2,
+        'bounds': {'A': [20.0, 80.0],
+                   'B': [20.0, 80.0],
+                   'a': [10.0, 60.0],
+                   'b': [10., 60.0],
+                   'Ri': [60.0, 85.0],
+                   'L': [93.5, 93.5],
+                   'Req': [170.0, 170.0]},
+        'objectives': [
+            # ['equal', 'freq [MHz]', 801.58],
+                          ['min', 'Epk/Eacc []'],
+                          ['min', 'Bpk/Eacc [mT/MV/m]'],
+                          ['min', 'ZL', [1, 2, 5]],
+                          ['min', 'ZT', [1, 2, 5]],
+                      ],
+        'weights': [1, 1, 1, 1, 1, 1]
+    }
+    cavs.run_optimisation(optimisation_config)
+
+
 .. note::
 
     Default configuration settings are applied for eigenmode and wakefield analyses when no custom
     configuration dictionary is provided.
 
+
 Parallelisation
-***************
+###############
 
 `cavsim2d` simulations can be parallelised easily by setting the `processes` parameter within relevant
 configuration dictionaries. This controls the number of processes used for the analysis.
@@ -630,9 +807,3 @@ For simulations with uncertainty quantification (UQ) enabled, an additional leve
 be achieved by specifying `processes` within the UQ configuration. The default number of processes is one.
 
 
-Understanding the geometry types
-********************************
-
-
-Folder structure
-****************
