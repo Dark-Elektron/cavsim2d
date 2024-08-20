@@ -2,6 +2,8 @@ import json
 import math
 import os
 from pathlib import Path
+
+import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
 from scipy.optimize import fsolve
@@ -9,7 +11,7 @@ import numpy as np
 from cavsim2d.utils.printing import *
 
 
-def update_alpha(cell, cell_type='normal'):
+def update_alpha(cell, cell_parameterisation='simplecell'):
     """
     Update geometry json file variables to include the value of alpha
 
@@ -25,7 +27,7 @@ def update_alpha(cell, cell_type='normal'):
     """
     A, B, a, b, Ri, L, Req = cell[:7]
     alpha = calculate_alpha(A, B, a, b, Ri, L, Req, 0)
-    if cell_type == 'normal':
+    if cell_parameterisation == 'normal':
         cell = [A, B, a, b, Ri, L, Req, alpha[0]]
     else:
         cell = [A, B, a, b, Ri, L, Req, cell[7], alpha[0]]
@@ -132,7 +134,7 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
     alpha = 180 - np.arctan2(y2 - y1, (x2 - x1)) * 180 / np.pi
 
     if tangent_check:
-        shift_x = -L-lft
+        shift_x = -L - lft
         h, k, p, q = data[0]
         a, b, A, B = data[1]
         el_ab = Ellipse((shift_x + h, k), 2 * a, 2 * b, alpha=0.5)
@@ -632,9 +634,8 @@ def cn_leg_05_1(n, option=1):
 
 def cn_leg_05_2(n):
     if n < 2:
-        print("\n")
-        print("CN_LEG_05_2 - Fatal error!")
-        print("N must be at least 2.")
+        error("CN_LEG_05_2 - Fatal error!")
+        error("N must be at least 2.")
         raise ValueError("CN_LEG_05_2 - Fatal error!")
 
     o = 2 * n ** 2 + 1
@@ -1652,8 +1653,8 @@ def plot_cavity_geometry(IC, OC, OC_R, BP, n_cell, bc, scale=1, plot=None):
 #     return ax
 
 
-def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
-                             ignore_degenerate=False, **kwargs):
+def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
+                              ignore_degenerate=False, plot=False, write=None, **kwargs):
     """
     Plot cavity geometry
 
@@ -2028,8 +2029,8 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
     return ax
 
 
-def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
-                             ignore_degenerate=False, **kwargs):
+def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
+                                      ignore_degenerate=False, plot=False, write=None, **kwargs):
     """
     Write cavity geometry
 
@@ -2055,9 +2056,10 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
 
     """
 
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.set_aspect('equal')
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.set_aspect('equal')
 
     if OC is None:
         end_cell_left = IC
@@ -2068,9 +2070,9 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
         else:
             OC_R = OC
 
-    A_m, B_m, a_m, b_m, Ri_m, L_m, Req, lft = np.array(IC[:8]) * scale
-    A_el, B_el, a_el, b_el, Ri_el, L_el, Req, lft_el = np.array(OC[:8]) * scale
-    A_er, B_er, a_er, b_er, Ri_er, L_er, Req, lft_er = np.array(OC_R[:8]) * scale
+    A_m, B_m, a_m, b_m, Ri_m, L_m, Req, lft = np.array(IC[:8]) * scale * 1e-3
+    A_el, B_el, a_el, b_el, Ri_el, L_el, Req, lft_el = np.array(OC[:8]) * scale * 1e-3
+    A_er, B_er, a_er, b_er, Ri_er, L_er, Req, lft_er = np.array(OC_R[:8]) * scale * 1e-3
 
     step = 0.005
 
@@ -2095,7 +2097,7 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
 
     # calculate angles outside loop
     # CALCULATE x1_el, y1_el, x2_el, y2_el
-    df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, lft_el/2, tangent_check=tangent_check)
+    df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, lft_el / 2, tangent_check=tangent_check)
     x1el, y1el, x2el, y2el = df[0]
     if not ignore_degenerate:
         msg = df[-2]
@@ -2105,7 +2107,7 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             return
 
     # CALCULATE x1, y1, x2, y2
-    df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, lft/2, tangent_check=tangent_check)
+    df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, lft / 2, tangent_check=tangent_check)
     x1, y1, x2, y2 = df[0]
     if not ignore_degenerate:
         msg = df[-2]
@@ -2115,7 +2117,7 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             return
 
     # CALCULATE x1_er, y1_er, x2_er, y2_er
-    df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, lft_er/2, tangent_check=tangent_check)
+    df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, lft_er / 2, tangent_check=tangent_check)
     x1er, y1er, x2er, y2er = df[0]
     if not ignore_degenerate:
         msg = df[-2]
@@ -2147,31 +2149,33 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
             pt = [-shift + x1el, y1el]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2el, y2el], step)
             pt = [-shift + x2el, y2el]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
             pt = [L_bp_l + L_el - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # flat top
-            ax.scatter(pt[0], pt[1], c='g', ec='k')
             pts = lineTo(pt, [L_bp_l + L_el + lft_el - shift, Req], step)
             pt = [L_bp_l + L_el + lft_el - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
-            ax.scatter(pt[0], pt[1], c='r', ec='k')
 
             if n_cell == 1:
                 if L_bp_r > 0:
@@ -2196,7 +2200,6 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
                     # start is the lower coordinate of the bounding box and end is the upper
                     pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
                                 [L_bp_l + L_el + L_er - shift, Ri_er])
-
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
@@ -2205,7 +2208,7 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
                     geo.append([pt[1], pt[0]])
 
                     # calculate new shift
-                    shift = shift - (L_el + L_er)
+                    shift = shift - (L_el + lft_el + L_er)
                 else:
                     # EQUATOR ARC TO NEXT POINT
                     # half of bounding box is required,
@@ -2237,28 +2240,31 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
                 # EQUATOR ARC TO NEXT POINT
                 # half of bounding box is required,
                 # start is the lower coordinate of the bounding box and end is the upper
-                pts = arcTo(L_el + L_bp_l + lft_el - shift, Req - B_m, A_m, B_m, step, [pt[0], Req - B_m],
-                            [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, Req])
+                pts = arcTo(L_bp_l + L_el + lft_el - shift, Req - B_m, A_m, B_m, step, pt,
+                            [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, y2])
                 pt = [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, y2]
                 for pp in pts:
-                    geo.append([pp[1], pp[0]])
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0]])
                 geo.append([pt[1], pt[0]])
 
                 # STRAIGHT LINE TO NEXT POINT
                 pts = lineTo(pt, [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
                 pt = [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1]
                 for pp in pts:
-                    geo.append([pp[1], pp[0]])
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0]])
                 geo.append([pt[1], pt[0]])
 
                 # ARC
                 # half of bounding box is required,
                 # start is the lower coordinate of the bounding box and end is the upper
-                pts = arcTo(L_el + lft_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
-                            [L_bp_l + L_el + lft_el + L_m - shift, y1])
+                pts = arcTo(L_el + lft_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                            [L_bp_l + L_el + lft_el + L_m - shift, Ri_m])
                 pt = [L_bp_l + L_el + lft_el + L_m - shift, Ri_m]
                 for pp in pts:
-                    geo.append([pp[1], pp[0]])
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0]])
                 geo.append([pt[1], pt[0]])
 
                 # calculate new shift
@@ -2270,7 +2276,8 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
             pt = [-shift + x1, y1]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
@@ -2284,24 +2291,28 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # flat top
             pts = lineTo(pt, [L_bp_l + L_m + lft - shift, Req], step)
-            pt = [L_bp_l + L_el + lft - shift, Req]
+            pt = [L_bp_l + L_m + lft - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
             # start is the lower coordinate of the bounding box and end is the upper
-            pts = arcTo(L_m + L_bp_l + lft - shift, Req - B_m, A_m, B_m, step, [pt[0], Req - B_m],
-                        [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, Req])
+            pts = arcTo(L_m + L_bp_l + lft - shift, Req - B_m, A_m, B_m, step, pt,
+                        [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, y2])
             pt = [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, y2]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
+
             geo.append([pt[1], pt[0]])
 
             # STRAIGHT LINE TO NEXT POINT
@@ -2314,70 +2325,78 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
             # ARC
             # half of bounding box is required,
             # start is the lower coordinate of the bounding box and end is the upper
-            pts = arcTo(L_m + L_m + lft + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
-                        [L_bp_l + L_m + L_m + lft - shift, y1])
+            pts = arcTo(L_m + L_m + lft + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                        [L_bp_l + L_m + L_m + lft - shift, Ri_m])
             pt = [L_bp_l + L_m + L_m + lft - shift, Ri_m]
 
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # calculate new shift
-            shift = shift - 2 * L_m - (lft_el + lft)
+            shift = shift - 2 * L_m - lft
         else:
             # DRAW ARC:
             pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
             pt = [-shift + x1, y1]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
             pt = [-shift + x2, y2]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # flat top
             pts = lineTo(pt, [L_bp_l + L_m + lft_er - shift, Req], step)
-            pt = [L_bp_l + L_m + lft_er - shift, Req, Req]
+            pt = [L_bp_l + L_m + lft_er - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
             # start is the lower coordinate of the bounding box and end is the upper
-            pts = arcTo(L_m + lft_er + L_bp_l - shift, Req - B_er, A_er, B_er, step, [pt[0], Req - B_er],
-                        [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, Req])
+            pts = arcTo(L_m + lft_er + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                        [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, y2er])
             pt = [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, y2er]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
             pt = [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
             # ARC
             # half of bounding box is required,
             # start is the lower coordinate of the bounding box and end is the upper
             pts = arcTo(L_m + L_er + lft_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
-                        [L_bp_l + L_m + L_er + lft_er - shift, y1er])
+                        [L_bp_l + L_m + L_er + lft_er - shift, Ri_er])
             pt = [L_bp_l + L_m + L_er + lft_er - shift, Ri_er]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
     # BEAM PIPE
@@ -2407,6 +2426,14 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
     lineTo(pt, start_point, step)
     geo.append([pt[1], pt[0]])
 
+    # write geometry
+    if write:
+        try:
+            df = pd.DataFrame(geo, columns=['r', 'z'])
+            df.to_csv(write, sep='\t', index=False)
+        except FileNotFoundError as e:
+            error('Check file path:: ', e)
+
     # append start point
     geo.append([start_point[1], start_point[0]])
 
@@ -2428,15 +2455,16 @@ def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None,
     else:
         shift_to_center = n_cell * L_m + L_bp_r
 
-    top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
-    # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+    if plot:
+        top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
+        # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
 
-    # plot legend wthout duplicates
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys())
+        # plot legend wthout duplicates
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys())
 
-    return ax
+        return ax
 
 
 def orig_writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none',
@@ -3119,7 +3147,7 @@ def writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_
 
 def writeCavityForMultipac_multicell(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None,
                                      beampipe='none',
-                                     plot=False, unit=1e-3, scale=1):
+                                     plot=True, unit=1e-3, scale=1):
     """
     Write cavity geometry
 
@@ -3952,7 +3980,7 @@ def writeCavityForMultipac_flat_top(file_path, n_cell, mid_cell, end_cell_left=N
     A_el, B_el, a_el, b_el, Ri_el, L_el, Req, lft_el = np.array(end_cell_left[:8]) * unit * scale
     A_er, B_er, a_er, b_er, Ri_er, L_er, Req, lft_er = np.array(end_cell_right[:8]) * unit * scale
 
-    step = 0.001
+    step = 0.005
 
     if beampipe.lower() == 'both':
         L_bp_l = 4 * L_m
@@ -4717,7 +4745,7 @@ def plot_gun():
     # calcualte R9
     R9 = (((y1 + R2 * np.sin(T2) + L3 * np.cos(T2) + R4 * np.sin(T2) + L5 + R6) -
            (R14 + L13 + R12 * np.sin(T10) + L11 * np.cos(T10) + R10 * np.sin(T10) + x + R8 * (
-                       1 - np.sin(T9))))) / np.sin(T9)
+                   1 - np.sin(T9))))) / np.sin(T9)
     print(R9)
 
     step = 0.1

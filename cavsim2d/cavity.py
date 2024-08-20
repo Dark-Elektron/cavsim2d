@@ -1,3 +1,4 @@
+import copy
 import fnmatch
 import os.path
 import random
@@ -29,6 +30,8 @@ from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.analysis.wakefield.abci_geometry import ABCIGeometry
 from cavsim2d.utils.shared_functions import *
+import ipywidgets as widgets
+from ipywidgets import HBox, VBox, Label
 
 ngsolve_mevp = NGSolveMEVP()
 abci_geom = ABCIGeometry()
@@ -2156,17 +2159,17 @@ class Cavity:
         if what.lower() == 'geometry':
             if 'mid_cell' in kwargs.keys():
                 new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
-                ax = plot_cavity_geometry_cli(self.mid_cell, self.mid_cell, self.mid_cell,
-                                              'none', 1, scale=1, ax=ax, **new_kwargs)
+                ax = write_cavity_geometry_cli(self.mid_cell, self.mid_cell, self.mid_cell,
+                                               'none', 1, scale=1, ax=ax, plot=True, **new_kwargs)
             elif 'end_cell_left' in kwargs.keys():
-                ax = plot_cavity_geometry_cli(self.end_cell_left, self.end_cell_left, self.end_cell_left,
-                                              'left', 1, scale=1, ax=ax, **kwargs)
+                ax = write_cavity_geometry_cli(self.end_cell_left, self.end_cell_left, self.end_cell_left,
+                                               'left', 1, scale=1, ax=ax, plot=True, **kwargs)
             elif 'end_cell_right' in kwargs.keys():
-                ax = plot_cavity_geometry_cli(self.end_cell_right, self.end_cell_right, self.end_cell_right,
-                                              'right', 1, scale=1, ax=ax, **kwargs)
+                ax = write_cavity_geometry_cli(self.end_cell_right, self.end_cell_right, self.end_cell_right,
+                                               'right', 1, scale=1, ax=ax, plot=True, **kwargs)
             else:
-                ax = plot_cavity_geometry_cli(self.mid_cell, self.end_cell_left, self.end_cell_right,
-                                              self.beampipe, self.n_cells, scale=1, ax=ax, **kwargs)
+                ax = write_cavity_geometry_cli(self.mid_cell, self.end_cell_left, self.end_cell_right,
+                                               self.beampipe, self.n_cells, scale=1, ax=ax, plot=True, **kwargs)
             ax.set_xlabel('$z$ [mm]')
             ax.set_ylabel(r"$r$ [mm]")
             return ax
@@ -2254,8 +2257,6 @@ class Cavity:
         self.operating_points = op
 
     def inspect(self, cell_type='mid-cell', variation=0.2):
-        import ipywidgets as widgets
-        from ipywidgets import HBox, VBox, Label
 
         if cell_type == 'mid-cell':
             cell = self.shape['IC']
@@ -2272,11 +2273,13 @@ class Cavity:
             # Define the function that plots the graph
             def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
                 cell = np.array([A, B, a, b, Ri, L, Req, l])
-                plot_cavity_geometry_cli_flattop(cell, cell, cell, BP='none', n_cell=1, tangent_check=True, lw=1,
-                                                 ignore_degenerate=True)
+                write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
+                                                  n_cell=1, tangent_check=True, lw=1,
+                                                  plot=True,
+                                                  ignore_degenerate=True)
 
                 # Update the sum display
-                sum_label.value = f'Sum of A + a: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
+                sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
 
             # Create sliders for each variable
             A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
@@ -2318,8 +2321,10 @@ class Cavity:
             # Define the function that plots the graph
             def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
                 cell = np.array([A, B, a, b, Ri, L, Req])
-                plot_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1, tangent_check=True, lw=1,
-                                         ignore_degenerate=True)
+                write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
+                                          tangent_check=True, lw=1,
+                                          plot=True,
+                                          ignore_degenerate=True)
 
                 # Update the sum display
                 sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
@@ -6282,6 +6287,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
                                     'projectDir': projectDir,
                                     'analysis folder': eigenmode_config['solver_save_directory'],
                                     'cell_type': 'mid-cell',
+                                    'cell_parameterisation': shape['CELL PARAMETERISATION'],
                                     'optimisation': opt
                                     }
 
@@ -6401,18 +6407,33 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
 
             if MROT == 2:
                 for m in tqdm(range(2)):
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                     fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                     projectDir=projectDir,
-                                     WG_M=ii, marker=ii)
+                    if shape['CELL PARAMETERISATION'] == 'simplecell':
+                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                         projectDir=projectDir,
+                                         WG_M=ii, marker=ii)
+                    if shape['CELL PARAMETERISATION'] == 'flattop':
+                        abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                         projectDir=projectDir,
+                                         WG_M=ii, marker=ii)
+
             else:
                 for m in tqdm(range(2)):
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                     fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                     projectDir=projectDir,
-                                     WG_M=ii, marker=ii)
+                    if shape['CELL PARAMETERISATION'] == 'simplecell':
+                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                         projectDir=projectDir,
+                                         WG_M=ii, marker=ii)
+                    if shape['CELL PARAMETERISATION'] == 'flattop':
+                        abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                         projectDir=projectDir,
+                                         WG_M=ii, marker=ii)
 
         done(f'Cavity {name}. Time: {time.time() - start_time}')
 
@@ -6426,6 +6447,7 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                 'projectDir': projectDir,
                                 'analysis folder': 'ABCI',
                                 # 'cell_type': cell_type,
+                                'cell_parameterisation': shape['CELL PARAMETERISATION'],
                                 'optimisation': False
                                 }
 
@@ -6567,12 +6589,16 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         analysis_folder = solver_args_dict['analysis folder']
         opt = solver_args_dict['optimisation']
         delta = uq_config['delta']
-        method = uq_config['method']
+
+        method = ['stroud3']
+        if 'method' in uq_config.keys():
+            method = uq_config['method']
+
         uq_vars = uq_config['variables']
         assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
         for key, shape in shape_space.items():
-            # n_cells = shape['IC'].shape[1] + 1
+            n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
             result_dict_eigen, result_dict_abci = {}, {}
             eigen_obj_list, abci_obj_list = [], []
@@ -6585,18 +6611,22 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
 
             rdim = len(uq_vars)
             degree = 1
-            flag_stroud = 'stroud3'
 
-            if flag_stroud == 'stroud3':
+            if isinstance(method, str):
+                flag = method
+            else:
+                flag = method[0]
+
+            if flag == 'stroud3':
                 nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
                 nodes_ = 2. * nodes_ - 1.
                 # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
                 # gives a less accurate answer. the nodes are not the same as the custom function
-            elif flag_stroud == 'stroud5':
+            elif flag == 'stroud5':
                 nodes_, weights_ = cn_leg_05_2(rdim)
-            elif flag_stroud == 'cn_gauss':
+            elif flag == 'cn_gauss':
                 nodes_, weights_ = cn_gauss(rdim, 2)
-            elif flag_stroud == 'lhc':
+            elif flag == 'lhc':
                 sampler = qmc.LatinHypercube(d=rdim)
                 _ = sampler.reset()
                 nsamp = 2500
@@ -6660,7 +6690,7 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 processor_weights = weights_[proc_keys_list]
                 service = mp.Process(target=uq, args=(key, objectives, uq_config, uq_path,
                                                       solver_args_dict, sub_dir,
-                                                      proc_keys_list, processor_nodes, p, cell_node, solver))
+                                                      proc_keys_list, processor_nodes, p, cell_node, n_cells, solver))
 
                 service.start()
                 jobs.append(service)
@@ -6698,7 +6728,11 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         # n_cells = solver_args['n_cells']
         uq_config = solver_args['uq_config']
         delta = uq_config['delta']
-        method = uq_config['method']
+
+        method = 'stroud3'
+        if 'method' in uq_config.keys():
+            method = uq_config['method']
+
         uq_vars = uq_config['variables']
         cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
@@ -6723,18 +6757,22 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
 
             rdim = len(uq_vars)
             degree = 1
-            flag_stroud = 'stroud3'
 
-            if flag_stroud == 'stroud3':
+            if isinstance(method, str):
+                flag = method
+            else:
+                flag = method[0]
+
+            if flag.lower() == 'stroud3':
                 nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
                 nodes_ = 2. * nodes_ - 1.
                 # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
                 # gives a less accurate answer. the nodes are not the same as the custom function
-            elif flag_stroud == 'stroud5':
+            elif flag.lower() == 'stroud5':
                 nodes_, weights_ = cn_leg_05_2(rdim)
-            elif flag_stroud == 'cn_gauss':
+            elif flag.lower() == 'cn_gauss':
                 nodes_, weights_ = cn_gauss(rdim, 2)
-            elif flag_stroud == 'lhc':
+            elif flag.lower() == 'lhc':
                 sampler = qmc.LatinHypercube(d=rdim)
                 _ = sampler.reset()
                 nsamp = 2500
@@ -6865,6 +6903,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         delta = uq_config['delta']
         method = uq_config['method']
         uq_vars = uq_config['variables']
+        cell_parameterisation = solver_args_dict['cell_parameterisation']
         err = False
         result_dict_eigen = {}
         Ttab_val_f = []
@@ -6923,10 +6962,16 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 # it does not seem to make sense to perform uq on a multi cell by repeating the same perturbation
                 # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
                 # independent perturbations to all cells individually
-                ngsolve_mevp.cavity(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
-                                    fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                    projectDir=projectDir,
-                                    subdir=sub_dir)
+                if cell_parameterisation == 'simplecell':
+                    ngsolve_mevp.cavity(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
+                                        fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                        projectDir=projectDir,
+                                        subdir=sub_dir)
+                if cell_parameterisation == 'flattop':
+                    ngsolve_mevp.cavity_flattop(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
+                                        fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                        projectDir=projectDir,
+                                        subdir=sub_dir)
 
             filename = uq_path / f'{fid}/monopole/qois.json'
             if os.path.exists(filename):
@@ -6961,6 +7006,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         # WG_M = solver_args['WG_M']
         delta = uq_config['delta']
         # method = uq_config['method']
+        cell_parameterisation = solver_args_dict['cell_parameterisation']
         uq_vars = uq_config['variables']
         cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
@@ -7025,13 +7071,23 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             if not skip:
                 abci_geom.createFolder(fid, projectDir, subdir=sub_dir)
                 for wi in range(MROT):
-                    abci_geom.cavity(n_cells, 1, mid, left, right, fid=fid, MROT=wi,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
-                                     bunch_length=bunch_length,
-                                     MT=MT, NFS=NFS, UBT=UBT,
-                                     parentDir=parentDir, projectDir=projectDir, WG_M='',
-                                     marker='', sub_dir=sub_dir
-                                     )
+                    if cell_parameterisation == 'simplecell':
+                        abci_geom.cavity(n_cells, 1, mid, left, right, fid=fid, MROT=wi,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
+                                         bunch_length=bunch_length,
+                                         MT=MT, NFS=NFS, UBT=UBT,
+                                         parentDir=parentDir, projectDir=projectDir, WG_M='',
+                                         marker='', sub_dir=sub_dir
+                                         )
+                    if cell_parameterisation == 'flattop':
+                        abci_geom.cavity_flattop(n_cells, 1, mid, left, right, fid=fid, MROT=wi,
+                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
+                                         bunch_length=bunch_length,
+                                         MT=MT, NFS=NFS, UBT=UBT,
+                                         parentDir=parentDir, projectDir=projectDir, WG_M='',
+                                         marker='', sub_dir=sub_dir
+                                         )
+
             uq_shape = {'IC': mid, 'OC': left, 'OC_R': right, 'BP': beampipes}
             uq_shape_space[fid] = uq_shape
 
@@ -7139,7 +7195,11 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
     analysis_folder = solver_args_dict['analysis folder']
     opt = solver_args_dict['optimisation']
     delta = uq_config['delta']
-    method = uq_config['method']
+
+    method = 'stroud3'
+    if 'method' in uq_config.keys():
+        method = uq_config['method']
+
     uq_vars = uq_config['variables']
     n_cells = solver_args_dict['eigenmode']['n_cells']
     assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
@@ -7190,10 +7250,10 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         # rdim = n_cells*3  # How many variables will be considered as random in our case 5
         degree = 1
 
-        flag = 'stroud3'  # default
-        if 'method' in uq_config.keys():
-            if len(uq_config['method']) > 1:
-                flag = uq_config['method'][1]
+        if isinstance(method, str):
+            flag = method
+        else:
+            flag = method[0]
 
         if flag == 'stroud3':
             nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
@@ -7398,50 +7458,6 @@ def uq_multicell_s(n_cells, n_modules, shape, qois, n_modes, f_shift, bc, pol, p
     data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
     data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
 
-
-# def get_objectives_value(d, obj, norm_length, n_cells):
-#     Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
-#     Freq = d['FREQUENCY'][n_cells - 1]
-#     E_stored = d['STORED ENERGY'][n_cells - 1]
-#     # Rsh = d['SHUNT IMPEDANCE'][n_cells - 1]  # MOhm
-#     Q = d['QUALITY FACTOR'][n_cells - 1]
-#     Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
-#     Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
-#     # Vacc = dict['ACCELERATION'][n_cells - 1]
-#     # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells - 1]  # MV/m
-#     r_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
-#     G = 0.00948 * Q * (Freq / 1300)
-#     GR_Q = G * 2 * r_Q
-#
-#     Vacc = np.sqrt(
-#         2 * r_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6  # factor of 2, remember circuit and accelerator definition
-#     # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
-#     Eacc = Vacc / (n_cells * norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
-#     Epk_Eacc = Epk / Eacc
-#     Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
-#
-#     d = {
-#         "Req": Req,
-#         "freq": Freq,
-#         "Q": Q,
-#         "E": E_stored,
-#         "R/Q": 2 * r_Q,
-#         "Epk/Eacc": Epk_Eacc,
-#         "Bpk/Eacc": Bpk_Eacc,
-#         "G": G,
-#         "GR/Q": GR_Q
-#     }
-#
-#     objective = []
-#     # append freq and Req
-#     tune_result = [Req, Freq]
-#
-#     # append objective functions
-#     for o in obj:
-#         if o[1] in d.keys():
-#             objective.append(d[o[1]])
-#
-#     return objective, tune_result
 
 def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
     k_loss_array_transverse = []

@@ -101,7 +101,7 @@ class NGSolveMEVP:
         return ips, gipts, nlast
 
     def write_geometry(self, folder, n_cells, mid_cell, end_cell_left=None, end_cell_right=None,
-                       beampipe='none', plot=False, cell_type='normal'):
+                       beampipe='none', plot=False, cell_parameterisation='normal'):
         """
         Define geometry
 
@@ -154,14 +154,15 @@ class NGSolveMEVP:
                 exit()
 
         file_path = fr"{folder}\geodata.n"
-        if cell_type == 'normal':
+        if cell_parameterisation == 'simplecell':
             writeCavityForMultipac(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe, plot=plot)
         else:
-            writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
-                                            plot=plot)
+            # writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
+            #                                 plot=plot)
+            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
 
     def write_geometry_multicell(self, folder, n_cells, mid_cell, end_cell_left=None, end_cell_right=None,
-                                 beampipe='none', plot=False, cell_type='normal'):
+                                 beampipe='none', plot=False, cell_parameterisation='normal'):
         """
         Define geometry
 
@@ -216,7 +217,7 @@ class NGSolveMEVP:
                 exit()
 
         file_path = fr"{folder}\geodata.n"
-        if cell_type == 'normal':
+        if cell_parameterisation == 'normal':
             writeCavityForMultipac_multicell(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
                                              plot=plot)
         else:
@@ -844,7 +845,7 @@ class NGSolveMEVP:
 
     def cavity_flattop(self, no_of_cells=1, no_of_modules=1,
                        mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-                       fid=None, bc=33, pol='Monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
+                       fid=None, bc=33, pol='monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
                        sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
                        expansion=None, expansion_r=None, mesh_args=None, opt=False,
                        deformation_params=None):
@@ -894,7 +895,7 @@ class NGSolveMEVP:
 
         """
 
-        if pol != 'Monopole':
+        if pol.lower() != 'monopole':
             pol_subdir = 'dipole'
         else:
             pol_subdir = 'monopole'
@@ -912,11 +913,11 @@ class NGSolveMEVP:
                 run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}'
         # write
         self.write_geometry(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes,
-                            cell_type='flattop', plot=False)
+                            cell_parameterisation='flattop', plot=False)
 
         # read geometry
         cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
-                               header=None, skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0, 2]]
+                               header=None, skiprows=1, sep='\s+', engine='python')
 
         if deformation_params is not None:
             cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
@@ -948,7 +949,6 @@ class NGSolveMEVP:
         face.edges.Min(Y).col = (1, 0, 0)
 
         geo = OCCGeometry(face, dim=2)
-
         # mesh
         A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(mid_cells_par[:7])
         maxh = L / mesh_args[0] * 1e-3
@@ -974,7 +974,7 @@ class NGSolveMEVP:
             a.Assemble()
             m.Assemble()
             apre.Assemble()
-            freedof_matrix = a.mat.CreateSmoother(fes.FreeDofs())
+            # freedof_matrix = a.mat.CreateSmoother(fes.FreeDofs())
 
             # build gradient matrix as sparse matrix (and corresponding scalar FESpace)
             gradmat, fesh1 = fes.CreateGradient()
@@ -1011,9 +1011,9 @@ class NGSolveMEVP:
         self.save_fields(run_save_directory, gfu_E, gfu_H)
 
         # save json file
-        shape = {'IC': update_alpha(mid_cells_par, cell_type='flattop'),
-                 'OC': update_alpha(l_end_cell_par, cell_type='flattop'),
-                 'OC_R': update_alpha(r_end_cell_par, cell_type='flattop')}
+        shape = {'IC': update_alpha(mid_cells_par, cell_parameterisation='flattop'),
+                 'OC': update_alpha(l_end_cell_par, cell_parameterisation='flattop'),
+                 'OC_R': update_alpha(r_end_cell_par, cell_parameterisation='flattop')}
 
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
