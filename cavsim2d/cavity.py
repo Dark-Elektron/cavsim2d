@@ -142,7 +142,8 @@ class Optimisation:
         self.wakefield_config = {}
         if (any(['ZL' in obj for obj in self.objective_vars])
                 or any(['ZT' in obj for obj in self.objective_vars])
-                or [obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in self.objective_vars]):
+                or [obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
+                    self.objective_vars]):
             assert 'wakefield_config' in config.keys(), error('Wakefield impedance objective detected in objectives. '
                                                               'Please include a field for wakefield_config. An empty'
                                                               ' config entry implies that default values will be used.')
@@ -220,7 +221,8 @@ class Optimisation:
 
             if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'none',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1,
+                                             'CELL PARAMETERISATION': 'simplecell'}
 
             elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
 
@@ -237,17 +239,20 @@ class Optimisation:
                                      "Please check.")
 
                 pseudo_shape_space[rw[0]] = {'IC': IC, 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1,
+                                             'CELL PARAMETERISATION': 'simplecell'}
 
             elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
                   or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
 
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1,
+                                             'CELL PARAMETERISATION': 'simplecell'}
 
             else:
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'both',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1,
+                                             'CELL PARAMETERISATION': 'simplecell'}
 
         pseudo_shape_space = self.remove_duplicate_values(pseudo_shape_space)
 
@@ -365,7 +370,8 @@ class Optimisation:
 
         # wakefield objective variables
         for o in self.objectives:
-            if "ZL" in o[1] or "ZT" in o[1] or o[1] in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
+            if "ZL" in o[1] or "ZT" in o[1] or o[1] in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]',
+                                                        'P_HOM [kW]']:
                 # run wakefield analysis and return shape space
                 wake_shape_space = self.run_wakefield_opt(df, self.wakefield_config)
 
@@ -1506,7 +1512,7 @@ class Cavity:
     """
 
     def __init__(self, n_cells, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none', name='cavity',
-                 cell_type='simplecell', plot_label=None):
+                 cell_parameterisation='simplecell', plot_label=None):
         """
         Initialise cavity object. A cavity object is defined by the number of cells, the cell geometric parameters,
         if it has beampipes or not and the name. These properties could be changed and retrieved later using the
@@ -1516,11 +1522,11 @@ class Cavity:
         ----------
         n_cells: int
             Number of cells
-        mid_cell: list, array like
+        mid_cell: list, ndarray
             Mid cell geometric parameters of the cavity
-        end_cell_left: list, array like
+        end_cell_left: list, ndarray
             Left end cell geometric parameters of the cavity
-        end_cell_right: list, array like
+        end_cell_right: list, ndarray
             Right end cell geometric parameters of the cavity
         beampipe: {'none', 'both', 'left', 'right'}
             Beampipe options
@@ -1542,11 +1548,7 @@ class Cavity:
         self.projectDir = None
         self.bc = 33
         self.name = name
-        self.n_cells = n_cells
-        self.mid_cell = np.array(mid_cell)[:7]
-        self.end_cell_left = np.array(end_cell_left)[:7]
-        self.end_cell_right = np.array(end_cell_right)[:7]
-        self.cell_parameterisation = 'simplecell'
+
         self.beampipe = beampipe
         self.no_of_modules = 1
         self.eigenmode_qois = {}
@@ -1557,42 +1559,93 @@ class Cavity:
         self.eigenmode_tune_res = {}
         self.operating_points = None
 
-        # slans results
+        # eigenmode results
         self.R_Q, self.k_fm, self.GR_Q, self.op_freq, self.e, self.b, \
             self.G, self.ff, self.k_cc, self.axis_field, self.surface_field = [0 for _ in range(11)]
 
-        # abci results
+        # wakefield results
         self.k_fm, self.k_loss, self.k_kick, self.phom, self.sigma, self.I0 = [{} for _ in range(6)]
 
         self.wall_material = None
 
         self.freq = None
+        self.n_cells = n_cells
 
-        if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-            end_cell_left = mid_cell
+        self.cell_parameterisation = cell_parameterisation
+        if self.cell_parameterisation == 'flattop':
+            assert len(mid_cell) > 7, error('Flattop cavity mid-cells require at least 8 input parameters, '
+                                            'with the 8th representing length (l).')
+            if end_cell_left:
+                assert len(end_cell_left) > 7, error(
+                    'Flattop cavity left end-cells require at least 8 input parameters, '
+                    'with the 8th representing length (l).')
+            if end_cell_right:
+                assert len(end_cell_right) > 7, error(
+                    'Flattop cavity right end-cells require at least 8 input parameters,'
+                    'with the 8th representing length (l).')
+            self.mid_cell = np.array(mid_cell)[:8]
+            self.end_cell_left = np.array(end_cell_left)[:8]
+            self.end_cell_right = np.array(end_cell_right)[:8]
 
-        if not (isinstance(end_cell_right, np.ndarray) or isinstance(end_cell_right, list)):
             if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-                end_cell_right = mid_cell
-            else:
-                end_cell_right = end_cell_left
+                end_cell_left = mid_cell
 
-        self.end_cell_left = end_cell_left
-        self.end_cell_right = end_cell_right
+            if not (isinstance(end_cell_right, np.ndarray) or isinstance(end_cell_right, list)):
+                if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
+                    end_cell_right = mid_cell
+                else:
+                    end_cell_right = end_cell_left
 
-        self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req = self.mid_cell[:7]
-        self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el = self.end_cell_left[:7]
-        self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er = self.end_cell_right[:7]
+            self.end_cell_left = end_cell_left
+            self.end_cell_right = end_cell_right
 
-        # get geometric parameters
-        self.shape = {
-            "IC": self.mid_cell[:7],
-            "OC": self.end_cell_left[:7],
-            "OC_R": self.end_cell_right[:7],
-            "BP": beampipe,
-            "n_cells": self.n_cells,
-            'CELL PARAMETERISATION': self.cell_parameterisation
-        }
+            self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req, self.l = self.mid_cell[:8]
+            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[
+                                                                                                        :8]
+            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[
+                                                                                                        :8]
+
+            # get geometric parameters
+            self.shape = {
+                "IC": self.mid_cell[:8],
+                "OC": self.end_cell_left[:8],
+                "OC_R": self.end_cell_right[:8],
+                "BP": beampipe,
+                "n_cells": self.n_cells,
+                'CELL PARAMETERISATION': self.cell_parameterisation
+            }
+            self.shape_multicell = {}
+            self.to_multicell()  # <- get multicell representation
+        else:
+            self.mid_cell = np.array(mid_cell)[:7]
+            self.end_cell_left = np.array(end_cell_left)[:7]
+            self.end_cell_right = np.array(end_cell_right)[:7]
+
+            if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
+                end_cell_left = mid_cell
+
+            if not (isinstance(end_cell_right, np.ndarray) or isinstance(end_cell_right, list)):
+                if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
+                    end_cell_right = mid_cell
+                else:
+                    end_cell_right = end_cell_left
+
+            self.end_cell_left = end_cell_left
+            self.end_cell_right = end_cell_right
+
+            self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req = self.mid_cell[:7]
+            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el = self.end_cell_left[:7]
+            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er = self.end_cell_right[:7]
+
+            # get geometric parameters
+            self.shape = {
+                "IC": self.mid_cell[:7],
+                "OC": self.end_cell_left[:7],
+                "OC_R": self.end_cell_right[:7],
+                "BP": beampipe,
+                "n_cells": self.n_cells,
+                'CELL PARAMETERISATION': self.cell_parameterisation
+            }
         self.shape_multicell = {}
         self.to_multicell()  # <- get multicell representation
 
@@ -1610,6 +1663,21 @@ class Cavity:
 
         """
         self.name = name
+
+    def set_parameterisation(self, cell_parameterisation):
+        """
+        Set cavity name
+
+        Parameters
+        ----------
+        name: str
+            Name of cavity
+
+        Returns
+        -------
+
+        """
+        self.cell_parameterisation = cell_parameterisation
 
     def set_plot_label(self, plot_label):
         """
@@ -2049,7 +2117,6 @@ class Cavity:
             self.uq_fm_results = json.load(json_file)
 
     def get_uq_hom_results(self, folder):
-        # load uq result
         with open(folder, 'r') as json_file:
             self.uq_hom_results = json.load(json_file)
 
@@ -2186,52 +2253,108 @@ class Cavity:
     def define_operating_points(self, op):
         self.operating_points = op
 
-    def inspect(self, variation=0.2):
+    def inspect(self, cell_type='mid-cell', variation=0.2):
         import ipywidgets as widgets
         from ipywidgets import HBox, VBox, Label
 
-        mid_cell = self.shape['IC']
-        A_, B_, a_, b_, Ri_, L_, Req_ = mid_cell[:7]
+        if cell_type == 'mid-cell':
+            cell = self.shape['IC']
+        elif cell_type == 'end-cell-left':
+            cell = self.shape['OC']
+        elif cell_type == 'end-cell-right':
+            cell = self.shape['OC_R']
+        else:
+            cell = self.shape['IC']
 
-        # Define the function that plots the graph
-        def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
-            mid_cell = np.array([A, B, a, b, Ri, L, Req])
-            plot_cavity_geometry_cli(mid_cell, mid_cell, mid_cell, BP='none', n_cell=1, tangent_check=True, lw=1,
-                                     ignore_degenerate=True)
+        if self.cell_parameterisation == 'flattop':
+            A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
 
-            # Update the sum display
-            sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+            # Define the function that plots the graph
+            def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
+                cell = np.array([A, B, a, b, Ri, L, Req, l])
+                plot_cavity_geometry_cli_flattop(cell, cell, cell, BP='none', n_cell=1, tangent_check=True, lw=1,
+                                                 ignore_degenerate=True)
 
-        # Create sliders for each variable
-        A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-                                       description='A')
-        B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-                                       description='B')
-        a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-                                       description='a')
-        b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-                                       description='b')
-        Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-                                        description='Ri')
-        L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-                                       description='L')
-        Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1, value=Req_,
-                                         description='Req')
-        # Create a label to display the sum of A + a
-        sum_label = Label()
+                # Update the sum display
+                sum_label.value = f'Sum of A + a: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
 
-        # Arrange the sliders in a 3x3 layout
-        ui = VBox([
-            HBox([A_slider, B_slider, a_slider]),
-            HBox([b_slider, Ri_slider, L_slider]),
-            HBox([Req_slider]),
-            sum_label  # Add the sum label to the layout
-        ])
+            # Create sliders for each variable
+            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+                                           description='A')
+            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+                                           description='B')
+            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+                                           description='a')
+            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+                                           description='b')
+            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+                                            description='Ri')
+            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+                                           description='L')
+            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+                                             value=Req_,
+                                             description='Req')
+            l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
+                                           description='l')
+            # Create a label to display the sum of A + a
+            sum_label = Label()
 
-        # Create an interactive widget to update the plot
-        out = widgets.interactive_output(plot_cavity_geometry,
-                                         {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-                                          'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
+            # Arrange the sliders in a 3x3 layout
+            ui = VBox([
+                HBox([A_slider, B_slider, a_slider]),
+                HBox([b_slider, Ri_slider, L_slider]),
+                HBox([Req_slider, l_slider]),
+                sum_label  # Add the sum label to the layout
+            ])
+
+            # Create an interactive widget to update the plot
+            out = widgets.interactive_output(plot_cavity_geometry_flattop,
+                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
+
+        else:
+            A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
+
+            # Define the function that plots the graph
+            def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
+                cell = np.array([A, B, a, b, Ri, L, Req])
+                plot_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1, tangent_check=True, lw=1,
+                                         ignore_degenerate=True)
+
+                # Update the sum display
+                sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+
+            # Create sliders for each variable
+            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+                                           description='A')
+            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+                                           description='B')
+            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+                                           description='a')
+            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+                                           description='b')
+            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+                                            description='Ri')
+            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+                                           description='L')
+            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+                                             value=Req_,
+                                             description='Req')
+            # Create a label to display the sum of A + a
+            sum_label = Label()
+
+            # Arrange the sliders in a 3x3 layout
+            ui = VBox([
+                HBox([A_slider, B_slider, a_slider]),
+                HBox([b_slider, Ri_slider, L_slider]),
+                HBox([Req_slider]),
+                sum_label  # Add the sum label to the layout
+            ])
+
+            # Create an interactive widget to update the plot
+            out = widgets.interactive_output(plot_cavity_geometry,
+                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
 
         # Display the layout
         display(out, ui)
@@ -2779,10 +2902,26 @@ class Cavities(Optimisation):
 
         """
 
-        run_tune_parallel(self.shape_space, tune_config, self.projectDir, solver='NGSolveMEVP',
-                          resume=False)
+        rerun = True
+        if 'rerun' in tune_config:
+            rerun = tune_config['rerun']
+            assert isinstance(rerun, bool), error('rerun should be boolean.')
+        else:
+            tune_config['rerun'] = rerun
+
+        if rerun:
+            run_tune_parallel(self.shape_space, tune_config, self.projectDir, solver='NGSolveMEVP', resume=False)
+
         # get tune results
         self.get_tune_res()
+
+    def get_tune_res(self):
+        for key, cav in self.cavities_dict.items():
+            try:
+                cav.get_ngsolve_tune_res()
+                self.eigenmode_tune_res[cav.name] = cav.eigenmode_tune_res
+            except FileNotFoundError:
+                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     def run_eigenmode(self, eigenmode_config=None):
         """
@@ -2864,26 +3003,6 @@ class Cavities(Optimisation):
             except FileNotFoundError:
                 error("Could not find the eigenmode results. Please rerun eigenmode analysis.")
                 return False
-
-    def get_tune_res(self):
-        for key, cav in self.cavities_dict.items():
-            try:
-                cav.get_ngsolve_tune_res()
-                self.eigenmode_tune_res[cav.name] = cav.eigenmode_tune_res
-            except FileNotFoundError:
-                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
-
-    def get_wakefield_qois(self, uq_config):
-        for key, cav in self.cavities_dict.items():
-            try:
-                cav.get_abci_data()
-                cav.get_wakefield_qois()
-                self.wakefield_qois[cav.name] = cav.wakefield_qois
-                if uq_config:
-                    cav.get_uq_hom_results(fr"{self.projectDir}\SimulationData\ABCI\{cav.name}\uq.json")
-                    self.uq_hom_results[cav.name] = cav.uq_hom_results
-            except FileNotFoundError:
-                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     def run_wakefield(self, wakefield_config=None):
         """
@@ -2983,14 +3102,16 @@ class Cavities(Optimisation):
                 wakefield_config['processes'] = processes
 
             if 'polarisation' in wakefield_config_keys:
-                assert wakefield_config['polarisation'] in [0, 1, 2], error('Polarisation should be 0 for longitudinal, '
-                                                                            '1 for transverse, 2 for both.')
+                assert wakefield_config['polarisation'] in [0, 1, 2], error(
+                    'Polarisation should be 0 for longitudinal, '
+                    '1 for transverse, 2 for both.')
             else:
                 wakefield_config['polarisation'] = MROT
 
             if 'MT' in wakefield_config_keys:
-                assert isinstance(wakefield_config['MT'], int), error('MT must be integer between 4 and 20, with 4 and 20 '
-                                                                      'included.')
+                assert isinstance(wakefield_config['MT'], int), error(
+                    'MT must be integer between 4 and 20, with 4 and 20 '
+                    'included.')
             else:
                 wakefield_config['MT'] = MT
 
@@ -3009,6 +3130,18 @@ class Cavities(Optimisation):
                                    self.projectDir, marker='', rerun=rerun)
 
         self.get_wakefield_qois(uq_config)
+
+    def get_wakefield_qois(self, uq_config):
+        for key, cav in self.cavities_dict.items():
+            try:
+                cav.get_abci_data()
+                cav.get_wakefield_qois()
+                self.wakefield_qois[cav.name] = cav.wakefield_qois
+                if uq_config:
+                    cav.get_uq_hom_results(fr"{self.projectDir}\SimulationData\ABCI\{cav.name}\uq.json")
+                    self.uq_hom_results[cav.name] = cav.uq_hom_results
+            except FileNotFoundError:
+                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     def plot(self, what, ax=None, **kwargs):
         for cav in self.cavities_list:

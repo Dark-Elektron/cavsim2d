@@ -7,7 +7,7 @@ import shutil
 
 ngsolve_mevp = NGSolveMEVP()
 
-VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6}
+VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
 
 
 class Tuner:

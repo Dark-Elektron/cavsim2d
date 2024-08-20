@@ -803,7 +803,6 @@ class NGSolveMEVP:
                                           printrates=False)
 
         # error('Time to complete sim: ', time.time()-start)
-        # print out eigenvalues
         # freq_fes = []
         evals[0] = 1  # <- replace nan with zero
         # for i, lam in enumerate(evals):
@@ -992,7 +991,6 @@ class NGSolveMEVP:
             evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=mesh_args[1],
                                           printrates=False)
 
-        # print out eigenvalues
         freq_fes = []
         evals[0] = 1  # <- replace nan with zero
         for i, lam in enumerate(evals):
@@ -1012,12 +1010,6 @@ class NGSolveMEVP:
         # save fields
         self.save_fields(run_save_directory, gfu_E, gfu_H)
 
-        # # alternative eigenvalue solver, but careful, mode numbering may change
-        # u = GridFunction(fes, multidim=30, name='resonances')
-        # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
-        #                         list(u.vecs), shift=300)
-        # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
-
         # save json file
         shape = {'IC': update_alpha(mid_cells_par, cell_type='flattop'),
                  'OC': update_alpha(l_end_cell_par, cell_type='flattop'),
@@ -1026,9 +1018,7 @@ class NGSolveMEVP:
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
 
-        # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-        # error(qois)
 
         with open(fr'{run_save_directory}\qois.json', "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -1102,7 +1092,7 @@ class NGSolveMEVP:
             # mesh
             L, Req = cell_par[0], cell_par[1]
             maxh = L / mesh_args[0] * 1e-3
-            print(maxh)
+            info('mesh maxh', maxh)
 
             # try to generate mesh
             try:
@@ -1153,7 +1143,6 @@ class NGSolveMEVP:
             evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-                # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
             # plot results
             gfu_E = []
@@ -1173,11 +1162,9 @@ class NGSolveMEVP:
             # u = GridFunction(fes, multidim=30, name='resonances')
             # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
             #                         list(u.vecs), shift=300)
-            # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
 
             # save json file
             shape = {'IC': cell_par}
-            # print(run_save_directory)
             with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
@@ -1256,12 +1243,9 @@ class NGSolveMEVP:
             projpre = proj @ pre.mat
             evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=30, maxit=20, printrates=False);
 
-        # print out eigenvalues
-        # print("Eigenvalues")
         freq_fes = []
         for i, lam in enumerate(evals):
             freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-            # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
         # plot results
         gfu = GridFunction(fes, multidim=len(evecs))
@@ -1272,7 +1256,6 @@ class NGSolveMEVP:
         # u = GridFunction(fes, multidim=30, name='resonances')
         # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
         #                         list(u.vecs), shift=300)
-        # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
 
     @staticmethod
     def evaluate_qois(cav_geom, n, Req, L, gfu_E, gfu_H, mesh, freq_fes, beta=1):
@@ -1281,29 +1264,22 @@ class NGSolveMEVP:
         # calculate Vacc and Eacc
         Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('b')))
         Eacc = Vacc / (L * 1e-3 * 2 * n)
-        # print(f"Vacc: {Vacc}")
-        # print(f"Eacc: {Eacc}")
 
         # calculate U and R/Q
         U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], gfu_E[n]), mesh)
         # Uh = 2 * pi * 0.5 * mu0 * Integrate(y * InnerProduct(gfu_H[n], gfu_H[n]), mesh)
         RoQ = Vacc ** 2 / (w * U)
-        # print(f"U: {U}")
-        # print(f"Uh: {Uh}")
-        # print("R/Q: ", RoQ)
 
         # OLD GEOMETRY INPUT TYPE
         # calculate peak surface fields
         xpnts_surf = cav_geom[(cav_geom[0] > 0) & (cav_geom[1] > min(cav_geom[1])) & (cav_geom[1] < max(cav_geom[1]))]
         Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for indx, (xi, yi) in xpnts_surf.iterrows()]
         Epk = (max(Esurf))
-        # print("Epk/Eacc", Epk / Eacc)
 
         # calculate peak surface fields
         xpnts = cav_geom[(cav_geom[0] > 0) & (cav_geom[1] > min(cav_geom[1])) & (cav_geom[1] < max(cav_geom[1]))]
         Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for indx, (xi, yi) in xpnts.iterrows()]
         Hpk = (max(Hsurf))
-        # print("Bpk/Eacc", mu0 * Hpk * 1e9 / Eacc)
 
         # # calculate peak surface fields
         # pec_boundary = mesh.Boundaries("default")
@@ -1312,28 +1288,23 @@ class NGSolveMEVP:
         # xpnts_surf = sorted([mesh.vertices[xy.nr].point for xy in bel_unique])
         # Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]
         # Epk = (max(Esurf))
-        # # print("Epk/Eacc", Epk / Eacc)
         #
         # Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]
         # Hpk = (max(Hsurf))
-        # # print("Bpk/Eacc", mu0 * Hpk * 1e9 / Eacc)
 
         # calculate surface power loss
         sigma_cond = 5.96e7  # <- conduction of copper
         Rs = np.sqrt(mu0 * w / (2 * sigma_cond))  # Surface resistance
         Ploss = 2 * pi * 0.5 * Rs * Integrate(y * InnerProduct(CF(Hsurf), CF(Hsurf)), mesh,
                                               definedon=mesh.Boundaries('default'))
-        # print(f'Ploss: {Ploss}')
 
         # calculate cell to cell coupling factor
         f_diff = freq_fes[n] - freq_fes[1]
         f_add = (freq_fes[n] + freq_fes[1])
         kcc = 2 * f_diff / f_add * 100
-        # print(f"kcc: {kcc}")
 
         # calculate Q
         Q = w * U / Ploss
-        # print(f"Q: {Q}")
 
         # OLD
         # Get axis field
@@ -1351,11 +1322,9 @@ class NGSolveMEVP:
         E_abs_peaks = Eax[peaks]
         # ff = min(E_abs_peaks)/max(E_abs_peaks) * 100
         ff = (1 - ((max(E_abs_peaks) - min(E_abs_peaks)) / np.average(E_abs_peaks))) * 100
-        # print(f"ff: {ff}")
 
         # calculate G
         G = Q * Rs
-        # print(f"G: {G}")
 
         qois = {
             "Req [mm]": Req,

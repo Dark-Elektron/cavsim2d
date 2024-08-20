@@ -1,17 +1,11 @@
-import ast
-import copy
 import json
 import math
 import os
 from pathlib import Path
-import pandas as pd
-from PyQt5.QtGui import QDoubleValidator, QValidator
-from PyQt5.QtWidgets import *
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
-from scipy.optimize import fsolve, least_squares
+from scipy.optimize import fsolve
 import numpy as np
-from termcolor import colored
 from cavsim2d.utils.printing import *
 
 
@@ -71,7 +65,7 @@ def calculate_alpha(A, B, a, b, Ri, L, Req, L_bp):
     return alpha, error_msg
 
 
-def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, tangent_check=False):
+def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
     """
     Calls to :py:func:`utils.shared_function.ellipse_tangent`
 
@@ -138,7 +132,7 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, tangent_check=False):
     alpha = 180 - np.arctan2(y2 - y1, (x2 - x1)) * 180 / np.pi
 
     if tangent_check:
-        shift_x = -L
+        shift_x = -L-lft
         h, k, p, q = data[0]
         a, b, A, B = data[1]
         el_ab = Ellipse((shift_x + h, k), 2 * a, 2 * b, alpha=0.5)
@@ -1715,9 +1709,6 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
     # calculate shift
     shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
 
-    # shift = 0
-    # shift = L_m  # for end cell
-
     # calculate angles outside loop
     # CALCULATE x1_el, y1_el, x2_el, y2_el
 
@@ -2003,6 +1994,417 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
     # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
     # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
+    geo.append([pt[1], pt[0]])
+
+    # append start point
+    geo.append([start_point[1], start_point[0]])
+
+    if bc:
+        # draw right boundary condition
+        ax.plot([shift, shift], [-Ri_er, Ri_er],
+                [shift + 0.2 * L_m, shift + 0.2 * L_m], [-0.5 * Ri_er, 0.5 * Ri_er],
+                [shift + 0.4 * L_m, shift + 0.4 * L_m], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+    # CLOSE PATH
+    # lineTo(pt, start_point, step)
+    # geo.append([start_point[1], start_point[0]])
+    geo = np.array(geo)
+
+    # recenter asymmetric cavity to center
+    shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
+    if n_cell == 1:
+        shift_to_center = L_er + L_bp_r
+    else:
+        shift_to_center = n_cell * L_m + L_bp_r
+
+    top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
+    # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+
+    # plot legend wthout duplicates
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
+
+    return ax
+
+
+def plot_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
+                             ignore_degenerate=False, **kwargs):
+    """
+    Write cavity geometry
+
+    Parameters
+    ----------
+    file_path: str
+        File path to write geometry to
+    n_cell: int
+        Number of cavity cells
+    mid_cell: list, ndarray
+        Array of cavity middle cells' geometric parameters
+    end_cell_left: list, ndarray
+        Array of cavity left end cell's geometric parameters
+    end_cell_right: list, ndarray
+        Array of cavity left end cell's geometric parameters
+    beampipe: str {"left", "right", "both", "none"}
+        Specify if beam pipe is on one or both ends or at no end at all
+    plot: bool
+        If True, the cavity geometry is plotted for viewing
+
+    Returns
+    -------
+
+    """
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_aspect('equal')
+
+    if OC is None:
+        end_cell_left = IC
+
+    if OC_R is None:
+        if OC is None:
+            OC_R = IC
+        else:
+            OC_R = OC
+
+    A_m, B_m, a_m, b_m, Ri_m, L_m, Req, lft = np.array(IC[:8]) * scale
+    A_el, B_el, a_el, b_el, Ri_el, L_el, Req, lft_el = np.array(OC[:8]) * scale
+    A_er, B_er, a_er, b_er, Ri_er, L_er, Req, lft_er = np.array(OC_R[:8]) * scale
+
+    step = 0.005
+
+    if BP.lower() == 'both':
+        L_bp_l = 4 * L_m
+        L_bp_r = 4 * L_m
+    elif BP.lower() == 'none':
+        L_bp_l = 0.000  # 4 * L_m  #
+        L_bp_r = 0.000  # 4 * L_m  #
+    elif BP.lower() == 'left':
+        L_bp_l = 4 * L_m
+        L_bp_r = 0.000
+    elif BP.lower() == 'right':
+        L_bp_l = 0.000
+        L_bp_r = 4 * L_m
+    else:
+        L_bp_l = 0.000  # 4 * L_m  #
+        L_bp_r = 0.000  # 4 * L_m  #
+
+    # calculate shift
+    shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er + (n_cell - 2) * lft + lft_el + lft_er) / 2
+
+    # calculate angles outside loop
+    # CALCULATE x1_el, y1_el, x2_el, y2_el
+    df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, lft_el/2, tangent_check=tangent_check)
+    x1el, y1el, x2el, y2el = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    # CALCULATE x1, y1, x2, y2
+    df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, lft/2, tangent_check=tangent_check)
+    x1, y1, x2, y2 = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    # CALCULATE x1_er, y1_er, x2_er, y2_er
+    df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, lft_er/2, tangent_check=tangent_check)
+    x1er, y1er, x2er, y2er = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    geo = []
+
+    # SHIFT POINT TO START POINT
+    start_point = [-shift, 0]
+    geo.append([start_point[1], start_point[0]])
+
+    lineTo(start_point, [-shift, Ri_el], step)
+    pt = [-shift, Ri_el]
+    geo.append([pt[1], pt[0]])
+
+    # ADD BEAM PIPE LENGTH
+    if L_bp_l != 0:
+        lineTo(pt, [L_bp_l - shift, Ri_el], step)
+        pt = [L_bp_l - shift, Ri_el]
+
+        geo.append([pt[1], pt[0]])
+
+    for n in range(1, n_cell + 1):
+        if n == 1:
+            # DRAW ARC:
+            pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
+            pt = [-shift + x1el, y1el]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW LINE CONNECTING ARCS
+            pts = lineTo(pt, [-shift + x2el, y2el], step)
+            pt = [-shift + x2el, y2el]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+            pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
+            pt = [L_bp_l + L_el - shift, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # flat top
+            ax.scatter(pt[0], pt[1], c='g', ec='k')
+            pts = lineTo(pt, [L_bp_l + L_el + lft_el - shift, Req], step)
+            pt = [L_bp_l + L_el + lft_el - shift, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+            ax.scatter(pt[0], pt[1], c='r', ec='k')
+
+            if n_cell == 1:
+                if L_bp_r > 0:
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                [L_el + L_er - x2er + + L_bp_l + L_bp_r - shift, y2er])
+                    pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0]])
+                    geo.append([pt[1], pt[0]])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                    geo.append([pt[1], pt[0]])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_el + L_er - shift, Ri_er])
+
+                    pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0]])
+
+                    geo.append([pt[1], pt[0]])
+
+                    # calculate new shift
+                    shift = shift - (L_el + L_er)
+                else:
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_el + L_bp_l + lft_el - shift, Req - B_er, A_er, B_er, step, pt,
+                                [L_el + lft_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                    pt = [L_el + lft_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0]])
+                    geo.append([pt[1], pt[0]])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    lineTo(pt, [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    pt = [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                    geo.append([pt[1], pt[0]])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
+                    pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0]])
+                    geo.append([pt[1], pt[0]])
+            else:
+                # EQUATOR ARC TO NEXT POINT
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_el + L_bp_l + lft_el - shift, Req - B_m, A_m, B_m, step, [pt[0], Req - B_m],
+                            [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, Req])
+                pt = [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                for pp in pts:
+                    geo.append([pp[1], pp[0]])
+                geo.append([pt[1], pt[0]])
+
+                # STRAIGHT LINE TO NEXT POINT
+                pts = lineTo(pt, [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                pt = [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1]
+                for pp in pts:
+                    geo.append([pp[1], pp[0]])
+                geo.append([pt[1], pt[0]])
+
+                # ARC
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_el + lft_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
+                            [L_bp_l + L_el + lft_el + L_m - shift, y1])
+                pt = [L_bp_l + L_el + lft_el + L_m - shift, Ri_m]
+                for pp in pts:
+                    geo.append([pp[1], pp[0]])
+                geo.append([pt[1], pt[0]])
+
+                # calculate new shift
+                shift = shift - (L_el + L_m + lft_el)
+                # ic(shift)
+
+        elif n > 1 and n != n_cell:
+            # DRAW ARC:
+            pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+            pt = [-shift + x1, y1]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW LINE CONNECTING ARCS
+            pts = lineTo(pt, [-shift + x2, y2], step)
+            pt = [-shift + x2, y2]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+            pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+            pt = [L_bp_l + L_m - shift, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # flat top
+            pts = lineTo(pt, [L_bp_l + L_m + lft - shift, Req], step)
+            pt = [L_bp_l + L_el + lft - shift, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # EQUATOR ARC TO NEXT POINT
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+            pts = arcTo(L_m + L_bp_l + lft - shift, Req - B_m, A_m, B_m, step, [pt[0], Req - B_m],
+                        [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, Req])
+            pt = [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, y2]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # STRAIGHT LINE TO NEXT POINT
+            pts = lineTo(pt, [L_m + L_m + lft - x1 + 2 * L_bp_l - shift, y1], step)
+            pt = [L_m + L_m + lft - x1 + 2 * L_bp_l - shift, y1]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # ARC
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+            pts = arcTo(L_m + L_m + lft + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, [pt[0], Ri_m],
+                        [L_bp_l + L_m + L_m + lft - shift, y1])
+            pt = [L_bp_l + L_m + L_m + lft - shift, Ri_m]
+
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # calculate new shift
+            shift = shift - 2 * L_m - (lft_el + lft)
+        else:
+            # DRAW ARC:
+            pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+            pt = [-shift + x1, y1]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW LINE CONNECTING ARCS
+            pts = lineTo(pt, [-shift + x2, y2], step)
+            pt = [-shift + x2, y2]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+            pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+            pt = [L_bp_l + L_m - shift, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # flat top
+            pts = lineTo(pt, [L_bp_l + L_m + lft_er - shift, Req], step)
+            pt = [L_bp_l + L_m + lft_er - shift, Req, Req]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # EQUATOR ARC TO NEXT POINT
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+            pts = arcTo(L_m + lft_er + L_bp_l - shift, Req - B_er, A_er, B_er, step, [pt[0], Req - B_er],
+                        [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, Req])
+            pt = [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # STRAIGHT LINE TO NEXT POINT
+            pts = lineTo(pt, [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+            pt = [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+            # ARC
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+            pts = arcTo(L_m + L_er + lft_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                        [L_bp_l + L_m + L_er + lft_er - shift, y1er])
+            pt = [L_bp_l + L_m + L_er + lft_er - shift, Ri_er]
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
+            geo.append([pt[1], pt[0]])
+
+    # BEAM PIPE
+    # reset shift
+
+    shift = (L_bp_r + L_bp_l + L_el + lft_el + (n_cell - 1) * 2 * L_m + (n_cell - 2) * lft + L_er + lft_er) / 2
+    pts = lineTo(pt, [
+        L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + (n_cell - 2) * lft + lft_el + lft_er + L_el + L_er - shift,
+        Ri_er], step)
+
+    if L_bp_r != 0:
+        pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r + (n_cell - 2) * lft + lft_el + lft_er - shift,
+              Ri_er]
+        for pp in pts:
+            geo.append([pp[1], pp[0]])
+        geo.append([pt[1], pt[0]])
+
+    # END PATH
+    pts = lineTo(pt, [
+        2 * (n_cell - 1) * L_m + L_el + L_er + (n_cell - 2) * lft + lft_el + lft_er + L_bp_l + L_bp_r - shift, 0],
+                 step)  # to add beam pipe to right
+    pt = [2 * (n_cell - 1) * L_m + L_el + L_er + (n_cell - 2) * lft + lft_el + lft_er + L_bp_l + L_bp_r - shift, 0]
+    # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
+    geo.append([pt[1], pt[0]])
+
+    # CLOSE PATH
+    lineTo(pt, start_point, step)
     geo.append([pt[1], pt[0]])
 
     # append start point
