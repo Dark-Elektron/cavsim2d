@@ -101,7 +101,7 @@ class NGSolveMEVP:
         return ips, gipts, nlast
 
     def write_geometry(self, folder, n_cells, mid_cell, end_cell_left=None, end_cell_right=None,
-                       beampipe='none', plot=False, cell_parameterisation='normal'):
+                       beampipe='none', plot=False, cell_parameterisation='simplecell'):
         """
         Define geometry
 
@@ -950,7 +950,7 @@ class NGSolveMEVP:
 
         geo = OCCGeometry(face, dim=2)
         # mesh
-        A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(mid_cells_par[:7])
+        A_m, B_m, a_m, b_m, Ri_m, L, Req, l = np.array(mid_cells_par[:8])
         maxh = L / mesh_args[0] * 1e-3
         ngmesh = geo.GenerateMesh(maxh=maxh)
         mesh = Mesh(ngmesh)
@@ -1018,7 +1018,7 @@ class NGSolveMEVP:
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
 
-        qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+        qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L+l/2, gfu_E, gfu_H, mesh, freq_fes)
 
         with open(fr'{run_save_directory}\qois.json', "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -1263,7 +1263,7 @@ class NGSolveMEVP:
 
         # calculate Vacc and Eacc
         Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('b')))
-        Eacc = Vacc / (L * 1e-3 * 2 * n)
+        Eacc = Vacc / (L * 1e-3 * 2 * n )
 
         # calculate U and R/Q
         U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], gfu_E[n]), mesh)

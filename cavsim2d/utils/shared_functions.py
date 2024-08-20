@@ -27,7 +27,7 @@ def update_alpha(cell, cell_parameterisation='simplecell'):
     """
     A, B, a, b, Ri, L, Req = cell[:7]
     alpha = calculate_alpha(A, B, a, b, Ri, L, Req, 0)
-    if cell_parameterisation == 'normal':
+    if cell_parameterisation == 'simplecell':
         cell = [A, B, a, b, Ri, L, Req, alpha[0]]
     else:
         cell = [A, B, a, b, Ri, L, Req, cell[7], alpha[0]]

@@ -303,11 +303,11 @@ class ABCIGeometry(Geometry):
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
     def cavity_flattop(self, no_of_cells, no_of_modules,
-               mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-               fid="_0", MROT=0, beampipes=None,
-               bunch_length=50, MT=3, NFS=5000, UBT=0,
-               DDZ_SIG=0.1, DDR_SIG=0.1,
-               parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
+                       mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
+                       fid="_0", MROT=0, beampipes=None,
+                       bunch_length=50, MT=3, NFS=5000, UBT=0,
+                       DDZ_SIG=0.1, DDR_SIG=0.1,
+                       parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
 
         # defaults
         RDRIVE, ISIG = 5e-3, 5
@@ -361,7 +361,7 @@ class ABCIGeometry(Geometry):
             WG_M = self.WG_L
 
         self.abci = ABCI_flattop(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
-                         self.right_beam_pipe)
+                                 self.right_beam_pipe)
 
         # output_name = 5
         # SIG = 0.003  # One standard deviation of bunch length
@@ -475,7 +475,8 @@ class ABCIGeometry(Geometry):
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
 
                         # add flattop
-                        f.write('{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
 
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
 
@@ -487,10 +488,13 @@ class ABCIGeometry(Geometry):
                                 f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L
                                                           + self.L_R + (i_mode - 1) * self.L_all))
                             else:
-                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (i_mode - 1) * self.L_all))
+                                f.write('{} {} \n'.format(self.ri_R,
+                                                          self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (
+                                                                      i_mode - 1) * self.L_all))
 
                     f.write(
-                        '0 {} \n'.format(self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (module_nu - 1) * self.L_all))
+                        '0 {} \n'.format(
+                            self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (module_nu - 1) * self.L_all))
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
@@ -537,18 +541,22 @@ class ABCIGeometry(Geometry):
                         self.abci.abci_n1_L(n, zr12_L, self.WG_L + self.L_all, f)
 
                         # add flattop
-                        f.write('{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
 
                         for i in range(1, n):
                             # self.abci.abci_M(n, zr12_M, self.WG_L + (i_mode-1)*self.L_all, f, i, end_type)
                             self.abci.abci_M(n, zr12_M, self.WG_L + self.L_all, f, i, end_type)
 
-                            if i != n-1:
+                            if i != n - 1:
                                 # add flattop
-                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + self.l_L + i*self.l_M + (i_mode - 1) * self.L_all))
+                                f.write('{} {} \n'.format(self.Req_M,
+                                                          self.WG_L + self.L_L + 2 * i * self.L_M + self.l_L + i * self.l_M + (
+                                                                      i_mode - 1) * self.L_all))
                             else:
                                 # add flattop
-                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + (i_mode - 1) * self.L_all + self.l_L + (i-1)*self.l_M + self.l_R))
+                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + (
+                                            i_mode - 1) * self.L_all + self.l_L + (i - 1) * self.l_M + self.l_R))
 
                         # self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode-1)*self.L_all, f)
                         self.abci.abci_n1_R(n, zr12_R, self.WG_L + self.L_all, f)
@@ -561,12 +569,14 @@ class ABCIGeometry(Geometry):
                             if end_R == 2:
                                 # f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R+ self.L_L + self.L_R
                                 # + 2*(n-1)*self.L_M+(i_mode-1)*self.L_all))
-                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (n-2)*self.l_M + self.l_R
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
                                                           + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
                             else:
                                 # f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
                                 # + self.L_R+2*(n-1)*self.L_M + (i_mode-1)*self.L_all))
-                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (n-2)*self.l_M + self.l_R
+                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
                                                           + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
 
                         if i_mode < no_of_modules:
@@ -575,7 +585,8 @@ class ABCIGeometry(Geometry):
                     # f.write('0 {} \n'.format(self.WG_L + self.WG_R+ self.L_L
                     # + self.L_R+2*(n-1)*self.L_M+(module_nu-1)*self.L_all))
                     f.write('0 {} \n'.format(
-                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all + self.l_L + (n-2)*self.l_M + self.l_R))
+                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all + self.l_L + (
+                                    n - 2) * self.l_M + self.l_R))
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
@@ -591,7 +602,7 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            exe_path = os.path.join(parentDir / fr'solver\ABCI\ABCI_MP_12_5.exe')
+            exe_path = os.path.join(parentDir / fr'solver\ABCI\ABCI.exe')
 
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])

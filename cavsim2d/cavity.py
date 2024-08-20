@@ -3535,6 +3535,18 @@ class Cavities(Optimisation):
 
         plt.show()
 
+    def plot_compare_eigenmode(self, kind='scatter', uq=False):
+        if kind == 'scatter' or kind == 's':
+            self.plot_compare_fm_scatter(uq=uq)
+        if kind == 'bar' or kind == 'b':
+            self.plot_compare_fm_bar(uq=uq)
+
+    def plot_compare_wakefield(self, opt, kind='scatter', uq=False):
+        if kind == 'scatter' or kind == 's':
+            self.plot_compare_hom_scatter(opt, uq=uq)
+        if kind == 'bar' or kind == 'b':
+            self.plot_compare_hom_bar(opt, uq=uq)
+
     def plot_compare_hom_bar(self, opt, ncols=3, uq=False):
         """
         Plot bar chart of higher-order mode's quantities of interest
@@ -3605,6 +3617,92 @@ class Cavities(Optimisation):
         fname = '_'.join(fname)
 
         self.save_all_plots(f"{fname}_hom_bar.png")
+
+        return axd
+
+    def plot_compare_hom_scatter(self, opt, ncols=3, uq=False):
+        """
+        Plot scatter chart of fundamental mode quantities of interest.
+
+        Parameters
+        ----------
+        ncols : int, optional
+            Number of columns for the legend. The default is 3.
+        uq : bool, optional
+            If True, plots with uncertainty quantification. The default is False.
+
+        Returns
+        -------
+        axd : dict
+            A dictionary of axes from the scatter plot.
+        """
+        plt.rcParams["figure.figsize"] = (12, 3)
+
+        if not uq:
+            self.hom_results = self.qois_hom(opt)
+
+            df = pd.DataFrame.from_dict(self.hom_results)
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Plot each column in a separate subplot
+            for key, ax in axd.items():
+                for i, label in enumerate(labels):
+                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(key)
+
+            h, l = ax.get_legend_handles_labels()
+        else:
+            # Step 1: Flatten the dictionary into a DataFrame
+            rows = []
+            for cavity, metrics in self.uq_hom_results.items():
+                for metric, values in metrics.items():
+                    rows.append({
+                        'cavity': cavity,
+                        'metric': metric,
+                        'mean': values['expe'][0],
+                        'std': values['stdDev'][0]
+                    })
+
+            df = pd.DataFrame(rows)
+
+            # Step 2: Create a Mosaic Plot
+            metrics = df['metric'].unique()
+            layout = [[metric for metric in metrics]]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+
+            # Plotting labels and colors
+            labels = df['cavity'].unique()
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Step 3: Plot each metric on a separate subplot
+            for metric, ax in axd.items():
+                for i, label in enumerate(labels):
+                    sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                    scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
+                                                ec='k', zorder=100, label=label)
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=5,
+                                color=colors[i])
+
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(metric)
+
+            # Step 4: Set legend
+            h, l = ax.get_legend_handles_labels()
+            if not ncols:
+                ncols = min(4, len(labels))
+            fig.legend(h, l, loc='upper center', borderaxespad=0, ncol=ncols)
+
+        # Save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_fm_scatter.png")
 
         return axd
 
@@ -3682,6 +3780,92 @@ class Cavities(Optimisation):
         fname = '_'.join(fname)
 
         self.save_all_plots(f"{fname}_fm_bar.png")
+
+        return axd
+
+    def plot_compare_fm_scatter(self, ncols=3, uq=False):
+        """
+        Plot scatter chart of fundamental mode quantities of interest.
+
+        Parameters
+        ----------
+        ncols : int, optional
+            Number of columns for the legend. The default is 3.
+        uq : bool, optional
+            If True, plots with uncertainty quantification. The default is False.
+
+        Returns
+        -------
+        axd : dict
+            A dictionary of axes from the scatter plot.
+        """
+        plt.rcParams["figure.figsize"] = (12, 3)
+
+        if not uq:
+            self.fm_results = self.qois_fm()
+
+            df = pd.DataFrame.from_dict(self.fm_results)
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Plot each column in a separate subplot
+            for key, ax in axd.items():
+                for i, label in enumerate(labels):
+                    ax.scatter(df.index, df[key], color=colors[i], label=label)
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(key)
+
+            h, l = ax.get_legend_handles_labels()
+        else:
+            # Step 1: Flatten the dictionary into a DataFrame
+            rows = []
+            for cav, metrics in self.uq_fm_results.items():
+                for metric, values in metrics.items():
+                    rows.append({
+                        'cavity': cav,
+                        'metric': metric,
+                        'mean': values['expe'][0],
+                        'std': values['stdDev'][0]
+                    })
+
+            df = pd.DataFrame(rows)
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Step 2: Create a Mosaic Plot
+            metrics = df['metric'].unique()
+            layout = [[metric for metric in metrics]]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+
+            # Plot each metric on a separate subplot
+            for metric, ax in axd.items():
+                for i, label in enumerate(labels):
+                    sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                    scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
+                                                ec='k', label=label, zorder=100)
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=5,
+                                color=scatter_points.get_facecolor()[0])
+
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(metric)
+
+            h, l = ax.get_legend_handles_labels()
+
+        # Set legend
+        if not ncols:
+            ncols = min(4, len(self.cavities_list))
+        fig.legend(h, l, loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        # Save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_fm_scatter.png")
 
         return axd
 
@@ -6415,10 +6599,10 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                          WG_M=ii, marker=ii)
                     if shape['CELL PARAMETERISATION'] == 'flattop':
                         abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
+                                                 fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                                 projectDir=projectDir,
+                                                 WG_M=ii, marker=ii)
 
             else:
                 for m in tqdm(range(2)):
@@ -6430,10 +6614,10 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                          WG_M=ii, marker=ii)
                     if shape['CELL PARAMETERISATION'] == 'flattop':
                         abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
+                                                 fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
+                                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
+                                                 projectDir=projectDir,
+                                                 WG_M=ii, marker=ii)
 
         done(f'Cavity {name}. Time: {time.time() - start_time}')
 
@@ -6969,9 +7153,9 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                         subdir=sub_dir)
                 if cell_parameterisation == 'flattop':
                     ngsolve_mevp.cavity_flattop(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
-                                        fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                        projectDir=projectDir,
-                                        subdir=sub_dir)
+                                                fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                                projectDir=projectDir,
+                                                subdir=sub_dir)
 
             filename = uq_path / f'{fid}/monopole/qois.json'
             if os.path.exists(filename):
@@ -7081,12 +7265,12 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                          )
                     if cell_parameterisation == 'flattop':
                         abci_geom.cavity_flattop(n_cells, 1, mid, left, right, fid=fid, MROT=wi,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
-                                         bunch_length=bunch_length,
-                                         MT=MT, NFS=NFS, UBT=UBT,
-                                         parentDir=parentDir, projectDir=projectDir, WG_M='',
-                                         marker='', sub_dir=sub_dir
-                                         )
+                                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=beampipes,
+                                                 bunch_length=bunch_length,
+                                                 MT=MT, NFS=NFS, UBT=UBT,
+                                                 parentDir=parentDir, projectDir=projectDir, WG_M='',
+                                                 marker='', sub_dir=sub_dir
+                                                 )
 
             uq_shape = {'IC': mid, 'OC': left, 'OC_R': right, 'BP': beampipes}
             uq_shape_space[fid] = uq_shape
