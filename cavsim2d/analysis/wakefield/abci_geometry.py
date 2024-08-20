@@ -313,7 +313,7 @@ class ABCIGeometry(Geometry):
         RDRIVE, ISIG = 5e-3, 5
         LCRBW = 'F'
         BETA = 1
-        LMATPR = 'F',
+        LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
         LSAV, LCPUTM = 'F', 'F'
 
@@ -602,7 +602,7 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
 
-            exe_path = os.path.join(parentDir / fr'solver\ABCI\ABCI.exe')
+            exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
 
             if LCPUTM == 'T':
                 subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])
