@@ -220,7 +220,7 @@ class Optimisation:
 
             if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'none',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
 
             elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
 
@@ -237,17 +237,17 @@ class Optimisation:
                                      "Please check.")
 
                 pseudo_shape_space[rw[0]] = {'IC': IC, 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
 
             elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
                   or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
 
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
 
             else:
                 pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'both',
-                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL TYPE': 'simplecell'}
+                                             'FREQ': self.tune_freq, 'n_cells': 1, 'CELL PARAMETERISATION': 'simplecell'}
 
         pseudo_shape_space = self.remove_duplicate_values(pseudo_shape_space)
 
@@ -379,22 +379,6 @@ class Optimisation:
 
         # apply UQ
         if self.uq_config:
-            # solver_dict = {'eigenmode': ngsolve_mevp, 'abci': abci_geom}
-            # # beampipes = {'Mid Cell': 'none', 'End-End Cell': 'left', 'End-Mid Cell': 'left', 'Single Cell': 'both'}
-            # beampipe = 'none'
-
-            # solver_args_dict = {'eigenmode': self.eigenmode_config,
-            #                     'wakefield': self.wakefield_config,
-            #                     'n_cells': 1,
-            #                     'n_modules': 1,
-            #                     'parentDir': SOFTWARE_DIRECTORY,
-            #                     'projectDir': self.projectDir,
-            #                     'analysis folder': 'Optimisation',
-            #                     'cell_type': self.cell_type,
-            #                     'optimisation': True
-            #                     }
-            #
-            # shape_space = self.run_uq(df, self.objectives, solver_dict, solver_args_dict, self.uq_config)
 
             # get uq_parameters
             uq_result_dict = {}
@@ -1562,7 +1546,7 @@ class Cavity:
         self.mid_cell = np.array(mid_cell)[:7]
         self.end_cell_left = np.array(end_cell_left)[:7]
         self.end_cell_right = np.array(end_cell_right)[:7]
-        self.cell_type = 'simplecell'
+        self.cell_parameterisation = 'simplecell'
         self.beampipe = beampipe
         self.no_of_modules = 1
         self.eigenmode_qois = {}
@@ -1607,7 +1591,7 @@ class Cavity:
             "OC_R": self.end_cell_right[:7],
             "BP": beampipe,
             "n_cells": self.n_cells,
-            'CELL TYPE': self.cell_type
+            'CELL PARAMETERISATION': self.cell_parameterisation
         }
         self.shape_multicell = {}
         self.to_multicell()  # <- get multicell representation
@@ -1830,7 +1814,7 @@ class Cavity:
             if boundary_cond:
                 self.bc = boundary_cond
 
-            if self.cell_type == 'multicell':
+            if self.cell_parameterisation == 'multicell':
                 self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
                                   self.n_modes,
                                   freq_shift, self.bc,
@@ -1952,7 +1936,7 @@ class Cavity:
         # ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
         #                     n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
         #                     parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        if shape['CELL TYPE'] == 'flattop':
+        if shape['CELL PARAMETERISATION'] == 'flattop':
             # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
             #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
 
@@ -1961,7 +1945,7 @@ class Cavity:
                                         beampipes=shape['BP'],
                                         parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
 
-        elif shape['CELL TYPE'] == 'multicell':
+        elif shape['CELL PARAMETERISATION'] == 'multicell':
             # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
             #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
             ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
@@ -2261,7 +2245,7 @@ class Cavity:
         self.shape_multicell['IC'] = mid_cell_multi
         self.shape_multicell['BP'] = self.shape['BP']
         self.shape_multicell['n_cells'] = self.shape['n_cells']
-        self.shape_multicell['CELL TYPE'] = 'multicell'
+        self.shape_multicell['CELL PARAMETERISATION'] = 'multicell'
 
     def _create_project(self, overwrite):
         project_name = self.name
@@ -5988,7 +5972,7 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
         if d_tune_res:
             n_cells = processor_shape_space[key]['n_cells']
             tuned_shape_space[key]['n_cells'] = n_cells
-            tuned_shape_space[key]['CELL TYPE'] = processor_shape_space[key]['CELL TYPE']
+            tuned_shape_space[key]['CELL PARAMETERISATION'] = processor_shape_space[key]['CELL PARAMETERISATION']
             tuned_shape_space_multi = {kk: to_multicell(n_cells, tuned_shape) for kk, tuned_shape in
                                        tuned_shape_space.items()}
 
@@ -6122,7 +6106,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
         else:
             OC_R = 'OC'
 
-        if shape['CELL TYPE'] == 'flattop':
+        if shape['CELL PARAMETERISATION'] == 'flattop':
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
                                 solver=eigenmode_config['solver_save_directory'])
@@ -6132,7 +6116,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
                                         beampipes=shape['BP'], sim_folder=solver_save_dir,
                                         parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
 
-        elif shape['CELL TYPE'] == 'multicell':
+        elif shape['CELL PARAMETERISATION'] == 'multicell':
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
                                 solver=eigenmode_config['solver_save_directory'])
