@@ -159,3 +159,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea
 cavsim2d/solvers/ABCI/ABCI_MP_12_5.exe
+thesis

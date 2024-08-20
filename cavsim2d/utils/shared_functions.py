@@ -288,12 +288,7 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
     """
     ic_ = update_alpha(ic_)
     oc_l = update_alpha(oc_l)
-    if solver.lower() == 'slans':
-        if opt:
-            folder = 'SLANS_opt'
-        else:
-            folder = 'SLANS'
-    elif solver.lower() == 'ngsolve':
+    if solver.lower() == 'ngsolvemevp':
         folder = 'NGSolveMEVP'
     else:
         folder = 'Optimisation'
@@ -319,16 +314,16 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
         path_mc = fr'{projectDir}/SimulationData/{folder}/{key}/{key}_Multicell.txt'
 
         with open(path, 'w') as f:
-            name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
-                         'L_e', 'Req_e', 'alpha_e', 'key']
+            name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
+                         'L_e', 'Req_e', 'key']  # 'alpha_e', 'key']
 
             if cell_type == 'Mid Cell':
-                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6], ic_[7],
-                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', key]
+                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6],  #ic_[7],
+                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'key']  #'alpha', key]
             else:
-                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6], ic_[7],
-                              oc_r[0], oc_r[1], oc_r[2], oc_r[3], oc_r[4], oc_r[5], ic_[6], oc_l[7],
-                              oc_l[0], oc_l[1], oc_l[2], oc_l[3], oc_l[4], oc_l[5], ic_[6], oc_l[7],
+                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6],  #ic_[7],
+                              oc_r[0], oc_r[1], oc_r[2], oc_r[3], oc_r[4], oc_r[5], ic_[6],  #oc_l[7],
+                              oc_l[0], oc_l[1], oc_l[2], oc_l[3], oc_l[4], oc_l[5], ic_[6],  #oc_l[7],
                               key]
 
             for i in range(len(name_list)):
@@ -338,19 +333,19 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
 
         with open(path_mc, 'w') as f:
-            name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha',
-                         'Aeq_er', 'Beq_er', 'ai_er', 'bi_er', 'Ri_er', 'L_er', 'Req', 'alpha_er',
-                         'Aeq_el', 'Beq_el', 'ai_el', 'bi_el', 'Ri_el', 'L_el', 'Req', 'alpha_el', 'key']
+            name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req',  #'alpha',
+                         'Aeq_er', 'Beq_er', 'ai_er', 'bi_er', 'Ri_er', 'L_er', 'Req',  #'alpha_er',
+                         'Aeq_el', 'Beq_el', 'ai_el', 'bi_el', 'Ri_el', 'L_el', 'Req', 'key']  #'alpha_el', 'key']
 
             if cell_type == 'Mid Cell':
-                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6], ic_[7],
-                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha',
-                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha',
+                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6],  #ic_[7],
+                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req',  #'alpha',
+                              'Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req',  #'alpha',
                               key]
             else:
-                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6], ic_[7],
-                              oc_r[0], oc_r[1], oc_r[2], oc_r[3], oc_r[4], oc_r[5], ic_[6], oc_r[7],
-                              oc_l[0], oc_l[1], oc_l[2], oc_l[3], oc_l[4], oc_l[5], ic_[6], oc_l[7],
+                value_list = [ic_[0], ic_[1], ic_[2], ic_[3], ic_[4], ic_[5], ic_[6],  #ic_[7],
+                              oc_r[0], oc_r[1], oc_r[2], oc_r[3], oc_r[4], oc_r[5], ic_[6],  #oc_r[7],
+                              oc_l[0], oc_l[1], oc_l[2], oc_l[3], oc_l[4], oc_l[5], ic_[6],  #oc_l[7],
                               key]
 
             for i in range(len(name_list)):
@@ -2012,7 +2007,6 @@ def plot_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None
 
     # append start point
     geo.append([start_point[1], start_point[0]])
-
 
     if bc:
         # draw right boundary condition
@@ -4205,7 +4199,7 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
     -------
 
     """
-    L, Req, Ri, S, L_bp = np.array([L, Req, Ri, S, L_bp])*1e-3
+    L, Req, Ri, S, L_bp = np.array([L, Req, Ri, S, L_bp]) * 1e-3
 
     step = 0.001
 
@@ -4226,7 +4220,7 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
         L_bp_r = 0.000  # 4 * L_m  #
 
     geo = []
-    shift = (L_bp_l + L_bp_r + n_cell * L + (n_cell - 1) * S)/2
+    shift = (L_bp_l + L_bp_r + n_cell * L + (n_cell - 1) * S) / 2
 
     # SHIFT POINT TO START POINT
     start_point = [-shift, 0]
@@ -4238,32 +4232,32 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
 
     # add beampipe
     if L_bp_l > 0:
-        lineTo(pt, [-shift+L_bp_l, Ri], step)
-        pt = [-shift+L_bp_l, Ri]
+        lineTo(pt, [-shift + L_bp_l, Ri], step)
+        pt = [-shift + L_bp_l, Ri]
         geo.append([pt[1], pt[0]])
 
     for n in range(1, n_cell + 1):
         if n == 1:
-            lineTo(pt, [-shift+L_bp_l, Req], step)
+            lineTo(pt, [-shift + L_bp_l, Req], step)
             pt = [-shift + L_bp_l, Req]
             geo.append([pt[1], pt[0]])
 
-            lineTo(pt, [-shift+L_bp_l+L, Req], step)
-            pt = [-shift+L_bp_l+L, Req]
+            lineTo(pt, [-shift + L_bp_l + L, Req], step)
+            pt = [-shift + L_bp_l + L, Req]
             geo.append([pt[1], pt[0]])
 
-            lineTo(pt, [-shift+L_bp_l+L, Ri], step)
-            pt = [-shift+L_bp_l+L, Ri]
+            lineTo(pt, [-shift + L_bp_l + L, Ri], step)
+            pt = [-shift + L_bp_l + L, Ri]
             geo.append([pt[1], pt[0]])
 
             shift -= L
         elif n > 1:
-            lineTo(pt, [-shift+L_bp_l+S, Ri], step)
-            pt = [-shift+L_bp_l+S, Ri]
+            lineTo(pt, [-shift + L_bp_l + S, Ri], step)
+            pt = [-shift + L_bp_l + S, Ri]
             geo.append([pt[1], pt[0]])
 
-            lineTo(pt, [-shift + L_bp_l+S, Req], step)
-            pt = [-shift + L_bp_l+S, Req]
+            lineTo(pt, [-shift + L_bp_l + S, Req], step)
+            pt = [-shift + L_bp_l + S, Req]
             geo.append([pt[1], pt[0]])
 
             lineTo(pt, [-shift + L_bp_l + S + L, Req], step)
@@ -4277,13 +4271,13 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
             shift -= L
 
     if L_bp_r > 0:
-        lineTo(pt, [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, Ri], step)
-        pt = [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, Ri]
+        lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, Ri], step)
+        pt = [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, Ri]
         geo.append([pt[1], pt[0]])
 
     # END PATH
-    lineTo(pt, [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, 0], step)
-    pt = [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, 0]
+    lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, 0], step)
+    pt = [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, 0]
     geo.append([pt[1], pt[0]])
 
     # if bc:
@@ -4315,12 +4309,13 @@ def plot_gun():
     -------
 
     """
-    y1, R2, T2, L3, R4, L5, R6, L7, R8,  T9, R10, T10, L11, R12, L13, R14, x = \
+    y1, R2, T2, L3, R4, L5, R6, L7, R8, T9, R10, T10, L11, R12, L13, R14, x = \
         [1.5, 3, np.deg2rad(45), 24, 5, 11, 6, 19, 4, np.deg2rad(8), 3, np.deg2rad(40), 5, 3, 3, 3, 1]
 
     # calcualte R9
-    R9 = (((y1+R2*np.sin(T2) + L3*np.cos(T2) + R4*np.sin(T2) + L5 + R6) -
-         (R14 + L13 + R12*np.sin(T10) + L11*np.cos(T10) + R10*np.sin(T10) + x + R8*(1-np.sin(T9)))))/np.sin(T9)
+    R9 = (((y1 + R2 * np.sin(T2) + L3 * np.cos(T2) + R4 * np.sin(T2) + L5 + R6) -
+           (R14 + L13 + R12 * np.sin(T10) + L11 * np.cos(T10) + R10 * np.sin(T10) + x + R8 * (
+                       1 - np.sin(T9))))) / np.sin(T9)
     print(R9)
 
     step = 0.1
@@ -4334,98 +4329,99 @@ def plot_gun():
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(-R2, y1, R2, R2, pt, [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)], 0, T2, step)
-    pt = [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)]
+    pts = arcToTheta(-R2, y1, R2, R2, pt, [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)], 0, T2, step)
+    pt = [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)], step)
-    pt = [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)]
+    lineTo(pt, [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)], step)
+    pt = [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)]
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0]+R4*np.cos(T2), pt[1] + R4*np.sin(T2), R4, R4,
-                     pt, [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)], -(np.pi-T2), np.pi, step)
-    pt = [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)]
+    pts = arcToTheta(pt[0] + R4 * np.cos(T2), pt[1] + R4 * np.sin(T2), R4, R4,
+                     pt, [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)], -(np.pi - T2), np.pi, step)
+    pt = [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [pt[0], pt[1]+L5], step)
-    pt = [pt[0], pt[1]+L5]
+    lineTo(pt, [pt[0], pt[1] + L5], step)
+    pt = [pt[0], pt[1] + L5]
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0]+R6, pt[1], R6, R6, pt, [pt[0]+R6, pt[1] + R6], np.pi, np.pi/2, step)
-    pt = [pt[0]+R6, pt[1] + R6]
+    pts = arcToTheta(pt[0] + R6, pt[1], R6, R6, pt, [pt[0] + R6, pt[1] + R6], np.pi, np.pi / 2, step)
+    pt = [pt[0] + R6, pt[1] + R6]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [pt[0]+L7, pt[1]], step)
-    pt = [pt[0]+L7, pt[1]]
+    lineTo(pt, [pt[0] + L7, pt[1]], step)
+    pt = [pt[0] + L7, pt[1]]
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0], pt[1]-R8, R8, R8, pt, [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))], np.pi/2, T9, step)
-    pt = [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))]
+    pts = arcToTheta(pt[0], pt[1] - R8, R8, R8, pt, [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))],
+                     np.pi / 2, T9, step)
+    pt = [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0]-R9*np.cos(T9), pt[1] -R9*np.sin(T9), R9, R9,
-                     pt, [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)], T9, 0, step)
-    pt = [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)]
+    pts = arcToTheta(pt[0] - R9 * np.cos(T9), pt[1] - R9 * np.sin(T9), R9, R9,
+                     pt, [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)], T9, 0, step)
+    pt = [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0]-R10, pt[1], R10, R10,
-                     pt, [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)], 0, -T10, step)
-    pt = [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)]
-    for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
-
-    # line
-    lineTo(pt, [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)], step)
-    pt = [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)]
-    geo.append([pt[1], pt[0]])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]+R12*np.cos(T10), pt[1] - R12*np.sin(T10), R12, R12,
-                     pt, [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)], (np.pi-T10), np.pi, step)
-    pt = [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)]
+    pts = arcToTheta(pt[0] - R10, pt[1], R10, R10,
+                     pt, [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)], 0, -T10, step)
+    pt = [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [pt[0], pt[1]-L13], step)
-    pt = [pt[0], pt[1]-L13]
+    lineTo(pt, [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)], step)
+    pt = [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)]
     geo.append([pt[1], pt[0]])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0]+R14, pt[1], R14, R14, pt, [pt[0]+R14, pt[1] - R14], np.pi, -np.pi/2, step)
-    pt = [pt[0]+R14, pt[1] - R14]
+    pts = arcToTheta(pt[0] + R12 * np.cos(T10), pt[1] - R12 * np.sin(T10), R12, R12,
+                     pt, [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)], (np.pi - T10), np.pi, step)
+    pt = [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)]
     for pp in pts:
         geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [pt[0]+10*y1, pt[1]], step)
-    pt = [pt[0]+10*y1, pt[1]]
+    lineTo(pt, [pt[0], pt[1] - L13], step)
+    pt = [pt[0], pt[1] - L13]
+    geo.append([pt[1], pt[0]])
+
+    # DRAW ARC:
+    pts = arcToTheta(pt[0] + R14, pt[1], R14, R14, pt, [pt[0] + R14, pt[1] - R14], np.pi, -np.pi / 2, step)
+    pt = [pt[0] + R14, pt[1] - R14]
+    for pp in pts:
+        geo.append([pp[1], pp[0]])
     geo.append([pt[1], pt[0]])
 
     # line
-    lineTo(pt, [pt[0], pt[1]-y1], step)
-    pt = [pt[0], pt[1]-x]
+    lineTo(pt, [pt[0] + 10 * y1, pt[1]], step)
+    pt = [pt[0] + 10 * y1, pt[1]]
+    geo.append([pt[1], pt[0]])
+
+    # line
+    lineTo(pt, [pt[0], pt[1] - y1], step)
+    pt = [pt[0], pt[1] - x]
     geo.append([pt[1], pt[0]])
 
     geo = np.array(geo)
@@ -4459,7 +4455,7 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
     -------
 
     """
-    L, Req, Ri, S, L_bp = np.array(cell_par)*1e-3
+    L, Req, Ri, S, L_bp = np.array(cell_par) * 1e-3
 
     step = 0.001
 
@@ -4480,7 +4476,7 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
         L_bp_r = 0.000
 
     with open(file_path, 'w') as fil:
-        shift = (L_bp_l + L_bp_r + n_cell * L + (n_cell - 1) * S)/2
+        shift = (L_bp_l + L_bp_r + n_cell * L + (n_cell - 1) * S) / 2
 
         # SHIFT POINT TO START POINT
         start_point = [-shift, 0]
@@ -4492,32 +4488,32 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
 
         # add beampipe
         if L_bp_l > 0:
-            lineTo(pt, [-shift+L_bp_l, Ri], step)
-            pt = [-shift+L_bp_l, Ri]
+            lineTo(pt, [-shift + L_bp_l, Ri], step)
+            pt = [-shift + L_bp_l, Ri]
             fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
         for n in range(1, n_cell + 1):
             if n == 1:
-                lineTo(pt, [-shift+L_bp_l, Req], step)
+                lineTo(pt, [-shift + L_bp_l, Req], step)
                 pt = [-shift + L_bp_l, Req]
                 fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
-                lineTo(pt, [-shift+L_bp_l+L, Req], step)
-                pt = [-shift+L_bp_l+L, Req]
+                lineTo(pt, [-shift + L_bp_l + L, Req], step)
+                pt = [-shift + L_bp_l + L, Req]
                 fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
-                lineTo(pt, [-shift+L_bp_l+L, Ri], step)
-                pt = [-shift+L_bp_l+L, Ri]
+                lineTo(pt, [-shift + L_bp_l + L, Ri], step)
+                pt = [-shift + L_bp_l + L, Ri]
                 fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
                 shift -= L
             elif n > 1:
-                lineTo(pt, [-shift+L_bp_l+S, Ri], step)
-                pt = [-shift+L_bp_l+S, Ri]
+                lineTo(pt, [-shift + L_bp_l + S, Ri], step)
+                pt = [-shift + L_bp_l + S, Ri]
                 fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
-                lineTo(pt, [-shift + L_bp_l+S, Req], step)
-                pt = [-shift + L_bp_l+S, Req]
+                lineTo(pt, [-shift + L_bp_l + S, Req], step)
+                pt = [-shift + L_bp_l + S, Req]
                 fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
                 lineTo(pt, [-shift + L_bp_l + S + L, Req], step)
@@ -4531,13 +4527,13 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
                 shift -= L
 
         if L_bp_r > 0:
-            lineTo(pt, [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, Ri], step)
-            pt = [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, Ri]
+            lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, Ri], step)
+            pt = [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, Ri]
             fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
         # END PATH
-        lineTo(pt, [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, 0], step)
-        pt = [-shift + L_bp_l + (n_cell-1)*S + L_bp_r, 0]
+        lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, 0], step)
+        pt = [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, 0]
         fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
 
         # if bc:
@@ -4683,7 +4679,6 @@ def to_multicell(n_cells, shape):
 
     return shape_multicell
 
-
 # def error(*arg):
 #     print(colored(f'{arg[0]}', 'red'))
 #
@@ -4702,4 +4697,3 @@ def to_multicell(n_cells, shape):
 #
 # def done(*arg):
 #     print(colored(f'{arg[0]}', 'green'))
-
