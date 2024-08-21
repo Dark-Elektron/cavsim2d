@@ -43,6 +43,15 @@ TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
 DIMENSION_FACTOR = {'mm': 1, 'cm': 1e-1, 'm': 1e-3}
 BOUNDARY_CONDITIONS_DICT = {'ee': 11, 'em': 13, 'me': 31, 'mm': 33}
+LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
+          "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
+          "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",
+          "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", "Q []": r'$Q$ []',
+          'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
+          '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
+          '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
+          'P_HOM [kW]': r"$P_\mathrm{HOM}/cav ~\mathrm{[kW]}$"}
+
 
 m0 = 9.1093879e-31
 q0 = 1.6021773e-19
@@ -3355,11 +3364,12 @@ class Cavities(Optimisation):
                 if os.path.exists(f'{uq_geom_folder}/monopole/geodata.n'):
                     # read geometry
                     cav_geom = pd.read_csv(f'{uq_geom_folder}/monopole/geodata.n', header=None,
-                                           skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0, 2]]
+                                           skipfooter=1, sep='\s+', engine='python')
 
                     cav_geom = cav_geom[[1, 0]]
                     ax.plot(cav_geom[1], cav_geom[0], ls='--', lw=1, c='gray')
             ax.set_title(cav.name)
+        return ax
 
     @staticmethod
     def find_folders_with_tag(directory, tag):
@@ -3535,17 +3545,17 @@ class Cavities(Optimisation):
 
         plt.show()
 
-    def plot_compare_eigenmode(self, kind='scatter', uq=False):
+    def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_fm_scatter(uq=uq)
+            self.plot_compare_fm_scatter(uq=uq, ncols=ncols)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_fm_bar(uq=uq)
+            self.plot_compare_fm_bar(uq=uq, ncols=ncols)
 
-    def plot_compare_wakefield(self, opt, kind='scatter', uq=False):
+    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_hom_scatter(opt, uq=uq)
+            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_hom_bar(opt, uq=uq)
+            self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols)
 
     def plot_compare_hom_bar(self, opt, ncols=3, uq=False):
         """
@@ -3657,6 +3667,7 @@ class Cavities(Optimisation):
 
             h, l = ax.get_legend_handles_labels()
         else:
+            df_nominal = pd.DataFrame.from_dict(self.wakefield_qois).T
             # Step 1: Flatten the dictionary into a DataFrame
             rows = []
             for cavity, metrics in self.uq_hom_results.items():
@@ -3687,6 +3698,9 @@ class Cavities(Optimisation):
                                                 ec='k', zorder=100, label=label)
                     ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=5,
                                 color=colors[i])
+
+                    # plot nominal
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2, zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
@@ -3730,7 +3744,7 @@ class Cavities(Optimisation):
                        width=1)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(key)
+                ax.set_ylabel(LABELS[key])
                 h, l = ax.get_legend_handles_labels()
         else:
             self.fm_results = self.uq_fm_results
@@ -3767,7 +3781,7 @@ class Cavities(Optimisation):
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(metric)
+                ax.set_ylabel(LABELS[metric])
                 h, l = ax.get_legend_handles_labels()
 
         # fig.set_tight_layout(True)
@@ -3785,7 +3799,7 @@ class Cavities(Optimisation):
 
     def plot_compare_fm_scatter(self, ncols=3, uq=False):
         """
-        Plot scatter chart of fundamental mode quantities of interest.
+        Plot scatter chart of higher-order mode quantities of interest.
 
         Parameters
         ----------
@@ -3803,7 +3817,6 @@ class Cavities(Optimisation):
 
         if not uq:
             self.fm_results = self.qois_fm()
-
             df = pd.DataFrame.from_dict(self.fm_results)
             fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
 
@@ -3816,10 +3829,12 @@ class Cavities(Optimisation):
                     ax.scatter(df.index, df[key], color=colors[i], label=label)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(key)
+                ax.set_ylabel(LABELS[key])
 
             h, l = ax.get_legend_handles_labels()
         else:
+            df_nominal = pd.DataFrame.from_dict(self.eigenmode_qois).T
+
             # Step 1: Flatten the dictionary into a DataFrame
             rows = []
             for cav, metrics in self.uq_fm_results.items():
@@ -3850,16 +3865,24 @@ class Cavities(Optimisation):
                     ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=5,
                                 color=scatter_points.get_facecolor()[0])
 
+                    # plot nominal
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2, zorder=100)
+
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(metric)
+                ax.set_ylabel(LABELS[metric])
 
             h, l = ax.get_legend_handles_labels()
 
+        by_label = dict(zip(l, h))
+        if 'nominal' in by_label.keys():
+            nominal_handle = by_label.pop('nominal')  # Remove 'nominal' entry
+            # Reinsert 'nominal' as the last entry
+            by_label['nominal'] = nominal_handle
         # Set legend
         if not ncols:
             ncols = min(4, len(self.cavities_list))
-        fig.legend(h, l, loc='outside upper center', borderaxespad=0, ncol=ncols)
+        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
