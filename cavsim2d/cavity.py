@@ -3990,27 +3990,27 @@ class Cavities(Optimisation):
                 end_cell_right = np.array(cav.shape_space['OC']) * 1e-3
 
             scale = cav.op_freq / c0
-            if cav.cell_type == 'flat top':
-                writeCavityForMultipac_flat_top(fr'{cav.slans_dir}\contour.txt', 1, mid_cell, end_cell_left,
-                                                end_cell_right, beampipe='none', unit=1, scale=scale, plot=True)
+            if cav.cell_type == 'flattop':
+                write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
+                                                  BP='none', n_cell=1, ax=ax, scale=scale, plot=True)
             else:
-                writeCavityForMultipac(fr'{cav.slans_dir}\contour.txt', 1, mid_cell, end_cell_left, end_cell_right,
-                                       beampipe='none', unit=1, scale=scale)
+                write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
+                                                  BP='none', n_cell=1, ax=ax, scale=scale, plot=True)
 
-            data = pd.read_csv(fr"{cav.slans_dir}\contour.txt", sep=r'\s+', header=None, skiprows=3)
-
-            # ax.plot(data[1] * 1000, data[0] * 1000, lw=3., label=cav.plot_label)
-            ax.plot(data[1], data[0], lw=3., label=cav.plot_label, marker='x')
+            # data = pd.read_csv(fr"{cav.slans_dir}\contour.txt", sep=r'\s+', header=None, skiprows=3)
+            #
+            # # ax.plot(data[1] * 1000, data[0] * 1000, lw=3., label=cav.plot_label)
+            # ax.plot(data[1], data[0], lw=3., label=cav.plot_label, marker='x')
             ax.legend(loc='lower left')
 
             x_label = r"$z/\lambda$"
             y_label = r"$r/\lambda$"
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
-            min_x.append(min(data[1]))
-            min_y.append(min(data[0]))
-            max_x.append(max(data[1]))
-            max_y.append(max(data[0]))
+            # min_x.append(min(data[1]))
+            # min_y.append(min(data[0]))
+            # max_x.append(max(data[1]))
+            # max_y.append(max(data[0]))
 
         if opt.lower() == 'mid' or opt.lower() == 'end':
             ax.set_xlim(0, max(max_x))

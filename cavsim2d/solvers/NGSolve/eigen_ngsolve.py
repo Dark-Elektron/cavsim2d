@@ -155,7 +155,8 @@ class NGSolveMEVP:
 
         file_path = fr"{folder}\geodata.n"
         if cell_parameterisation == 'simplecell':
-            writeCavityForMultipac(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe, plot=plot)
+            # writeCavityForMultipac(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe, plot=plot)
+            write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
         else:
             # writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
             #                                 plot=plot)
@@ -221,8 +222,8 @@ class NGSolveMEVP:
             writeCavityForMultipac_multicell(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
                                              plot=plot)
         else:
-            writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
-                                            plot=plot)
+            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells,
+                                              write=file_path)
 
     def cavgeom_ngsolve(self, n_cell, mid_cell, end_cell_left, end_cell_right, beampipe='both', draw=False):
         """
