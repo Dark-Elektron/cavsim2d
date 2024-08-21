@@ -394,6 +394,12 @@ def stroud(p):
 def quad_stroud3(rdim, degree):
     """
     Stroud-3 quadrature in :math:`[0,1]^k`
+    .. note::
+
+        Dimensional Threshold Limitation: In practice, the Stroud 3 quadrature rule may be effective in dimensions
+        up to around 3 to 6, depending on the specific problem and the function being integrated. Beyond this,
+        the accuracy of the rule typically degrades, and higher-order quadrature rules or
+        Monte Carlo methods might be more appropriate.
 
     Parameters
     ----------
@@ -425,7 +431,6 @@ def quad_stroud3(rdim, degree):
     # standardisation of Legendre polynomials
     for i in range(1, degree + 1):
         bpoly[i, :, :] = bpoly[i, :, :] * np.sqrt(2 * (i + 1) - 1)
-
     return nodes, weights, bpoly
 
 
@@ -1328,6 +1333,10 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None
 
     Parameters
     ----------
+    BP
+    OC_R
+    OC
+    ignore_degenerate
     file_path: str
         File path to write geometry to
     n_cell: int

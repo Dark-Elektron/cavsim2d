@@ -516,16 +516,16 @@ class NGSolveMEVP:
         self.write_geometry(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes,
                             plot=False)
 
-        if os.path.exists(f'{run_save_directory}\geodata.n'):
+        if os.path.exists(fr'{run_save_directory}\geodata.n'):
             # read geometry
-            cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
-                                   header=None, skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0, 2]]
+            cav_geom = pd.read_csv(fr'{run_save_directory}\geodata.n',
+                                   header=None, skiprows=1, sep='\s+', engine='python')
 
             if deformation_params is not None:
                 cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
                                                 deformation_params)
                 # save deformed cavity profile
-                cav_geom.to_csv(f'{run_save_directory}\geodata_deformed.n', sep='\t')
+                cav_geom.to_csv(fr'{run_save_directory}\geodata_deformed.n', sep='\t')
 
             cav_geom = cav_geom[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
@@ -917,14 +917,14 @@ class NGSolveMEVP:
                             cell_parameterisation='flattop', plot=False)
 
         # read geometry
-        cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
+        cav_geom = pd.read_csv(fr'{run_save_directory}\geodata.n',
                                header=None, skiprows=1, sep='\s+', engine='python')
 
         if deformation_params is not None:
             cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
                                             deformation_params)
             # save deformed cavity profile
-            cav_geom.to_csv(f'{run_save_directory}\geodata_deformed.n', sep='\t')
+            cav_geom.to_csv(fr'{run_save_directory}\geodata_deformed.n', sep='\t')
 
         cav_geom = cav_geom[[1, 0]]
         # plt.plot(cav_geom[0], cav_geom[1])
