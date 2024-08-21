@@ -50,8 +50,8 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
-          'P_HOM [kW]': r"$P_\mathrm{HOM}/cav ~\mathrm{[kW]}$"}
-
+          'P_HOM [kW]': r"$P_\mathrm{HOM}/cav ~\mathrm{[kW]}$"
+          }
 
 m0 = 9.1093879e-31
 q0 = 1.6021773e-19
@@ -2916,6 +2916,40 @@ class Cavities(Optimisation):
 
         """
 
+        if 'uq_config' in tune_config.keys():
+            uq_config = tune_config['uq_config']
+            if 'delta' in uq_config.keys():
+                assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+                                                                                     "be equal to the number of "
+                                                                                     "variables.")
+            if 'epsilon' in uq_config.keys():
+                assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
+                    "The number of epsilons must "
+                    "be equal to the number of "
+                    "variables.")
+
+            if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
+                info('epsilon and delta are both entered. Epsilon is preferred.')
+
+        if 'eigenmode_config' in tune_config.keys():
+            eigenmode_config = tune_config['eigenmode_config']
+
+            if 'uq_config' in eigenmode_config.keys():
+                uq_config_eig = eigenmode_config['uq_config']
+                if 'delta' in uq_config_eig.keys():
+                    assert len(uq_config_eig['delta']) == len(uq_config_eig['variables']), error("The number of deltas must "
+                                                                                         "be equal to the number of "
+                                                                                         "variables.")
+                if 'epsilon' in uq_config_eig.keys():
+                    assert len(uq_config_eig['epsilon']) == len(uq_config_eig['variables']), error(
+                        "The number of epsilons must "
+                        "be equal to the number of "
+                        "variables.")
+
+                if 'epsilon' in uq_config_eig.keys() and 'uq_config' in uq_config_eig.keys():
+                    info('epsilon and delta are both entered. Epsilon is preferred.')
+
+
         rerun = True
         if 'rerun' in tune_config:
             rerun = tune_config['rerun']
@@ -2985,13 +3019,24 @@ class Cavities(Optimisation):
             if isinstance(eigenmode_config['rerun'], bool):
                 rerun = eigenmode_config['rerun']
 
-        uq_config = None
+        uq_config = {}
         if 'uq_config' in eigenmode_config.keys():
             uq_config = eigenmode_config['uq_config']
             if uq_config:
-                assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                                     "be equal to the number of "
-                                                                                     "variables.")
+                if 'delta' in uq_config.keys():
+                    assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+                                                                                         "be equal to the number of "
+                                                                                         "variables.")
+
+                if 'epsilon' in uq_config.keys():
+                    assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
+                        "The number of epsilons must "
+                        "be equal to the number of "
+                        "variables.")
+
+                if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
+                    info('Epsilon and delta are both entered. Epsilon is preferred.')
+
         else:
             eigenmode_config['uq_config'] = uq_config
 
@@ -3069,9 +3114,25 @@ class Cavities(Optimisation):
             if isinstance(wakefield_config['rerun'], bool):
                 rerun = wakefield_config['rerun']
 
-        uq_config = None
+        uq_config = {}
         if 'uq_config' in wakefield_config_keys:
+
+            if 'delta' in uq_config.keys():
+                assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+                                                                                     "be equal to the number of "
+                                                                                     "variables.")
+
+            if 'epsilon' in uq_config.keys():
+                assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
+                    "The number of epsilons must "
+                    "be equal to the number of "
+                    "variables.")
+
+            if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
+                info('epsilon and delta are both entered. Epsilon is preferred.')
+
             assert 'objectives' in wakefield_config['uq_config'].keys(), error('Please enter objectives in uq_config.')
+
             objectives_unprocessed = []
             # adjust objectives to match signature with optimisation
             for obj in wakefield_config['uq_config']['objectives']:
@@ -3700,7 +3761,8 @@ class Cavities(Optimisation):
                                 color=colors[i])
 
                     # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2, zorder=100)
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
+                               zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
@@ -3866,7 +3928,8 @@ class Cavities(Optimisation):
                                 color=scatter_points.get_facecolor()[0])
 
                     # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2, zorder=100)
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
+                               zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
@@ -3883,6 +3946,98 @@ class Cavities(Optimisation):
         if not ncols:
             ncols = min(4, len(self.cavities_list))
         fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        # Save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_fm_scatter.png")
+
+        return axd
+
+    def plot_compare_all_scatter(self, opt, ncols=3):
+        """
+        Plot scatter chart of fundamental mode quantities of interest.
+
+        Parameters
+        ----------
+        ncols : int, optional
+            Number of columns for the legend. The default is 3.
+        uq : bool, optional
+            If True, plots with uncertainty quantification. The default is False.
+
+        Returns
+        -------
+        axd : dict
+            A dictionary of axes from the scatter plot.
+        """
+        plt.rcParams["figure.figsize"] = (12, 3)
+
+        if not uq:
+            self.hom_results = self.qois_hom(opt)
+
+            df = pd.DataFrame.from_dict(self.hom_results)
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Plot each column in a separate subplot
+            for key, ax in axd.items():
+                for i, label in enumerate(labels):
+                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(key)
+
+            h, l = ax.get_legend_handles_labels()
+        else:
+            dict_all = self.uq_fm_results | self.uq_hom_results
+            df_nominal = pd.DataFrame.from_dict(dict_all).T
+            # Step 1: Flatten the dictionary into a DataFrame
+            rows = []
+            for cavity, metrics in self.uq_hom_results.items():
+                for metric, values in metrics.items():
+                    rows.append({
+                        'cavity': cavity,
+                        'metric': metric,
+                        'mean': values['expe'][0],
+                        'std': values['stdDev'][0]
+                    })
+
+            df = pd.DataFrame(rows)
+
+            # Step 2: Create a Mosaic Plot
+            metrics = df['metric'].unique()
+            layout = [[metric for metric in metrics]]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+
+            # Plotting labels and colors
+            labels = df['cavity'].unique()
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Step 3: Plot each metric on a separate subplot
+            for metric, ax in axd.items():
+                for i, label in enumerate(labels):
+                    sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                    scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
+                                                ec='k', zorder=100, label=label)
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=5,
+                                color=colors[i])
+
+                    # plot nominal
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
+                               zorder=100)
+
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(metric)
+
+            # Step 4: Set legend
+            h, l = ax.get_legend_handles_labels()
+            if not ncols:
+                ncols = min(4, len(labels))
+            fig.legend(h, l, loc='upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
@@ -3930,49 +4085,6 @@ class Cavities(Optimisation):
 
         return axd
 
-    #
-    # def plot_cryomodule_comparison(self):
-    #     """
-    #     Plot cryomodule power comparison
-    #
-    #     Returns
-    #     -------
-    #
-    #     """
-    #     plt.rcParams["figure.figsize"] = (9, 3)
-    #     fig, axs = plt.subplots(1, 2)
-    #     n_cav_per_cryomodule = np.arange(1, 11)
-    #     for cav in self.cavities_list:
-    #         n_cryomodules_list = []
-    #         cryomodules_len_list = []
-    #         for ncpc in n_cav_per_cryomodule:
-    #             cryomodule_len = cav.n_cells * (2 * cav.l_cell_mid) * ncpc + (ncpc + 1) * 8 * cav.l_cell_mid
-    #             cryomodules_len_list.append(cryomodule_len)
-    #
-    #             n_cryomodules = cav.n_cav_op_field / ncpc
-    #             n_cryomodules_list.append(n_cryomodules)
-    #
-    #         axs[0].plot(n_cav_per_cryomodule, cryomodules_len_list, marker='o', mec='k', label=f'{cav.name}')
-    #         axs[1].plot(n_cav_per_cryomodule, n_cryomodules_list, marker='o', mec='k', label=f'{cav.name}')
-
-    #     axs[0].set_xlabel("$N_\mathrm{cav}$/mod.")
-    #     axs[0].set_ylabel("$L_\mathrm{cryo}$ [m]")
-    #     axs[1].set_xlabel("$N_\mathrm{cav}$/mod.")
-    #     axs[1].set_ylabel("$N_\mathrm{cryo}$")
-    #     axs[0].legend()
-    #     axs[1].legend()
-    #     mplcursors.cursor(axs[0])
-    #     mplcursors.cursor(axs[1])
-    #     plt.tight_layout()
-    #
-    #     # save plots
-    #     fname = [cav.name for cav in self.cavities_list]
-    #     fname = '_'.join(fname)
-    #
-    #     self.save_all_plots(f"{fname}_cryo.png")
-    #
-    #     plt.show()
-
     def plot_cavities_contour(self, opt='mid'):
         """Plot geometric contour of Cavity objects
 
@@ -3987,62 +4099,52 @@ class Cavities(Optimisation):
         """
         min_x, max_x, min_y, max_y = [], [], [], []
 
-        if opt.lower() == 'mid' or opt.lower() == 'end':
-            plt.rcParams["figure.figsize"] = (4, 5)
-        else:
-            plt.rcParams["figure.figsize"] = (10, 4)
+        plt.rcdefaults()
 
-        fig, ax = plt.subplots()
+        fig, axs = plt.subplot_mosaic([[0]], layout='constrained')
+        ax = axs[0]
+        ax.set_aspect('equal', adjustable='box')
         ax.margins(x=0)
 
         for i, cav in enumerate(self.cavities_list):
-            # write contour
-            # self.write_contour(cav, opt)
-
             if opt.lower() == 'mid':
-                mid_cell = np.array(cav.shape_space['IC']) * 1e-3
-                end_cell_left = np.array(cav.shape_space['IC']) * 1e-3
-                end_cell_right = np.array(cav.shape_space['IC']) * 1e-3
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['IC'])
+                end_cell_right = np.array(cav.shape['IC'])
+                beampipe = 'none'
             elif opt.lower() == 'end':
-                mid_cell = np.array(cav.shape_space['IC']) * 1e-3
-                end_cell_left = np.array(cav.shape_space['OC']) * 1e-3
-                end_cell_right = np.array(cav.shape_space['OC']) * 1e-3
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['OC'])
+                end_cell_right = np.array(cav.shape['OC'])
+                beampipe = 'right'
             else:
-                mid_cell = np.array(cav.shape_space['IC']) * 1e-3
-                end_cell_left = np.array(cav.shape_space['OC']) * 1e-3
-                end_cell_right = np.array(cav.shape_space['OC']) * 1e-3
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['OC'])
+                end_cell_right = np.array(cav.shape['OC'])
+                beampipe = 'both'
 
-            scale = cav.op_freq / c0
-            if cav.cell_type == 'flattop':
+            if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
-                                                  BP='none', n_cell=1, ax=ax, scale=scale, plot=True)
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True)
             else:
                 write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
-                                                  BP='none', n_cell=1, ax=ax, scale=scale, plot=True)
-
-            # data = pd.read_csv(fr"{cav.slans_dir}\contour.txt", sep=r'\s+', header=None, skiprows=3)
-            #
-            # # ax.plot(data[1] * 1000, data[0] * 1000, lw=3., label=cav.plot_label)
-            # ax.plot(data[1], data[0], lw=3., label=cav.plot_label, marker='x')
-            ax.legend(loc='lower left')
+                                          BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, contour=True)
+            ax.lines[-1].set_label(cav.name)
+            ax.axvline(0, c='k', ls='--')
+            ax.legend(loc='upper right')
 
             x_label = r"$z/\lambda$"
             y_label = r"$r/\lambda$"
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
-            # min_x.append(min(data[1]))
-            # min_y.append(min(data[0]))
-            # max_x.append(max(data[1]))
-            # max_y.append(max(data[0]))
+            min_x.append(min(ax.lines[-1].get_xdata()))
+            min_y.append(min(ax.lines[-1].get_ydata()))
+            max_x.append(max(ax.lines[-1].get_xdata()))
+            max_y.append(max(ax.lines[-1].get_ydata()))
 
-        if opt.lower() == 'mid' or opt.lower() == 'end':
-            ax.set_xlim(0, max(max_x))
-            ax.set_ylim(0, max(max_y))
-        else:
-            ax.set_xlim(min(min_x), max(max_x))
-            ax.set_ylim(min(min_y), max(max_y))
+        ax.set_ylim(0)
 
-        plt.tight_layout()
+        # plt.tight_layout()
 
         # save plots
         fname = [cav.name for cav in self.cavities_list]
@@ -4050,7 +4152,84 @@ class Cavities(Optimisation):
 
         self.save_all_plots(f"{fname}_contour_{opt}.png")
 
-        fig.show()
+        # fig.show()
+
+    def plot_cavities_contour_dimension(self, opt='mid', figsize=None):
+        """Plot geometric contour of Cavity objects
+
+        Parameters
+        ----------
+        opt: {"mid", "end", "all"}
+            Either plot contour for only mid cells or end cells or the entire cavity
+
+        Returns
+        -------
+
+        """
+        min_x, max_x, min_y, max_y = [], [], [], []
+
+        if figsize:
+            fig, axs = plt.subplot_mosaic([[cav.name for cav in self.cavities_list]], figsize=figsize,
+                                          layout='constrained')
+        else:
+            fig, axs = plt.subplot_mosaic([[cav.name for cav in self.cavities_list]], figsize=(12, 4),
+                                          layout='constrained')
+
+        for i, (cav, key) in enumerate(zip(self.cavities_list, axs)):
+            ax = axs[key]
+            ax.set_aspect('equal')
+            if opt.lower() == 'mid':
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['IC'])
+                end_cell_right = np.array(cav.shape['IC'])
+                beampipe = 'none'
+            elif opt.lower() == 'end':
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['IC'])
+                end_cell_right = np.array(cav.shape['OC'])
+                beampipe = 'right'
+            else:
+                mid_cell = np.array(cav.shape['IC'])
+                end_cell_left = np.array(cav.shape['OC'])
+                end_cell_right = np.array(cav.shape['OC'])
+                beampipe = 'both'
+
+            if cav.cell_parameterisation == 'flattop':
+                write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
+                                                  dimension=True)
+            else:
+                write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
+                                          BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
+                                          dimension=True)
+            ax.set_label(cav.name)
+            # ax.legend(loc='lower left')
+
+            x_label = r"$z$"
+            y_label = r"$r$"
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            min_x.append(min(ax.lines[-1].get_xdata()))
+            min_y.append(min(ax.lines[-1].get_ydata()))
+            max_x.append(max(ax.lines[-1].get_xdata()))
+            max_y.append(max(ax.lines[-1].get_ydata()))
+
+        # if opt.lower() == 'mid' or opt.lower() == 'end':
+        #     ax.set_xlim(0, max(max_x))
+        #     ax.set_ylim(0, max(max_y))
+        # else:
+        #     ax.set_xlim(min(min_x), max(max_x))
+        #     ax.set_ylim(min(min_y), max(max_y))
+        #
+        # plt.tight_layout()
+
+        # save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_contour_{opt}.png")
+
+        # fig.show()
 
     def plot_axis_fields(self):
         """
@@ -6427,15 +6606,15 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
     else:
         eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
 
-    uq_config = None
-    if 'uq_config' in eigenmode_config.keys():
-        uq_config = eigenmode_config['uq_config']
-        if uq_config:
-            assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                                 "be equal to the number of "
-                                                                                 "variables.")
-    else:
-        eigenmode_config['uq_config'] = uq_config
+    # uq_config = None
+    # if 'uq_config' in eigenmode_config.keys():
+    #     uq_config = eigenmode_config['uq_config']
+    #     if uq_config:
+    #         assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+    #                                                                              "be equal to the number of "
+    #                                                                              "variables.")
+    # else:
+    #     eigenmode_config['uq_config'] = uq_config
 
     def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir):
         n_cells = shape['n_cells']
@@ -6587,10 +6766,10 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
         operating_points = wakefield_config['operating_points']
 
     uq_config = wakefield_config['uq_config']
-    if uq_config:
-        assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                             "be equal to the number of "
-                                                                             "variables.")
+    # if uq_config:
+    #     assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
+    #                                                                          "be equal to the number of "
+    #                                                                          "variables.")
 
     WG_M = None
 
@@ -6795,14 +6974,14 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
         opt = solver_args_dict['optimisation']
-        delta = uq_config['delta']
+        # delta = uq_config['delta']
 
         method = ['stroud3']
         if 'method' in uq_config.keys():
             method = uq_config['method']
 
         uq_vars = uq_config['variables']
-        assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+        # assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
         for key, shape in shape_space.items():
             n_cells = shape['n_cells']
@@ -6866,8 +7045,8 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                               index=False, sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
-            if delta is None:
-                delta = [0.05 for _ in range(len(uq_vars))]
+            # if delta is None:
+            #     delta = [0.05 for _ in range(len(uq_vars))]
 
             sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
 
@@ -7097,7 +7276,13 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
         opt = solver_args_dict['optimisation']
-        delta = uq_config['delta']
+
+        epsilon, delta = [], []
+        if 'epsilon' in uq_config.keys():
+            epsilon = uq_config['epsilon']
+        if 'delta' in uq_config.keys():
+            delta = uq_config['delta']
+
         method = uq_config['method']
         uq_vars = uq_config['variables']
         cell_parameterisation = solver_args_dict['cell_parameterisation']
@@ -7129,8 +7314,10 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             skip = False
             for j, uq_var in enumerate(uq_vars):
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-                perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-
+                if epsilon:
+                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                else:
+                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
             if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
                 # cell_node = shape['IC']
                 mid = perturbed_cell_node
@@ -7175,7 +7362,8 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                         projectDir=projectDir,
                                         subdir=sub_dir)
                 if cell_parameterisation == 'flattop':
-                    ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, mid, left, right, f_shift=0, bc=33, beampipes=shape['BP'],
+                    ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, mid, left, right, f_shift=0, bc=33,
+                                                beampipes=shape['BP'],
                                                 fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
                                                 projectDir=projectDir,
                                                 subdir=sub_dir)
@@ -7211,7 +7399,13 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         DDR_SIG = solver_args['DDR_SIG']
         DDZ_SIG = solver_args['DDZ_SIG']
         # WG_M = solver_args['WG_M']
-        delta = uq_config['delta']
+
+        epsilon, delta = [], []
+        if 'epsilon' in uq_config.keys():
+            epsilon = uq_config['epsilon']
+        if 'delta' in uq_config.keys():
+            delta = uq_config['delta']
+
         # method = uq_config['method']
         cell_parameterisation = solver_args_dict['cell_parameterisation']
         uq_vars = uq_config['variables']
@@ -7244,13 +7438,17 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             cell_node = shape['OC']
 
         perturbed_cell_node = np.array(cell_node)
+
         uq_shape_space = {}
         d_uq_op = {}
         for i1, proc_key in enumerate(proc_keys_list):
             skip = False
             for j, uq_var in enumerate(uq_vars):
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-                perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                if epsilon:
+                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                else:
+                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
 
             if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
                 # cell_node = shape['IC']
@@ -7343,7 +7541,8 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                     if 'OC_R' in uq_shape.keys():
                                         OC_R = 'OC_R'
                                     for m in range(2):
-                                        abci_geom.cavity(shape['n_cells'], 1, uq_shape['IC'], uq_shape['OC'], uq_shape[OC_R],
+                                        abci_geom.cavity(shape['n_cells'], 1, uq_shape['IC'], uq_shape['OC'],
+                                                         uq_shape[OC_R],
                                                          fid=fid_op, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
                                                          bunch_length=s,
                                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
