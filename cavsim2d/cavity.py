@@ -1570,6 +1570,7 @@ class Cavity:
         self.convergence_list = []
         self.eigenmode_tune_res = {}
         self.operating_points = None
+        self.color = None
 
         # eigenmode results
         self.R_Q, self.k_fm, self.GR_Q, self.op_freq, self.e, self.b, \
@@ -1847,7 +1848,7 @@ class Cavity:
         if how == 'cross':
             pass
         else:
-            for key, interval_def in tqdm(sweep_config.items()):
+            for key, interval_def in sweep_config.items():
                 # save nominal variable value form shape space
                 current_var = self.shape['IC'][VAR_TO_INDEX_DICT[key]]
                 par_vals = np.linspace(interval_def[0], interval_def[1], interval_def[2], endpoint=True)
@@ -1890,30 +1891,29 @@ class Cavity:
 
         """
 
-        for _ in tqdm([1], file=sys.stdout):
-            if boundary_cond:
-                self.bc = boundary_cond
+        if boundary_cond:
+            self.bc = boundary_cond
 
-            if self.cell_parameterisation == 'multicell':
-                self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
-                                  self.n_modes,
-                                  freq_shift, self.bc,
-                                  SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-            else:
-                self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
-                                  self.n_modes,
-                                  freq_shift, self.bc,
-                                  SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+        if self.cell_parameterisation == 'multicell':
+            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
+                              self.n_modes,
+                              freq_shift, self.bc,
+                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+        else:
+            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
+                              self.n_modes,
+                              freq_shift, self.bc,
+                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
 
-            # load quantities of interest
-            try:
-                self.get_eigenmode_qois()
-                if uq_config:
-                    self.get_uq_fm_results(fr"{self.projectDir}\SimulationData\NGSolveMEVP\{self.name}\uq.json")
-                return True
-            except FileNotFoundError:
-                error("Could not find eigenmode results. Please rerun eigenmode analysis.")
-                return False
+        # load quantities of interest
+        try:
+            self.get_eigenmode_qois()
+            if uq_config:
+                self.get_uq_fm_results(fr"{self.projectDir}\SimulationData\NGSolveMEVP\{self.name}\uq.json")
+            return True
+        except FileNotFoundError:
+            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
+            return False
 
     def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
@@ -4196,7 +4196,7 @@ class Cavities(Optimisation):
 
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
-                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
+                                                  BP=beampipe, n_cell=2, ax=ax, scale=1, plot=True,
                                                   dimension=True, lw=3)
             else:
                 write_cavity_geometry_cli(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
@@ -5293,51 +5293,50 @@ class Pillbox(Cavity):
 
         """
 
-        for _ in tqdm([1]):
-            iter_set = ['Linear Interpolation', TUNE_ACCURACY, 10]
+        iter_set = ['Linear Interpolation', TUNE_ACCURACY, 10]
 
-            if freq is None:
-                # calculate freq from mid cell length
-                beta = 1
-                freq = beta * c0 / (4 * self.mid_cell[5])
-                info("Calculated freq from mid cell half length: ", freq)
+        if freq is None:
+            # calculate freq from mid cell length
+            beta = 1
+            freq = beta * c0 / (4 * self.mid_cell[5])
+            info("Calculated freq from mid cell half length: ", freq)
 
-            # create new shape space based on cell_type
-            # if cell_type.lower() == 'mid cell':
-            shape_space = {
-                f'{self.name}':
-                    {
-                        'IC': self.shape_space['IC'],
-                        'OC': self.shape_space['OC'],
-                        'OC_R': self.shape_space['OC_R'],
-                        "BP": 'none',
-                        'FREQ': freq
-                    }
-            }
+        # create new shape space based on cell_type
+        # if cell_type.lower() == 'mid cell':
+        shape_space = {
+            f'{self.name}':
+                {
+                    'IC': self.shape_space['IC'],
+                    'OC': self.shape_space['OC'],
+                    'OC_R': self.shape_space['OC_R'],
+                    "BP": 'none',
+                    'FREQ': freq
+                }
+        }
 
-            if len(self.slans_tune_res.keys()) != 0:
-                run_tune = input("This cavity has already been tuned. Run tune again? (y/N)")
-                if run_tune.lower() == 'y':
-                    self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
-                                          SOFTWARE_DIRECTORY, self.projectDir, self.name,
-                                          tune_variable, iter_set, cell_type,
-                                          progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-
-                # read tune results and update geometry
-                try:
-                    self.get_ngsolve_tune_res(tune_variable, cell_type)
-                except FileNotFoundError:
-                    error("Could not find the tune results. Please run tune again.")
-            else:
-
+        if len(self.slans_tune_res.keys()) != 0:
+            run_tune = input("This cavity has already been tuned. Run tune again? (y/N)")
+            if run_tune.lower() == 'y':
                 self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
                                       SOFTWARE_DIRECTORY, self.projectDir, self.name,
                                       tune_variable, iter_set, cell_type,
                                       progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-                try:
-                    self.get_ngsolve_tune_res(tune_variable, cell_type)
-                except FileNotFoundError:
-                    error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+
+            # read tune results and update geometry
+            try:
+                self.get_ngsolve_tune_res(tune_variable, cell_type)
+            except FileNotFoundError:
+                error("Could not find the tune results. Please run tune again.")
+        else:
+
+            self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
+                                  SOFTWARE_DIRECTORY, self.projectDir, self.name,
+                                  tune_variable, iter_set, cell_type,
+                                  progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
+            try:
+                self.get_ngsolve_tune_res(tune_variable, cell_type)
+            except FileNotFoundError:
+                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     @staticmethod
     def run_tune_ngsolve(shape, resume, p, bc, parentDir, projectDir, filename,
@@ -5372,17 +5371,16 @@ class Pillbox(Cavity):
 
         """
 
-        for _ in tqdm([1], file=sys.stdout):
-            if boundary_cond:
-                self.bc = boundary_cond
+        if boundary_cond:
+            self.bc = boundary_cond
 
-            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape_space, self.n_modes, freq_shift,
-                              self.bc, SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-            # load quantities of interest
-            try:
-                self.get_eigenmode_qois()
-            except FileNotFoundError:
-                error("Could not find eigenmode results. Please rerun eigenmode analysis.")
+        self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape_space, self.n_modes, freq_shift,
+                          self.bc, SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+        # load quantities of interest
+        try:
+            self.get_eigenmode_qois()
+        except FileNotFoundError:
+            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
 
     def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
@@ -5476,7 +5474,7 @@ class Pillbox(Cavity):
         for ii in WG_M:
             try:
                 if MROT == 2:
-                    for m in tqdm(range(2)):
+                    for m in range(2):
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
@@ -5489,7 +5487,7 @@ class Pillbox(Cavity):
                                      WG_M=ii, marker=ii)
             except KeyError:
                 if MROT == 2:
-                    for m in tqdm(range(2)):
+                    for m in range(2):
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
@@ -5507,14 +5505,14 @@ class Pillbox(Cavity):
                 if freq != 0 and R_Q != 0:
                     d = {}
                     # save qois
-                    for key, vals in tqdm(operating_points.items()):
+                    for key, vals in operating_points.items():
                         WP = key
                         I0 = float(vals['I0 [mA]'])
                         Nb = float(vals['Nb [1e11]'])
                         sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
                         bl_diff = ['SR', 'BS']
 
-                        info("Running wakefield analysis for given operating points.")
+                        # info("Running wakefield analysis for given operating points.")
                         for i, s in enumerate(sigma_z):
                             for ii in WG_M:
                                 fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
@@ -5637,63 +5635,62 @@ class RFGun(Cavity):
 
         """
 
-        for _ in tqdm([1]):
-            iter_set = ['Linear Interpolation', TUNE_ACCURACY, 10]
+        iter_set = ['Linear Interpolation', TUNE_ACCURACY, 10]
 
-            if freq is None:
-                # calculate freq from mid cell length
-                beta = 1
-                freq = beta * c0 / (4 * self.mid_cell[5])
-                info("Calculated freq from mid cell half length: ", freq)
+        if freq is None:
+            # calculate freq from mid cell length
+            beta = 1
+            freq = beta * c0 / (4 * self.mid_cell[5])
+            info("Calculated freq from mid cell half length: ", freq)
 
-            # create new shape space based on cell_type
-            # if cell_type.lower() == 'mid cell':
-            shape_space = {
-                f'{self.name}':
-                    {
-                        'IC': self.shape_space['IC'],
-                        'OC': self.shape_space['OC'],
-                        'OC_R': self.shape_space['OC_R'],
-                        "BP": 'none',
-                        'FREQ': freq
-                    }
-            }
+        # create new shape space based on cell_type
+        # if cell_type.lower() == 'mid cell':
+        shape_space = {
+            f'{self.name}':
+                {
+                    'IC': self.shape_space['IC'],
+                    'OC': self.shape_space['OC'],
+                    'OC_R': self.shape_space['OC_R'],
+                    "BP": 'none',
+                    'FREQ': freq
+                }
+        }
 
-            if len(self.slans_tune_res.keys()) != 0:
-                run_tune = input("This cavity has already been tuned. Run tune again? (y/N)")
-                if solver.lower() == 'slans':
-                    if run_tune.lower() == 'y':
-                        # copy files required for simulation
-                        self._overwriteFolder(proc, self.projectDir, self.name)
-                        self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
+        if len(self.slans_tune_res.keys()) != 0:
+            run_tune = input("This cavity has already been tuned. Run tune again? (y/N)")
+            if solver.lower() == 'slans':
+                if run_tune.lower() == 'y':
+                    # copy files required for simulation
+                    self._overwriteFolder(proc, self.projectDir, self.name)
+                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
 
-                        self.run_tune_slans(shape_space, resume, proc, self.bc,
-                                            SOFTWARE_DIRECTORY, self.projectDir, self.name, tuner,
-                                            tune_variable, iter_set, cell_type,
-                                            progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
+                    self.run_tune_slans(shape_space, resume, proc, self.bc,
+                                        SOFTWARE_DIRECTORY, self.projectDir, self.name, tuner,
+                                        tune_variable, iter_set, cell_type,
+                                        progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
 
-                    # read tune results and update geometry
-                    try:
-                        self.get_slans_tune_res(tune_variable, cell_type)
-                    except FileNotFoundError:
-                        error("Could not find the tune results. Please run tune again.")
-                else:
-                    if run_tune.lower() == 'y':
-                        # copy files required for simulation
-                        self._overwriteFolder(proc, self.projectDir, self.name)
-                        self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
-
-                        self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
-                                              SOFTWARE_DIRECTORY, self.projectDir, self.name,
-                                              tune_variable, iter_set, cell_type,
-                                              progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-
-                    # read tune results and update geometry
-                    try:
-                        self.get_ngsolve_tune_res(tune_variable, cell_type)
-                    except FileNotFoundError:
-                        error("Could not find the tune results. Please run tune again.")
+                # read tune results and update geometry
+                try:
+                    self.get_slans_tune_res(tune_variable, cell_type)
+                except FileNotFoundError:
+                    error("Could not find the tune results. Please run tune again.")
             else:
+                if run_tune.lower() == 'y':
+                    # copy files required for simulation
+                    self._overwriteFolder(proc, self.projectDir, self.name)
+                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
+
+                    self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
+                                          SOFTWARE_DIRECTORY, self.projectDir, self.name,
+                                          tune_variable, iter_set, cell_type,
+                                          progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
+
+                # read tune results and update geometry
+                try:
+                    self.get_ngsolve_tune_res(tune_variable, cell_type)
+                except FileNotFoundError:
+                    error("Could not find the tune results. Please run tune again.")
+        else:
                 if solver.lower() == 'slans':
                     # copy files required for simulation
                     self._overwriteFolder(proc, self.projectDir, self.name)
@@ -5755,17 +5752,16 @@ class RFGun(Cavity):
 
         """
 
-        for _ in tqdm([1], file=sys.stdout):
-            if boundary_cond:
-                self.bc = boundary_cond
+        if boundary_cond:
+            self.bc = boundary_cond
 
-            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape_space, self.n_modes, freq_shift,
-                              self.bc, SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-            # load quantities of interest
-            try:
-                self.get_eigenmode_qois()
-            except FileNotFoundError:
-                error("Could not find eigenmode results. Please rerun eigenmode analysis.")
+        self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape_space, self.n_modes, freq_shift,
+                          self.bc, SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+        # load quantities of interest
+        try:
+            self.get_eigenmode_qois()
+        except FileNotFoundError:
+            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
 
     def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
@@ -5859,7 +5855,7 @@ class RFGun(Cavity):
         for ii in WG_M:
             try:
                 if MROT == 2:
-                    for m in tqdm(range(2)):
+                    for m in range(2):
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
@@ -5872,7 +5868,7 @@ class RFGun(Cavity):
                                      WG_M=ii, marker=ii)
             except KeyError:
                 if MROT == 2:
-                    for m in tqdm(range(2)):
+                    for m in range(2):
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
@@ -5890,14 +5886,14 @@ class RFGun(Cavity):
                 if freq != 0 and R_Q != 0:
                     d = {}
                     # save qois
-                    for key, vals in tqdm(operating_points.items()):
+                    for key, vals in operating_points.items():
                         WP = key
                         I0 = float(vals['I0 [mA]'])
                         Nb = float(vals['Nb [1e11]'])
                         sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
                         bl_diff = ['SR', 'BS']
 
-                        info("Running wakefield analysis for given operating points.")
+                        # info("Running wakefield analysis for given operating points.")
                         for i, s in enumerate(sigma_z):
                             for ii in WG_M:
                                 fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
@@ -6517,7 +6513,7 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
             save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
             save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
 
-    for i, (key, shape) in enumerate(tqdm(processor_shape_space.items())):
+    for i, (key, shape) in enumerate(processor_shape_space.items()):
         shape['FREQ'] = proc_freqs[i]
         if os.path.exists(os.path.join(projectDir, "SimulationData", "Optimisation", key)):
             if rerun:
@@ -6690,7 +6686,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
 
         done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
 
-    for i, (key, shape) in enumerate(tqdm(list(shape_space.items()))):
+    for i, (key, shape) in enumerate(list(shape_space.items())):
         # if isinstance(freq_shifts, int) or isinstance(freq_shifts, float):
         #     freq_shift = freq_shifts
         # else:
@@ -6792,7 +6788,7 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                 OC_R = 'OC'
 
             if MROT == 2:
-                for m in tqdm(range(2)):
+                for m in range(2):
                     if shape['CELL PARAMETERISATION'] == 'simplecell':
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
@@ -6807,7 +6803,7 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                                  WG_M=ii, marker=ii)
 
             else:
-                for m in tqdm(range(2)):
+                for m in range(2):
                     if shape['CELL PARAMETERISATION'] == 'simplecell':
                         abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
@@ -6865,14 +6861,14 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                 if freq != 0 and R_Q != 0:
                     d = {}
                     # save qois
-                    for key_op, vals in tqdm(operating_points.items()):
+                    for key_op, vals in operating_points.items():
                         WP = key_op
                         I0 = float(vals['I0 [mA]'])
                         Nb = float(vals['Nb [1e11]'])
                         sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
                         bl_diff = ['SR', 'BS']
 
-                        info("Running wakefield analysis for given operating points.")
+                        # info("Running wakefield analysis for given operating points.")
                         for i, s in enumerate(sigma_z):
                             for ii in WG_M:
                                 fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
@@ -6910,7 +6906,7 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                 error('The working point entered is not valid. See below for the proper input structure.')
                 show_valid_operating_point_structure()
 
-    for i, (key, shape) in enumerate(tqdm(shape_space.items())):
+    for i, (key, shape) in enumerate(shape_space.items()):
         if os.path.exists(os.path.join(projectDir, "SimulationData", "ABCI", key)):
             if rerun:
                 # remove old simulation results
@@ -7552,14 +7548,14 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                     if freq != 0 and R_Q != 0:
                         d = {}
                         # save qois
-                        for key_op, vals in tqdm(operating_points.items()):
+                        for key_op, vals in operating_points.items():
                             WP = key_op
                             I0 = float(vals['I0 [mA]'])
                             Nb = float(vals['Nb [1e11]'])
                             sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
                             bl_diff = ['SR', 'BS']
 
-                            info("Running wakefield analysis for given operating points.")
+                            # info("Running wakefield analysis for given operating points.")
                             for i, s in enumerate(sigma_z):
                                 for ii in ['']:
                                     fid_op = f"{WP}_{bl_diff[i]}_{s}mm{ii}"

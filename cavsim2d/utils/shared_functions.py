@@ -998,7 +998,8 @@ def shortest_direction(start_angle, end_angle):
 
 
 def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
-                              ignore_degenerate=False, plot=False, write=None, dimension=False, contour=False, **kwargs):
+                              ignore_degenerate=False, plot=False, write=None, dimension=False,
+                              contour=False, **kwargs):
     """
     Plot cavity geometry
 
@@ -1474,7 +1475,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
 
 def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=None, bc=None, tangent_check=False,
-                                      ignore_degenerate=False, plot=False, write=None, **kwargs):
+                                      ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                      contour=False, **kwargs):
     """
     Write cavity geometry
 
@@ -1524,21 +1526,22 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
     step = 0.005
 
+    L_bp = 4*L_m
+    if dimension or contour:
+        L_bp = 1*L_m
+
     if BP.lower() == 'both':
-        L_bp_l = 4 * L_m
-        L_bp_r = 4 * L_m
-    elif BP.lower() == 'none':
-        L_bp_l = 0.000  # 4 * L_m  #
-        L_bp_r = 0.000  # 4 * L_m  #
+        L_bp_l = L_bp
+        L_bp_r = L_bp
     elif BP.lower() == 'left':
-        L_bp_l = 4 * L_m
+        L_bp_l = L_bp
         L_bp_r = 0.000
     elif BP.lower() == 'right':
         L_bp_l = 0.000
-        L_bp_r = 4 * L_m
+        L_bp_r = L_bp
     else:
-        L_bp_l = 0.000  # 4 * L_m  #
-        L_bp_r = 0.000  # 4 * L_m  #
+        L_bp_l = 0.000
+        L_bp_r = 0.000
 
     # calculate shift
     shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er + (n_cell - 2) * lft + lft_el + lft_er) / 2
@@ -1594,6 +1597,23 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
     for n in range(1, n_cell + 1):
         if n == 1:
             # DRAW ARC:
+            if plot and dimension:
+                ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
+                ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                         height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
+                ax.add_patch(ellipse)
+                ax.annotate('', xy=(L_bp_l - shift+a_el, Ri_el + b_el),
+                            xytext=(L_bp_l - shift, Ri_el + b_el),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+                ax.annotate('', xy=(L_bp_l - shift, Ri_el),
+                            xytext=(L_bp_l - shift, Ri_el + b_el),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}', ha='center')
+                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}',
+                        va='center', ha='right', rotation=90)
+
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
             pt = [-shift + x1el, y1el]
             for pp in pts:
@@ -1608,6 +1628,23 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
+
+            if plot and dimension:
+                ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
+                                                         height=2 * B_el, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
+                ax.add_patch(ellipse)
+                ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
+                            xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
+                            arrowprops=dict(arrowstyle='<-', color='black'))
+                ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                            xytext=(L_el + L_bp_l - shift, Req - B_el),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}', ha='center')
+                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}',
+                        va='center', ha='right', rotation=90)
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
@@ -1625,30 +1662,76 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     geo.append([pp[1], pp[0]])
             geo.append([pt[1], pt[0]])
 
+            if plot and dimension:
+                ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                # Plot the straight line
+                line_start = [L_bp_l + L_el - shift, Req]
+                line_end = pt
+                ax.plot([line_start[0], line_end[0]], [line_start[1], line_end[1]], 'r', zorder=200)
+
+                ax.annotate('', xy=(line_start[0], line_start[1] + 0.5), xytext=(line_end[0], line_end[1] + 0.5),
+                            arrowprops=dict(arrowstyle='<->', color='black'))
+                ax.text((line_start[0] + line_end[0]) / 2, line_start[1] + 0.7,
+                        f'{round(lft_el, 2)}', ha='center')
+
             if n_cell == 1:
                 if L_bp_r > 0:
                     # EQUATOR ARC TO NEXT POINT
                     # half of bounding box is required,
                     # start is the lower coordinate of the bounding box and end is the upper
-                    pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
-                                [L_el + L_er - x2er + + L_bp_l + L_bp_r - shift, y2er])
-                    pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    pts = arcTo(L_el + L_bp_l + lft_el - shift, Req - B_er, A_er, B_er, step, pt,
+                                [L_el + lft_el + L_er - x2er + + L_bp_l + L_bp_r - shift, y2er])
+                    pt = [L_el + lft_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0]])
                     geo.append([pt[1], pt[0]])
 
+                    if plot and dimension:
+                        ax.scatter(L_el + lft_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_bp_l - shift, Req - B_er), width=2 * A_er,
+                                                                 height=2 * B_er, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_el + lft_el + L_bp_l - shift, Req - B_er),
+                                    xytext=(L_el + lft_el + L_bp_l - shift + A_er, Req - B_er),
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
+                        ax.annotate('', xy=(L_el + lft_el + L_bp_l - shift, Req),
+                                    xytext=(L_el + lft_el + L_bp_l - shift, Req - B_er),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+
+                        ax.text(L_el + lft_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}', ha='center')
+                        ax.text(L_el + lft_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}',
+                                va='center', ha='left', rotation=90)
+
                     # STRAIGHT LINE TO NEXT POINT
-                    lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                    pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                    lineTo(pt, [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    pt = [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
                     geo.append([pt[1], pt[0]])
+
+                    if plot and dimension:
+                        ax.scatter(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
+                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                    xytext=(L_el + lft_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
+                        ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er),
+                                    xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
+                                va='center', rotation=90)
 
                     # ARC
                     # half of bounding box is required,
                     # start is the lower coordinate of the bounding box and end is the upper
-                    pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
-                                [L_bp_l + L_el + L_er - shift, Ri_er])
-                    pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                    pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
+                    pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0]])
@@ -1677,6 +1760,32 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     # ARC
                     # half of bounding box is required,
                     # start is the lower coordinate of the bounding box and end is the upper
+                    if plot and dimension:
+                        ax.scatter(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
+                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                    xytext=(L_el + lft_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
+                        ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er),
+                                    xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
+                                va='center', rotation=90)
+
+                    pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
+
+                    pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0]])
+                    geo.append([pt[1], pt[0]])
+
                     pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
                                 [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
                     pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
@@ -1897,15 +2006,18 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
     geo = np.array(geo)
 
     if plot:
-        # recenter asymmetric cavity to center
-        shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
-        if n_cell == 1:
-            shift_to_center = L_er + L_bp_r
+        if dimension:
+            top = ax.plot(geo[:, 1], geo[:, 0], **kwargs)
         else:
-            shift_to_center = n_cell * L_m + L_bp_r
+            # recenter asymmetric cavity to center
+            shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
+            if n_cell == 1:
+                shift_to_center = L_er + L_bp_r
+            else:
+                shift_to_center = n_cell * L_m + L_bp_r
 
-        top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
-        # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+            top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
+            # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
 
         # plot legend wthout duplicates
         handles, labels = plt.gca().get_legend_handles_labels()
