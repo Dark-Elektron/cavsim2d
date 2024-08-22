@@ -4125,10 +4125,10 @@ class Cavities(Optimisation):
 
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
-                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True)
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, lw=3)
             else:
                 write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
-                                          BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, contour=True)
+                                          BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, contour=True, lw=3)
             ax.lines[-1].set_label(cav.name)
             ax.axvline(0, c='k', ls='--')
             ax.legend(loc='upper right')
@@ -4195,18 +4195,18 @@ class Cavities(Optimisation):
                 beampipe = 'both'
 
             if cav.cell_parameterisation == 'flattop':
-                write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
+                write_cavity_geometry_cli_flattop(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
                                                   BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
-                                                  dimension=True)
+                                                  dimension=True, lw=3)
             else:
-                write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
+                write_cavity_geometry_cli(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
                                           BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
-                                          dimension=True)
-            ax.set_label(cav.name)
-            # ax.legend(loc='lower left')
+                                          dimension=True, lw=3, c='k')
+            ax.lines[-1].set_label(cav.name)
+            ax.legend(loc='upper right')
 
-            x_label = r"$z$"
-            y_label = r"$r$"
+            x_label = r"$z$ [mm]"
+            y_label = r"$r$ [mm]"
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
             min_x.append(min(ax.lines[-1].get_xdata()))
@@ -6968,12 +6968,12 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
     """
 
     if solver == 'eigenmode':
-        parentDir = solver_args_dict['parentDir']
+        # parentDir = solver_args_dict['parentDir']
         projectDir = solver_args_dict['projectDir']
         uq_config = solver_args_dict['eigenmode']['uq_config']
-        cell_type = uq_config['cell_type']
+        # cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
-        opt = solver_args_dict['optimisation']
+        # opt = solver_args_dict['optimisation']
         # delta = uq_config['delta']
 
         method = ['stroud3']
@@ -6984,7 +6984,7 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         # assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
         for key, shape in shape_space.items():
-            n_cells = shape['n_cells']
+            # n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
             result_dict_eigen, result_dict_abci = {}, {}
             eigen_obj_list, abci_obj_list = [], []
@@ -7113,20 +7113,20 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         solver_args = solver_args_dict['wakefield']
         # n_cells = solver_args['n_cells']
         uq_config = solver_args['uq_config']
-        delta = uq_config['delta']
+        # delta = uq_config['delta']
 
         method = 'stroud3'
         if 'method' in uq_config.keys():
             method = uq_config['method']
 
         uq_vars = uq_config['variables']
-        cell_type = uq_config['cell_type']
+        # cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
 
-        assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+        # assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
         for key, shape in shape_space.items():
-            n_cells = shape['n_cells']
+            # n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\ABCI\{key}'
             result_dict_wakefield = {}
             wakefield_obj_list = []
@@ -7181,8 +7181,8 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                               index=False, sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
-            if delta is None:
-                delta = [0.05 for _ in range(len(uq_vars))]
+            # if delta is None:
+            #     delta = [0.05 for _ in range(len(uq_vars))]
 
             sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
 
@@ -7273,7 +7273,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
     if solver == 'eigenmode':
         parentDir = solver_args_dict['parentDir']
         projectDir = solver_args_dict['projectDir']
-        cell_type = uq_config['cell_type']
+        # cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
         opt = solver_args_dict['optimisation']
 
@@ -7283,7 +7283,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         if 'delta' in uq_config.keys():
             delta = uq_config['delta']
 
-        method = uq_config['method']
+        # method = uq_config['method']
         uq_vars = uq_config['variables']
         cell_parameterisation = solver_args_dict['cell_parameterisation']
         err = False
@@ -7299,49 +7299,59 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 result_dict_eigen[o] = {'expe': [], 'stdDev': []}
                 eigen_obj_list.append(o)
 
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            cell_node = shape['IC']
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            cell_node = shape['OC']
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            cell_node = shape['OC']
-        else:
-            cell_node = shape['OC']
-
+        # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+        #     cell_node = shape['IC']
+        # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+        #     cell_node = shape['OC']
+        # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+        #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+        #     cell_node = shape['OC']
+        # else:
+        #     cell_node = shape['OC']
+        cell_node = shape['IC']
+        cell_node_left = shape['OC']
+        cell_node_right = shape['OC_R']
         perturbed_cell_node = np.array(cell_node)
+        perturbed_cell_node_left = np.array(cell_node_left)
+        perturbed_cell_node_right = np.array(cell_node_right)
+
         for i1, proc_key in enumerate(proc_keys_list):
             skip = False
             for j, uq_var in enumerate(uq_vars):
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
                 if epsilon:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-                # cell_node = shape['IC']
-                mid = perturbed_cell_node
-                left = shape['OC']
-                right = shape['OC_R']
-            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-                mid = shape['IC']
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
-                mid = shape['IC']
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            else:
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
 
-            enforce_Req_continuity(mid, left, right, cell_type)
+            # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+            #     # cell_node = shape['IC']
+            #     mid = perturbed_cell_node
+            #     left = shape['OC']
+            #     right = shape['OC_R']
+            # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+            #     mid = shape['IC']
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+            #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+            #     mid = perturbed_cell_node
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
+            #     mid = shape['IC']
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # else:
+            #     mid = perturbed_cell_node
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+
+            enforce_Req_continuity(perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
 
             # perform checks on geometry
             fid = fr'{key}_Q{proc_key}'
@@ -7357,12 +7367,16 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
                 # independent perturbations to all cells individually
                 if cell_parameterisation == 'simplecell':
-                    ngsolve_mevp.cavity(shape['n_cells'], 1, mid, left, right, f_shift=0, bc=33, beampipes=shape['BP'],
+                    ngsolve_mevp.cavity(shape['n_cells'], 1, perturbed_cell_node,
+                                        perturbed_cell_node_left, perturbed_cell_node_right,
+                                        f_shift=0, bc=33, beampipes=shape['BP'],
                                         fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
                                         projectDir=projectDir,
                                         subdir=sub_dir)
                 if cell_parameterisation == 'flattop':
-                    ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, mid, left, right, f_shift=0, bc=33,
+                    ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
+                                                perturbed_cell_node_left, perturbed_cell_node_right,
+                                                f_shift=0, bc=33,
                                                 beampipes=shape['BP'],
                                                 fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
                                                 projectDir=projectDir,
@@ -7409,7 +7423,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         # method = uq_config['method']
         cell_parameterisation = solver_args_dict['cell_parameterisation']
         uq_vars = uq_config['variables']
-        cell_type = uq_config['cell_type']
+        # cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
         # marker = solver_args['marker']
 
@@ -7427,17 +7441,22 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                     result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
                     wakefield_obj_list.append(o)
 
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            cell_node = shape['IC']
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            cell_node = shape['OC']
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            cell_node = shape['OC']
-        else:
-            cell_node = shape['OC']
+        # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+        #     cell_node = shape['IC']
+        # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+        #     cell_node = shape['OC']
+        # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+        #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+        #     cell_node = shape['OC']
+        # else:
+        #     cell_node = shape['OC']
 
+        cell_node = shape['IC']
+        cell_node_left = shape['OC']
+        cell_node_right = shape['OC_R']
         perturbed_cell_node = np.array(cell_node)
+        perturbed_cell_node_left = np.array(cell_node_left)
+        perturbed_cell_node_right = np.array(cell_node_right)
 
         uq_shape_space = {}
         d_uq_op = {}
@@ -7447,33 +7466,37 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
                 if epsilon:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
 
-            if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-                # cell_node = shape['IC']
-                mid = perturbed_cell_node
-                left = shape['OC']
-                right = shape['OC_R']
-            elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-                mid = shape['IC']
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-                  or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
-                mid = shape['IC']
-                left = perturbed_cell_node
-                right = perturbed_cell_node
-            else:
-                mid = perturbed_cell_node
-                left = perturbed_cell_node
-                right = perturbed_cell_node
+            # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+            #     # cell_node = shape['IC']
+            #     mid = perturbed_cell_node
+            #     left = shape['OC']
+            #     right = shape['OC_R']
+            # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+            #     mid = shape['IC']
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+            #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+            #     mid = perturbed_cell_node
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
+            #     mid = shape['IC']
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
+            # else:
+            #     mid = perturbed_cell_node
+            #     left = perturbed_cell_node
+            #     right = perturbed_cell_node
 
-            enforce_Req_continuity(mid, left, right, cell_type)
+            enforce_Req_continuity(perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
 
             # perform checks on geometry
             fid = fr'{key}_Q{proc_key}'
@@ -7487,7 +7510,8 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 abci_geom.createFolder(fid, projectDir, subdir=sub_dir)
                 for wi in range(MROT):
                     if cell_parameterisation == 'simplecell':
-                        abci_geom.cavity(shape['n_cells'], 1, mid, left, right, fid=fid, MROT=wi,
+                        abci_geom.cavity(shape['n_cells'], 1, perturbed_cell_node,
+                                         perturbed_cell_node_left, perturbed_cell_node_right, fid=fid, MROT=wi,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=shape['BP'],
                                          bunch_length=bunch_length,
                                          MT=MT, NFS=NFS, UBT=UBT,
@@ -7495,7 +7519,8 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                          marker='', sub_dir=sub_dir
                                          )
                     if cell_parameterisation == 'flattop':
-                        abci_geom.cavity_flattop(shape['n_cells'], 1, mid, left, right, fid=fid, MROT=wi,
+                        abci_geom.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
+                                                 perturbed_cell_node_left, perturbed_cell_node_right, fid=fid, MROT=wi,
                                                  DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=shape['BP'],
                                                  bunch_length=bunch_length,
                                                  MT=MT, NFS=NFS, UBT=UBT,
@@ -7503,7 +7528,8 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                                                  marker='', sub_dir=sub_dir
                                                  )
 
-            uq_shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': shape['n_cells'], 'BP': shape['BP']}
+            uq_shape = {'IC': perturbed_cell_node, 'OC': perturbed_cell_node_left,
+                        'OC_R': perturbed_cell_node_right, 'n_cells': shape['n_cells'], 'BP': shape['BP']}
             uq_shape_space[fid] = uq_shape
 
             # calculate uq for operating points

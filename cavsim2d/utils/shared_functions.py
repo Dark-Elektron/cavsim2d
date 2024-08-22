@@ -1127,8 +1127,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                             xytext=(L_bp_l - shift, Ri_el + b_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el * 1e3, 2)}', ha='center')
-                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el * 1e3, 2)}',
+                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}', ha='center')
+                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}',
                         va='center', ha='right', rotation=90)
 
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
@@ -1155,8 +1155,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                             xytext=(L_el + L_bp_l - shift, Req - B_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el * 1e3, 2)}', ha='center')
-                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el * 1e3, 2)}',
+                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}', ha='center')
+                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}',
                         va='center', ha='right', rotation=90)
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
@@ -1187,13 +1187,13 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_er),
                                     xytext=(L_el + L_bp_l - shift + A_er, Req - B_er),
-                                    arrowprops=dict(arrowstyle='->', color='black'))
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
                         ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
                                     xytext=(L_el + L_bp_l - shift, Req - B_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er * 1e3, 2)}', ha='center')
-                        ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er * 1e3, 2)}',
+                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}', ha='center')
+                        ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}',
                                 va='center', ha='left', rotation=90)
 
                     # STRAIGHT LINE TO NEXT POINT
@@ -1220,8 +1220,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er*1e3, 2)}', ha='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er*1e3, 2)}',
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
                                 va='center', rotation=90)
 
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
@@ -1266,8 +1266,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er*1e3, 2)}', ha='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er*1e3, 2)}',
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
                                 va='center', rotation=90)
 
                     pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
@@ -1473,7 +1473,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     return ax
 
 
-def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
+def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=None, bc=None, tangent_check=False,
                                       ignore_degenerate=False, plot=False, write=None, **kwargs):
     """
     Write cavity geometry
@@ -3141,7 +3141,7 @@ def get_qoi_value(d, obj):
     return objective
 
 
-def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
+def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type=None):
     """
     Enforce continuity at iris and equator of cavities
 
@@ -3156,19 +3156,26 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type):
     -------
 
     """
-    if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-        par_mid[6] = par_end_r[6]
-        par_end_l[6] = par_end_r[6]
-    elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-        par_end_l[6] = par_mid[6]
-        par_end_r[6] = par_mid[6]
-    elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-          or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-        par_mid[6] = par_end_r[6]
-        par_end_l[6] = par_end_r[6]
+
+    if cell_type:
+        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+            par_mid[6] = par_end_r[6]
+            par_end_l[6] = par_end_r[6]
+        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+            par_end_l[6] = par_mid[6]
+            par_end_r[6] = par_mid[6]
+        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+            par_mid[6] = par_end_r[6]
+            par_end_l[6] = par_end_r[6]
+        else:
+            par_mid[6] = par_end_r[6]
+            par_end_l[6] = par_end_r[6]
     else:
-        par_mid[6] = par_end_r[6]
-        par_end_l[6] = par_end_r[6]
+        Req_avg = (par_mid[6] + par_end_l[6] + par_end_r[6])/3
+        par_mid[6] = Req_avg
+        par_end_l[6] = Req_avg
+        par_end_r[6] = Req_avg
 
 
 def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
