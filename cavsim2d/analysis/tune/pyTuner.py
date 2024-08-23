@@ -85,7 +85,7 @@ class PyTuneNGSolve:
 
         if not res:
             # make functionality later for restart for the tune variable
-            error('\tCannot continue with the tuning geometry -> Skipping degenerate geometry')
+            error('\tCannot continue with tuning -> Skipping degenerate geometry')
             return 0, 0, [], []
 
         tv = tuned_cell[indx]
@@ -122,7 +122,7 @@ class PyTuneNGSolve:
                                   sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
         if not res:
             # make functionality later for restart for the tune variable
-            error('Cannot continue with the tuning geometry -> Skipping degenerate geometry')
+            error('Cannot continue with tuning -> Skipping degenerate geometry')
             return 0, 0, [], []
 
         if 'uq_config' in tune_config.keys():
@@ -181,7 +181,7 @@ class PyTuneNGSolve:
                                       sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
             if not res:
                 # make functionality later for restart for the tune variable
-                error('Cannot continue with the tuning of this geometry -> Skipping degenerate geometry')
+                error('Cannot continue with tuning -> Skipping degenerate geometry')
                 return 0, 0, 0
 
             if 'uq_config' in tune_config.keys():
@@ -296,7 +296,7 @@ class PyTuneNGSolve:
 
         if not res:
             # make functionality later for restart for the tune variable
-            error('\tCannot continue with the tuning geometry -> Skipping degenerate geometry')
+            error('\tCannot continue with tuning -> Skipping degenerate geometry')
             return 0, 0, [], []
 
         tv = tuned_cell[indx]
@@ -333,7 +333,7 @@ class PyTuneNGSolve:
                                           sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
         if not res:
             # make functionality later for restart for the tune variable
-            error('Cannot continue with the tuning geometry -> Skipping degenerate geometry')
+            error('Cannot continue with tuning -> Skipping degenerate geometry')
             return 0, 0, [], []
 
         if 'uq_config' in tune_config.keys():
@@ -392,7 +392,7 @@ class PyTuneNGSolve:
                                               sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
             if not res:
                 # make functionality later for restart for the tune variable
-                error('Cannot continue with the tuning of this geometry -> Skipping degenerate geometry')
+                error('Cannot continue with tuning -> Skipping degenerate geometry')
                 return 0, 0, 0
 
             if 'uq_config' in tune_config.keys():
@@ -503,7 +503,7 @@ class PyTuneNGSolve:
     #                               sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
     #     if not res:
     #         # make functionality later for restart for the tune variable
-    #         error('\tCannot continue with the tuning geometry -> Skipping degenerate geometry')
+    #         error('\tCannot continue with tuning -> Skipping degenerate geometry')
     #         return 0, 0, [], []
     #
     #     tv = tuned_cell[indx]
@@ -527,7 +527,7 @@ class PyTuneNGSolve:
     #                               sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
     #     if not res:
     #         # make functionality later for restart for the tune variable
-    #         error('Cannot continue with the tuning geometry -> Skipping degenerate geometry')
+    #         error('Cannot continue with tuning -> Skipping degenerate geometry')
     #         return 0, 0, [], []
     #
     #     # get results and compare with set value
@@ -574,7 +574,7 @@ class PyTuneNGSolve:
     #                                   sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
     #         if not res:
     #             # make functionality later for restart for the tune variable
-    #             error('Cannot continue with the tuning of this geometry -> Skipping degenerate geometry')
+    #             error('Cannot continue with tuning -> Skipping degenerate geometry')
     #             return 0, 0, 0
     #
     #         # get results and compare with set value

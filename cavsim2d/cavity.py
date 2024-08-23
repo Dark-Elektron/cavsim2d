@@ -154,8 +154,8 @@ class Optimisation:
         self.wakefield_config = {}
         if (any(['ZL' in obj for obj in self.objective_vars])
                 or any(['ZT' in obj for obj in self.objective_vars])
-                or [obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
-                    self.objective_vars]):
+                or any([obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
+                    self.objective_vars])):
             assert 'wakefield_config' in config.keys(), error('Wakefield impedance objective detected in objectives. '
                                                               'Please include a field for wakefield_config. An empty'
                                                               ' config entry implies that default values will be used.')
@@ -450,6 +450,7 @@ class Optimisation:
 
             df_uq = pd.DataFrame.from_dict(uq_result_dict, orient='index')
 
+            assert len(df_uq) > 0, error('Unfortunately, no geometry was returned from uq, optimisation terminated.')
             df_uq.columns = uq_column_names
             df_uq.index.name = 'key'
             df_uq.reset_index(inplace=True)
@@ -543,19 +544,19 @@ class Optimisation:
 
         # new error
         # stack previous and current pareto fronts
-        if n == 0:
-            pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
-            self.pareto_history.append(pareto_shapes)
-        else:
-            pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
-            pareto_stack = np.vstack([self.pareto_history[-1], pareto_shapes])
-
-            # Compute Delaunay triangulation
-            delaunay = Delaunay(pareto_stack)
-            simplices = delaunay.simplices
-
-            hypervolumes = self.calculate_hypervolumes(pareto_stack, simplices)
-            self.err.append(sum(hypervolumes))
+        # if n == 0:
+        #     pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
+        #     self.pareto_history.append(pareto_shapes)
+        # else:
+        #     pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
+        #     pareto_stack = np.vstack([self.pareto_history[-1], pareto_shapes])
+        #
+        #     # Compute Delaunay triangulation
+        #     delaunay = Delaunay(pareto_stack)
+        #     simplices = delaunay.simplices
+        #
+        #     hypervolumes = self.calculate_hypervolumes(pareto_stack, simplices)
+        #     self.err.append(sum(hypervolumes))
 
         if len(obj_error) != 0:
             self.interp_error.append(max(obj_error))
@@ -1077,15 +1078,17 @@ class Optimisation:
         df = df.set_index('key')
         for index, row in df.iterrows():
             rw = row.tolist()
-            if self.cell_type.lower() == 'end-mid Cell':
+            if self.cell_type.lower() == 'end-mid cell':
 
                 A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i = self.mid_cell
 
                 IC = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i]
 
-                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw, 'n_cells': 1}
+                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
+                                           'CELL PARAMETERISATION': 'simplecell'}
             else:
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw, 'n_cells': 1}
+                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
+                                           'CELL PARAMETERISATION': 'simplecell'}
 
         shape_space_multicell = {}
         for key, shape in shape_space.items():
@@ -7025,18 +7028,12 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             if flag.lower() == 'stroud3':
                 nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
                 nodes_ = 2. * nodes_ - 1.
-                info("nodes:: ", nodes_)
-                info("weights", weights_)
                 # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
                 # gives a less accurate answer. the nodes are not the same as the custom function
             elif flag.lower() == 'stroud5':
                 nodes_, weights_ = cn_leg_05_2(rdim)
-                info("nodes:: ", nodes_)
-                info("weights", weights_)
             elif flag.lower() == 'cn_gauss':
                 nodes_, weights_ = cn_gauss(rdim, 2)
-                info("nodes:: ", nodes_)
-                info("weights", weights_)
             elif flag.lower() == 'lhc':
                 sampler = qmc.LatinHypercube(d=rdim)
                 _ = sampler.reset()
@@ -7048,15 +7045,11 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
 
                 nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
-                info("nodes:: ", nodes_)
-                info("weights", weights_)
             else:
                 # issue warning
                 warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
                 nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
                 nodes_ = 2. * nodes_ - 1.
-                info("nodes:: ", nodes_)
-                info("weights", weights_)
 
             # save nodes
             data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
@@ -7633,8 +7626,12 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         wakefield_folder = fr'{projectDir}\SimulationData\ABCI\{key}'
         data_table, _ = get_wakefield_objectives_value(uq_shape_space, uq_config['objectives_unprocessed'],
                                                        wakefield_folder)
+
         # merge with data table
-        data_table_merged = pd.merge(df_uq_op, data_table, on='key', how='inner')
+        if d_uq_op:
+            data_table_merged = pd.merge(df_uq_op, data_table, on='key', how='inner')
+        else:
+            data_table_merged = data_table
         data_table_merged = data_table_merged.set_index('key')
         data_table_merged.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
 

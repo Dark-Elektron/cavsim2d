@@ -3312,3 +3312,132 @@ def to_multicell(n_cells, shape):
     shape_multicell['CELL TYPE'] = 'multicell'
 
     return shape_multicell
+
+
+from scipy.interpolate import interp1d
+
+
+def interpolate_pareto(pareto, x_values):
+    """Interpolate y-values for a given set of x-values based on a Pareto front."""
+    f = interp1d(pareto[:, 0], pareto[:, 1], kind='linear', bounds_error=False, fill_value="extrapolate")
+    return f(x_values)
+
+
+def extend_pareto(pareto1, pareto2):
+    """Extend Pareto fronts by adding boundary points to match their x-ranges."""
+    x_min1, x_max1 = pareto1[:, 0].min(), pareto1[:, 0].max()
+    x_min2, x_max2 = pareto2[:, 0].min(), pareto2[:, 0].max()
+
+    # Find boundary points to extend Pareto fronts
+    extend_left1 = pareto2[pareto2[:, 0] == x_min2]
+    extend_right1 = pareto2[pareto2[:, 0] == x_max2]
+    extend_left2 = pareto1[pareto1[:, 0] == x_min1]
+    extend_right2 = pareto1[pareto1[:, 0] == x_max1]
+
+    if len(extend_left1) > 0 and x_min1 > x_min2:
+        pareto1 = np.vstack([extend_left1, pareto1])
+    if len(extend_right1) > 0 and x_max1 < x_max2:
+        pareto1 = np.vstack([pareto1, extend_right1])
+    if len(extend_left2) > 0 and x_min2 > x_min1:
+        pareto2 = np.vstack([extend_left2, pareto2])
+    if len(extend_right2) > 0 and x_max2 < x_max1:
+        pareto2 = np.vstack([pareto2, extend_right2])
+
+    return np.array(sorted(pareto1, key=lambda p: p[0])), np.array(sorted(pareto2, key=lambda p: p[0]))
+
+
+def line_intersection(p1, p2):
+    """Find the intersection point of two line segments (p1 and p2)."""
+
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    xdiff = (p1[0] - p1[2], p2[0] - p2[2])
+    ydiff = (p1[1] - p1[3], p2[1] - p2[3])
+
+    div = det(xdiff, ydiff)
+    if div == 0:
+        return None  # Parallel lines
+
+    d = (det((p1[0], p1[1]), (p1[2], p1[3])), det((p2[0], p2[1]), (p2[2], p2[3])))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return (x, y)
+
+
+def find_all_intersections(pareto1, pareto2):
+    """Find all intersection points between the segments of two Pareto fronts."""
+    intersections = []
+
+    for i in range(len(pareto1) - 1):
+        p1 = (pareto1[i, 0], pareto1[i, 1], pareto1[i + 1, 0], pareto1[i + 1, 1])
+        for j in range(len(pareto2) - 1):
+            p2 = (pareto2[j, 0], pareto2[j, 1], pareto2[j + 1, 0], pareto2[j + 1, 1])
+            intersect_point = line_intersection(p1, p2)
+            if intersect_point:
+                xi, yi = intersect_point
+                if min(p1[0], p1[2]) <= xi <= max(p1[0], p1[2]) and min(p2[0], p2[2]) <= xi <= max(p2[0], p2[2]):
+                    intersections.append((round(xi, 6), round(yi, 6)))
+
+    return sorted(set(intersections))
+
+
+def calculate_bounded_area(x_values, y_values1, y_values2):
+    """Calculate the area between two Pareto fronts."""
+    return np.abs(np.trapz(np.abs(y_values1 - y_values2), x_values))
+
+
+def area_pareto_fronts(pareto1, pareto2):
+    """Plot the two Pareto fronts and correctly fill the area between them, handling edge cases."""
+    # Extend Pareto fronts to cover the same x-range
+    pareto1, pareto2 = extend_pareto(pareto1, pareto2)
+
+    # Determine the combined range of x-values
+    min_x = min(pareto1[:, 0].min(), pareto2[:, 0].min())
+    max_x = max(pareto1[:, 0].max(), pareto2[:, 0].max())
+
+    # Create a fine grid of x-values spanning the combined range
+    x_values = np.linspace(min_x, max_x, 500)
+
+    # # Interpolate both Pareto fronts at these x-values
+    # y_values1 = interpolate_pareto(pareto1, x_values)
+    # y_values2 = interpolate_pareto(pareto2, x_values)
+
+    # Find intersection points and split x_values accordingly
+    intersections = find_all_intersections(pareto1, pareto2)
+    if intersections:
+        segments = [x_values[(x_values >= min_x) & (x_values <= intersections[0][0])]]
+        for i in range(len(intersections) - 1):
+            segments.append(x_values[(x_values >= intersections[i][0]) & (x_values <= intersections[i + 1][0])])
+        segments.append(x_values[(x_values >= intersections[-1][0]) & (x_values <= max_x)])
+    else:
+        segments = [x_values]
+
+    # Calculate bounded area
+    total_area = 0
+    for segment in segments:
+        seg_y1 = interpolate_pareto(pareto1, segment)
+        seg_y2 = interpolate_pareto(pareto2, segment)
+        total_area += calculate_bounded_area(segment, seg_y1, seg_y2)
+
+    return total_area
+    # print(f'Bounded Area: {total_area:.2f}')
+    # if intersections:
+    #     print('Intersection Points:')
+    #     for x, y in intersections:
+    #         print(f'X: {x:.2f}, Y: {y:.2f}')
+    #
+    # # Plot Pareto fronts
+    # plt.plot(pareto1[:, 0], pareto1[:, 1], 'r-o', label='Pareto Front 1')
+    # plt.plot(pareto2[:, 0], pareto2[:, 1], 'b-o', label='Pareto Front 2')
+    #
+    # # Fill the area between the two fronts in black
+    # plt.fill_between(x_values, y_values1, y_values2, where=(y_values1 > y_values2), color='black', alpha=0.3)
+    # plt.fill_between(x_values, y_values1, y_values2, where=(y_values1 <= y_values2), color='black', alpha=0.3)
+    #
+    # plt.xlabel('X-axis')
+    # plt.ylabel('Y-axis')
+    # plt.title('Area Between Two Pareto Fronts with Edge Cases')
+    # plt.legend()
+    # plt.show()
+
