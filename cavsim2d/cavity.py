@@ -3778,12 +3778,11 @@ class Cavities(Optimisation):
             # Step 3: Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 for i, label in enumerate(labels):
-
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
                                                 ec='k', zorder=100, label=label)
-                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=5,
-                                color=colors[i])
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=10, lw=2,
+                                color=scatter_points.get_facecolor()[0])
 
                     # plot nominal
                     ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
@@ -3956,7 +3955,7 @@ class Cavities(Optimisation):
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
                                                 ec='k', label=label, zorder=100)
-                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=5,
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=2,
                                 color=scatter_points.get_facecolor()[0])
 
                     # plot nominal
@@ -4131,8 +4130,6 @@ class Cavities(Optimisation):
 
         """
         min_x, max_x, min_y, max_y = [], [], [], []
-
-        plt.rcdefaults()
 
         fig, axs = plt.subplot_mosaic([[0]], layout='constrained')
         ax = axs[0]
