@@ -50,7 +50,7 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
-          'P_HOM [kW]': r"$P_\mathrm{HOM}/cav ~\mathrm{[kW]}$"
+          'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$"
           }
 
 m0 = 9.1093879e-31
@@ -4006,7 +4006,7 @@ class Cavities(Optimisation):
         axd : dict
             A dictionary of axes from the scatter plot.
         """
-        plt.rcParams["figure.figsize"] = (12, 3)
+        plt.rcParams["figure.figsize"] = (16, 3)
 
         if not uq:
             self.hom_results = self.qois_hom(opt)
@@ -4027,12 +4027,31 @@ class Cavities(Optimisation):
 
             h, l = ax.get_legend_handles_labels()
         else:
+            # get nominal qois
+            dd_nominal = {}
+            for cav, ops_id in self.wakefield_qois.items():
+                for kk, vv in ops_id.items():
+                    if fr'{opt}_SR' in kk:
+                        dd_nominal[cav] = vv
+
+            dict_all_nominal = {key: {**self.eigenmode_qois.get(key, {}), **dd_nominal.get(key, {})} for key in set(self.eigenmode_config) | set(dd_nominal)}
+            df_nominal = pd.DataFrame.from_dict(dict_all_nominal).T
+
             dict_all = self.uq_fm_results | self.uq_hom_results
-            df_nominal = pd.DataFrame.from_dict(dict_all).T
+
             # Step 1: Flatten the dictionary into a DataFrame
             rows = []
-            for cavity, metrics in self.uq_hom_results.items():
+            for cavity, metrics in self.uq_fm_results.items():
                 for metric, values in metrics.items():
+                    rows.append({
+                        'cavity': cavity,
+                        'metric': metric,
+                        'mean': values['expe'][0],
+                        'std': values['stdDev'][0]
+                    })
+
+            for cavity, metrics in self.uq_hom_results.items():
+                for metric, values in metrics[opt]['SR'].items():
                     rows.append({
                         'cavity': cavity,
                         'metric': metric,
@@ -4057,8 +4076,8 @@ class Cavities(Optimisation):
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
                                                 ec='k', zorder=100, label=label)
-                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=5,
-                                color=colors[i])
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=10,
+                                color=scatter_points.get_facecolor()[0])
 
                     # plot nominal
                     ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
@@ -4066,19 +4085,27 @@ class Cavities(Optimisation):
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(metric)
+                ax.margins(0.1)
+                ax.set_ylabel(LABELS[metric])
 
             # Step 4: Set legend
             h, l = ax.get_legend_handles_labels()
-            if not ncols:
-                ncols = min(4, len(labels))
-            fig.legend(h, l, loc='upper center', borderaxespad=0, ncol=ncols)
+
+        by_label = dict(zip(l, h))
+        if 'nominal' in by_label.keys():
+            nominal_handle = by_label.pop('nominal')
+            # Reinsert 'nominal' as the last entry
+            by_label['nominal'] = nominal_handle
+
+        if not ncols:
+            ncols = min(4, len(labels))
+        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_fm_scatter.png")
+        self.save_all_plots(f"{fname}_all_scatter.png")
 
         return axd
 
@@ -4156,12 +4183,13 @@ class Cavities(Optimisation):
                 end_cell_right = np.array(cav.shape['OC'])
                 beampipe = 'both'
 
+            scale = (cav.freq*1e6)/c0
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
-                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, lw=3)
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True, lw=3)
             else:
                 write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
-                                          BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True, contour=True, lw=3)
+                                          BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True, lw=3)
             ax.lines[-1].set_label(cav.name)
             ax.axvline(0, c='k', ls='--')
             ax.legend(loc='upper right')
@@ -4224,13 +4252,13 @@ class Cavities(Optimisation):
             else:
                 mid_cell = np.array(cav.shape['IC'])
                 end_cell_left = np.array(cav.shape['OC'])
-                end_cell_right = np.array(cav.shape['OC'])
+                end_cell_right = np.array(cav.shape['OC_R'])
                 beampipe = 'both'
 
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
                                                   BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
-                                                  dimension=True, lw=3)
+                                                  dimension=True, lw=3, c='k')
             else:
                 write_cavity_geometry_cli(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
                                           BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
@@ -6939,8 +6967,8 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                 shutil.rmtree(os.path.join(projectDir, "SimulationData", "ABCI", key))
                 os.mkdir(os.path.join(projectDir, "SimulationData", "ABCI", key))
 
-                _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir, WG_M,
-                          marker)
+                _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config,
+                          projectDir, WG_M, marker)
             else:
                 # check if eigenmode analysis results exist
                 if os.path.exists(os.path.join(projectDir, "SimulationData", "ABCI", key, "qois.json")):
