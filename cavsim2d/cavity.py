@@ -3214,7 +3214,22 @@ class Cavities(Optimisation):
                 self.wakefield_qois[cav.name] = cav.wakefield_qois
                 if uq_config:
                     cav.get_uq_hom_results(fr"{self.projectDir}\SimulationData\ABCI\{cav.name}\uq.json")
-                    self.uq_hom_results[cav.name] = cav.uq_hom_results
+                    cav_uq_hom_results = cav.uq_hom_results
+                    if 'operating_points' in uq_config:
+                        # separate into opearating points
+                        op_points = uq_config['operating_points']
+                        uq_hom_results_op = {}
+                        for op, val in op_points.items():
+                            uq_hom_results_op[op] = {}
+                            for k, v in val.items():
+                                if 'sigma' in k:
+                                    sig_id = k.split('_')[-1].split(' ')[0]
+                                    ident = fr'_{op}_{sig_id}_{v}mm'
+                                    uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in cav_uq_hom_results.items() if ident in kk}
+                    else:
+                        uq_hom_results_op = cav.uq_hom_results
+
+                    self.uq_hom_results[cav.name] = uq_hom_results_op
             except FileNotFoundError:
                 error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
@@ -3728,11 +3743,20 @@ class Cavities(Optimisation):
 
             h, l = ax.get_legend_handles_labels()
         else:
-            df_nominal = pd.DataFrame.from_dict(self.wakefield_qois).T
+            # get nominal qois
+            dd_nominal = {}
+            for cav, ops_id in self.wakefield_qois.items():
+                for kk, vv in ops_id.items():
+                    if fr'{opt}_SR' in kk:
+                        dd_nominal[cav] = vv
+
+            df_nominal = pd.DataFrame.from_dict(dd_nominal).T
+
             # Step 1: Flatten the dictionary into a DataFrame
             rows = []
+            # get uq opt
             for cavity, metrics in self.uq_hom_results.items():
-                for metric, values in metrics.items():
+                for metric, values in metrics[opt]['SR'].items():
                     rows.append({
                         'cavity': cavity,
                         'metric': metric,
@@ -3754,6 +3778,7 @@ class Cavities(Optimisation):
             # Step 3: Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 for i, label in enumerate(labels):
+
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i],
                                                 ec='k', zorder=100, label=label)
@@ -3766,19 +3791,26 @@ class Cavities(Optimisation):
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(metric)
+                ax.set_ylabel(LABELS[metric])
 
             # Step 4: Set legend
             h, l = ax.get_legend_handles_labels()
-            if not ncols:
-                ncols = min(4, len(labels))
-            fig.legend(h, l, loc='upper center', borderaxespad=0, ncol=ncols)
+
+        by_label = dict(zip(l, h))
+        if 'nominal' in by_label.keys():
+            nominal_handle = by_label.pop('nominal')
+            # Reinsert 'nominal' as the last entry
+            by_label['nominal'] = nominal_handle
+
+        if not ncols:
+            ncols = min(4, len(labels))
+        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_fm_scatter.png")
+        self.save_all_plots(f"{fname}_hom_scatter.png")
 
         return axd
 
@@ -3942,6 +3974,7 @@ class Cavities(Optimisation):
             nominal_handle = by_label.pop('nominal')  # Remove 'nominal' entry
             # Reinsert 'nominal' as the last entry
             by_label['nominal'] = nominal_handle
+
         # Set legend
         if not ncols:
             ncols = min(4, len(self.cavities_list))
@@ -4196,7 +4229,7 @@ class Cavities(Optimisation):
 
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
-                                                  BP=beampipe, n_cell=2, ax=ax, scale=1, plot=True,
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
                                                   dimension=True, lw=3)
             else:
                 write_cavity_geometry_cli(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
@@ -4214,14 +4247,7 @@ class Cavities(Optimisation):
             max_x.append(max(ax.lines[-1].get_xdata()))
             max_y.append(max(ax.lines[-1].get_ydata()))
 
-        # if opt.lower() == 'mid' or opt.lower() == 'end':
-        #     ax.set_xlim(0, max(max_x))
-        #     ax.set_ylim(0, max(max_y))
-        # else:
-        #     ax.set_xlim(min(min_x), max(max_x))
-        #     ax.set_ylim(min(min_y), max(max_y))
-        #
-        # plt.tight_layout()
+            ax.set_ylim(0)
 
         # save plots
         fname = [cav.name for cav in self.cavities_list]
@@ -6982,14 +7008,14 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         for key, shape in shape_space.items():
             # n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
-            result_dict_eigen, result_dict_abci = {}, {}
-            eigen_obj_list, abci_obj_list = [], []
+            result_dict_eigen = {}
+            # eigen_obj_list = []
 
-            for o in objectives:
-                if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                         "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                    result_dict_eigen[o] = {'expe': [], 'stdDev': []}
-                    eigen_obj_list.append(o)
+            # for o in objectives:
+            #     if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
+            #              "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
+            #         result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+            #         eigen_obj_list.append(o)
 
             rdim = len(uq_vars)
             degree = 1
@@ -7081,9 +7107,9 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 job.join()
 
             # combine results from processes
-            qois_result_dict = {}
-            Ttab_val_f = []
-            keys = []
+            # qois_result_dict = {}
+            # Ttab_val_f = []
+            # keys = []
             for i1 in range(proc_count):
                 if i1 == 0:
                     df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
@@ -7096,13 +7122,18 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             Ttab_val_f = df.to_numpy()
             v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
 
-            # append results to dict
-            for i, o in enumerate(eigen_obj_list):
+            # # append results to dict
+            # for i, o in enumerate(eigen_obj_list):
+            #     result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
+            #     result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            for i, o in enumerate(df.columns):
+                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
                 result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
                 result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
 
             with open(uq_path / fr'uq.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
+
     elif solver == 'wakefield':
         # parentDir = solver_args_dict['parentDir']
         projectDir = solver_args_dict['projectDir']
@@ -7125,17 +7156,17 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             # n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\ABCI\{key}'
             result_dict_wakefield = {}
-            wakefield_obj_list = []
+            # wakefield_obj_list = []
 
-            for o in objectives:
-                if isinstance(o, list):
-                    if o[1].split(' ')[0] in ['ZL', 'ZT']:
-                        result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
-                        wakefield_obj_list.append(o[1])
-                else:
-                    if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-                        result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
-                        wakefield_obj_list.append(o)
+            # for o in objectives:
+            #     if isinstance(o, list):
+            #         if o[1].split(' ')[0] in ['ZL', 'ZT']:
+            #             result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
+            #             wakefield_obj_list.append(o[1])
+            #     else:
+            #         if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
+            #             result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
+            #             wakefield_obj_list.append(o)
 
             rdim = len(uq_vars)
             degree = 1
@@ -7218,9 +7249,9 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 job.join()
 
             # combine results from processes
-            qois_result_dict = {}
-            Ttab_val_f = []
-            keys = []
+            # qois_result_dict = {}
+            # keys = []
+            # Ttab_val_f = []
             for i1 in range(proc_count):
                 if i1 == 0:
                     df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
@@ -7231,13 +7262,18 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             df.to_excel(uq_path / 'table.xlsx', index=False)
             Ttab_val_f = df.to_numpy()
             v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
-            # append results to dict
-            for i, o in enumerate(wakefield_obj_list):
+            # # append results to dict
+            # for i, o in enumerate(wakefield_obj_list):
+            #     result_dict_wakefield[o]['expe'].append(v_expe_fobj[i])
+            #     result_dict_wakefield[o]['stdDev'].append(v_stdDev_fobj[i])
+            #
+            for i, o in enumerate(df.columns):
+                result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
                 result_dict_wakefield[o]['expe'].append(v_expe_fobj[i])
                 result_dict_wakefield[o]['stdDev'].append(v_stdDev_fobj[i])
 
-            with open(uq_path / fr'uq.json', 'w') as file:
-                file.write(json.dumps(result_dict_wakefield, indent=4, separators=(',', ': ')))
+            with open(uq_path / fr'uq.json', 'w') as f:
+                f.write(json.dumps(result_dict_wakefield, indent=4, separators=(',', ': ')))
 
     else:
         pass

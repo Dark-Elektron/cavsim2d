@@ -2,7 +2,6 @@ import json
 import math
 import os
 from pathlib import Path
-
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
@@ -1128,9 +1127,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                             xytext=(L_bp_l - shift, Ri_el + b_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}', ha='center')
-                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}',
-                        va='center', ha='right', rotation=90)
+                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', ha='center', va='center')
+                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                        va='center', ha='center', rotation=90)
 
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
             pt = [-shift + x1el, y1el]
@@ -1156,9 +1155,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                             xytext=(L_el + L_bp_l - shift, Req - B_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}', ha='center')
-                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}',
-                        va='center', ha='right', rotation=90)
+                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', ha='center', va='center')
+                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                        va='center', ha='center', rotation=90)
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
@@ -1193,8 +1192,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_bp_l - shift, Req - B_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}', ha='center')
-                        ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}',
+                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center', va='center')
+                        ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
                                 va='center', ha='left', rotation=90)
 
                     # STRAIGHT LINE TO NEXT POINT
@@ -1221,9 +1220,10 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
-                                va='center', rotation=90)
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                ha='center', va='center')
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
                     for pp in pts:
@@ -1267,9 +1267,10 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
-                                va='center', rotation=90)
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                ha='center', va='center')
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
                     pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
                                 [L_bp_l + L_el + L_er - shift, Ri_er])
@@ -1610,9 +1611,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                             xytext=(L_bp_l - shift, Ri_el + b_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}', ha='center')
-                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}',
-                        va='center', ha='right', rotation=90)
+                ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', va='center', ha='center')
+                ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                        va='center', ha='center', rotation=90)
 
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
             pt = [-shift + x1el, y1el]
@@ -1642,9 +1643,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                             xytext=(L_el + L_bp_l - shift, Req - B_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
 
-                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}', ha='center')
-                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}',
-                        va='center', ha='right', rotation=90)
+                ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', va='center', ha='center')
+                ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                        va='center', ha='center', rotation=90)
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
@@ -1672,7 +1673,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 ax.annotate('', xy=(line_start[0], line_start[1] + 0.5), xytext=(line_end[0], line_end[1] + 0.5),
                             arrowprops=dict(arrowstyle='<->', color='black'))
                 ax.text((line_start[0] + line_end[0]) / 2, line_start[1] + 0.7,
-                        f'{round(lft_el, 2)}', ha='center')
+                        f'{round(lft_el, 2)}\n', va='center', ha='center')
 
             if n_cell == 1:
                 if L_bp_r > 0:
@@ -1700,8 +1701,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                     xytext=(L_el + lft_el + L_bp_l - shift, Req - B_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + lft_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}', ha='center')
-                        ax.text(L_el + lft_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}',
+                        ax.text(L_el + lft_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n',
+                                va='center', ha='center')
+                        ax.text(L_el + lft_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
                                 va='center', ha='left', rotation=90)
 
                     # STRAIGHT LINE TO NEXT POINT
@@ -1722,9 +1724,10 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                     xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
-                                va='center', rotation=90)
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                va='center', ha='center')
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
                     # ARC
                     # half of bounding box is required,
@@ -1773,9 +1776,10 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                     xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}', ha='center')
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}',
-                                va='center', rotation=90)
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                va='center', ha='center')
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
                     pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
                                 [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
@@ -3308,22 +3312,3 @@ def to_multicell(n_cells, shape):
     shape_multicell['CELL TYPE'] = 'multicell'
 
     return shape_multicell
-
-# def error(*arg):
-#     print(colored(f'{arg[0]}', 'red'))
-#
-#
-# def warning(*arg):
-#     print(colored(f'{arg[0]}', 'yellow'))
-#
-#
-# def running(*arg):
-#     print(colored(f'{arg[0]}', 'cyan'))
-#
-#
-# def info(*arg):
-#     print(colored(f'{arg[0]}', 'blue'))
-#
-#
-# def done(*arg):
-#     print(colored(f'{arg[0]}', 'green'))
