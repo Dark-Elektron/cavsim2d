@@ -30,7 +30,7 @@ class ABCIGeometry(Geometry):
         BETA = 1
         LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
-        LSAV, LCPUTM = 'F', 'F'
+        LSAV, LCPUTM = 'T', 'F'  # CHANGING LSAV TO TRUE TO SEE IF I CAN SAVE ELECTRIC FIELDS
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -278,11 +278,11 @@ class ABCIGeometry(Geometry):
                 f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
                 f.write(f' &TIME  MT = {int(MT)} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}. &END \n')  # , NFS = {NFS}
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK=.T. &END \n')  # , NFS = {NFS}
                 # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
                 f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T. &END \n')
+                        f'LINTZ = .F., LPATH = .T., LPLE = .T., LPLC=.T. &END \n')
                 f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
