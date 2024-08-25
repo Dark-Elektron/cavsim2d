@@ -160,7 +160,8 @@ class NGSolveMEVP:
         else:
             # writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
             #                                 plot=plot)
-            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
+            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells,
+                                              write=file_path)
 
     def write_geometry_multicell(self, folder, n_cells, mid_cell, end_cell_left=None, end_cell_right=None,
                                  beampipe='none', plot=False, cell_parameterisation='normal'):
@@ -1019,7 +1020,7 @@ class NGSolveMEVP:
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
 
-        qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L+l/2, gfu_E, gfu_H, mesh, freq_fes)
+        qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L + l / 2, gfu_E, gfu_H, mesh, freq_fes)
 
         with open(fr'{run_save_directory}\qois.json', "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -1178,10 +1179,160 @@ class NGSolveMEVP:
             error('Could not run eigenmode analysis due to error in geometry.')
             return False
 
-    def vhf_gun(self):
+    def vhf_gun(self, fid, pol='monopole', sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
+                mesh_args=None, opt=False):
         # variables
         # y1, T2, R2, L3, R4, L5, R6, R8, T9, R9, T10, R10, L11, R12, L13, R14, G, L_bp
-        pass
+
+        if pol != 'monopole':
+            pol_subdir = 'dipole'
+        else:
+            pol_subdir = 'monopole'
+
+        # change save directory
+        if mesh_args is None:
+            mesh_args = [20, 20]
+        if opt:
+            # consider making better. This was just an adhoc fix
+            run_save_directory = os.path.join(projectDir, fr'SimulationData/Optimisation/{fid}')
+        else:
+            # change save directory
+            if subdir == '':
+                run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{fid}/{pol_subdir}'
+            else:
+                run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}'
+
+        # write geometry
+        file_path = f'{run_save_directory}\geodata.n'
+        write_gun_geometry(file_path)
+
+        if os.path.exists(file_path):
+            # read geometry
+            cav_geom_ = pd.read_csv(f'{run_save_directory}\geodata.n',
+                                    header=None, skiprows=1, sep='\s+', engine='python')
+
+            cav_geom = cav_geom_[[1, 0]]
+            # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
+            # plt.show()
+
+            pnts = list(cav_geom.itertuples(index=False, name=None))
+            print('len of pts:: ', len(pnts))
+            wp = WorkPlane()
+            wp.MoveTo(*pnts[0])
+            for p in pnts[1:]:
+                wp.LineTo(*p)
+            wp.Close().Reverse()
+            face = wp.Face()
+
+            # print('edges_lehgth:: ', len(face.edges), len(face.vertices))
+            save_points = []
+            for ii, edge in enumerate(face.edges):
+                edge.name = fr'{cav_geom_[2][ii + 1]}'
+                # print(edge.start)
+                save_points.append([edge.start[1], edge.start[0]])
+
+            # print([edge.name for edge in face.edges])
+            # name the boundaries
+            face.edges.Max(X).name = "3"
+            face.edges.Max(X).col = (1, 0, 0)
+            # face.edges.Min(X).name = "l"
+            # face.edges.Min(X).col = (1, 0, 0)
+            face.edges.Min(Y).name = "3"
+            face.edges.Min(Y).col = (1, 0, 0)
+            for edge in face.edges:
+                if edge.name == "3.0":
+                    edge.col = (1, 0, 0)
+
+            # print([edge.name for edge in face.edges])
+            Draw(face)
+            geo = OCCGeometry(face, dim=2)
+
+            # try to generate mesh
+            try:
+                ngmesh = geo.GenerateMesh(maxh=0.001)
+            except Exception as e:
+                error('Unable to generate mesh:: ', e)
+                plt.plot(cav_geom[1], cav_geom[0])
+                plt.show()
+                exit()
+
+            mesh = Mesh(ngmesh)
+            mesh.Curve(3)
+
+            # save mesh
+            self.save_mesh(run_save_directory, mesh)
+
+            # define finite element space
+            fes = HCurl(mesh, order=1, dirichlet='2.0')
+
+            u, v = fes.TnT()
+
+            a = BilinearForm(y * curl(u) * curl(v) * dx)
+            m = BilinearForm(y * u * v * dx)
+
+            apre = BilinearForm(y * curl(u) * curl(v) * dx + y * u * v * dx)
+            pre = Preconditioner(apre, "direct", inverse="sparsecholesky")
+
+            with TaskManager():
+                a.Assemble()
+                m.Assemble()
+                apre.Assemble()
+
+                # build gradient matrix as sparse matrix (and corresponding scalar FESpace)
+                gradmat, fesh1 = fes.CreateGradient()
+
+                gradmattrans = gradmat.CreateTranspose()  # transpose sparse matrix
+                math1 = gradmattrans @ m.mat @ gradmat  # multiply matrices
+                math1[0, 0] += 1  # fix the 1-dim kernel
+                invh1 = math1.Inverse(inverse="sparsecholesky", freedofs=fesh1.FreeDofs())
+
+                # build the Poisson projector with operator Algebra:
+                proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
+
+                projpre = proj @ pre.mat
+                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=10, maxit=mesh_args[1],
+                                              printrates=False)
+
+            freq_fes = []
+            evals[0] = 1  # <- replace nan with zero
+            for i, lam in enumerate(evals):
+                freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
+                print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
+
+            # plot results
+            gfu_E = []
+            gfu_H = []
+            for i in range(len(evecs)):
+                w = 2 * pi * freq_fes[i] * 1e6
+                gfu = GridFunction(fes)
+                gfu.vec.data = evecs[i]
+
+                gfu_E.append(gfu)
+                gfu_H.append(1j / (mu0 * w) * curl(gfu))
+
+            # save fields
+            self.save_fields(run_save_directory, gfu_E, gfu_H)
+
+            # # alternative eigenvalue solver, but careful, mode numbering may change
+            # u = GridFunction(fes, multidim=30, name='resonances')
+            # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
+            #                         list(u.vecs), shift=300)
+            # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
+
+            # save json file
+            # shape = {'IC': cell_par}
+            # # print(run_save_directory)
+            # with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
+            #     json.dump(shape, f, indent=4, separators=(',', ': '))
+            #
+            # qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+            #
+            # with open(fr'{run_save_directory}\qois.json', "w") as f:
+            #     json.dump(qois, f, indent=4, separators=(',', ': '))
+            # return True
+        else:
+            error('Could not run eigenmode analysis due to error in geometry.')
+            return False
 
     @staticmethod
     def eigen3d(geometry_dir):
@@ -1264,7 +1415,7 @@ class NGSolveMEVP:
 
         # calculate Vacc and Eacc
         Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('b')))
-        Eacc = Vacc / (L * 1e-3 * 2 * n )
+        Eacc = Vacc / (L * 1e-3 * 2 * n)
 
         # calculate U and R/Q
         U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], gfu_E[n]), mesh)
@@ -1381,7 +1532,7 @@ class NGSolveMEVP:
     def plot_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
         mesh = self.load_mesh(folder)
         gfu_E, gfu_H = self.load_fields(folder, mode)
-        
+
         if plotter == 'matplotlib':
             mesh_points = mesh.vertices
             E_values_mesh = []

@@ -38,6 +38,7 @@ abci_geom = ABCIGeometry()
 tuner = Tuner()
 
 SOFTWARE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))  # str(Path().parents[0])
+CUSTOM_COLORS = ['#4b8f63', '#fc6d2d', '#6a7bbf', '#e567a7', '#8cd839', '#ff5f00', '#d1a67a', '#a3a3a3']
 VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
 TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
@@ -50,7 +51,8 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
-          'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$"
+          'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$",
+          'Z_2023': 'Z', 'W_2023': 'W', 'H_2023': 'H', 'ttbar_2023': r'$\mathrm{t \bar t}$'
           }
 
 m0 = 9.1093879e-31
@@ -155,7 +157,7 @@ class Optimisation:
         if (any(['ZL' in obj for obj in self.objective_vars])
                 or any(['ZT' in obj for obj in self.objective_vars])
                 or any([obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
-                    self.objective_vars])):
+                        self.objective_vars])):
             assert 'wakefield_config' in config.keys(), error('Wakefield impedance objective detected in objectives. '
                                                               'Please include a field for wakefield_config. An empty'
                                                               ' config entry implies that default values will be used.')
@@ -1527,7 +1529,7 @@ class Cavity:
     """
 
     def __init__(self, n_cells, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none', name='cavity',
-                 cell_parameterisation='simplecell', plot_label=None):
+                 cell_parameterisation='simplecell', color='k', plot_label=None):
         """
         Initialise cavity object. A cavity object is defined by the number of cells, the cell geometric parameters,
         if it has beampipes or not and the name. These properties could be changed and retrieved later using the
@@ -1548,6 +1550,7 @@ class Cavity:
         name
         """
 
+        self.n_cav_op_field = None
         self.uq_hom_results = None
         self.sweep_results = {}
         self.sweep_results_uq = {}
@@ -1564,6 +1567,14 @@ class Cavity:
         self.bc = 33
         self.name = name
 
+        self.op_field = None
+        self.p_wp = None
+        self.pstat = None
+        self.pdyn = None
+        self.p_cryo = None
+        self.p_in = None
+        self.Q0 = None
+
         self.beampipe = beampipe
         self.no_of_modules = 1
         self.eigenmode_qois = {}
@@ -1573,7 +1584,7 @@ class Cavity:
         self.convergence_list = []
         self.eigenmode_tune_res = {}
         self.operating_points = None
-        self.color = None
+        self.color = color
 
         # eigenmode results
         self.R_Q, self.k_fm, self.GR_Q, self.op_freq, self.e, self.b, \
@@ -1616,10 +1627,13 @@ class Cavity:
             self.end_cell_right = end_cell_right
 
             self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req, self.l = self.mid_cell[:8]
-            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[
-                                                                                                        :8]
-            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[
-                                                                                                        :8]
+            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[:8]
+            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[:8]
+
+            # active cavity length
+            self.l_active = (2 * (self.n_cells - 1) * self.L +
+                             (self.n_cells - 2)*self.l + self.L_el + self.l_el +
+                             self.L_er + self.l_er)*1e-3
 
             # get geometric parameters
             self.shape = {
@@ -1653,6 +1667,10 @@ class Cavity:
             self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el = self.end_cell_left[:7]
             self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er = self.end_cell_right[:7]
 
+            # active cavity length
+            self.l_active = (2 * (self.n_cells - 1) * self.L + self.L_el + self.L_er)*1e-3
+            self.l_cavity = self.l_active + 8 * self.L
+
             # get geometric parameters
             self.shape = {
                 "IC": self.mid_cell[:7],
@@ -1679,6 +1697,21 @@ class Cavity:
 
         """
         self.name = name
+
+    def set_color(self, color):
+        """
+        Set cavity name
+
+        Parameters
+        ----------
+        color: str
+            color of cavity
+
+        Returns
+        -------
+
+        """
+        self.color = color
 
     def set_parameterisation(self, cell_parameterisation):
         """
@@ -2166,6 +2199,38 @@ class Cavity:
         abci_data_dir = os.path.join(self.projectDir, "SimulationData", "ABCI")
         self.abci_data = {'Long': ABCIData(abci_data_dir, self.name, 0),
                           'Trans': ABCIData(abci_data_dir, self.name, 1)}
+
+    def get_power(self, rf_config):
+
+        self.op_field = self.operating_points['Eacc [MV/m]']*1e6
+        self.v_rf = self.operating_points['V [GV]']*1e9
+        self.Q0 = rf_config['Q0 []']
+        self.eta = rf_config['eta []']
+        self.p_sr = rf_config['SR per turn [MW]']*1e6
+
+        self.n_cav = int(np.ceil(self.v_rf / (self.op_field * self.l_active)))
+        p_in = self.p_sr / self.op_field  # maximum synchrotron radiation per beam
+
+        # self.p_in = self.v_cav ** 2 / (4 * self.R_Q * Q) * ((1 + self.R_Q * Q * WP[self.wp]['I0'] / self.v_cav) ** 2
+        #                                                     + (delta_f / f1_2 + self.R_Q * Q * WP[self.wp][
+        #             'I0'] / self.v_cav * np.sin(phi)) ** 2)
+        self.p_cryo = 8 / (np.sqrt(self.op_freq / 500e6))  # W/m
+        # ic(self.v_rf, self.l_active, self.R_Q, self.l_cavity, self.p_in, self.n_cav_op_field, 1/self.eta, self.Q0)
+        self.pdyn = self.v_rf * (self.op_field * self.l_active) / (
+                self.R_Q * self.Q0 * self.n_cav_op_field)  # per cavity
+        self.pstat = (self.l_cavity * self.v_rf / (self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
+        self.p_wp = (1 / self.eta) * (self.pdyn + self.pstat)  # per cavity
+
+        self.rf_performance_qois = {
+            r"$N_\mathrm{cav}$": self.n_cav,
+            r"$Q_0 ~\mathrm{[10^{10}}]}$": self.Q0 * 1e-10,
+            r"$P_\mathrm{stat}$/cav [W]": self.pstat,
+            r"$P_\mathrm{dyn}$/cav [W]": self.pdyn,
+            r"$P_\mathrm{wp}$/cav [kW]": self.p_wp * 1e-3,
+            r"$P_\mathrm{in}$/cav [kW]": self.p_in * 1e-3,
+            r"$P_\mathrm{HOM}$/cav [kW]": self.phom,
+        }
+        return self.rf_performance_qois
 
     def plot(self, what, ax=None, **kwargs):
         if what.lower() == 'geometry':
@@ -2940,9 +3005,10 @@ class Cavities(Optimisation):
             if 'uq_config' in eigenmode_config.keys():
                 uq_config_eig = eigenmode_config['uq_config']
                 if 'delta' in uq_config_eig.keys():
-                    assert len(uq_config_eig['delta']) == len(uq_config_eig['variables']), error("The number of deltas must "
-                                                                                         "be equal to the number of "
-                                                                                         "variables.")
+                    assert len(uq_config_eig['delta']) == len(uq_config_eig['variables']), error(
+                        "The number of deltas must "
+                        "be equal to the number of "
+                        "variables.")
                 if 'epsilon' in uq_config_eig.keys():
                     assert len(uq_config_eig['epsilon']) == len(uq_config_eig['variables']), error(
                         "The number of epsilons must "
@@ -2951,7 +3017,6 @@ class Cavities(Optimisation):
 
                 if 'epsilon' in uq_config_eig.keys() and 'uq_config' in uq_config_eig.keys():
                     info('epsilon and delta are both entered. Epsilon is preferred.')
-
 
         rerun = True
         if 'rerun' in tune_config:
@@ -3228,7 +3293,8 @@ class Cavities(Optimisation):
                                 if 'sigma' in k:
                                     sig_id = k.split('_')[-1].split(' ')[0]
                                     ident = fr'_{op}_{sig_id}_{v}mm'
-                                    uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in cav_uq_hom_results.items() if ident in kk}
+                                    uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
+                                                                     cav_uq_hom_results.items() if ident in kk}
                     else:
                         uq_hom_results_op = cav.uq_hom_results
 
@@ -3285,7 +3351,7 @@ class Cavities(Optimisation):
 
         self.returned_results = results
 
-    def qois(self, cavity, op_field, E_acc):
+    def power_qois(self, cav, opt_list, Eacc):
         """
 
         Parameters
@@ -3300,33 +3366,26 @@ class Cavities(Optimisation):
         Dictionary containing quantities of interest (normed optional).
         """
 
-        ind = np.where((E_acc >= 0.99 * op_field * 1e6) & (E_acc <= 1.01 * op_field * 1e6))
         qois = {
-            r"N_cav/beam": np.average(cavity.n_cav[ind]),
-            r"Q0 [10^8]$": np.average(cavity.Q0[ind] * 1e-8),
-            r"Rs [Ohm]$": np.average(cavity.Rs[ind]),
-            r"P_stat/cav [W]": np.average(cavity.pstat[ind] / cavity.n_cav[ind]),
-            r"P_dyn/cav [W]": np.average(cavity.pdyn[ind] / cavity.n_cav[ind]),
-            # r"P_\mathrm{wp/cav}$ [W]": np.average(cavity.p_wp[ind]/cavity.n_cav[ind]),
-            r"P_in/beam [kW]": np.average(cavity.p_in[ind]) * 1e-3,
+            r"$N_\mathrm{cav}$": cav.n_cav_op_field,
+            r"$Q_0 ~\mathrm{[10^{10}}]}$": cav.Q0_desired * 1e-10,
+            r"$P_\mathrm{stat}$/cav [W]": cav.pstat,
+            r"$P_\mathrm{dyn}$/cav [W]": cav.pdyn,
+            r"$P_\mathrm{wp}$/cav [kW]": cav.p_wp * 1e-3,
+            r"$P_\mathrm{in}$/cav [kW]": cav.p_in * 1e-3,
+            r"$P_\mathrm{HOM}$/cav [kW]": [cav.phom[opt] for opt in opt_list],
+            # r"P_stat [W]": np.average(cavity.pstat[ind]),
+            # r"P_dyn [W]": np.average(cavity.pdyn[ind]),
+            # r"$P_\mathrm{HOM}$ [kW]": cavity.phom * np.average(cavity.n_cav[ind]),
+            # r"P_tot_loss [kW]": np.average(cavity.pstat[ind]) * 1e-3
+            #                     + np.average(cavity.pdyn[ind]) * 1e-3
+            #                     + cavity.phom * np.average(cavity.n_cav[ind]),
             # r"$Q_\mathrm{0} \mathrm{[10^8]}$": np.average(cavity.Q0[ind] * 1e-8),
             # r"$Rs_\mathrm{0} \mathrm{[10^7]}$": np.average(cavity.Rs[ind])
         }
         self.p_qois.append(qois)
 
-        qois_norm_units = {
-            r"$n_\mathrm{cav/beam}$": np.average(cavity.n_cav[ind]),
-            # r"$q_\mathrm{0}$": np.average(cavity.Q0[ind]),
-            # r"$r_\mathrm{s}$": np.average(cavity.Rs[ind]),
-            r"$p_\mathrm{stat/cav}$": np.average(cavity.pstat[ind] / cavity.n_cav[ind]),
-            r"$p_\mathrm{dyn/cav}$": np.average(cavity.pdyn[ind] / cavity.n_cav[ind]),
-            # r"$p_\mathrm{wp/cav}$": np.average(cavity.p_wp[ind]/cavity.n_cav[ind]),
-            r"$p_\mathrm{in/beam}$": np.average(cavity.p_in[ind]),
-            # r"$Q_\mathrm{0} \mathrm{[10^8]}$": np.average(cavity.Q0[ind] * 1e-8),
-            # r"$Rs_\mathrm{0} \mathrm{[10^7]}$": np.average(cavity.Rs[ind])
-        }
-
-        return qois_norm_units
+        return qois
 
     def qois_fm(self):
         """
@@ -3624,15 +3683,56 @@ class Cavities(Optimisation):
 
         plt.show()
 
+    def plot_compare_power_scatter(self, opt_list):
+        """
+        Plots bar chart of power quantities of interest
+
+        Returns
+        -------
+
+        """
+        plt.rcParams["figure.figsize"] = (12, 3)
+
+        power_qois = [self.power_qois(cav, opt_list, 12) for cav in self.cavities_list]
+        print(power_qois)
+
+        # plot barchart
+        data = np.array([list(d.values()) for d in self.returned_results])
+        data_col_max = data.max(axis=0)
+        x = list(self.returned_results[0].keys())
+        X = np.arange(len(x))
+
+        fig, ax = plt.subplots()
+        ax.margins(x=0)
+        width = 0.15  # 1 / len(x)
+        for i, cav in enumerate(self.cavities_list):
+            ax.bar(X + i * width, data[i] / data_col_max, width=width, label=cav.name)
+
+        ax.set_xticks([r + width for r in range(len(x))], x)
+        # label = ["C3794_H (2-Cell)", "C3795_H (5-Cell)"]
+
+        ax.axhline(1.05, c='k')
+        ax.set_ylim(-0.01, 1.5 * ax.get_ylim()[-1])
+        ax.legend(loc='upper center', ncol=len(self.cavities_list))
+        plt.tight_layout()
+
+        # save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_power_comparison_bar.png")
+
+        plt.show()
+
     def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3):
         if kind == 'scatter' or kind == 's':
             self.plot_compare_fm_scatter(uq=uq, ncols=ncols)
         if kind == 'bar' or kind == 'b':
             self.plot_compare_fm_bar(uq=uq, ncols=ncols)
 
-    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3):
+    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3)):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols)
+            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols, figsize=figsize)
         if kind == 'bar' or kind == 'b':
             self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols)
 
@@ -3709,7 +3809,7 @@ class Cavities(Optimisation):
 
         return axd
 
-    def plot_compare_hom_scatter(self, opt, ncols=3, uq=False):
+    def plot_compare_hom_scatter(self, opt_list, ncols=3, uq=False, figsize=(12, 3)):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -3725,10 +3825,12 @@ class Cavities(Optimisation):
         axd : dict
             A dictionary of axes from the scatter plot.
         """
-        plt.rcParams["figure.figsize"] = (12, 3)
+        plt.rcParams["figure.figsize"] = figsize
+        if isinstance(opt_list, str):
+            opt_list = [opt_list]
 
         if not uq:
-            self.hom_results = self.qois_hom(opt)
+            self.hom_results = self.qois_hom(opt_list[0])
 
             df = pd.DataFrame.from_dict(self.hom_results)
             fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
@@ -3746,50 +3848,62 @@ class Cavities(Optimisation):
 
             h, l = ax.get_legend_handles_labels()
         else:
-            # get nominal qois
-            dd_nominal = {}
-            for cav, ops_id in self.wakefield_qois.items():
-                for kk, vv in ops_id.items():
-                    if fr'{opt}_SR' in kk:
-                        dd_nominal[cav] = vv
-
-            df_nominal = pd.DataFrame.from_dict(dd_nominal).T
 
             # Step 1: Flatten the dictionary into a DataFrame
-            rows = []
-            # get uq opt
-            for cavity, metrics in self.uq_hom_results.items():
-                for metric, values in metrics[opt]['SR'].items():
-                    rows.append({
-                        'cavity': cavity,
-                        'metric': metric,
-                        'mean': values['expe'][0],
-                        'std': values['stdDev'][0]
-                    })
+            df_list, df_nominal_list = [], []
+            for opt in opt_list:
 
-            df = pd.DataFrame(rows)
+                # get nominal qois
+                dd_nominal = {}
+                for cav, ops_id in self.wakefield_qois.items():
+                    for kk, vv in ops_id.items():
+                        if fr'{opt}_SR' in kk:
+                            dd_nominal[cav] = vv
+
+                df_nominal = pd.DataFrame.from_dict(dd_nominal).T
+                df_nominal_list.append(df_nominal)
+
+                rows = []
+                # get uq opt
+                for cavity, metrics in self.uq_hom_results.items():
+                    for metric, values in metrics[opt]['SR'].items():
+                        rows.append({
+                            'cavity': cavity,
+                            'metric': metric,
+                            'mean': values['expe'][0],
+                            'std': values['stdDev'][0]
+                        })
+
+                df = pd.DataFrame(rows)
+                df_list.append(df)
 
             # Step 2: Create a Mosaic Plot
-            metrics = df['metric'].unique()
+            metrics = df_list[0]['metric'].unique()
             layout = [[metric for metric in metrics]]
             fig, axd = plt.subplot_mosaic(layout, layout='constrained')
 
             # Plotting labels and colors
-            labels = df['cavity'].unique()
-            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
-
+            labels = df_list[0]['cavity'].unique()
+            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = [cav.color for cav in self.cavities_list]
+            opt_format = ['o', '^', 's', 'D', 'P', 'v']
             # Step 3: Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 for i, label in enumerate(labels):
-                    sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
-                    scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
-                                                ec='k', zorder=100, label=label)
-                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt='o', capsize=10, lw=2,
-                                color=scatter_points.get_facecolor()[0])
+                    for ii, (opt, df, df_nominal) in enumerate(zip(opt_list, df_list, df_nominal_list)):
+                        sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                        scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
+                                                    marker=opt_format[ii],
+                                                    fc='none', ec=colors[i], zorder=100,
+                                                    label=fr'{label} ({LABELS[opt]})')
+                        ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt=opt_format[ii],
+                                    capsize=10, lw=2, mfc='none',
+                                    color=scatter_points.get_edgecolor()[0])
 
-                    # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
-                               zorder=100)
+                        # plot nominal
+                        ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', ec='k',
+                                   lw=1, marker=opt_format[ii],
+                                   zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
@@ -3799,21 +3913,16 @@ class Cavities(Optimisation):
             # Step 4: Set legend
             h, l = ax.get_legend_handles_labels()
 
-        by_label = dict(zip(l, h))
-        if 'nominal' in by_label.keys():
-            nominal_handle = by_label.pop('nominal')
-            # Reinsert 'nominal' as the last entry
-            by_label['nominal'] = nominal_handle
-
         if not ncols:
             ncols = min(4, len(labels))
-        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_hom_scatter.png")
+        self.save_all_plots(f"{fname}_hom_scatter_{opt_list}.png")
 
         return axd
 
@@ -3884,7 +3993,7 @@ class Cavities(Optimisation):
         # fig.set_tight_layout(True)
         if not ncols:
             ncols = min(4, len(self.cavities_list))
-        fig.legend(h, l, loc='outside upper center', borderaxespad=0, ncol=ncols)
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # save plots
         fname = [cav.name for cav in self.cavities_list]
@@ -3946,7 +4055,8 @@ class Cavities(Optimisation):
             df = pd.DataFrame(rows)
 
             labels = [cav.plot_label for cav in self.cavities_list]
-            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = [cav.color for cav in self.cavities_list]
 
             # Step 2: Create a Mosaic Plot
             metrics = df['metric'].unique()
@@ -3958,12 +4068,13 @@ class Cavities(Optimisation):
                 for i, label in enumerate(labels):
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
-                                                ec='k', label=label, zorder=100)
+                                                fc='none', ec=colors[i], label=label, zorder=100)
                     ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=2,
-                                color=scatter_points.get_facecolor()[0])
+                                color=scatter_points.get_edgecolor()[0])
 
                     # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='nominal', ec='k', lw=2,
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none',
+                               ec='k', lw=1,
                                zorder=100)
 
                 ax.set_xticklabels([])
@@ -3973,16 +4084,16 @@ class Cavities(Optimisation):
 
             h, l = ax.get_legend_handles_labels()
 
-        by_label = dict(zip(l, h))
-        if 'nominal' in by_label.keys():
-            nominal_handle = by_label.pop('nominal')  # Remove 'nominal' entry
-            # Reinsert 'nominal' as the last entry
-            by_label['nominal'] = nominal_handle
+        # by_label = dict(zip(l, h))
+        # if 'nominal' in by_label.keys():
+        #     nominal_handle = by_label.pop('nominal')  # Remove 'nominal' entry
+        #     # Reinsert 'nominal' as the last entry
+        #     by_label['nominal'] = nominal_handle
 
         # Set legend
         if not ncols:
             ncols = min(4, len(self.cavities_list))
-        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
@@ -4036,7 +4147,8 @@ class Cavities(Optimisation):
                     if fr'{opt}_SR' in kk:
                         dd_nominal[cav] = vv
 
-            dict_all_nominal = {key: {**self.eigenmode_qois.get(key, {}), **dd_nominal.get(key, {})} for key in set(self.eigenmode_config) | set(dd_nominal)}
+            dict_all_nominal = {key: {**self.eigenmode_qois.get(key, {}), **dd_nominal.get(key, {})} for key in
+                                set(self.eigenmode_config) | set(dd_nominal)}
             df_nominal = pd.DataFrame.from_dict(dict_all_nominal).T
 
             dict_all = self.uq_fm_results | self.uq_hom_results
@@ -4070,7 +4182,8 @@ class Cavities(Optimisation):
 
             # Plotting labels and colors
             labels = df['cavity'].unique()
-            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = [cav.color for cav in self.cavities_list]
 
             # Step 3: Plot each metric on a separate subplot
             for metric, ax in axd.items():
@@ -4083,7 +4196,7 @@ class Cavities(Optimisation):
 
                     # plot nominal
                     ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none',
-                               label='nominal', ec='k', lw=2,
+                               ec='k', lw=2,
                                zorder=100)
 
                 ax.set_xticklabels([])
@@ -4094,21 +4207,22 @@ class Cavities(Optimisation):
             # Step 4: Set legend
             h, l = ax.get_legend_handles_labels()
 
-        by_label = dict(zip(l, h))
-        if 'nominal' in by_label.keys():
-            nominal_handle = by_label.pop('nominal')
-            # Reinsert 'nominal' as the last entry
-            by_label['nominal'] = nominal_handle
+        # by_label = dict(zip(l, h))
+        # if 'nominal' in by_label.keys():
+        #     nominal_handle = by_label.pop('nominal')
+        #     # Reinsert 'nominal' as the last entry
+        #     by_label['nominal'] = nominal_handle
 
         if not ncols:
             ncols = min(4, len(labels))
-        fig.legend(by_label.values(), by_label.keys(), loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
 
         # Save plots
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_all_scatter.png")
+        self.save_all_plots(f"{fname}_all_scatter_{opt}.png")
 
         return axd
 
@@ -4146,11 +4260,11 @@ class Cavities(Optimisation):
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_all_bar.png")
+        self.save_all_plots(f"{fname}_all_bar_{opt}.png")
 
         return axd
 
-    def plot_cavities_contour(self, opt='mid'):
+    def plot_cavities_contour(self, opt='mid', figsize=None):
         """Plot geometric contour of Cavity objects
 
         Parameters
@@ -4164,7 +4278,12 @@ class Cavities(Optimisation):
         """
         min_x, max_x, min_y, max_y = [], [], [], []
 
-        fig, axs = plt.subplot_mosaic([[0]], layout='constrained')
+        if figsize:
+            fig, axs = plt.subplot_mosaic([[0]], figsize=figsize,
+                                          layout='constrained')
+        else:
+            fig, axs = plt.subplot_mosaic([[0]], figsize=(12, 4),
+                                          layout='constrained')
         ax = axs[0]
         ax.set_aspect('equal', adjustable='box')
         ax.margins(x=0)
@@ -4187,15 +4306,17 @@ class Cavities(Optimisation):
                 beampipe = 'both'
 
             if cav.freq:
-                scale = (cav.freq*1e6)/c0
+                scale = (cav.freq * 1e6) / c0
             else:
                 scale = 1
             if cav.cell_parameterisation == 'flattop':
                 write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right,
-                                                  BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True, lw=3)
+                                                  BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True,
+                                                  lw=4, c=cav.color)
             else:
                 write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right,
-                                          BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True, lw=3)
+                                          BP=beampipe, n_cell=1, ax=ax, scale=scale, plot=True, contour=True,
+                                          lw=4, c=cav.color)
             ax.lines[-1].set_label(cav.name)
             ax.axvline(0, c='k', ls='--')
             ax.legend(loc='upper right')
@@ -4262,11 +4383,11 @@ class Cavities(Optimisation):
                 beampipe = 'both'
 
             if cav.cell_parameterisation == 'flattop':
-                write_cavity_geometry_cli_flattop(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
+                write_cavity_geometry_cli_flattop(mid_cell * 1e3, end_cell_left * 1e3, end_cell_right * 1e3,
                                                   BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
                                                   dimension=True, lw=3, c='k')
             else:
-                write_cavity_geometry_cli(mid_cell*1e3, end_cell_left*1e3, end_cell_right*1e3,
+                write_cavity_geometry_cli(mid_cell * 1e3, end_cell_left * 1e3, end_cell_right * 1e3,
                                           BP=beampipe, n_cell=1, ax=ax, scale=1, plot=True,
                                           dimension=True, lw=3, c='k')
             ax.lines[-1].set_label(cav.name)
@@ -4287,7 +4408,7 @@ class Cavities(Optimisation):
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_contour_{opt}.png")
+        self.save_all_plots(f"{fname}_dimension.png")
 
         # fig.show()
 
@@ -5627,7 +5748,7 @@ class RFGun(Cavity):
 
     def plot(self, what, ax=None, **kwargs):
         if what.lower() == 'geometry':
-            ax = plot_gun()
+            ax = write_gun_geometry()
             ax.set_xlabel('$z$ [m]')
             ax.set_ylabel(r"$r$ [m]")
             return ax
@@ -5668,334 +5789,6 @@ class RFGun(Cavity):
                 return ax
             except ValueError:
                 info("Convergence data not available.")
-
-    def run_tune(self, tune_variable, cell_type='Mid Cell', freq=None, solver='SLANS', proc=0, resume=False, n_cells=1):
-        """
-        Tune current cavity geometry
-
-        Parameters
-        ----------
-        n_cells: int
-            Number of cells used for tuning.
-        resume: bool
-            Option to resume tuning or not. Only for shape space with multiple entries.
-        proc: int
-            Processor number
-        solver: {'SLANS', 'Native'}
-            Solver to be used. Native solver is still under development. Results are not as accurate as that of SLANS.
-        freq: float
-            Reference frequency in MHz
-        cell_type: {'mid cell', 'end-mid cell', 'mid-end cell', 'end-end cell', 'single cell'}
-            Type of cell to tune
-        tune_variable: {'Req', 'L'}
-            Tune variable. Currently supports only the tuning of the equator radius ``Req`` and half-cell length ``L``
-
-        Returns
-        -------
-
-        """
-
-        iter_set = ['Linear Interpolation', TUNE_ACCURACY, 10]
-
-        if freq is None:
-            # calculate freq from mid cell length
-            beta = 1
-            freq = beta * c0 / (4 * self.mid_cell[5])
-            info("Calculated freq from mid cell half length: ", freq)
-
-        # create new shape space based on cell_type
-        # if cell_type.lower() == 'mid cell':
-        shape_space = {
-            f'{self.name}':
-                {
-                    'IC': self.shape_space['IC'],
-                    'OC': self.shape_space['OC'],
-                    'OC_R': self.shape_space['OC_R'],
-                    "BP": 'none',
-                    'FREQ': freq
-                }
-        }
-
-        if len(self.slans_tune_res.keys()) != 0:
-            run_tune = input("This cavity has already been tuned. Run tune again? (y/N)")
-            if solver.lower() == 'slans':
-                if run_tune.lower() == 'y':
-                    # copy files required for simulation
-                    self._overwriteFolder(proc, self.projectDir, self.name)
-                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
-
-                    self.run_tune_slans(shape_space, resume, proc, self.bc,
-                                        SOFTWARE_DIRECTORY, self.projectDir, self.name, tuner,
-                                        tune_variable, iter_set, cell_type,
-                                        progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-
-                # read tune results and update geometry
-                try:
-                    self.get_slans_tune_res(tune_variable, cell_type)
-                except FileNotFoundError:
-                    error("Could not find the tune results. Please run tune again.")
-            else:
-                if run_tune.lower() == 'y':
-                    # copy files required for simulation
-                    self._overwriteFolder(proc, self.projectDir, self.name)
-                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
-
-                    self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
-                                          SOFTWARE_DIRECTORY, self.projectDir, self.name,
-                                          tune_variable, iter_set, cell_type,
-                                          progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-
-                # read tune results and update geometry
-                try:
-                    self.get_ngsolve_tune_res(tune_variable, cell_type)
-                except FileNotFoundError:
-                    error("Could not find the tune results. Please run tune again.")
-        else:
-                if solver.lower() == 'slans':
-                    # copy files required for simulation
-                    self._overwriteFolder(proc, self.projectDir, self.name)
-                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
-
-                    self.run_tune_slans(shape_space, resume, proc, self.bc,
-                                        SOFTWARE_DIRECTORY, self.projectDir, self.name, tuner,
-                                        tune_variable, iter_set, cell_type,
-                                        progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-
-                    try:
-                        self.get_slans_tune_res(tune_variable, cell_type)
-                    except FileNotFoundError:
-                        error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
-                else:
-                    # copy files required for simulation
-                    self._overwriteFolder(proc, self.projectDir, self.name)
-                    self._copyFiles(proc, SOFTWARE_DIRECTORY, self.projectDir, self.name)
-
-                    self.run_tune_ngsolve(shape_space, resume, proc, self.bc,
-                                          SOFTWARE_DIRECTORY, self.projectDir, self.name,
-                                          tune_variable, iter_set, cell_type,
-                                          progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-                    try:
-                        self.get_ngsolve_tune_res(tune_variable, cell_type)
-                    except FileNotFoundError:
-                        error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
-
-    @staticmethod
-    def run_tune_ngsolve(shape, resume, p, bc, parentDir, projectDir, filename,
-                         tune_variable, iter_set, cell_type, progress_list, convergence_list, n_cells):
-        tuner.tune_ngsolve(shape, bc, parentDir, projectDir, filename, resume=resume, proc=p,
-                           tune_variable=tune_variable, iter_set=iter_set,
-                           cell_type=cell_type, sim_folder='Optimisation',
-                           progress_list=progress_list, convergence_list=convergence_list,
-                           save_last=True,
-                           n_cell_last_run=n_cells)  # last_key=last_key This would have to be tested again #val2
-
-    def run_eigenmode(self, solver='ngsolve', freq_shift=0, boundary_cond=None, subdir='',
-                      uq_config=None):
-        """
-        Run eigenmode analysis on cavity
-
-        Parameters
-        ----------
-        solver: {'SLANS', 'NGSolve'}
-            Solver to be used. Native solver is still under development. Results are not as accurate as that of SLANS.
-        freq_shift:
-            Frequency shift. Eigenmode solver searches for eigenfrequencies around this value
-        boundary_cond: int
-            Boundary condition of left and right cell/beampipe ends
-        subdir: str
-            Sub directory to save results to
-        uq_config: None | dict
-            Provides inputs required for uncertainty quantification. Default is None and disables uncertainty quantification.
-
-        Returns
-        -------
-
-        """
-
-        if boundary_cond:
-            self.bc = boundary_cond
-
-        self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape_space, self.n_modes, freq_shift,
-                          self.bc, SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-        # load quantities of interest
-        try:
-            self.get_eigenmode_qois()
-        except FileNotFoundError:
-            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
-
-    def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
-                      DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
-        """
-        Run wakefield analysis on cavity
-
-        Parameters
-        ----------
-        MROT: {0, 1}
-            Polarisation 0 for longitudinal polarization and 1 for transversal polarization
-        MT: int
-            Number of time steps it takes for a beam to move from one mesh cell to the other
-        NFS: int
-            Number of frequency samples
-        wakelength:
-            Wakelength to be analysed
-        bunch_length: float
-            Length of the bunch
-        DDR_SIG: float
-            Mesh to bunch length ration in the r axis
-        DDZ_SIG: float
-            Mesh to bunch length ration in the z axis
-        WG_M:
-            For module simulation. Specifies the length of the beampipe between two cavities.
-        marker: str
-            Marker for the cavities. Adds this to the cavity name specified in a shape space json file
-        wp_dict: dict
-            Python dictionary containing relevant parameters for the wakefield analysis for a specific operating point
-        solver: {'ABCI'}
-            Only one solver is currently available
-
-        Returns
-        -------
-
-        """
-
-        if operating_points is None:
-            wp_dict = {}
-        exist = False
-
-        if not exist:
-            if solver == 'ABCI':
-                self._run_abci(self.name, self.n_cells, self.n_modules, self.shape_space,
-                               MROT=MROT, MT=MT, NFS=NFS, UBT=wakelength, bunch_length=bunch_length,
-                               DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG,
-                               parentDir=SOFTWARE_DIRECTORY, projectDir=self.projectDir, WG_M=WG_M, marker=marker,
-                               operating_points=operating_points, freq=self.freq, R_Q=self.R_Q)
-
-                try:
-                    self.get_abci_data()
-                    self.get_wakefield_qois()
-                except FileNotFoundError:
-                    error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
-
-        else:
-            try:
-                self.get_abci_data()
-                self.get_wakefield_qois()
-            except FileNotFoundError:
-                error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
-
-    @staticmethod
-    def _run_ngsolve(name, n_cells, n_modules, shape, n_modes, f_shift, bc, parentDir, projectDir, sub_dir='',
-                     uq_config=None):
-        start_time = time.time()
-        # create folders for all keys
-        ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
-        ngsolve_mevp.pillbox(n_cells, n_modules, shape['IC'],
-                             n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                             parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        # run UQ
-        if uq_config:
-            uq(name, shape, ["freq", "R/Q", "Epk/Eacc", "Bpk/Eacc"],
-               n_cells=n_cells, n_modules=n_modules, n_modes=n_modes,
-               f_shift=f_shift, bc=bc, parentDir=parentDir, projectDir=projectDir)
-
-        done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
-
-    @staticmethod
-    def _run_abci(name, n_cells, n_modules, shape, MROT=0, MT=4.0, NFS=10000, UBT=50.0, bunch_length=20.0,
-                  DDR_SIG=0.1, DDZ_SIG=0.1,
-                  parentDir=None, projectDir=None,
-                  WG_M=None, marker='', operating_points=None, freq=0, R_Q=0):
-
-        # run abci code
-        if WG_M is None:
-            WG_M = ['']
-
-        start_time = time.time()
-        # run both polarizations if MROT == 2
-        for ii in WG_M:
-            try:
-                if MROT == 2:
-                    for m in range(2):
-                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
-                else:
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                     fid=name, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
-                                     WG_M=ii, marker=ii)
-            except KeyError:
-                if MROT == 2:
-                    for m in range(2):
-                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                         fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                         projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
-                else:
-                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                     fid=name, MROT=MROT, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir, projectDir=projectDir,
-                                     WG_M=ii, marker=ii)
-
-        done(f'Cavity {name}. Time: {time.time() - start_time}')
-        if len(operating_points.keys()) > 0:
-            try:
-                if freq != 0 and R_Q != 0:
-                    d = {}
-                    # save qois
-                    for key, vals in operating_points.items():
-                        WP = key
-                        I0 = float(vals['I0 [mA]'])
-                        Nb = float(vals['Nb [1e11]'])
-                        sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
-                        bl_diff = ['SR', 'BS']
-
-                        # info("Running wakefield analysis for given operating points.")
-                        for i, s in enumerate(sigma_z):
-                            for ii in WG_M:
-                                fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
-                                try:
-                                    for m in range(2):
-                                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC_R'],
-                                                         fid=fid, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
-                                                         bunch_length=s,
-                                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                                         projectDir=projectDir,
-                                                         WG_M=ii, marker=ii, sub_dir=f"{name}")
-                                except KeyError:
-                                    for m in range(2):
-                                        abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape['OC'],
-                                                         fid=fid, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
-                                                         bunch_length=s,
-                                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=parentDir,
-                                                         projectDir=projectDir,
-                                                         WG_M=ii, marker=ii, sub_dir=f"{name}")
-
-                                dirc = fr'{projectDir}\SimulationData\ABCI\{name}{marker}'
-                                # try:
-                                k_loss = abs(ABCIData(dirc, f'{fid}', 0).loss_factor['Longitudinal'])
-                                k_kick = abs(ABCIData(dirc, f'{fid}', 1).loss_factor['Transverse'])
-                                # except:
-                                #     k_loss = 0
-                                #     k_kick = 0
-
-                                d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, n_cells)
-
-                    # save qoi dictionary
-                    run_save_directory = fr'{projectDir}\SimulationData\ABCI\{name}{marker}'
-                    with open(fr'{run_save_directory}\qois.json', "w") as f:
-                        json.dump(d, f, indent=4, separators=(',', ': '))
-
-                    done("Done with the secondary analysis for working points")
-                else:
-                    info("To run analysis for working points, eigenmode simulation has to be run first"
-                         "to obtain the cavity operating frequency and R/Q")
-            except KeyError:
-                error('The working point entered is not valid. See below for the proper input structure.')
-                show_valid_operating_point_structure()
 
 
 class Dakota:
@@ -7377,12 +7170,16 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
                 if epsilon:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
+                        j, i1]
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
+                                                             processor_nodes[j, i1]
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
 
             # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
             #     # cell_node = shape['IC']
@@ -7522,12 +7319,16 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
                 if epsilon:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
+                        j, i1]
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
+                                                             processor_nodes[j, i1]
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
 
             # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
             #     # cell_node = shape['IC']

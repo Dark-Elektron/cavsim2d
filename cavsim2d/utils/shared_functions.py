@@ -1582,7 +1582,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
     # SHIFT POINT TO START POINT
     start_point = [-shift, 0]
-    geo.append([start_point[1], start_point[0]])
+    geo.append([start_point[1], start_point[0], 3])
 
     lineTo(start_point, [-shift, Ri_el], step)
     pt = [-shift, Ri_el]
@@ -1593,7 +1593,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
         lineTo(pt, [L_bp_l - shift, Ri_el], step)
         pt = [L_bp_l - shift, Ri_el]
 
-        geo.append([pt[1], pt[0]])
+        geo.append([pt[1], pt[0], 2])
 
     for n in range(1, n_cell + 1):
         if n == 1:
@@ -1627,7 +1627,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [-shift + x2el, y2el]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             if plot and dimension:
@@ -1652,7 +1652,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_el - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # flat top
@@ -1660,7 +1660,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_el + lft_el - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             if plot and dimension:
@@ -1685,7 +1685,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     pt = [L_el + lft_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 2])
                     geo.append([pt[1], pt[0]])
 
                     if plot and dimension:
@@ -1737,7 +1737,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 2])
 
                     geo.append([pt[1], pt[0]])
 
@@ -1752,7 +1752,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     pt = [L_el + lft_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 2])
                     geo.append([pt[1], pt[0]])
 
                     # STRAIGHT LINE TO NEXT POINT
@@ -1787,7 +1787,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 2])
                     geo.append([pt[1], pt[0]])
 
                     pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
@@ -1795,7 +1795,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     pt = [L_bp_l + L_el + lft_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 2])
                     geo.append([pt[1], pt[0]])
             else:
                 # EQUATOR ARC TO NEXT POINT
@@ -1806,7 +1806,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 pt = [L_el + lft_el + L_m - x2 + 2 * L_bp_l - shift, y2]
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0]])
+                        geo.append([pp[1], pp[0], 2])
                 geo.append([pt[1], pt[0]])
 
                 # STRAIGHT LINE TO NEXT POINT
@@ -1814,7 +1814,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 pt = [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1]
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0]])
+                        geo.append([pp[1], pp[0], 2])
                 geo.append([pt[1], pt[0]])
 
                 # ARC
@@ -1825,7 +1825,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 pt = [L_bp_l + L_el + lft_el + L_m - shift, Ri_m]
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0]])
+                        geo.append([pp[1], pp[0], 2])
                 geo.append([pt[1], pt[0]])
 
                 # calculate new shift
@@ -1838,14 +1838,14 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [-shift + x1, y1]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
             pt = [-shift + x2, y2]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
@@ -1853,7 +1853,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # flat top
@@ -1861,7 +1861,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_m + lft - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # EQUATOR ARC TO NEXT POINT
@@ -1874,13 +1874,13 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0]])
 
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_m + lft - x1 + 2 * L_bp_l - shift, y1], step)
             pt = [L_m + L_m + lft - x1 + 2 * L_bp_l - shift, y1]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
+                geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # ARC
@@ -1892,7 +1892,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # calculate new shift
@@ -1903,7 +1903,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [-shift + x1, y1]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
@@ -1911,7 +1911,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [-shift + x2, y2]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
@@ -1919,7 +1919,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # flat top
@@ -1927,7 +1927,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_m + lft_er - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # EQUATOR ARC TO NEXT POINT
@@ -1938,7 +1938,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_m + L_er + lft_er - x2er + L_bp_l + L_bp_r - shift, y2er]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # STRAIGHT LINE TO NEXT POINT
@@ -1946,7 +1946,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
             # ARC
@@ -1957,7 +1957,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_bp_l + L_m + L_er + lft_er - shift, Ri_er]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
             geo.append([pt[1], pt[0]])
 
     # BEAM PIPE
@@ -1972,8 +1972,8 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
         pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r + (n_cell - 2) * lft + lft_el + lft_er - shift,
               Ri_er]
         for pp in pts:
-            geo.append([pp[1], pp[0]])
-        geo.append([pt[1], pt[0]])
+            geo.append([pp[1], pp[0], 2])
+        geo.append([pt[1], pt[0], 2])
 
     # END PATH
     pts = lineTo(pt, [
@@ -1981,11 +1981,11 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                  step)  # to add beam pipe to right
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + (n_cell - 2) * lft + lft_el + lft_er + L_bp_l + L_bp_r - shift, 0]
     # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 2])
 
     # CLOSE PATH
     lineTo(pt, start_point, step)
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 3])
 
     # write geometry
     if write:
@@ -2929,129 +2929,139 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
     return plt.gca()
 
 
-def plot_gun():
-    """
-
-    Returns
-    -------
-
-    """
-    y1, R2, T2, L3, R4, L5, R6, L7, R8, T9, R10, T10, L11, R12, L13, R14, x = \
-        [1.5, 3, np.deg2rad(45), 24, 5, 11, 6, 19, 4, np.deg2rad(8), 3, np.deg2rad(40), 5, 3, 3, 3, 1]
+def write_gun_geometry(write=None):
+    y1, R2, T2, L3, R4, L5, R6, L7, R8,  T9, R10, T10, L11, R12, L13, R14, x = \
+        [1.5*1e-2, 3*1e-2, np.deg2rad(45), 24*1e-2, 5*1e-2, 11*1e-2, 6*1e-2, 19*1e-2, 4*1e-2, np.deg2rad(8), 3*1e-2, np.deg2rad(40), 5*1e-2, 3*1e-2, 3*1e-2, 3*1e-2, 1*1e-2]
 
     # calcualte R9
-    R9 = (((y1 + R2 * np.sin(T2) + L3 * np.cos(T2) + R4 * np.sin(T2) + L5 + R6) -
-           (R14 + L13 + R12 * np.sin(T10) + L11 * np.cos(T10) + R10 * np.sin(T10) + x + R8 * (
-                   1 - np.sin(T9))))) / np.sin(T9)
-    print(R9)
+    R9 = (((y1+R2*np.sin(T2) + L3*np.cos(T2) + R4*np.sin(T2) + L5 + R6) -
+         (R14 + L13 + R12*np.sin(T10) + L11*np.cos(T10) + R10*np.sin(T10) + x + R8*(1-np.sin(T9)))))/np.sin(T9)
 
-    step = 0.1
+    step = 5*1e-3
     geo = []
 
     start_pt = [0, 0]
-    geo.append([start_pt[1], start_pt[0]])
+    geo.append([start_pt[1], start_pt[0], 3])
     # DRAW LINE CONNECTING ARCS
     lineTo(start_pt, [0, y1], step)
     pt = [0, y1]
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 3])
 
     # DRAW ARC:
-    pts = arcToTheta(-R2, y1, R2, R2, pt, [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)], 0, T2, step)
-    pt = [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)]
+    pts = arcToTheta(-R2, y1, R2, R2, pt, [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)], 0, T2, step)
+    pt = [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)], step)
-    pt = [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)], step)
+    pt = [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)]
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] + R4 * np.cos(T2), pt[1] + R4 * np.sin(T2), R4, R4,
-                     pt, [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)], -(np.pi - T2), np.pi, step)
-    pt = [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)]
+    pts = arcToTheta(pt[0]+R4*np.cos(T2), pt[1] + R4*np.sin(T2), R4, R4,
+                     pt, [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)], -(np.pi-T2), np.pi, step)
+    pt = [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0], pt[1] + L5], step)
-    pt = [pt[0], pt[1] + L5]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0], pt[1]+L5], step)
+    pt = [pt[0], pt[1]+L5]
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] + R6, pt[1], R6, R6, pt, [pt[0] + R6, pt[1] + R6], np.pi, np.pi / 2, step)
-    pt = [pt[0] + R6, pt[1] + R6]
+    pts = arcToTheta(pt[0]+R6, pt[1], R6, R6, pt, [pt[0]+R6, pt[1] + R6], np.pi, np.pi/2, step)
+    pt = [pt[0]+R6, pt[1] + R6]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0] + L7, pt[1]], step)
-    pt = [pt[0] + L7, pt[1]]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0]+L7, pt[1]], step)
+    pt = [pt[0]+L7, pt[1]]
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0], pt[1] - R8, R8, R8, pt, [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))],
-                     np.pi / 2, T9, step)
-    pt = [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))]
+    pts = arcToTheta(pt[0], pt[1]-R8, R8, R8, pt, [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))], np.pi/2, T9, step)
+    pt = [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] - R9 * np.cos(T9), pt[1] - R9 * np.sin(T9), R9, R9,
-                     pt, [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)], T9, 0, step)
-    pt = [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)]
+    pts = arcToTheta(pt[0]-R9*np.cos(T9), pt[1] -R9*np.sin(T9), R9, R9,
+                     pt, [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)], T9, 0, step)
+    pt = [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] - R10, pt[1], R10, R10,
-                     pt, [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)], 0, -T10, step)
-    pt = [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)]
+    pts = arcToTheta(pt[0]-R10, pt[1], R10, R10,
+                     pt, [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)], 0, -T10, step)
+    pt = [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)], step)
-    pt = [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)], step)
+    pt = [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)]
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] + R12 * np.cos(T10), pt[1] - R12 * np.sin(T10), R12, R12,
-                     pt, [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)], (np.pi - T10), np.pi, step)
-    pt = [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)]
+    pts = arcToTheta(pt[0]+R12*np.cos(T10), pt[1] - R12*np.sin(T10), R12, R12,
+                     pt, [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)], (np.pi-T10), np.pi, step)
+    pt = [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0], pt[1] - L13], step)
-    pt = [pt[0], pt[1] - L13]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0], pt[1]-L13], step)
+    pt = [pt[0], pt[1]-L13]
+    geo.append([pt[1], pt[0], 2])
 
     # DRAW ARC:
-    pts = arcToTheta(pt[0] + R14, pt[1], R14, R14, pt, [pt[0] + R14, pt[1] - R14], np.pi, -np.pi / 2, step)
-    pt = [pt[0] + R14, pt[1] - R14]
+    pts = arcToTheta(pt[0]+R14, pt[1], R14, R14, pt, [pt[0]+R14, pt[1] - R14], np.pi, -np.pi/2, step)
+    pt = [pt[0]+R14, pt[1] - R14]
     for pp in pts:
-        geo.append([pp[1], pp[0]])
-    geo.append([pt[1], pt[0]])
+        if (np.around(pp, 12) != np.around(pt, 12)).all():
+            geo.append([pp[1], pp[0], 2])
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0] + 10 * y1, pt[1]], step)
-    pt = [pt[0] + 10 * y1, pt[1]]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0]+10*y1, pt[1]], step)
+    pt = [pt[0]+10*y1, pt[1]]
+    geo.append([pt[1], pt[0], 2])
 
     # line
-    lineTo(pt, [pt[0], pt[1] - y1], step)
-    pt = [pt[0], pt[1] - x]
-    geo.append([pt[1], pt[0]])
+    lineTo(pt, [pt[0], pt[1]-y1], step)
+    pt = [pt[0], pt[1]-x]
+    geo.append([pt[1], pt[0], 3])
+
+    start_pt = [0, 0]
+    geo.append([start_pt[1], start_pt[0], 3])
+
+    # pandss
+    df = pd.DataFrame(geo)
+    # print(df[df.duplicated(keep=False)])
 
     geo = np.array(geo)
+    _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
+    geo = geo[np.sort(idx)]
+
+    print('length of geometry:: ', len(geo))
 
     top = plt.plot(geo[:, 1], geo[:, 0])
     bottom = plt.plot(geo[:, 1], -geo[:, 0], c=top[0].get_color())
@@ -3061,7 +3071,15 @@ def plot_gun():
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
     plt.gca().set_aspect('equal')
-    plt.xlim(left=-30)
+    plt.xlim(left=-30*1e-2)
+
+    # write geometry
+    if write:
+        try:
+            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            df.to_csv(write, sep='\t', index=False)
+        except FileNotFoundError as e:
+            error('Check file path:: ', e)
 
     return plt.gca()
 
@@ -3441,3 +3459,9 @@ def area_pareto_fronts(pareto1, pareto2):
     # plt.legend()
     # plt.show()
 
+
+def reorder_legend(h, l, ncols):
+    re_h = sum((h[ii::ncols] for ii in range(ncols)), [])
+    re_l = sum((l[ii::ncols] for ii in range(ncols)), [])
+    # reorder = lambda ll, nc: sum((ll[ii::nc] for ii in range(nc)), [])
+    return re_h, re_l
