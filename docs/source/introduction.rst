@@ -25,7 +25,7 @@ also calculates most of the figures of merit. Some postprocessing is, however,
 required to transform them to the form that is used in most papers related
 to accelerating cavities design.
 
-The SUPERLANS code is intended to calculate azimuthal-homogenous modes in
+The NGSolveMEVP code is intended to calculate azimuthal-homogenous modes in
 axissymmetric cavities, periodical structure, and cut-off frequencies in
 long homogenous waveguides :cite:p:`NGSolve`. NGSolve is written by Sergey
 Belomestnykh and it consists of a set of executable files for differnt

@@ -49,12 +49,13 @@ version (currently ABCI_MP_12_5.zip).
 > wget http://abci.kek.jp/ABCI_MP64_12_5.zip -O ABCI_MP64_12_5.zip
 > ```
 
-Copy and rename version `ABCI_MP64_12_5.exe` from 
+Create `ABCI` folder in `cavsim2d/solver` folder. Copy and rename version `ABCI_MP64_12_5.exe` from 
 `<root folder>\ABCI_MP_12_5\ABCI_MP4_12_5\ABCI_MP application for Windows` to `<root folder>/cavsim2d/solver/ABCI` and rename to `ABCI.exe`.
 
 Or through the command line with 
 
 ```
+mkdir <root folder>/cavsim2d/solver/ABCI
 copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP64_12_5.exe <root folder>/cavsim2d/solver/ABCI
 cd <root folder>/cavsim2d/solver/ABCI
 ren ABCI_MP64_12_5.exe ABCI.exe
