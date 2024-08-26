@@ -12,7 +12,7 @@ import psutil
 import scipy.signal as sps
 from matplotlib.animation import FuncAnimation
 from scipy.interpolate import griddata
-from IPython.core.display import HTML, Image
+from IPython.core.display import HTML, Image, display_html
 from IPython.core.display_functions import display
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.special import jn_zeros, jnp_zeros
@@ -2203,7 +2203,7 @@ class Cavity:
         self.abci_data = {'Long': ABCIData(abci_data_dir, self.name, 0),
                           'Trans': ABCIData(abci_data_dir, self.name, 1)}
 
-    def plot_animate_wakefield(self):
+    def plot_animate_wakefield(self, save=False):
         def plot_contour_for_frame(data, frame_key, ax):
             ax.clear()
 
@@ -2220,20 +2220,24 @@ class Cavity:
 
         def animate_frames(data):
             fig, ax = plt.subplots(figsize=(18, 4))
-
             frame_keys = sorted(data.keys(), key=lambda x: int(x.split('_')[1]))  # Sort frames by their order
 
             def update(frame_key):
                 plot_contour_for_frame(data, frame_key, ax)
 
             ani = FuncAnimation(fig, update, frames=frame_keys, repeat=True, interval=1000)
+            plt.close(fig)
 
             return ani
 
-        efield_contour = get_wakefield_data(os.path.join(self.projectDir, "SimulationData", "ABCI",
-                                                     self.name, 'Cavity_MROT_0.top'))
+        top_folder = os.path.join(self.projectDir, "SimulationData", "ABCI", self.name)
+        efield_contour = get_wakefield_data(fr'{top_folder}/Cavity_MROT_0.top')
         ani = animate_frames(efield_contour)
-        HTML(ani.to_jshtml())
+        display_html(HTML(animate_frames(efield_contour).to_jshtml()))
+
+        if save:
+            # Save the animation as an MP4 file
+            ani.save(fr'{top_folder}/{self.name}_e_field_animation.mp4', writer='ffmpeg', dpi=150)
 
     def get_power(self, rf_config):
 
@@ -2254,7 +2258,7 @@ class Cavity:
         self.pdyn = self.v_rf * (self.op_field * self.l_active) / (
                 self.R_Q * self.Q0 * self.n_cav_op_field)  # per cavity
         self.pstat = (self.l_cavity * self.v_rf / (
-                    self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
+                self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
         self.p_wp = (1 / self.eta) * (self.pdyn + self.pstat)  # per cavity
 
         self.rf_performance_qois = {
