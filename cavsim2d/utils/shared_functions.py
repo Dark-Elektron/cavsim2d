@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 from pathlib import Path
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -3465,3 +3466,45 @@ def reorder_legend(h, l, ncols):
     re_l = sum((l[ii::ncols] for ii in range(ncols)), [])
     # reorder = lambda ll, nc: sum((ll[ii::nc] for ii in range(nc)), [])
     return re_h, re_l
+
+
+def get_wakefield_data(file_path):
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+
+        data = {}
+        current_points = []
+        current_type = None
+        in_electric_field_frame = False  # Flag to track "Electric Field Lines" frames
+        frame_count = 0  # Counter for Electric Field Lines frames
+
+        for line in lines:
+            if "NEW FRAME" in line:
+                if in_electric_field_frame:
+                    # Store the data for the current frame before moving to the next
+                    if current_type and current_points:
+                        data[f"Frame_{frame_count}"].append(
+                            (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+                in_electric_field_frame = False  # Reset the flag when a new frame starts
+                current_points = []
+                current_type = None
+            elif "Electric Field Lines" in line:
+                in_electric_field_frame = True  # Set the flag for "Electric Field Lines"
+                frame_count += 1
+                data[f"Frame_{frame_count}"] = []  # Initialize a new entry for the frame
+            elif "JOIN 1" in line and in_electric_field_frame:
+                if current_type and current_points:
+                    data[f"Frame_{frame_count}"].append(
+                        (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+                current_type = "DOTS" if "DOTS" in line else "SOLID"
+                current_points = []
+            elif in_electric_field_frame and (re.match(r'\s*\d\.\d+E[+-]\d+\s+\d\.\d+E[+-]\d+', line) or re.match(
+                    r'\s*\d\.\d+\s+\d\.\d+E[+-]\d+', line)):
+                point = [float(x) for x in re.findall(r'[-+]?\d*\.\d+E[-+]?\d+|\d+\.\d+', line)]
+                current_points.append(point)
+
+        # Add the last set of points if any
+        if in_electric_field_frame and current_type and current_points:
+            data[f"Frame_{frame_count}"].append((current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+
+        return data

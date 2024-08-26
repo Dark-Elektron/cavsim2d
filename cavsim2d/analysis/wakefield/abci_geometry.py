@@ -30,7 +30,10 @@ class ABCIGeometry(Geometry):
         BETA = 1
         LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
-        LSAV, LCPUTM = 'T', 'F'  # CHANGING LSAV TO TRUE TO SEE IF I CAN SAVE ELECTRIC FIELDS
+        LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 7
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -62,6 +65,13 @@ class ABCIGeometry(Geometry):
                 LSAV = value
             if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
                 LCPUTM = value
+
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
 
         # Adding parameter arguments here for testing purposes # fid, fileID
         self.fid = f'{fid}'
@@ -277,12 +287,12 @@ class ABCIGeometry(Geometry):
 
                 f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
-                f.write(f' &TIME  MT = {int(MT)} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK=.T. &END \n')  # , NFS = {NFS}
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = .{LCBACK}. &END \n')  # , NFS = {NFS}
                 # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
                 f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T., LPLE = .T., LPLC=.T. &END \n')
+                        f'LINTZ = .F., LPATH = .T., LPLE = .{LPLE}., LPLC=.F. &END \n')
                 f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')
@@ -316,6 +326,9 @@ class ABCIGeometry(Geometry):
         LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
         LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 7
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -347,6 +360,13 @@ class ABCIGeometry(Geometry):
                 LSAV = value
             if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
                 LCPUTM = value
+
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
 
         # Adding parameter arguments here for testing purposes # fid, fileID
         self.fid = f'{fid}'
@@ -592,12 +612,12 @@ class ABCIGeometry(Geometry):
 
                 f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
-                f.write(f' &TIME  MT = {int(MT)} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}. &END \n')  # , NFS = {NFS}
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = .{LCBACK}. &END \n')  # , NFS = {NFS}
                 # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
                 f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T. &END \n')
+                        f'LINTZ = .F., LPATH = .T., LPLE = .{LPLE}., LPLC=.F. &END \n')
                 f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
                         f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
                 f.write('\nSTOP\n')

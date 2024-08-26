@@ -10,6 +10,7 @@ from math import floor
 import matplotlib
 import psutil
 import scipy.signal as sps
+from matplotlib.animation import FuncAnimation
 from scipy.interpolate import griddata
 from IPython.core.display import HTML, Image
 from IPython.core.display_functions import display
@@ -1627,13 +1628,15 @@ class Cavity:
             self.end_cell_right = end_cell_right
 
             self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req, self.l = self.mid_cell[:8]
-            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[:8]
-            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[:8]
+            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[
+                                                                                                        :8]
+            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[
+                                                                                                        :8]
 
             # active cavity length
             self.l_active = (2 * (self.n_cells - 1) * self.L +
-                             (self.n_cells - 2)*self.l + self.L_el + self.l_el +
-                             self.L_er + self.l_er)*1e-3
+                             (self.n_cells - 2) * self.l + self.L_el + self.l_el +
+                             self.L_er + self.l_er) * 1e-3
 
             # get geometric parameters
             self.shape = {
@@ -1668,7 +1671,7 @@ class Cavity:
             self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er = self.end_cell_right[:7]
 
             # active cavity length
-            self.l_active = (2 * (self.n_cells - 1) * self.L + self.L_el + self.L_er)*1e-3
+            self.l_active = (2 * (self.n_cells - 1) * self.L + self.L_el + self.L_er) * 1e-3
             self.l_cavity = self.l_active + 8 * self.L
 
             # get geometric parameters
@@ -2200,13 +2203,45 @@ class Cavity:
         self.abci_data = {'Long': ABCIData(abci_data_dir, self.name, 0),
                           'Trans': ABCIData(abci_data_dir, self.name, 1)}
 
+    def plot_animate_wakefield(self):
+        def plot_contour_for_frame(data, frame_key, ax):
+            ax.clear()
+
+            colors = {'DOTS': 'k', 'SOLID': 'k'}
+
+            if frame_key in data:
+                for plot_type, df in data[frame_key]:
+                    ax.plot(df['X'], df['Y'], linestyle='-', color=colors[plot_type])
+
+            ax.set_xlabel('X-axis (m)')
+            ax.set_ylabel('Y-axis (m)')
+            ax.set_title(f'Contour Plot for {frame_key}')
+            ax.grid(True)
+
+        def animate_frames(data):
+            fig, ax = plt.subplots(figsize=(18, 4))
+
+            frame_keys = sorted(data.keys(), key=lambda x: int(x.split('_')[1]))  # Sort frames by their order
+
+            def update(frame_key):
+                plot_contour_for_frame(data, frame_key, ax)
+
+            ani = FuncAnimation(fig, update, frames=frame_keys, repeat=True, interval=1000)
+
+            return ani
+
+        efield_contour = get_wakefield_data(os.path.join(self.projectDir, "SimulationData", "ABCI",
+                                                     self.name, 'Cavity_MROT_0.top'))
+        ani = animate_frames(efield_contour)
+        HTML(ani.to_jshtml())
+
     def get_power(self, rf_config):
 
-        self.op_field = self.operating_points['Eacc [MV/m]']*1e6
-        self.v_rf = self.operating_points['V [GV]']*1e9
+        self.op_field = self.operating_points['Eacc [MV/m]'] * 1e6
+        self.v_rf = self.operating_points['V [GV]'] * 1e9
         self.Q0 = rf_config['Q0 []']
         self.eta = rf_config['eta []']
-        self.p_sr = rf_config['SR per turn [MW]']*1e6
+        self.p_sr = rf_config['SR per turn [MW]'] * 1e6
 
         self.n_cav = int(np.ceil(self.v_rf / (self.op_field * self.l_active)))
         p_in = self.p_sr / self.op_field  # maximum synchrotron radiation per beam
@@ -2218,7 +2253,8 @@ class Cavity:
         # ic(self.v_rf, self.l_active, self.R_Q, self.l_cavity, self.p_in, self.n_cav_op_field, 1/self.eta, self.Q0)
         self.pdyn = self.v_rf * (self.op_field * self.l_active) / (
                 self.R_Q * self.Q0 * self.n_cav_op_field)  # per cavity
-        self.pstat = (self.l_cavity * self.v_rf / (self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
+        self.pstat = (self.l_cavity * self.v_rf / (
+                    self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
         self.p_wp = (1 / self.eta) * (self.pdyn + self.pstat)  # per cavity
 
         self.rf_performance_qois = {
@@ -6647,13 +6683,13 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
                                          projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
+                                         WG_M=ii, marker=ii, wakefield_config=wakefield_config)
                     if shape['CELL PARAMETERISATION'] == 'flattop':
                         abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                                  fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                                  DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
                                                  projectDir=projectDir,
-                                                 WG_M=ii, marker=ii)
+                                                 WG_M=ii, marker=ii, wakefield_config=wakefield_config)
 
             else:
                 for m in range(2):
@@ -6662,13 +6698,13 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
                                          fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                          DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
                                          projectDir=projectDir,
-                                         WG_M=ii, marker=ii)
+                                         WG_M=ii, marker=ii, wakefield_config=wakefield_config)
                     if shape['CELL PARAMETERISATION'] == 'flattop':
                         abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                                  fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
                                                  DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
                                                  projectDir=projectDir,
-                                                 WG_M=ii, marker=ii)
+                                                 WG_M=ii, marker=ii, wakefield_config=wakefield_config)
 
         done(f'Cavity {name}. Time: {time.time() - start_time}')
 
@@ -7177,9 +7213,9 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
                     perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
+                            1 + delta[j] * processor_nodes[j, i1])
                     perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
+                            1 + delta[j] * processor_nodes[j, i1])
 
             # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
             #     # cell_node = shape['IC']
@@ -7326,9 +7362,9 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 else:
                     perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
                     perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
+                            1 + delta[j] * processor_nodes[j, i1])
                     perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
+                            1 + delta[j] * processor_nodes[j, i1])
 
             # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
             #     # cell_node = shape['IC']
