@@ -12,7 +12,7 @@ import psutil
 import scipy.signal as sps
 from matplotlib.animation import FuncAnimation
 from scipy.interpolate import griddata
-from IPython.core.display import HTML, Image, display_html
+from IPython.core.display import HTML, Image, display_html, Math
 from IPython.core.display_functions import display
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.special import jn_zeros, jnp_zeros
@@ -53,7 +53,18 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
           'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$",
-          'Z_2023': 'Z', 'W_2023': 'W', 'H_2023': 'H', 'ttbar_2023': r'$\mathrm{t \bar t}$'
+          'Z_2023': 'Z', 'W_2023': 'W', 'H_2023': 'H', 'ttbar_2023': r'$\mathrm{t \bar t}$',
+          'Z_b_2024': 'Z$_\mathrm{b}$', 'W_b_2024': 'W$_\mathrm{b}$',
+          'H_b_2024': 'H$_\mathrm{b}$', 'ttbar_b_2024': r'$\mathrm{t \bar t}_\mathrm{b}$',
+          'Z_b_2024_FB': 'Z$_\mathrm{b}$[FB]', 'W_b_2024_FB': 'W$_\mathrm{b}$[FB]',
+          'H_b_2024_FB': 'H$_\mathrm{b}$[FB]', 'ttbar_b_2024_FB': r'$\mathrm{t \bar t}_\mathrm{b}$[FB]',
+          r"Ncav": r"$N_\mathrm{cav}$",
+          r"Q0 []": r"$Q_0 ~\mathrm{[]}$",
+          r"Pstat/cav [W]": r"$P_\mathrm{stat}$/cav [W]",
+          r"Pdyn/cav [W]": r"$P_\mathrm{dyn}$/cav [W]",
+          r"Pwp/cav [kW]": r"$P_\mathrm{wp}$/cav [kW]",
+          r"Pin/cav [kW]": r"$P_\mathrm{in}$/cav [kW]",
+          r"PHOM/cav [kW]": r"$P_\mathrm{HOM}$/cav [kW]"
           }
 
 m0 = 9.1093879e-31
@@ -1551,7 +1562,11 @@ class Cavity:
         name
         """
 
-        self.n_cav_op_field = None
+        self.uq_weights = None
+        self.V_rf_config = 0
+        self.Eacc_rf_config = 0
+        self.rf_performance_qois_uq = {}
+        self.rf_performance_qois = {}
         self.uq_hom_results = None
         self.sweep_results = {}
         self.sweep_results_uq = {}
@@ -1568,13 +1583,14 @@ class Cavity:
         self.bc = 33
         self.name = name
 
-        self.op_field = None
-        self.p_wp = None
-        self.pstat = None
-        self.pdyn = None
-        self.p_cryo = None
-        self.p_in = None
-        self.Q0 = None
+        # self.n_cav_op_field = {}
+        # self.op_field = {}
+        # self.p_wp = {}
+        # self.pstat = {}
+        # self.pdyn = {}
+        # self.p_cryo = {}
+        # self.p_in = {}
+        # self.Q0 = {}
 
         self.beampipe = beampipe
         self.no_of_modules = 1
@@ -1586,17 +1602,18 @@ class Cavity:
         self.eigenmode_tune_res = {}
         self.operating_points = None
         self.color = color
+        self.Q0 = None
+        self.inv_eta = None
+        self.neighbours = {}
 
         # eigenmode results
-        self.R_Q, self.k_fm, self.GR_Q, self.op_freq, self.e, self.b, \
+        self.R_Q, self.k_fm, self.GR_Q, self.freq, self.e, self.b, \
             self.G, self.ff, self.k_cc, self.axis_field, self.surface_field = [0 for _ in range(11)]
 
         # wakefield results
         self.k_fm, self.k_loss, self.k_kick, self.phom, self.sigma, self.I0 = [{} for _ in range(6)]
 
         self.wall_material = None
-
-        self.freq = None
         self.n_cells = n_cells
 
         self.cell_parameterisation = cell_parameterisation
@@ -1637,12 +1654,13 @@ class Cavity:
             self.l_active = (2 * (self.n_cells - 1) * self.L +
                              (self.n_cells - 2) * self.l + self.L_el + self.l_el +
                              self.L_er + self.l_er) * 1e-3
+            self.l_cavity = self.l_active + 8 * (self.L + self.l) * 1e-3
 
             # get geometric parameters
             self.shape = {
-                "IC": self.mid_cell[:8],
-                "OC": self.end_cell_left[:8],
-                "OC_R": self.end_cell_right[:8],
+                "IC": update_alpha(self.mid_cell[:8], self.cell_parameterisation),
+                "OC": update_alpha(self.end_cell_left[:8], self.cell_parameterisation),
+                "OC_R": update_alpha(self.end_cell_right[:8], self.cell_parameterisation),
                 "BP": beampipe,
                 "n_cells": self.n_cells,
                 'CELL PARAMETERISATION': self.cell_parameterisation
@@ -1672,13 +1690,13 @@ class Cavity:
 
             # active cavity length
             self.l_active = (2 * (self.n_cells - 1) * self.L + self.L_el + self.L_er) * 1e-3
-            self.l_cavity = self.l_active + 8 * self.L
+            self.l_cavity = self.l_active + 8 * self.L * 1e-3
 
             # get geometric parameters
             self.shape = {
-                "IC": self.mid_cell[:7],
-                "OC": self.end_cell_left[:7],
-                "OC_R": self.end_cell_right[:7],
+                "IC": update_alpha(self.mid_cell[:7], self.cell_parameterisation),
+                "OC": update_alpha(self.end_cell_left[:7], self.cell_parameterisation),
+                "OC_R": update_alpha(self.end_cell_right[:7], self.cell_parameterisation),
                 "BP": beampipe,
                 "n_cells": self.n_cells,
                 'CELL PARAMETERISATION': self.cell_parameterisation
@@ -2164,14 +2182,33 @@ class Cavity:
 
     def get_uq_fm_results(self, folder):
         # load uq result
-        with open(folder, 'r') as json_file:
+        with open(fr'{folder}\uq.json', 'r') as json_file:
             self.uq_fm_results = json.load(json_file)
+
+        # get neighbours and all qois
+        neighbours = {}
+        for dirr in os.listdir(folder):
+            if 'Q' in dirr.split('_')[-1]:
+                with open(fr'{folder}\{dirr}\monopole\qois.json', 'r') as json_file:
+                    neighbour_uq_fm_results = json.load(json_file)
+                neighbours[dirr] = neighbour_uq_fm_results
+
+        self.neighbours = pd.DataFrame.from_dict(neighbours, orient='index')
+
+        nodes, weights = cn_leg_05_2(7)
+        # write weights
+
+        data_table = pd.DataFrame(weights, columns=['weights'])
+        data_table.to_csv(fr'{folder}\weights.csv', index=False, sep='\t', float_format='%.32f')
+
+        # get weights
+        self.uq_weights = pd.read_csv(fr'{folder}\weights.csv')
 
     def get_uq_hom_results(self, folder):
         with open(folder, 'r') as json_file:
             self.uq_hom_results = json.load(json_file)
 
-    def get_wakefield_qois(self):
+    def get_wakefield_qois(self, wakefield_config):
         """
         Get the quantities of interest written by the ABCI code
 
@@ -2189,14 +2226,21 @@ class Cavity:
 
         if os.path.exists(fr"{self.projectDir}\SimulationData\ABCI\{self.name}\{qois}"):
             with open(fr"{self.projectDir}\SimulationData\ABCI\{self.name}\{qois}") as json_file:
-                self.wakefield_qois = json.load(json_file)
+                all_wakefield_qois = json.load(json_file)
 
-        for key, val in self.wakefield_qois.items():
-            self.k_fm[key] = val['k_FM [V/pC]']
-            self.k_loss[key] = val['|k_loss| [V/pC]']
-            self.k_kick[key] = val['|k_kick| [V/pC/m]']
-            self.phom[key] = val['P_HOM [kW]']
-            self.I0[key] = val['I0 [mA]']
+        # get only keys in op_points
+        if 'operating_points' in wakefield_config:
+            for op_pt in wakefield_config['operating_points'].keys():
+                for key, val in all_wakefield_qois.items():
+                    if op_pt in key:
+                        self.wakefield_qois[key] = val
+
+            for key, val in self.wakefield_qois.items():
+                self.k_fm[key] = val['k_FM [V/pC]']
+                self.k_loss[key] = val['|k_loss| [V/pC]']
+                self.k_kick[key] = val['|k_kick| [V/pC/m]']
+                self.phom[key] = val['P_HOM [kW]']
+                self.I0[key] = val['I0 [mA]']
 
     def get_abci_data(self):
         abci_data_dir = os.path.join(self.projectDir, "SimulationData", "ABCI")
@@ -2239,40 +2283,139 @@ class Cavity:
             # Save the animation as an MP4 file
             ani.save(fr'{top_folder}/{self.name}_e_field_animation.mp4', writer='ffmpeg', dpi=150)
 
-    def get_power(self, rf_config):
+    def get_power_uq(self, rf_config, op_points_list):
+        stat_moms = ['expe', 'stdDev']
+        for ii, op_pt in enumerate(op_points_list):
+            self.rf_performance_qois_uq[op_pt] = {}
+            val = self.operating_points[op_pt]
+            for kk, vv in val.items():
+                if 'sigma' in kk:
+                    sig_id = kk.split('_')[-1].split(' ')[0]
 
-        self.op_field = self.operating_points['Eacc [MV/m]'] * 1e6
-        self.v_rf = self.operating_points['V [GV]'] * 1e9
-        self.Q0 = rf_config['Q0 []']
-        self.eta = rf_config['eta []']
-        self.p_sr = rf_config['SR per turn [MW]'] * 1e6
+                    if 'Eacc [MV/m]' in rf_config.keys():
+                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0]}
+                    else:
+                        op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0]}
+                        self.Eacc_rf_config = val['Eacc [MV/m]']
 
-        self.n_cav = int(np.ceil(self.v_rf / (self.op_field * self.l_active)))
-        p_in = self.p_sr / self.op_field  # maximum synchrotron radiation per beam
+                    if 'V [GV]' in rf_config.keys():
+                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0]}
+                    else:
+                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0]}
 
-        # self.p_in = self.v_cav ** 2 / (4 * self.R_Q * Q) * ((1 + self.R_Q * Q * WP[self.wp]['I0'] / self.v_cav) ** 2
-        #                                                     + (delta_f / f1_2 + self.R_Q * Q * WP[self.wp][
-        #             'I0'] / self.v_cav * np.sin(phi)) ** 2)
-        self.p_cryo = 8 / (np.sqrt(self.op_freq / 500e6))  # W/m
-        # ic(self.v_rf, self.l_active, self.R_Q, self.l_cavity, self.p_in, self.n_cav_op_field, 1/self.eta, self.Q0)
-        self.pdyn = self.v_rf * (self.op_field * self.l_active) / (
-                self.R_Q * self.Q0 * self.n_cav_op_field)  # per cavity
-        self.pstat = (self.l_cavity * self.v_rf / (
-                self.l_active * self.op_field * self.n_cav_op_field)) * self.p_cryo  # per cavity
-        self.p_wp = (1 / self.eta) * (self.pdyn + self.pstat)  # per cavity
+                    Q0 = {'expe': [self.Q0], 'stdDev': [0]}
+                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0]}
+                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0]}
+                    n_cav = {'expe': [0], 'stdDev': [0]}
+                    p_in = {'expe': [0], 'stdDev': [0]}
+                    p_cryo = {'expe': [0], 'stdDev': [0]}
+                    pdyn = {'expe': [0], 'stdDev': [0]}
+                    pstat = {'expe': [0], 'stdDev': [0]}
+                    p_wp = {'expe': [0], 'stdDev': [0]}
 
-        self.rf_performance_qois = {
-            r"$N_\mathrm{cav}$": self.n_cav,
-            r"$Q_0 ~\mathrm{[10^{10}}]}$": self.Q0 * 1e-10,
-            r"$P_\mathrm{stat}$/cav [W]": self.pstat,
-            r"$P_\mathrm{dyn}$/cav [W]": self.pdyn,
-            r"$P_\mathrm{wp}$/cav [kW]": self.p_wp * 1e-3,
-            r"$P_\mathrm{in}$/cav [kW]": self.p_in * 1e-3,
-            r"$P_\mathrm{HOM}$/cav [kW]": self.phom,
-        }
+                    # test
+                    n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
+
+                    # p_in = rf_config['SR per turn [MW]'] * 1e6 / n_cav * 1e-3  # maximum synchrotron radiation per beam
+
+                    p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
+
+                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
+                    pdyn_expe, pdyn_std = weighted_mean_obj(np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
+                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std}
+
+                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
+                    pstat_expe, pstat_std = weighted_mean_obj(np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
+                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std}
+
+                    p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
+                    p_wp_expe, p_wp_std = weighted_mean_obj(np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
+                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std}
+
+                    for stat_mom in stat_moms:
+                        if op_field[stat_mom][0] != 0:
+                            # n_cav[stat_mom] = [
+                            #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
+
+                            p_in[stat_mom] = [p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
+
+                        # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
+                        #     p_cryo[stat_mom] = [
+                        #         8 / (np.sqrt(self.uq_fm_results['freq [MHz]'][stat_mom][0] / 500))]  # W/m
+                        #
+                        # if self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] * n_cav[stat_mom][0] != 0:
+                        #     pdyn[stat_mom] = [v_rf[stat_mom][0] * (op_field[stat_mom][0] * self.l_active) / (
+                        #             self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] *
+                        #             n_cav[stat_mom][0])]  # per cavity
+                        #
+                        # if op_field[stat_mom][0] != 0 and n_cav[stat_mom][0] != 0:
+                        #     pstat[stat_mom] = [(self.l_cavity * v_rf[stat_mom][0] / (
+                        #             self.l_active * op_field[stat_mom][0] * n_cav[stat_mom][0])) * p_cryo[stat_mom][
+                        #                            0]]
+                        #
+                        # if inv_eta[stat_mom][0] != 0:
+                        #     p_wp[stat_mom] = [
+                        #         (inv_eta[stat_mom][0]) * (pdyn[stat_mom][0] + pstat[stat_mom][0]) * 1e-3]  # per cavity
+
+                    self.rf_performance_qois_uq[op_pt][sig_id] = {
+                        r"Ncav": n_cav,
+                        r"Q0 []": Q0,
+                        r"Pstat/cav [W]": pstat,
+                        r"Pdyn/cav [W]": pdyn,
+                        r"Pwp/cav [kW]": p_wp,
+                        r"Pin/cav [kW]": p_in,
+                        r"PHOM/cav [kW]": self.uq_hom_results[fr'P_HOM [kW]_{op_pt}_{sig_id}_{vv}mm']
+                    }
+        return self.rf_performance_qois_uq
+
+    def get_power(self, rf_config, op_points_list):
+        for ii, op_pt in enumerate(op_points_list):
+            self.rf_performance_qois[op_pt] = {}
+            val = self.operating_points[op_pt]
+            for kk, vv in val.items():
+                if 'sigma' in kk:
+                    sig_id = kk.split('_')[-1].split(' ')[0]
+
+                    if 'Eacc [MV/m]' in rf_config.keys():
+                        op_field = self.Eacc_rf_config * 1e6
+                    else:
+                        op_field = val['Eacc [MV/m]'] * 1e6
+                        self.Eacc_rf_config = op_field
+
+                    if 'V [GV]' in rf_config.keys():
+                        v_rf = rf_config['V [GV]'][ii] * 1e9
+                    else:
+                        v_rf = val['V [GV]'] * 1e9
+
+                    Q0 = self.Q0
+                    inv_eta = self.inv_eta
+                    p_sr = rf_config['SR per turn [MW]'] * 1e6
+
+                    n_cav = int(np.ceil(v_rf / (op_field * self.l_active)))
+                    p_in = p_sr / n_cav  # maximum synchrotron radiation per beam
+
+                    p_cryo = 8 / (np.sqrt(self.freq / 500))
+
+                    pdyn = v_rf * (op_field * self.l_active) / (self.R_Q * Q0 * n_cav)
+
+                    pstat = (self.l_cavity * v_rf / (self.l_active * op_field * n_cav)) * p_cryo  # per cavity
+                    p_wp = (inv_eta) * (pdyn + pstat)  # per cavity
+
+                    self.rf_performance_qois[op_pt][sig_id] = {
+                        r"Ncav": n_cav,
+                        r"Q0 []": Q0,
+                        r"Pstat/cav [W]": pstat,
+                        r"Pdyn/cav [W]": pdyn,
+                        r"Pwp/cav [kW]": p_wp * 1e-3,
+                        r"Pin/cav [kW]": p_in * 1e-3,
+                        r"PHOM/cav [kW]": self.phom[fr'{op_pt}_{sig_id}_{vv}mm']
+                    }
         return self.rf_performance_qois
 
-    def plot(self, what, ax=None, **kwargs):
+    def get_uq_post(self, qoi):
+        pass
+
+    def plot(self, what, ax=None, scale_x=1, **kwargs):
         if what.lower() == 'geometry':
             if 'mid_cell' in kwargs.keys():
                 new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
@@ -2294,12 +2437,12 @@ class Cavity:
         if what.lower() == 'zl':
             if ax:
                 x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
+                ax.plot(x * scale_x * 1e3, y, lw=3, label=fr'{self.name} (Wake. Long.)', **kwargs)
             else:
                 fig, ax = plt.subplots(figsize=(12, 4))
                 ax.margins(x=0)
                 x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
+                ax.plot(x * scale_x * 1e3, y, lw=3, label=fr'{self.name} (Wake. Long.)', **kwargs)
 
             ax.set_xlabel('f [MHz]')
             ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
@@ -2307,12 +2450,12 @@ class Cavity:
         if what.lower() == 'zt':
             if ax:
                 x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', lw=3, **kwargs)
             else:
                 fig, ax = plt.subplots(figsize=(12, 4))
                 ax.margins(x=0)
                 x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', lw=3, **kwargs)
             ax.set_xlabel('f [MHz]')
             ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
             return ax
@@ -2610,6 +2753,8 @@ class Cavities(Optimisation):
         """
 
         super().__init__()
+        self.rf_config = None
+        self.power_qois_uq = {}
         self.shape_space = {}
         self.shape_space_multicell = {}
         self.sweep_results = None
@@ -2631,7 +2776,7 @@ class Cavities(Optimisation):
         self.uq_fm_results = {}
         self.uq_hom_results = {}
 
-        self.p_qois = None
+        self.power_qois = {}
         self.fm_results = None
         self.hom_results = None
         self.projectDir = None
@@ -3068,6 +3213,7 @@ class Cavities(Optimisation):
         if rerun:
             run_tune_parallel(self.shape_space, tune_config, self.projectDir, solver='NGSolveMEVP', resume=False)
 
+        self.tune_config = tune_config
         # get tune results
         self.get_tune_res()
 
@@ -3119,6 +3265,7 @@ class Cavities(Optimisation):
         None
 
         """
+
         if eigenmode_config is None:
             eigenmode_config = {}
 
@@ -3156,6 +3303,7 @@ class Cavities(Optimisation):
             run_eigenmode_parallel(self.shape_space, self.shape_space_multicell, eigenmode_config,
                                    self.projectDir)
 
+        self.eigenmode_config = eigenmode_config
         self.get_eigenmode_qois(uq_config)
 
     def get_eigenmode_qois(self, uq_config):
@@ -3165,7 +3313,7 @@ class Cavities(Optimisation):
                 cav.get_eigenmode_qois()
                 self.eigenmode_qois[cav.name] = cav.eigenmode_qois
                 if uq_config:
-                    cav.get_uq_fm_results(fr"{self.projectDir}\SimulationData\NGSolveMEVP\{cav.name}\uq.json")
+                    cav.get_uq_fm_results(fr"{self.projectDir}\SimulationData\NGSolveMEVP\{cav.name}")
                     self.uq_fm_results[cav.name] = cav.uq_fm_results
             except FileNotFoundError:
                 error("Could not find the eigenmode results. Please rerun eigenmode analysis.")
@@ -3212,10 +3360,16 @@ class Cavities(Optimisation):
         -------
 
         """
+
         if wakefield_config is None:
             wakefield_config = {}
 
         wakefield_config_keys = wakefield_config.keys()
+
+        if 'operating_points' in wakefield_config_keys:
+            self.operating_points = wakefield_config['operating_points']
+            for cav in self.cavities_list:
+                cav.operating_points = self.operating_points
 
         rerun = True
         if 'rerun' in wakefield_config_keys:
@@ -3312,13 +3466,14 @@ class Cavities(Optimisation):
             run_wakefield_parallel(self.shape_space, self.shape_space_multicell, wakefield_config,
                                    self.projectDir, marker='', rerun=rerun)
 
+        self.wakefield_config = wakefield_config
         self.get_wakefield_qois(uq_config)
 
     def get_wakefield_qois(self, uq_config):
         for key, cav in self.cavities_dict.items():
             try:
                 cav.get_abci_data()
-                cav.get_wakefield_qois()
+                cav.get_wakefield_qois(self.wakefield_config)
                 self.wakefield_qois[cav.name] = cav.wakefield_qois
                 if uq_config:
                     cav.get_uq_hom_results(fr"{self.projectDir}\SimulationData\ABCI\{cav.name}\uq.json")
@@ -3342,26 +3497,44 @@ class Cavities(Optimisation):
             except FileNotFoundError:
                 error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
-    def plot(self, what, ax=None, **kwargs):
-        for cav in self.cavities_list:
+    def plot(self, what, ax=None, scale_x=None, **kwargs):
+        for ii, cav in enumerate(self.cavities_list):
             if what.lower() == 'geometry':
                 ax = cav.plot('geometry', ax, **kwargs)
 
             if what.lower() == 'zl':
+                if scale_x is None:
+                    scale_x = [1 for _ in self.cavities_list]
+                else:
+                    if isinstance(scale_x, list):
+                        assert len(scale_x) == len(self.cavities_list), error(
+                            'Length of scale_x must be same as number of Cavity objects.')
+                    else:
+                        scale_x = [scale_x for _ in self.cavities_list]
+
                 if ax:
-                    ax = cav.plot('zl', ax)
+                    ax = cav.plot('zl', ax, scale_x=scale_x[ii])
                 else:
                     fig, ax = plt.subplots(figsize=(12, 4))
                     ax.margins(x=0)
-                    ax = cav.plot('zl', ax)
+                    ax = cav.plot('zl', ax, scale_x=scale_x[ii])
 
             if what.lower() == 'zt':
+                if scale_x is None:
+                    scale_x = [1 for _ in self.cavities_list]
+                else:
+                    if isinstance(scale_x, list):
+                        assert len(scale_x) == len(self.cavities_list), error(
+                            'Length of scale_x must be same as number of Cavity objects.')
+                    else:
+                        scale_x = [scale_x for _ in self.cavities_list]
+
                 if ax:
-                    ax = cav.plot('zt', ax)
+                    ax = cav.plot('zt', ax, scale_x=scale_x[ii])
                 else:
                     fig, ax = plt.subplots(figsize=(12, 4))
                     ax.margins(x=0)
-                    ax = cav.plot('zt', ax)
+                    ax = cav.plot('zt', ax, scale_x=scale_x[ii])
 
             if what.lower() == 'convergence':
                 ax = cav.plot('convergence', ax)
@@ -3390,42 +3563,6 @@ class Cavities(Optimisation):
             results.append(self.qois(cav, cav.op_field * 1e-6, E_acc))
 
         self.returned_results = results
-
-    def power_qois(self, cav, opt_list, Eacc):
-        """
-
-        Parameters
-        ----------
-        cavity: object
-            Cavity object
-        op_field: float
-            Cavity operating field
-
-        Returns
-        -------
-        Dictionary containing quantities of interest (normed optional).
-        """
-
-        qois = {
-            r"$N_\mathrm{cav}$": cav.n_cav_op_field,
-            r"$Q_0 ~\mathrm{[10^{10}}]}$": cav.Q0_desired * 1e-10,
-            r"$P_\mathrm{stat}$/cav [W]": cav.pstat,
-            r"$P_\mathrm{dyn}$/cav [W]": cav.pdyn,
-            r"$P_\mathrm{wp}$/cav [kW]": cav.p_wp * 1e-3,
-            r"$P_\mathrm{in}$/cav [kW]": cav.p_in * 1e-3,
-            r"$P_\mathrm{HOM}$/cav [kW]": [cav.phom[opt] for opt in opt_list],
-            # r"P_stat [W]": np.average(cavity.pstat[ind]),
-            # r"P_dyn [W]": np.average(cavity.pdyn[ind]),
-            # r"$P_\mathrm{HOM}$ [kW]": cavity.phom * np.average(cavity.n_cav[ind]),
-            # r"P_tot_loss [kW]": np.average(cavity.pstat[ind]) * 1e-3
-            #                     + np.average(cavity.pdyn[ind]) * 1e-3
-            #                     + cavity.phom * np.average(cavity.n_cav[ind]),
-            # r"$Q_\mathrm{0} \mathrm{[10^8]}$": np.average(cavity.Q0[ind] * 1e-8),
-            # r"$Rs_\mathrm{0} \mathrm{[10^7]}$": np.average(cavity.Rs[ind])
-        }
-        self.p_qois.append(qois)
-
-        return qois
 
     def qois_fm(self):
         """
@@ -3723,7 +3860,29 @@ class Cavities(Optimisation):
 
         plt.show()
 
-    def plot_compare_power_scatter(self, opt_list):
+    def get_power_qois(self, cav, rf_config, op_points_list, uq=False):
+        """
+
+        Parameters
+        ----------
+        cavity: object
+            Cavity object
+        op_field: float
+            Cavity operating field
+
+        Returns
+        -------
+        Dictionary containing quantities of interest (normed optional).
+        """
+
+        if uq:
+            qois = cav.get_power_uq(rf_config, op_points_list)
+        else:
+            qois = cav.get_power(rf_config, op_points_list)
+
+        return qois
+
+    def plot_compare_power_scatter(self, rf_config, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
         """
         Plots bar chart of power quantities of interest
 
@@ -3731,38 +3890,130 @@ class Cavities(Optimisation):
         -------
 
         """
-        plt.rcParams["figure.figsize"] = (12, 3)
+        plt.rcParams["figure.figsize"] = figsize
 
-        power_qois = [self.power_qois(cav, opt_list, 12) for cav in self.cavities_list]
-        print(power_qois)
+        self.rf_config = rf_config
 
-        # plot barchart
-        data = np.array([list(d.values()) for d in self.returned_results])
-        data_col_max = data.max(axis=0)
-        x = list(self.returned_results[0].keys())
-        X = np.arange(len(x))
+        assert len(rf_config['Q0 []']) == len(self.cavities_list), error(
+            'Lengh of Q0 [] must equal number of Cavity objects.')
+        assert len(rf_config['inv_eta []']) == len(self.cavities_list), error(
+            'Lengh of inv_eta [] must equal number of Cavity objects.')
+        if 'Eacc [MV/m]' in rf_config.keys():
+            assert len(rf_config['Eacc [MV/m]']) == len(self.cavities_list), error('length of accelerating field '
+                                                                                   'Eacc [MV/m] must equal number '
+                                                                                   'of Cavity objects in Cavities.')
+        if 'V [GV]' in rf_config.keys():
+            assert len(rf_config['V [GV]']) == len(op_points_list), error('length of RF Voltage '
+                                                                          'V [GV] must equal number '
+                                                                          'of operating points.')
 
-        fig, ax = plt.subplots()
-        ax.margins(x=0)
-        width = 0.15  # 1 / len(x)
-        for i, cav in enumerate(self.cavities_list):
-            ax.bar(X + i * width, data[i] / data_col_max, width=width, label=cav.name)
+        if isinstance(op_points_list, str):
+            op_points_list = [op_points_list]
 
-        ax.set_xticks([r + width for r in range(len(x))], x)
-        # label = ["C3794_H (2-Cell)", "C3795_H (5-Cell)"]
+        # display formula used
+        display(Math(r'Dims: {}x{}m \\ Area: {}m^2 \\ Volume: {}m^3'.format(2, round(3, 2), 5, 5)))
 
-        ax.axhline(1.05, c='k')
-        ax.set_ylim(-0.01, 1.5 * ax.get_ylim()[-1])
-        ax.legend(loc='upper center', ncol=len(self.cavities_list))
-        plt.tight_layout()
+        for ii, cav in enumerate(self.cavities_list):
+            # set cavity intrinsic quality factor and inv_eta
+            cav.Q0 = rf_config['Q0 []'][ii]
+            cav.inv_eta = rf_config['inv_eta []'][ii]
+            if 'Eacc [MV/m]' in rf_config.keys():
+                cav.Eacc_rf_config = rf_config['Eacc [MV/m]'][ii]  # change this later, not effective way
 
-        # save plots
+            self.power_qois[cav.name] = self.get_power_qois(cav, rf_config, op_points_list)
+            self.power_qois_uq[cav.name] = self.get_power_qois(cav, rf_config, op_points_list, uq=True)
+
+        if not uq:
+            self.hom_results = self.qois_hom(op_points_list[0])
+
+            df = pd.DataFrame.from_dict(self.hom_results)
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Plot each column in a separate subplot
+            for key, ax in axd.items():
+                for i, label in enumerate(labels):
+                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(key)
+
+            h, l = ax.get_legend_handles_labels()
+        else:
+            # Step 1: Flatten the dictionary into a DataFrame
+            df_list, df_nominal_list = [], []
+            for op_pt in op_points_list:
+                # get nominal qois
+                dd_nominal = {}
+                for cav, metrics in self.power_qois.items():
+                    # for metric, values in metrics[op_pt]['SR'].items():
+                    dd_nominal[cav] = metrics[op_pt]['SR']
+
+                df_nominal = pd.DataFrame.from_dict(dd_nominal).T
+                df_nominal_list.append(df_nominal)
+
+                rows = []
+                # get uq opt
+                for cavity, metrics in self.power_qois_uq.items():
+                    for metric, values in metrics[op_pt]['SR'].items():
+                        rows.append({
+                            'cavity': cavity,
+                            'metric': metric,
+                            'mean': values['expe'][0],
+                            'std': values['stdDev'][0]
+                        })
+
+                df = pd.DataFrame(rows)
+                df_list.append(df)
+
+            # Step 2: Create a Mosaic Plot
+            metrics = df_list[0]['metric'].unique()
+            layout = [[metric for metric in metrics]]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+
+            # Plotting labels and colors
+            labels = df_list[0]['cavity'].unique()
+            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = [cav.color for cav in self.cavities_list]
+            opt_format = ['o', '^', 's', 'D', 'P', 'v']
+            # Step 3: Plot each metric on a separate subplot
+            for metric, ax in axd.items():
+                for i, label in enumerate(labels):
+                    for ii, (opt, df, df_nominal) in enumerate(zip(op_points_list, df_list, df_nominal_list)):
+                        sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                        scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
+                                                    marker=opt_format[ii],
+                                                    fc='none', ec=colors[i], lw=2, zorder=100,
+                                                    label=fr'{label} ({LABELS[opt]})')
+                        ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt=opt_format[ii],
+                                    capsize=10, lw=2, mfc='none',
+                                    color=scatter_points.get_edgecolor()[0])
+
+                        # plot nominal
+                        ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', ec='k',
+                                   lw=1, marker=opt_format[ii],
+                                   zorder=100)
+
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.margins(0.3)
+                ax.set_ylabel(LABELS[metric])
+
+            # Step 4: Set legend
+            h, l = ax.get_legend_handles_labels()
+
+        if not ncols:
+            ncols = min(4, len(labels))
+
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        # Save plots
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_power_comparison_bar.png")
-
-        plt.show()
+        self.save_all_plots(f"{fname}_power_scatter_{op_points_list}.png")
 
     def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3):
         if kind == 'scatter' or kind == 's':
@@ -3849,7 +4100,7 @@ class Cavities(Optimisation):
 
         return axd
 
-    def plot_compare_hom_scatter(self, opt_list, ncols=3, uq=False, figsize=(12, 3)):
+    def plot_compare_hom_scatter(self, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -3866,11 +4117,11 @@ class Cavities(Optimisation):
             A dictionary of axes from the scatter plot.
         """
         plt.rcParams["figure.figsize"] = figsize
-        if isinstance(opt_list, str):
-            opt_list = [opt_list]
+        if isinstance(op_points_list, str):
+            op_points_list = [op_points_list]
 
         if not uq:
-            self.hom_results = self.qois_hom(opt_list[0])
+            self.hom_results = self.qois_hom(op_points_list[0])
 
             df = pd.DataFrame.from_dict(self.hom_results)
             fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
@@ -3891,7 +4142,7 @@ class Cavities(Optimisation):
 
             # Step 1: Flatten the dictionary into a DataFrame
             df_list, df_nominal_list = [], []
-            for opt in opt_list:
+            for opt in op_points_list:
 
                 # get nominal qois
                 dd_nominal = {}
@@ -3930,11 +4181,11 @@ class Cavities(Optimisation):
             # Step 3: Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 for i, label in enumerate(labels):
-                    for ii, (opt, df, df_nominal) in enumerate(zip(opt_list, df_list, df_nominal_list)):
+                    for ii, (opt, df, df_nominal) in enumerate(zip(op_points_list, df_list, df_nominal_list)):
                         sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                         scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
                                                     marker=opt_format[ii],
-                                                    fc='none', ec=colors[i], zorder=100,
+                                                    fc='none', ec=colors[i], lw=2, zorder=100,
                                                     label=fr'{label} ({LABELS[opt]})')
                         ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt=opt_format[ii],
                                     capsize=10, lw=2, mfc='none',
@@ -3962,7 +4213,7 @@ class Cavities(Optimisation):
         fname = [cav.name for cav in self.cavities_list]
         fname = '_'.join(fname)
 
-        self.save_all_plots(f"{fname}_hom_scatter_{opt_list}.png")
+        self.save_all_plots(f"{fname}_hom_scatter_{op_points_list}.png")
 
         return axd
 
@@ -4108,7 +4359,7 @@ class Cavities(Optimisation):
                 for i, label in enumerate(labels):
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
-                                                fc='none', ec=colors[i], label=label, zorder=100)
+                                                fc='none', ec=colors[i], label=label, lw=2, zorder=100)
                     ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=2,
                                 color=scatter_points.get_edgecolor()[0])
 
@@ -4336,7 +4587,7 @@ class Cavities(Optimisation):
                 beampipe = 'none'
             elif opt.lower() == 'end':
                 mid_cell = np.array(cav.shape['IC'])
-                end_cell_left = np.array(cav.shape['OC'])
+                end_cell_left = np.array(cav.shape['IC'])
                 end_cell_right = np.array(cav.shape['OC'])
                 beampipe = 'right'
             else:
@@ -4938,121 +5189,530 @@ class Cavities(Optimisation):
 
         return inbox
 
-    def make_latex_summary_tables(self):
+    def make_latex_summary_tables(self, which='geometry', op_pts_list=None):
+        fname = [cav.name for cav in self.cavities_list]
+        # create new sub directory
+        if not os.path.exists(fr"{self.projectDir}\PostprocessingData\Data\{'_'.join(fname)}"):
+            os.mkdir(fr"{self.projectDir}\PostprocessingData\Data\{'_'.join(fname)}")
         try:
-            l1 = r"\begin{table}[!htb]"
-            l2 = r"\centering"
-            l3 = r"\caption{Geometric parameters and QoIs of cavities.}"
-            l4 = r"\resizebox{\textwidth}{!}{\begin{tabular}{|l|" + f"{''.join(['c' for i in self.cavities_list])}" + "|}"
-            toprule = r"\toprule"
-            header = r" ".join([fr"& {cav.name} " for cav in self.cavities_list]) + r" \\"
-            hline = r"\hline"
-            hhline = r"\hline \hline"
-            A = r"$A$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][0], 2)}/{round(cav.d_geom_params['OC'][0], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            B = r"$B$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][1], 2)}/{round(cav.d_geom_params['OC'][1], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            a = r"$a$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][2], 2)}/{round(cav.d_geom_params['OC'][2], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            b = r"$b$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][3], 2)}/{round(cav.d_geom_params['OC'][3], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            Ri = r"$R_\mathrm{i}$ " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][4], 2)}/{round(cav.d_geom_params['OC'][4], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            L = r"$L$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][5], 2)}/{round(cav.d_geom_params['OC'][5], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            Req = r"$R_\mathrm{eq}$ [mm] " + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][6], 2)}/{round(cav.d_geom_params['OC'][6], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            alpha = r"$ \alpha [^\circ]$" + "".join(
-                [fr"& {round(cav.d_geom_params['IC'][7], 2)}/{round(cav.d_geom_params['OC'][7], 2)} " for cav in
-                 self.cavities_list]) + r" \\"
-            rf_freq = r"RF Freq. [MHz] " + "".join(
-                [fr"& {round(cav.op_freq * 1e-6, 2)} " for cav in self.cavities_list]) + r" \\"
-            Vrf = r"$V_\mathrm{RF}$ [V] " + "".join(
-                [fr"& {round(cav.v_rf, 2):.2E} " for cav in self.cavities_list]) + r" \\"
-            Eacc = r"$E_\mathrm{acc}$ [MV/m] " + "".join(
-                [fr"& {round(cav.op_field * 1e-6, 2)} " for cav in self.cavities_list]) + r" \\"
-            R_Q = r"$R/Q [\Omega$] " + "".join([fr"& {round(cav.R_Q, 2)} " for cav in self.cavities_list]) + r" \\"
-            G = r"$G$ [$\Omega$] " + "".join([fr"& {round(cav.G, 2)} " for cav in self.cavities_list]) + r" \\"
-            GR_Q = r"$G.R/Q [10^4\Omega^2]$ " + "".join(
-                [fr"& {round(cav.GR_Q * 1e-4, 2)} " for cav in self.cavities_list]) + r" \\"
-            epk = r"$E_{\mathrm{pk}}/E_{\mathrm{acc}}$ " + "".join(
-                [fr"& {round(cav.e, 2)} " for cav in self.cavities_list]) + r" \\"
-            bpk = r"$B_{\mathrm{pk}}/E_{\mathrm{acc}} \left[\mathrm{\frac{mT}{MV/m}}\right]$ " + "".join(
-                [fr"& {round(cav.b, 2)} " for cav in self.cavities_list]) + r" \\"
+            if which == 'geometry':
+                fname = [cav.name for cav in self.cavities_list]
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{Geometric parameters of " + fr"{', '.join(fname)}" + " cavity gemetries.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{''.join(['c' for i in self.cavities_list])}" + "|}"
+                toprule = r"\toprule"
+                header = r" ".join([fr"& {cav.name} " for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
+                A = r"$A$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][0], 2)}/{round(cav.shape['OC'][0], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                B = r"$B$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][1], 2)}/{round(cav.shape['OC'][1], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                a = r"$a$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][2], 2)}/{round(cav.shape['OC'][2], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                b = r"$b$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][3], 2)}/{round(cav.shape['OC'][3], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                Ri = r"$R_\mathrm{i}$ " + "".join(
+                    [fr"& {round(cav.shape['IC'][4], 2)}/{round(cav.shape['OC'][4], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                L = r"$L$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][5], 2)}/{round(cav.shape['OC'][5], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                Req = r"$R_\mathrm{eq}$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][6], 2)}/{round(cav.shape['OC'][6], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                alpha = r"$ \alpha [^\circ]$" + "".join(
+                    [fr"& {round(cav.shape['IC'][7], 2)}/{round(cav.shape['OC'][7], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
 
-            kfm = r"$|k_\mathrm{FM}|$ [V/pC] " + "".join(
-                [fr"& {'/'.join([str(round(k_fm, 4)) for k_fm in cav.k_fm])} " for cav in self.cavities_list]) + r" \\"
-            kloss = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
-                [fr"& {'/'.join([str(round(k_loss, 4)) for k_loss in cav.k_loss])} " for cav in
-                 self.cavities_list]) + r" \\"
-            kkick = r"$k_\mathrm{\perp}$ [V/pC/m]" + "".join(
-                [fr"& {'/'.join([str(round(k_kick, 4)) for k_kick in cav.k_kick])} " for cav in
-                 self.cavities_list]) + r" \\"
+                fname = '_'.join(fname)
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: " + fr"{fname} geometric properties" + '}'
+                l36 = r"\end{table}"
 
-            Ncav = r"$N_\mathrm{cav}$ " + "".join(
-                [fr"& {int(cav.n_cav_op_field)} " for cav in self.cavities_list]) + r" \\"
-            Q0 = r"$Q_\mathrm{0}$ " + "".join(
-                [fr"& {int(cav.Q0_desired):2E} " for cav in self.cavities_list]) + r" \\"
-            Pin = r"$P_\mathrm{in}\mathrm{/cav} [\mathrm{kW}]$ " + "".join(
-                [fr"& {round(cav.p_in * 1e-3, 2)} " for cav in self.cavities_list]) + r" \\"
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header,
+                                     hhline,
+                                     A, B, a, b, Ri, L, Req, alpha,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
 
-            Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
-                [fr"& {round(cav.pstat, 2)} " for cav in self.cavities_list]) + r" \\"
+                # save plots
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_geom_latex.tex", 'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+            elif which == 'fm':
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{FM QoIs of " + fr"{', '.join(fname)}" + " cavity gemetries.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{''.join(['c' for i in self.cavities_list])}" + "|}"
+                toprule = r"\toprule"
+                header = r" ".join([fr"& {cav.name} " for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
 
-            Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
-                [fr"& {round(cav.pdyn, 2)} " for cav in self.cavities_list]) + r" \\"
+                rf_freq = r"RF Freq. [MHz] " + "".join(
+                    [fr"& {round(cav.freq, 2)} " for cav in self.cavities_list]) + r" \\"
+                R_Q = r"$R/Q ~[\Omega$] " + "".join([fr"& {round(cav.R_Q, 2)} " for cav in self.cavities_list]) + r" \\"
+                G = r"$G$ ~[$\Omega$] " + "".join([fr"& {round(cav.G, 2)} " for cav in self.cavities_list]) + r" \\"
+                GR_Q = r"$G\cdot R/Q ~[10^4\Omega^2]$ " + "".join(
+                    [fr"& {round(cav.GR_Q * 1e-4, 2)} " for cav in self.cavities_list]) + r" \\"
+                kcc = r"$k_\mathrm{cc}~[\%]$ " + "".join(
+                    [fr"& {round(cav.k_cc, 2)} " for cav in self.cavities_list]) + r" \\"
+                epk = r"$E_{\mathrm{pk}}/E_{\mathrm{acc}}$ []" + "".join(
+                    [fr"& {round(cav.e, 2)} " for cav in self.cavities_list]) + r" \\"
+                bpk = r"$B_{\mathrm{pk}}/E_{\mathrm{acc}} ~\left[\mathrm{\frac{mT}{MV/m}}\right]$ " + "".join(
+                    [fr"& {round(cav.b, 2)} " for cav in self.cavities_list]) + r" \\"
 
-            Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
-                [fr"& {round(cav.p_wp * 1e-3, 2)} " for cav in self.cavities_list]) + r" \\"
+                fname = '_'.join(fname)
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: " + fr"{fname} fm properties" + '}'
+                l36 = r"\end{table}"
 
-            Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
-                [fr"& {'/'.join([str(round(phom, 4)) for phom in cav.phom])} " for cav in self.cavities_list]) + r" \\"
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header,
+                                     hhline,
+                                     rf_freq, R_Q, G, GR_Q, kcc, epk, bpk,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
+                # save plots
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_fm_latex.tex", 'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+            elif which == 'hom':
+                if op_pts_list is None:
+                    op_pts_list = list(self.operating_points.keys())
+                fname = [cav.name for cav in self.cavities_list]
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{HOM QoIs of " + fr"{', '.join(fname)}" + " cavity geometries for the " + fr"{', '.join([LABELS[op_pt] for op_pt in op_pts_list])}" + " operating points.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{'|'.join([''.join(['c' for i in self.cavities_list]) for _ in range(len(op_pts_list))])}" + "|}"
+                toprule = r"\toprule"
+                header1 = r"&\multicolumn{" + r" &\multicolumn{".join(
+                    [fr'{len(self.cavities_list)}' + r'}{c|}{' + fr"{LABELS[op_pt]}" + '}' for op_pt in
+                     op_pts_list]) + r" \\"
+                header2 = r" ".join([fr"& {cav.name} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
 
-            phom_values = np.array([[phom for phom in cav.phom] for cav in self.cavities_list])
+                kfm = r"$|k_\mathrm{FM}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_fm, 4)) for k_fm in [vv for kk, vv in cav.k_fm.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
 
-            if len(phom_values) % 2 == 0:
-                result_array = phom_values[1::2] - phom_values[::2]
+                kloss = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_loss, 4)) for k_loss in [vv for kk, vv in cav.k_loss.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
 
-                Phom_diff = r"$\Delta P_\mathrm{HOM}$/cav [W] & \multicolumn{2}{c|}{" + " & \multicolumn{2}{c|}{".join(
-                    [fr"{'/'.join([str(round(val * 1e3, 2)) for val in arr])} " + '}' for arr in result_array]) + r" \\"
+                kkick = r"$k_\mathrm{\perp}$ [V/pC/m]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_kick, 4)) for k_kick in [vv for kk, vv in cav.k_kick.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
 
-            PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
-                [fr"& {'/'.join([str(round(phom * cav.n_cav_op_field, 2)) for phom in cav.phom])} " for cav in
-                 self.cavities_list]) + r" \\"
-            bottomrule = r"\bottomrule"
-            l34 = r"\end{tabular}}"
-            l35 = r"\label{tab: selected shape}"
-            l36 = r"\end{table}"
+                Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom, 4)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
 
-            all_lines = (l1, l2, l3, l4,
-                         toprule, hline,
-                         header,
-                         hhline,
-                         A, B, a, b, Ri, L, Req, alpha,
-                         hhline,
-                         rf_freq, Vrf, Eacc, R_Q, G, GR_Q, epk, bpk,
-                         hhline,
-                         kfm, kloss, kkick, Phom,
-                         hhline, Ncav, Q0, Pin, Pstat, Pdyn, Pwp, Phom, Phom_diff, PHOM,
-                         hline,
-                         bottomrule,
-                         l34, l35, l36)
+                fname = '_'.join(fname)
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: " + fr"{fname} hom properties" + '}'
+                l36 = r"\end{table}"
 
-            # save plots
-            fname = [cav.name for cav in self.cavities_list]
-            fname = '_'.join(fname)
-            with open(fr"D:\Dropbox\Quick presentation files\{self.projectDir}\{fname}_latex_summary.txt", 'w') as f:
-                for ll in all_lines:
-                    f.write(ll + '\n')
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header1,
+                                     hhline,
+                                     header2,
+                                     hhline,
+                                     kfm, kloss, kkick, Phom,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
+
+                # save plots
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_hom_{op_pts_list}_latex.tex",
+                          'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+            elif which == 'qois':
+                if op_pts_list is None:
+                    op_pts_list = list(self.operating_points.keys())
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{Geometric parameters and QoIs of cavities.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{'|'.join([''.join(['c' for i in self.cavities_list]) for _ in range(len(op_pts_list))])}" + "|}"
+                toprule = r"\toprule"
+                header1 = r"&\multicolumn{" + r" &\multicolumn{".join(
+                    [fr'{len(self.cavities_list)}' + r'}{c}{' + fr"{LABELS[op_pt]}" + '}' for op_pt in
+                     op_pts_list]) + r" \\"
+                header2 = r" ".join([fr"& {cav.name} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
+
+                rf_freq = r"RF Freq. ~[MHz] " + "".join(
+                    [fr"& {round(cav.freq, 2)} " for cav in self.cavities_list]) + r" \\"
+                R_Q = r"$R/Q ~\mathrm{[\Omega$]} " + "".join(
+                    [fr"& {round(cav.R_Q, 2)} " for cav in self.cavities_list]) + r" \\"
+                G = r"$G$ ~[$\Omega$] " + "".join([fr"& {round(cav.G, 2)} " for cav in self.cavities_list]) + r" \\"
+                GR_Q = r"$G\cdot R/Q ~[10^4\Omega^2]$ " + "".join(
+                    [fr"& {round(cav.GR_Q * 1e-4, 2)} " for cav in self.cavities_list]) + r" \\"
+                kcc = r"$k_\mathrm{cc}~[\%]$ " + "".join(
+                    [fr"& {round(cav.k_cc, 2)} " for cav in self.cavities_list]) + r" \\"
+                epk = r"$E_{\mathrm{pk}}/E_{\mathrm{acc}}$ []" + "".join(
+                    [fr"& {round(cav.e, 2)} " for cav in self.cavities_list]) + r" \\"
+                bpk = r"$B_{\mathrm{pk}}/E_{\mathrm{acc}} ~\left[\mathrm{\frac{mT}{MV/m}}\right]$ " + "".join(
+                    [fr"& {round(cav.b, 2)} " for cav in self.cavities_list]) + r" \\"
+
+                kfm = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_fm, 4)) for k_fm in [vv for kk, vv in cav.k_fm.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                kloss = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_loss, 4)) for k_loss in [vv for kk, vv in cav.k_loss.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                kkick = r"$k_\mathrm{\perp}$ [V/pC/m]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_kick, 4)) for k_kick in [vv for kk, vv in cav.k_kick.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                Ncav = r"$N_\mathrm{cav}$ " + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Q0 = r"$Q_\mathrm{0}~[]$ " + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Pin = r"$P_\mathrm{in}\mathrm{/cav} [\mathrm{kW}]$ " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom, 4)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                PHOM = r"$P_\mathrm{HOM}$ ~[kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: selected shape}"
+                l36 = r"\end{table}"
+
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header1,
+                                     hhline,
+                                     header2,
+                                     hhline,
+                                     rf_freq, R_Q, G, GR_Q, kcc, epk, bpk,
+                                     hhline,
+                                     kfm, kloss, kkick, Phom,
+                                     hhline, Ncav, Q0, Pin, Pstat, Pdyn, Pwp, Phom, PHOM,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
+
+                # save plots
+                fname = [cav.name for cav in self.cavities_list]
+                fname = '_'.join(fname)
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_qois_{op_pts_list}_latex.tex",
+                          'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+            elif which == 'power':
+                if op_pts_list is None:
+                    op_pts_list = list(self.operating_points.keys())
+
+                fname = [cav.name for cav in self.cavities_list]
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{Static, dynamic and HOM power loss and input power per cavity for " + fr"{', '.join(fname)}" + " cavity geometries for the " + fr"{', '.join([LABELS[op_pt] for op_pt in op_pts_list])}" + " operating points.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{'|'.join([''.join(['c' for i in self.cavities_list]) for _ in range(len(op_pts_list))])}" + "|}"
+                toprule = r"\toprule"
+                header1 = r"&\multicolumn{" + r" &\multicolumn{".join(
+                    [fr'{len(self.cavities_list)}' + r'}{c|}{' + fr"{LABELS[op_pt]}" + '}' for op_pt in
+                     op_pts_list]) + r" \\"
+                header2 = r" ".join([fr"& {cav.name} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
+
+                rf_freq = r"RF Freq. [MHz] " + "".join(
+                    [fr"& {round(cav.freq, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+
+                if 'V [GV]' in self.rf_config.keys():
+                    Vrf = r"$V_\mathrm{RF}$ [GV] " + "".join(
+                        [fr"& {round(self.rf_config['V [GV]'][ii], 2):.2f} " for ii in range(len(op_pts_list)) for _ in
+                         self.cavities_list]) + r" \\"
+                else:
+                    Vrf = r"$V_\mathrm{RF}$ [GV] " + "".join(
+                        [fr"& {round(self.operating_points[op_pt]['V [GV]'], 2):.2f} " for op_pt in op_pts_list for _ in
+                         self.cavities_list]) + r" \\"
+
+                Eacc = r"$E_\mathrm{acc}$ [MV/m] " + "".join(
+                    [fr"& {round(cav.Eacc_rf_config, 2)} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+
+                Ncav = r"$N_\mathrm{cav}$ " + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Q0 = r"$Q_\mathrm{0}$~[]" + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Pin = r"$P_\mathrm{in}\mathrm{/cav} ~[\mathrm{kW}]$ " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom, 4)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                fname = '_'.join(fname)
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: " + fr"{fname} power properties" + '}'
+                l36 = r"\end{table}"
+
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header1,
+                                     hhline,
+                                     header2,
+                                     hhline, rf_freq, Vrf, Eacc, Ncav, Q0, Pin, Pstat, Pdyn, Pwp, Phom,
+                                     # PHOM,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
+
+                # save plots
+                fname = [cav.name for cav in self.cavities_list]
+                fname = '_'.join(fname)
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_power_{op_pts_list}_latex.tex",
+                          'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+            else:
+                l1 = r"\begin{table}[htb!]"
+                l2 = r"\centering"
+                l3 = r"\caption{Geometric parameters and QoIs of cavities.}"
+                l4 = r"\resizebox{\ifdim\width>\columnwidth \columnwidth \else \width \fi}{!}{\begin{tabular}{|l|" + f"{'|'.join([''.join(['c' for i in self.cavities_list]) for _ in range(len(op_pts_list))])}" + "|}"
+                toprule = r"\toprule"
+                header1 = r"&\multicolumn{" + r" &\multicolumn{".join(
+                    [fr'{len(self.cavities_list)}' + r'}{c}{' + fr"{LABELS[op_pt]}" + '}' for op_pt in
+                     op_pts_list]) + r" \\"
+                header2 = r" ".join([fr"& {cav.name} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                hline = r"\hline"
+                hhline = r"\hline \hline"
+                A = r"$A$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][0], 2)}/{round(cav.shape['OC'][0], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                B = r"$B$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][1], 2)}/{round(cav.shape['OC'][1], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                a = r"$a$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][2], 2)}/{round(cav.shape['OC'][2], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                b = r"$b$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][3], 2)}/{round(cav.shape['OC'][3], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                Ri = r"$R_\mathrm{i}$ " + "".join(
+                    [fr"& {round(cav.shape['IC'][4], 2)}/{round(cav.shape['OC'][4], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                L = r"$L$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][5], 2)}/{round(cav.shape['OC'][5], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                Req = r"$R_\mathrm{eq}$ [mm] " + "".join(
+                    [fr"& {round(cav.shape['IC'][6], 2)}/{round(cav.shape['OC'][6], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                alpha = r"$ \alpha [^\circ]$" + "".join(
+                    [fr"& {round(cav.shape['IC'][7], 2)}/{round(cav.shape['OC'][7], 2)} " for cav in
+                     self.cavities_list]) + r" \\"
+                rf_freq = r"RF Freq. ~[MHz] " + "".join(
+                    [fr"& {round(cav.freq, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                Vrf = r"$V_\mathrm{RF}$ ~[GV] " + "".join(
+                    [fr"& {round(self.operating_points[op_pt]['V [GV]'], 2):.2f} " for op_pt in op_pts_list for _ in
+                     self.cavities_list]) + r" \\"
+
+                Eacc = r"$E_\mathrm{acc}$ [MV/m] " + "".join(
+                    [fr"& {round(self.operating_points[op_pt]['Eacc [MV/m]'], 2)} " for op_pt in op_pts_list for _ in
+                     self.cavities_list]) + r" \\"
+                R_Q = r"$R/Q ~[\Omega$] " + "".join(
+                    [fr"& {round(cav.R_Q, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                G = r"$G$ [$\Omega$] " + "".join(
+                    [fr"& {round(cav.G, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                GR_Q = r"$G\cdot R/Q ~[10^4\Omega^2]$ " + "".join(
+                    [fr"& {round(cav.GR_Q * 1e-4, 2)} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                epk = r"$E_{\mathrm{pk}}/E_{\mathrm{acc}}$ [] " + "".join(
+                    [fr"& {round(cav.e, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+                bpk = r"$B_{\mathrm{pk}}/E_{\mathrm{acc}} \left[\mathrm{\frac{mT}{MV/m}}\right]$ " + "".join(
+                    [fr"& {round(cav.b, 2)} " for op_pt in op_pts_list for cav in self.cavities_list]) + r" \\"
+
+                kfm = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_fm, 4)) for k_fm in [vv for kk, vv in cav.k_fm.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                kloss = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_loss, 4)) for k_loss in [vv for kk, vv in cav.k_loss.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                kkick = r"$k_\mathrm{\perp}$ [V/pC/m]" + "".join(
+                    [
+                        fr"& {'/'.join([str(round(k_kick, 4)) for k_kick in [vv for kk, vv in cav.k_kick.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                # kloss = r"$|k_\mathrm{\parallel}|$ [V/pC]" + "".join(
+                #     [fr"& {'/'.join([str(round(k_loss, 4)) for k_loss in cav.k_loss])} " for cav in
+                #      self.cavities_list]) + r" \\"
+                #
+                # kkick = r"$k_\mathrm{\perp}$ [V/pC/m]" + "".join(
+                #     [fr"& {'/'.join([str(round(k_kick, 4)) for k_kick in cav.k_kick])} " for cav in
+                #      self.cavities_list]) + r" \\"
+
+                Ncav = r"$N_\mathrm{cav}$ " + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Q0 = r"$Q_\mathrm{0}$ " + "".join(
+                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                     self.cavities_list]) + r" \\"
+                Pin = r"$P_\mathrm{in}\mathrm{/cav} [\mathrm{kW}]$ " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
+                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                     for cav in self.cavities_list]) + r" \\"
+
+                Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom, 4)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                # Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
+                #     [fr"& {'/'.join([str(round(phom, 4)) for phom in cav.phom])} " for cav in self.cavities_list]) + r" \\"
+
+                phom_values = np.array([[phom for phom in cav.phom] for cav in self.cavities_list])
+
+                # if len(phom_values) % 2 == 0:
+                #     result_array = phom_values[1::2] - phom_values[::2]
+                #
+                #     Phom_diff = r"$\Delta P_\mathrm{HOM}$/cav [W] & \multicolumn{2}{c|}{" + " & \multicolumn{2}{c|}{".join(
+                #         [fr"{'/'.join([str(round(val * 1e3, 2)) for val in arr])} " + '}' for arr in result_array]) + r" \\"
+
+                PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
+                    [
+                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        for op_pt in op_pts_list for cav in
+                        self.cavities_list]) + r" \\"
+
+                # PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
+                #     [fr"& {'/'.join([str(round(phom * cav.n_cav_op_field, 2)) for phom in cav.phom])} " for cav in
+                #      self.cavities_list]) + r" \\"
+
+                bottomrule = r"\bottomrule"
+                l34 = r"\end{tabular}}"
+                l35 = r"\label{tab: selected shape}"
+                l36 = r"\end{table}"
+
+                self.latex_output = (l1, l2, l3, l4,
+                                     toprule, hline,
+                                     header1,
+                                     hhline,
+                                     header2,
+                                     hhline,
+                                     A, B, a, b, Ri, L, Req, alpha,
+                                     hhline,
+                                     rf_freq, Vrf, Eacc, R_Q, G, GR_Q, epk, bpk,
+                                     hhline,
+                                     kfm, kloss, kkick, Phom,
+                                     hhline, Ncav, Q0, Pin, Pstat, Pdyn, Pwp, Phom, PHOM,
+                                     hline,
+                                     bottomrule,
+                                     l34, l35, l36)
+
+                # save plots
+                fname = [cav.name for cav in self.cavities_list]
+                fname = '_'.join(fname)
+                with open(fr"{self.projectDir}\PostprocessingData\Data\{fname}\{fname}_all_{op_pts_list}_latex.tex",
+                          'w') as f:
+                    for ll in self.latex_output:
+                        f.write(ll + '\n')
+
         except KeyError as e:
-            error("Either SLANS or ABCI results not available. Please use '<cav>.set_eigenmode_qois(<folder>)' "
+            error("Either NGSolve or ABCI results not available. Please use '<cav>.set_eigenmode_qois(<folder>)' "
                   "or '<cav>.set_wakefield_qois(<folder>)' to fix this. Error: ", e)
 
     def make_excel_summary(self):
@@ -5141,64 +5801,44 @@ class Cavities(Optimisation):
         -------
 
         """
+        fname = [cav.name for cav in self.cavities_list]
         if self.projectDir != '':
             # check if folder exists
             if os.path.exists(fr"{self.projectDir}\PostProcessingData\Plots"):
-                save_folder = fr"{self.projectDir}\PostProcessingData\Plots"
-                plt.savefig(f"{save_folder}/{plot_name}")
+                # create new subdirectory
+                if not os.path.exists(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}"):
+                    os.mkdir(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}")
+
+                save_folder = fr"{self.projectDir}\PostProcessingData\Plots\{'_'.join(fname)}"
+                plt.savefig(f"{save_folder}/{plot_name}", dpi=300)
             else:
-                if not os.exists(fr"{self.projectDir}\PostProcessingData"):
+                if not os.path.exists(fr"{self.projectDir}\PostProcessingData"):
                     os.mkdir(fr"{self.projectDir}\PostProcessingData")
                     os.mkdir(fr"{self.projectDir}\PostProcessingData\Plots")
+                    os.mkdir(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}")
 
-                save_folder = fr"{self.projectDir}\PostProcessingData\Plots"
-                os.mkdir(save_folder)
-                plt.savefig(f"{save_folder}/{plot_name}")
+                save_folder = fr"{self.projectDir}\PostProcessingData\Plots\{'_'.join(fname)}"
+                plt.savefig(f"{save_folder}/{plot_name}", dpi=300)
 
     def calc_limits(self, which, selection):
         if self.operating_points is not None:
-            # E0 = [45.6, 80, 120, 182.5]  # [GeV] Energy
-            # nu_s = [0.025, 0.0506, 0.036, 0.087]  # Synchrotron oscillation tune
-            # I0 = [1400, 135, 26.7, 5]  # [mA] Beam current5.4 * 2
-            # alpha_c = [1.48, 1.48, 0.73, 0.73]  # [10−5] Momentum compaction factor
-            # tau_z = [424.6, 78.7, 23.4, 6.8]  # [ms] Longitudinal damping time
-            # tau_xy = [849.2, 157.4, 46.8, 13.6]  # [ms] Transverse damping time
-            # f_rev = [3.07, 3.07, 3.07, 3.07]  # [kHz] Revolution frequency
-            # beta_xy = 50
-            # n_cav = [56, 112, 128, 140]  # 1_2_2_25
-
-            # if selection is None or selection == '':
-            #     if self.operating_points.empty:
-            #         pass
-            #     else:
-            #         E0 = list(self.operating_points.loc["E [GeV]"])
-            #         nu_s = list(self.operating_points.loc["nu_s []"])
-            #         I0 = list(self.operating_points.loc["I0 [mA]"])
-            #         alpha_c = list(self.operating_points.loc["alpha_p [1e-5]"])
-            #         tau_z = list(self.operating_points.loc["tau_z [ms]"])
-            #         tau_xy = list(self.operating_points.loc["tau_xy [ms]"])
-            #         f_rev = list(self.operating_points.loc["f_rev [kHz]"])
-            #         beta_xy = list(self.operating_points.loc["beta_xy [m]"])
-            #         n_cav = list(self.operating_points.loc["N_c []"])
-            # else:
             cols = selection
-
-            E0 = list(self.operating_points.loc["E [GeV]", cols])
-            nu_s = list(self.operating_points.loc["nu_s []", cols])
-            I0 = list(self.operating_points.loc["I0 [mA]", cols])
-            alpha_c = list(self.operating_points.loc["alpha_p [1e-5]", cols])
-            tau_z = list(self.operating_points.loc["tau_z [ms]", cols])
-            tau_xy = list(self.operating_points.loc["tau_xy [ms]", cols])
-            f_rev = list(self.operating_points.loc["f_rev [kHz]", cols])
-            beta_xy = list(self.operating_points.loc["beta_xy [m]", cols])
-            n_cav = list(self.operating_points.loc["N_c []", cols])
+            E0 = [self.operating_points[col]["E [GeV]"] for col in cols]
+            nu_s = [self.operating_points[col]["nu_s []"] for col in cols]
+            I0 = [self.operating_points[col]["I0 [mA]"] for col in cols]
+            alpha_c = [self.operating_points[col]["alpha_p [1e-5]"] for col in cols]
+            tau_z = [self.operating_points[col]["tau_z [ms]"] for col in cols]
+            tau_xy = [self.operating_points[col]["tau_xy [ms]"] for col in cols]
+            f_rev = [self.operating_points[col]["f_rev [kHz]"] for col in cols]
+            beta_xy = [self.operating_points[col]["beta_xy [m]"] for col in cols]
+            n_cav = [self.operating_points[col]["N_c []"] for col in cols]
 
             unit = {'MHz': 1e6,
                     'GHz': 1e9}
 
             Z_list, ZT_le = [], []
             if which == 'longitudinal':
-                f_list = np.linspace(0, 10000, num=1000)
+                f_list = np.linspace(0, 10000, num=1000) * 1e6
                 Z_le = []
                 try:
                     for i, n in enumerate(n_cav):
@@ -5209,29 +5849,52 @@ class Cavities(Optimisation):
                         Z_le.append(round((2 * E0[i] * 1e9 * nu_s[i])
                                           / (n * I0[i] * 1e-3 * alpha_c[i] * 1e-5
                                              * tau_z[i] * 1e-3) * 1e-9 * 1e-3, 2))
+
                         Z_list.append(np.array(Z) * 1e-3)  # convert to kOhm
 
                 except ZeroDivisionError:
                     error("ZeroDivisionError, check input")
-                return f_list, Z_list, cols
+                return f_list * 1e-6, Z_list, cols
 
             elif which == 'transversal':
-                f_list = np.linspace(0, 10000, num=1000)
+
+                f_list = np.linspace(0, 10000, num=1000) * 1e6
                 try:
                     for i, n in enumerate(n_cav):
                         ZT = (2 * E0[i]) * 1e9 / (
                                 n * I0[i] * 1e-3 * beta_xy[i] * tau_xy[i] * 1e-3 * f_rev[i] * 1e3)
                         ZT_le.append(round(ZT * 1e-3, 2))
+
                         Z_list.append(np.array(ZT) * 1e-3)  # convert to kOhm/m
 
                 except ZeroDivisionError:
                     error("ZeroDivisionError, check input")
 
-                return f_list, Z_list, cols
+                return f_list * 1e-6, Z_list, cols
         else:
             error("Please load a valid operating point(s) file.")
 
-    def plot_thresholds(self, which, selection, ax=None):
+    def plot_thresholds(self, which, selection, ax=None, ncav_mod=1):
+        labels_info = []
+
+        def update_text_positions(event):
+            """Callback function to update the text positions based on current limits."""
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+
+            for info_ in labels_info:
+                # Check if the label is out of bounds
+                if not (xlim[0] <= info_['x'] <= xlim[1]) or not (ylim[0] <= info_['y'] <= ylim[1]):
+                    # Reposition the label to the center of the current view
+                    axes_coord = (0.01, 0.5)
+                    # Transform axes coordinate to display coordinate
+                    display_coord = ax.transAxes.transform(axes_coord)
+                    # Transform display coordinate to data coordinate
+                    data_coord = ax.transData.inverted().transform(display_coord)
+                    new_x = data_coord[0]
+                    new_y = info_['line'].get_ydata()[np.abs(info_['line'].get_xdata() - new_x).argmin()]
+                    info_['text_obj'].set_position((new_x, new_y))
+
         self.threshold_texts_objects = []
         if ax is None:
             fig, ax = plt.subplots()
@@ -5243,20 +5906,20 @@ class Cavities(Optimisation):
 
             # plot baselines
             for i, (z, lab) in enumerate(zip(Z_list, labels)):
-                aa = ax.plot(f_list, z, ls='--', c='k')
+                aa, = ax.plot(f_list, ncav_mod * z, ls='--', c='k')
+                labels_info.append({'line': aa})
 
             for i, (z, lab) in enumerate(zip(Z_list, labels)):
-                pos = axis_data_coords_sys_transform(ax, 0.01, 0.5)
+                pos = axis_data_coord6s_sys_transform(ax, 0.01, 0.5)
                 indx = np.argmin(abs(f_list - pos[0]))
-                x, y = axis_data_coords_sys_transform(ax, f_list[indx], z[indx], True)
+                # x, y = axis_data_coords_sys_transform(ax, f_list[indx], z[indx], True)
+                txt = LABELS[lab]
 
-                labe = lab.split('_')
-                if len(labe) > 1:
-                    txt = r"$\mathrm{" + fr"{lab.split('_')[0]}_" + "\mathrm{" + fr"{lab.split('_')[1]}" + r"}}$"
-                else:
-                    txt = r"$\mathrm{" + fr"{lab}" + r"}$"
-
-                ab = add_text(ax, txt, box="Square", xy=(x, y), xycoords='axes fraction', size=12)
+                ab = ax.text(f_list[indx], ncav_mod * z[indx], txt, color='k', fontsize=12, ha='left',
+                             bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
+                labels_info[i] = labels_info[i] | {'x': f_list[indx], 'y': ncav_mod * z[indx], 'label': txt,
+                                                   'text_obj': ab}
+                # ab = add_text(ax, txt, box="Square", xy=(x, y), xycoords='axes fraction', size=12)
                 self.threshold_texts_objects.append(ab)
 
         else:
@@ -5265,27 +5928,26 @@ class Cavities(Optimisation):
 
             # plot baselines
             for i, (z, lab) in enumerate(zip(Z_list, labels)):
-                aa = ax.axhline(z, ls='--', c='k')
+                aa = ax.axhline(ncav_mod * z, ls='--', c='k')
+                labels_info.append({'line': aa})
 
             for i, (z, lab) in enumerate(zip(Z_list, labels)):
                 pos = axis_data_coords_sys_transform(ax, 0.01, 0.5)
                 indx = np.argmin(abs(f_list - pos[0]))
-                x, y = axis_data_coords_sys_transform(ax, f_list[indx], z, True)
+                # x, y = axis_data_coords_sys_transform(ax, f_list[indx], z, True)
 
-                labe = lab.split('_')
-                if len(labe) > 1:
-                    txt = r"$\mathrm{" + fr"{lab.split('_')[0]}_" + "\mathrm{" + fr"{labels[i].split('_')[1]}" + r"}}$"
-                else:
-                    txt = r"$\mathrm{" + fr"{lab}" + r"}$"
+                txt = LABELS[lab]
 
-                ab = add_text(ax, txt, box="Square", xy=(x, y), xycoords='axes fraction', size=12)
+                ab = ax.text(f_list[indx], ncav_mod * z, txt, color='k', fontsize=12, ha='left',
+                             bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
+                labels_info[i] = labels_info[i] | {'x': f_list[indx], 'y': ncav_mod * z, 'label': txt, 'text_obj': ab}
                 self.threshold_texts_objects.append(ab)
-        ax.autoscale(True, axis='y')
 
-        # Adjust text annotations to avoid overlap
-        # self._adjust_texts(threshold_texts_objects, ax)
+        # Attach the callback to limit changes
+        ax.callbacks.connect('xlim_changed', update_text_positions)
+        ax.callbacks.connect('ylim_changed', update_text_positions)
 
-    def _adjust_texts(self, texts, ax, separation=0.01, iterations=1):
+    def _adjust_texts(self, texts, ax, separation=0.1, iterations=20):
         renderer = ax.figure.canvas.get_renderer()
 
         def get_text_bbox(text):
@@ -5304,23 +5966,23 @@ class Cavities(Optimisation):
                 overlap_x = max(0, min(bbox1.x1, bbox2.x1) - max(bbox1.x0, bbox2.x0))
                 overlap_y = max(0, min(bbox1.y1, bbox2.y1) - max(bbox1.y0, bbox2.y0))
 
-                # if overlap_x > 0:
-                #     midpoint_x = (center1[0] + center2[0]) / 2
-                #     if bbox1.x1 > bbox2.x1:
-                #         pos1[0] = midpoint_x + bbox1.width / 2 + separation/2
-                #         pos2[0] = midpoint_x - bbox2.width / 2 - separation/2
-                #     else:
-                #         pos1[0] = midpoint_x - bbox1.width / 2 - separation/2
-                #         pos2[0] = midpoint_x + bbox2.width / 2 + separation/2
-
-                if overlap_y > 0:
-                    midpoint_y = (center1[1] + center2[1]) / 2
-                    if bbox1.y1 > bbox2.y1:
-                        pos1[1] = midpoint_y + bbox1.height / 2 + separation / 2
-                        pos2[1] = midpoint_y - bbox2.height / 2 - separation / 2
+                if overlap_x > 0:
+                    midpoint_x = (center1[0] + center2[0]) / 2
+                    if bbox1.x1 > bbox2.x1:
+                        pos1[0] = midpoint_x + bbox1.width / 2 + separation
+                        pos2[0] = midpoint_x - bbox2.width / 2 - separation
                     else:
-                        pos1[1] = midpoint_y - bbox1.height / 2 - separation / 2
-                        pos2[1] = midpoint_y + bbox2.height / 2 + separation / 2
+                        pos1[0] = midpoint_x - bbox1.width / 2 - separation
+                        pos2[0] = midpoint_x + bbox2.width / 2 + separation
+
+                # if overlap_y > 0:
+                #     midpoint_y = (center1[1] + center2[1]) / 2
+                #     if bbox1.y1 > bbox2.y1:
+                #         pos1[1] = midpoint_y + bbox1.height / 2 + separation
+                #         pos2[1] = midpoint_y - bbox2.height / 2 - separation
+                #     else:
+                #         pos1[1] = midpoint_y - bbox1.height / 2 - separation
+                #         pos2[1] = midpoint_y + bbox2.height / 2 + separation
 
             return pos1, pos2
 
@@ -5346,24 +6008,54 @@ class Cavities(Optimisation):
             text.set_position((x, y))
 
     def plot_cutoff(self, Ri_list, which, ax=None):
+        labels_info = []
+
+        def update_text_positions(event):
+            """Callback function to update the text positions based on current limits."""
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+
+            for info_ in labels_info:
+                # Check if the label is out of bounds
+                if not (xlim[0] <= info_['x'] <= xlim[1]) or not (ylim[0] <= info_['y'] <= ylim[1]):
+                    # Reposition the label to the center of the current view
+                    axes_coord = (0.01, 0.05)
+                    # Transform axes coordinate to display coordinate
+                    display_coord = ax.transAxes.transform(axes_coord)
+                    # Transform display coordinate to data coordinate
+                    data_coord = ax.transData.inverted().transform(display_coord)
+                    new_y = data_coord[1]
+                    new_x = info_['line'].get_xdata()[np.abs(info_['line'].get_ydata() - new_y).argmin()]
+                    info_['text_obj'].set_position((new_x, new_y))
+
         if ax is None:
             fig, ax = plt.subplots()
             ax.margins(x=0)
 
         f_list = self.calculate_beampipe_cutoff(Ri_list, which)
 
+        i = 0
         for Ri in Ri_list:
             for mode_type, freq in zip(which, f_list[f'{Ri}']):
-                vl = ax.axvline(freq, ls='--', c='k')  # label=f"{sc[0]} cutoff (Ri={sc[1]})",
+                vl = ax.axvline(freq, ls='--', c='k', zorder=900)  # label=f"{sc[0]} cutoff (Ri={sc[1]})",
+                labels_info.append({'line': vl})
 
                 # get y text position from axis position. Position x is not used
                 pos = axis_data_coords_sys_transform(ax, freq, 0.05, inverse=False)
 
-                # ylim = self.ax.get_ylim()
-                ab = add_text(ax, r"$f_\mathrm{c," + f"{mode_type}" + r"} (R_\mathrm{i} = "
-                              + f"{Ri}" + r" ~\mathrm{mm}) $",
-                              box="None", xy=(freq, pos[1]),
-                              xycoords='data', size=10, rotation=90)
+                txt = r"$f_\mathrm{c," + f"{mode_type}" + r"} (R_\mathrm{i} = " + f"{Ri}" + r" ~\mathrm{mm}) $"
+                ab = ax.text(freq, pos[1], txt, color='k', fontsize=16, ha='left', rotation=90, zorder=1000)
+                labels_info[i] = labels_info[i] | {'x': freq, 'y': pos[1], 'label': txt, 'text_obj': ab}
+                i += 1
+
+                # ab = add_text(ax, r"$f_\mathrm{c," + f"{mode_type}" + r"} (R_\mathrm{i} = "
+                #               + f"{Ri}" + r" ~\mathrm{mm}) $",
+                #               box="None", xy=(freq, pos[1]),
+                #               xycoords='data', size=14, rotation=90)
+
+        # Attach the callback to limit changes
+        ax.callbacks.connect('xlim_changed', update_text_positions)
+        ax.callbacks.connect('ylim_changed', update_text_positions)
 
     @staticmethod
     def calculate_beampipe_cutoff(Ri_list, which):
@@ -8262,15 +8954,15 @@ def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoo
         bbox_props = dict(boxstyle='{}'.format(box), fc='w', ec='k')
         annotext = ax.annotate(text, xy=xy, xycoords=xycoords,
                                xytext=xytext, textcoords=textcoords, bbox=bbox_props, fontsize=size,
-                               rotation=rotation, arrowprops=arrowprops)
+                               rotation=rotation, arrowprops=arrowprops, zorder=500)
     else:
         if box == "None":
             annotext = ax.annotate(text, xy=xy, xycoords=xycoords, fontsize=size,
-                                   rotation=rotation, arrowprops=arrowprops)
+                                   rotation=rotation, arrowprops=arrowprops, zorder=500)
         else:
             bbox_props = dict(boxstyle='{}'.format(box), fc='w', ec='k')
             annotext = ax.annotate(text, xy=xy, xycoords=xycoords, bbox=bbox_props, fontsize=size,
-                                   rotation=rotation, arrowprops=arrowprops)
+                                   rotation=rotation, arrowprops=arrowprops, zorder=500)
 
     ax.get_figure().canvas.draw_idle()
     ax.get_figure().canvas.flush_events()

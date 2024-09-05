@@ -32,7 +32,7 @@ def update_alpha(cell, cell_parameterisation='simplecell'):
     else:
         cell = [A, B, a, b, Ri, L, Req, cell[7], alpha[0]]
 
-    return cell
+    return np.array(cell)
 
 
 def calculate_alpha(A, B, a, b, Ri, L, Req, L_bp):
@@ -779,7 +779,6 @@ def cn_gauss(rdim, degree):
 def weighted_mean_obj(tab_var, weights):
     rows_sims_no, cols = np.shape(tab_var)
     no_weights, dummy = np.shape(weights)
-
     if rows_sims_no == no_weights:
         expe = np.zeros((cols, 1))
         outvar = np.zeros((cols, 1))
@@ -1587,7 +1586,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
     lineTo(start_point, [-shift, Ri_el], step)
     pt = [-shift, Ri_el]
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 2])
 
     # ADD BEAM PIPE LENGTH
     if L_bp_l != 0:
@@ -1620,8 +1619,8 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [-shift + x1el, y1el]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 2])
+            geo.append([pt[1], pt[0], 2])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2el, y2el], step)
@@ -1629,7 +1628,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             if plot and dimension:
                 ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
@@ -1654,7 +1653,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # flat top
             pts = lineTo(pt, [L_bp_l + L_el + lft_el - shift, Req], step)
@@ -1662,7 +1661,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             if plot and dimension:
                 ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
@@ -1687,7 +1686,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 2])
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     if plot and dimension:
                         ax.scatter(L_el + lft_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
@@ -1710,7 +1709,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     # STRAIGHT LINE TO NEXT POINT
                     lineTo(pt, [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
                     pt = [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     if plot and dimension:
                         ax.scatter(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
@@ -1740,7 +1739,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 2])
 
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     # calculate new shift
                     shift = shift - (L_el + lft_el + L_er)
@@ -1754,12 +1753,12 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 2])
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     # STRAIGHT LINE TO NEXT POINT
                     lineTo(pt, [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
                     pt = [L_el + lft_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     # ARC
                     # half of bounding box is required,
@@ -1789,7 +1788,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 2])
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
 
                     pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
                                 [L_bp_l + L_el + lft_el + L_er - shift, Ri_er])
@@ -1797,7 +1796,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 2])
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 2])
             else:
                 # EQUATOR ARC TO NEXT POINT
                 # half of bounding box is required,
@@ -1808,7 +1807,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
                         geo.append([pp[1], pp[0], 2])
-                geo.append([pt[1], pt[0]])
+                geo.append([pt[1], pt[0], 2])
 
                 # STRAIGHT LINE TO NEXT POINT
                 pts = lineTo(pt, [L_el + lft_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
@@ -1816,7 +1815,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
                         geo.append([pp[1], pp[0], 2])
-                geo.append([pt[1], pt[0]])
+                geo.append([pt[1], pt[0], 2])
 
                 # ARC
                 # half of bounding box is required,
@@ -1827,7 +1826,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
                         geo.append([pp[1], pp[0], 2])
-                geo.append([pt[1], pt[0]])
+                geo.append([pt[1], pt[0], 2])
 
                 # calculate new shift
                 shift = shift - (L_el + L_m + lft_el)
@@ -1840,14 +1839,14 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
             pt = [-shift + x2, y2]
             for pp in pts:
                 geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
@@ -1855,7 +1854,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # flat top
             pts = lineTo(pt, [L_bp_l + L_m + lft - shift, Req], step)
@@ -1863,7 +1862,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
@@ -1873,7 +1872,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_m + L_m + lft - x2 + 2 * L_bp_l - shift, y2]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 2])
 
             geo.append([pt[1], pt[0], 2])
 
@@ -1882,7 +1881,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             pt = [L_m + L_m + lft - x1 + 2 * L_bp_l - shift, y1]
             for pp in pts:
                 geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # ARC
             # half of bounding box is required,
@@ -1894,7 +1893,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # calculate new shift
             shift = shift - 2 * L_m - lft
@@ -1905,7 +1904,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
@@ -1913,7 +1912,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
@@ -1921,7 +1920,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # flat top
             pts = lineTo(pt, [L_bp_l + L_m + lft_er - shift, Req], step)
@@ -1929,7 +1928,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
@@ -1940,7 +1939,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_er + lft_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
@@ -1948,7 +1947,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
             # ARC
             # half of bounding box is required,
@@ -1959,7 +1958,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
                     geo.append([pp[1], pp[0], 2])
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 2])
 
     # BEAM PIPE
     # reset shift
@@ -1997,7 +1996,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
             error('Check file path:: ', e)
 
     # append start point
-    geo.append([start_point[1], start_point[0]])
+    geo.append([start_point[1], start_point[0], 3])
 
     if bc:
         # draw right boundary condition
@@ -2007,7 +2006,8 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
     # CLOSE PATH
     # lineTo(pt, start_point, step)
-    # geo.append([start_point[1], start_point[0]])
+    # geo.append([start_point[1], start_point[0], 3])
+
     geo = np.array(geo)
 
     if plot:

@@ -20,7 +20,7 @@ class ABCIGeometry(Geometry):
     def cavity(self, no_of_cells, no_of_modules,
                mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
                fid="_0", MROT=0, beampipes=None,
-               bunch_length=50, MT=3, NFS=5000, UBT=0,
+               bunch_length=50, MT=4, NFS=5000, UBT=0,
                DDZ_SIG=0.1, DDR_SIG=0.1,
                parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
 
