@@ -49,6 +49,7 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
           "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",
           "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", "Q []": r'$Q$ []',
+          'kcc [%]': r'$k_\mathrm{cc}$ [%]', 'GR/Q [Ohm^2]': '$G \cdot R/Q \mathrm{[\Omega^2]}$',
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
@@ -2163,7 +2164,6 @@ class Cavity:
         -------
 
         """
-
         qois = 'qois.json'
         assert os.path.exists(fr"{self.projectDir}/SimulationData/NGSolveMEVP/{self.name}/monopole/{qois}"), (
             error('Eigenmode result does not exist, please run eigenmode simulation.'))
@@ -2176,7 +2176,7 @@ class Cavity:
         self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
         self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
         self.G = self.GR_Q / self.R_Q
-        # self.Q = d_qois['Q []']
+        self.Q = self.eigenmode_qois['Q []']
         self.e = self.eigenmode_qois['Epk/Eacc []']
         self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
 
@@ -3575,12 +3575,12 @@ class Cavities(Optimisation):
         results = []
         for cav in self.cavities_list:
             results.append({
-                r"$E_\mathrm{pk}/E_\mathrm{acc} [\cdot]$": cav.e,
-                r"$B_\mathrm{pk}/E_\mathrm{acc} \mathrm{[mT/MV/m]}$": cav.b,
-                r"$k_\mathrm{cc} [\cdot]$": cav.k_cc,
-                r"$R/Q \mathrm{[\Omega]}$": cav.R_Q,
-                r"$G \mathrm{[\Omega]}$": cav.G,
-                r"$G\cdot R/Q \mathrm{[10^{5}\Omega^2]}$": cav.GR_Q * 1e-5
+                r"Epk/Eacc []": cav.e,
+                r"Bpk/Eacc [mT/MV/m]": cav.b,
+                r"kcc [%]": cav.k_cc,
+                r"R/Q [Ohm]": cav.R_Q,
+                r"G [Ohm]": cav.G,
+                r"GR/Q [Ohm^2]": cav.GR_Q
             })
 
         results_norm_units = []
@@ -3607,23 +3607,24 @@ class Cavities(Optimisation):
 
         results = []
         for cavity in self.cavities_list:
-            cavity.get_wakefield_qois()
+            cavity.get_wakefield_qois(self.wakefield_config)
+            print(cavity.k_loss)
             results.append({
-                r"$|k_\parallel| \mathrm{[V/pC]}$": cavity.k_loss[opt],
-                r"$|k_\perp| \mathrm{[V/pC/m]}$": cavity.k_kick[opt],
-                r"$P_\mathrm{HOM}/cav \mathrm{[kW]}$": cavity.phom[opt]
+                r"|k_loss| [V/pC]": cavity.k_loss[opt],
+                r"|k_kick| [V/pC/m]": cavity.k_kick[opt],
+                r"P_HOM [kW]": cavity.phom[opt]
             })
 
-        results_norm_units = []
-        for cavity in self.cavities_list:
-            cavity.get_wakefield_qois()
-            results_norm_units.append({
-                r"$k_\parallel$": cavity.k_loss[opt],
-                r"$k_\perp$": cavity.k_kick[opt],
-                r"$p_\mathrm{HOM}/cav$": cavity.phom[opt]
-            })
+        # results_norm_units = []
+        # for cavity in self.cavities_list:
+        #     cavity.get_wakefield_qois(self.wakefield_config)
+        #     results_norm_units.append({
+        #         r"|k_loss| [V/pC]": cavity.k_loss[opt],
+        #         r"|k_kick| [V/pC/m]": cavity.k_kick[opt],
+        #         r"P_HOM [kW]": cavity.phom[opt]
+        #     })
 
-        return results_norm_units
+        return results
 
     def qois_all(self, opt):
         """
@@ -4027,7 +4028,7 @@ class Cavities(Optimisation):
         if kind == 'bar' or kind == 'b':
             self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols)
 
-    def plot_compare_hom_bar(self, opt, ncols=3, uq=False):
+    def plot_compare_hom_bar_(self, opt, ncols=3, uq=False):
         """
         Plot bar chart of higher-order mode's quantities of interest
 
@@ -4097,6 +4098,122 @@ class Cavities(Optimisation):
         fname = '_'.join(fname)
 
         self.save_all_plots(f"{fname}_hom_bar.png")
+
+        return axd
+
+    def plot_compare_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
+        """
+        Plot scatter chart of fundamental mode quantities of interest.
+
+        Parameters
+        ----------
+        ncols : int, optional
+            Number of columns for the legend. The default is 3.
+        uq : bool, optional
+            If True, plots with uncertainty quantification. The default is False.
+
+        Returns
+        -------
+        axd : dict
+            A dictionary of axes from the scatter plot.
+        """
+        plt.rcParams["figure.figsize"] = figsize
+        if isinstance(op_points_list, str):
+            op_points_list = [op_points_list]
+
+        if not uq:
+            self.hom_results = self.qois_hom(op_points_list[0])
+
+            df = pd.DataFrame.from_dict(self.hom_results)
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+
+            labels = [cav.plot_label for cav in self.cavities_list]
+            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+
+            # Plot each column in a separate subplot
+            for key, ax in axd.items():
+                for i, label in enumerate(labels):
+                    ax.bar(df.index, df[key], color=colors[i], ec='k', label=label)
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.set_ylabel(key)
+
+            h, l = ax.get_legend_handles_labels()
+        else:
+
+            # Step 1: Flatten the dictionary into a DataFrame
+            df_list, df_nominal_list = [], []
+            for opt in op_points_list:
+
+                # get nominal qois
+                dd_nominal = {}
+                for cav, ops_id in self.wakefield_qois.items():
+                    for kk, vv in ops_id.items():
+                        if fr'{opt}_SR' in kk:
+                            dd_nominal[cav] = vv
+
+                df_nominal = pd.DataFrame.from_dict(dd_nominal).T
+                df_nominal_list.append(df_nominal)
+
+                rows = []
+                # get uq opt
+                for cavity, metrics in self.uq_hom_results.items():
+                    for metric, values in metrics[opt]['SR'].items():
+                        rows.append({
+                            'cavity': cavity,
+                            'metric': metric,
+                            'mean': values['expe'][0],
+                            'std': values['stdDev'][0]
+                        })
+
+                df = pd.DataFrame(rows)
+                df_list.append(df)
+
+            # Step 2: Create a Mosaic Plot
+            metrics = df_list[0]['metric'].unique()
+            layout = [[metric for metric in metrics]]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+
+            # Plotting labels and colors
+            labels = df_list[0]['cavity'].unique()
+            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = [cav.color for cav in self.cavities_list]
+            opt_format = ['o', '^', 's', 'D', 'P', 'v']
+            # Step 3: Plot each metric on a separate subplot
+            for metric, ax in axd.items():
+                for i, label in enumerate(labels):
+                    for ii, (opt, df, df_nominal) in enumerate(zip(op_points_list, df_list, df_nominal_list)):
+                        sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
+                        bar = ax.bar(sub_df['cavity'], sub_df['mean'], color=colors[i],
+                                                    fc='none', ec=colors[i], lw=2, zorder=100,
+                                                    label=fr'{label} ({LABELS[opt]})')
+                        ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt=opt_format[ii],
+                                    capsize=10, lw=2, mfc='none',
+                                    color=bar.get_edgecolor()[0])
+
+                        # plot nominal
+                        ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', ec='k',
+                                   lw=1, marker=opt_format[ii],
+                                   zorder=100)
+
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+                ax.margins(0.3)
+                ax.set_ylabel(LABELS[metric])
+
+            # Step 4: Set legend
+            h, l = ax.get_legend_handles_labels()
+
+        if not ncols:
+            ncols = min(4, len(labels))
+
+        fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center', borderaxespad=0, ncol=ncols)
+
+        # Save plots
+        fname = [cav.name for cav in self.cavities_list]
+        fname = '_'.join(fname)
+
+        self.save_all_plots(f"{fname}_hom_scatter_{op_points_list}.png")
 
         return axd
 
@@ -4267,9 +4384,7 @@ class Cavities(Optimisation):
 
             layout = [[metric for metric in metrics]]
             fig, axd = plt.subplot_mosaic(layout, layout='constrained')
-            # fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
 
-            # Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 sub_df = df[df['metric'] == metric]
                 ax.bar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], label=labels, capsize=5,
@@ -7610,10 +7725,13 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
                 nodes_ = 2. * nodes_ - 1.
 
-            # save nodes
+            # save nodes and weights
             data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
             data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
                               index=False, sep='\t', float_format='%.32f')
+
+            data_table_w = pd.DataFrame(weights_, columns=['weights'])
+            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
             # if delta is None:
@@ -7755,6 +7873,9 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
             data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
                               index=False, sep='\t', float_format='%.32f')
+
+            data_table_w = pd.DataFrame(weights_, columns=['weights'])
+            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
             # if delta is None:
@@ -8323,6 +8444,9 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         # save nodes
         data_table = pd.DataFrame(nodes_.T)
         data_table.to_csv(uq_path / 'nodes.csv', index=False, sep='\t', float_format='%.32f')
+
+        data_table_w = pd.DataFrame(weights_, columns=['weights'])
+        data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
 
         #  mean value of geometrical parameters
         no_parm, no_sims = np.shape(nodes_)

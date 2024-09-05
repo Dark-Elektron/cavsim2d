@@ -446,7 +446,7 @@ class NGSolveMEVP:
         return face
 
     def cavity(self, no_of_cells=1, no_of_modules=1, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-               fid=None, bc=33, pol='Monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
+               fid=None, bc=33, pol='monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
                sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
                expansion=None, expansion_r=None, mesh_args=None, opt=False, deformation_params=None):
         """
@@ -495,7 +495,7 @@ class NGSolveMEVP:
 
         """
 
-        if pol != 'Monopole':
+        if pol != 'monopole':
             pol_subdir = 'dipole'
         else:
             pol_subdir = 'monopole'
@@ -628,9 +628,10 @@ class NGSolveMEVP:
             #                         list(u.vecs), shift=300)
 
             # save json file
-            shape = {'IC': update_alpha(mid_cells_par),
-                     'OC': update_alpha(l_end_cell_par),
-                     'OC_R': update_alpha(r_end_cell_par)}
+            shape = {'IC': update_alpha(mid_cells_par).tolist(),
+                     'OC': update_alpha(l_end_cell_par).tolist(),
+                     'OC_R': update_alpha(r_end_cell_par).tolist()}
+
             with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
@@ -640,6 +641,7 @@ class NGSolveMEVP:
 
             with open(fr'{run_save_directory}\qois.json', "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
+
             return True
         else:
             error('Could not run eigenmode analysis due to error in geometry.')
@@ -1013,9 +1015,9 @@ class NGSolveMEVP:
         self.save_fields(run_save_directory, gfu_E, gfu_H)
 
         # save json file
-        shape = {'IC': update_alpha(mid_cells_par, cell_parameterisation='flattop'),
-                 'OC': update_alpha(l_end_cell_par, cell_parameterisation='flattop'),
-                 'OC_R': update_alpha(r_end_cell_par, cell_parameterisation='flattop')}
+        shape = {'IC': update_alpha(mid_cells_par, cell_parameterisation='flattop').tolist(),
+                 'OC': update_alpha(l_end_cell_par, cell_parameterisation='flattop').tolist(),
+                 'OC_R': update_alpha(r_end_cell_par, cell_parameterisation='flattop').tolist()}
 
         with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
             json.dump(shape, f, indent=4, separators=(',', ': '))
