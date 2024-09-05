@@ -50,6 +50,7 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",
           "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", "Q []": r'$Q$ []',
           'kcc [%]': r'$k_\mathrm{cc}$ [%]', 'GR/Q [Ohm^2]': '$G \cdot R/Q \mathrm{[\Omega^2]}$',
+          'ff [%]': r'$\eta_ff$ [%]',
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
@@ -4028,78 +4029,78 @@ class Cavities(Optimisation):
         if kind == 'bar' or kind == 'b':
             self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols)
 
-    def plot_compare_hom_bar_(self, opt, ncols=3, uq=False):
-        """
-        Plot bar chart of higher-order mode's quantities of interest
-
-        Returns
-        -------
-
-        """
-        # plt.rcParams["figure.figsize"] = (15 / 27 * 6 * len(self.cavities_list), 3)
-        plt.rcParams["figure.figsize"] = (12, 4)
-
-        if not uq:
-            # plot barchart
-            self.hom_results = self.qois_hom(opt)
-            df = pd.DataFrame.from_dict(self.hom_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
-            # Plot each column in a separate subplot
-            labels = [cav.plot_label for cav in self.cavities_list]
-            for key, ax in axd.items():
-                ax.bar(df.index, df[key], label=labels, color=matplotlib.colormaps['Set2'].colors[:len(df)],
-                       edgecolor='k', width=1)
-                ax.set_xticklabels([])
-                ax.set_ylabel(key)
-                h, l = ax.get_legend_handles_labels()
-        else:
-            # Step 1: Flatten the dictionary into a DataFrame
-            rows = []
-            for cav, metrics in self.uq_hom_results.items():
-                for metric, values in metrics.items():
-                    rows.append({
-                        'cavity': cav,
-                        'metric': metric,
-                        'mean': values['expe'][0],
-                        'std': values['stdDev'][0]
-                    })
-
-            df = pd.DataFrame(rows)
-
-            labels = [cav.plot_label for cav in self.cavities_list]
-
-            # Step 2: Create a Mosaic Plot
-            metrics = df['metric'].unique()
-            num_metrics = len(metrics)
-
-            layout = [[metric for metric in metrics]]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
-
-            # Plot each metric on a separate subplot
-            for metric, ax in axd.items():
-                sub_df = df[df['metric'] == metric]
-                ax.bar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], label=labels, capsize=5,
-                       color=matplotlib.colormaps['Set2'].colors[:len(df)], edgecolor='k',
-                       width=1)
-
-                ax.set_xticklabels([])
-                ax.set_xticks([])
-                ax.set_ylabel(metric)
-                h, l = ax.get_legend_handles_labels()
-
-        if not ncols:
-            ncols = min(4, len(self.cavities_list))
-        fig.legend(h, l, loc='outside upper center', borderaxespad=0, ncol=ncols)
-
-        # fig.set_tight_layout(True)
-
-        # save plots
-        fname = [cav.name for cav in self.cavities_list]
-        fname = '_'.join(fname)
-
-        self.save_all_plots(f"{fname}_hom_bar.png")
-
-        return axd
+    # def plot_compare_hom_bar_(self, opt, ncols=3, uq=False):
+    #     """
+    #     Plot bar chart of higher-order mode's quantities of interest
+    #
+    #     Returns
+    #     -------
+    #
+    #     """
+    #     # plt.rcParams["figure.figsize"] = (15 / 27 * 6 * len(self.cavities_list), 3)
+    #     plt.rcParams["figure.figsize"] = (12, 4)
+    #
+    #     if not uq:
+    #         # plot barchart
+    #         self.hom_results = self.qois_hom(opt)
+    #         df = pd.DataFrame.from_dict(self.hom_results)
+    #         fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+    #         # Plot each column in a separate subplot
+    #         labels = [cav.plot_label for cav in self.cavities_list]
+    #         for key, ax in axd.items():
+    #             ax.bar(df.index, df[key], label=labels, color=matplotlib.colormaps['Set2'].colors[:len(df)],
+    #                    edgecolor='k', width=1)
+    #             ax.set_xticklabels([])
+    #             ax.set_ylabel(key)
+    #             h, l = ax.get_legend_handles_labels()
+    #     else:
+    #         # Step 1: Flatten the dictionary into a DataFrame
+    #         rows = []
+    #         for cav, metrics in self.uq_hom_results.items():
+    #             for metric, values in metrics.items():
+    #                 rows.append({
+    #                     'cavity': cav,
+    #                     'metric': metric,
+    #                     'mean': values['expe'][0],
+    #                     'std': values['stdDev'][0]
+    #                 })
+    #
+    #         df = pd.DataFrame(rows)
+    #
+    #         labels = [cav.plot_label for cav in self.cavities_list]
+    #
+    #         # Step 2: Create a Mosaic Plot
+    #         metrics = df['metric'].unique()
+    #         num_metrics = len(metrics)
+    #
+    #         layout = [[metric for metric in metrics]]
+    #         fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+    #
+    #         # Plot each metric on a separate subplot
+    #         for metric, ax in axd.items():
+    #             sub_df = df[df['metric'] == metric]
+    #             ax.bar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], label=labels, capsize=5,
+    #                    color=matplotlib.colormaps['Set2'].colors[:len(df)], edgecolor='k',
+    #                    width=1)
+    #
+    #             ax.set_xticklabels([])
+    #             ax.set_xticks([])
+    #             ax.set_ylabel(metric)
+    #             h, l = ax.get_legend_handles_labels()
+    #
+    #     if not ncols:
+    #         ncols = min(4, len(self.cavities_list))
+    #     fig.legend(h, l, loc='outside upper center', borderaxespad=0, ncol=ncols)
+    #
+    #     # fig.set_tight_layout(True)
+    #
+    #     # save plots
+    #     fname = [cav.name for cav in self.cavities_list]
+    #     fname = '_'.join(fname)
+    #
+    #     self.save_all_plots(f"{fname}_hom_bar.png")
+    #
+    #     return axd
 
     def plot_compare_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
         """
