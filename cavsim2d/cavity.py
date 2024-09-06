@@ -3609,21 +3609,12 @@ class Cavities(Optimisation):
         results = []
         for cavity in self.cavities_list:
             cavity.get_wakefield_qois(self.wakefield_config)
-            print(cavity.k_loss)
+
             results.append({
                 r"|k_loss| [V/pC]": cavity.k_loss[opt],
                 r"|k_kick| [V/pC/m]": cavity.k_kick[opt],
                 r"P_HOM [kW]": cavity.phom[opt]
             })
-
-        # results_norm_units = []
-        # for cavity in self.cavities_list:
-        #     cavity.get_wakefield_qois(self.wakefield_config)
-        #     results_norm_units.append({
-        #         r"|k_loss| [V/pC]": cavity.k_loss[opt],
-        #         r"|k_kick| [V/pC/m]": cavity.k_kick[opt],
-        #         r"P_HOM [kW]": cavity.phom[opt]
-        #     })
 
         return results
 
