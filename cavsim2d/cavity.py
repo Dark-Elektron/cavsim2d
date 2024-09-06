@@ -6017,7 +6017,7 @@ class Cavities(Optimisation):
                 labels_info.append({'line': aa})
 
             for i, (z, lab) in enumerate(zip(Z_list, labels)):
-                pos = axis_data_coord6s_sys_transform(ax, 0.01, 0.5)
+                pos = axis_data_coords_sys_transform(ax, 0.01, 0.5)
                 indx = np.argmin(abs(f_list - pos[0]))
                 # x, y = axis_data_coords_sys_transform(ax, f_list[indx], z[indx], True)
                 txt = LABELS[lab]
