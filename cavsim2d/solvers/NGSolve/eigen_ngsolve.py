@@ -155,11 +155,8 @@ class NGSolveMEVP:
 
         file_path = fr"{folder}\geodata.n"
         if cell_parameterisation == 'simplecell':
-            # writeCavityForMultipac(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe, plot=plot)
             write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
         else:
-            # writeCavityForMultipac_flat_top(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
-            #                                 plot=plot)
             write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells,
                                               write=file_path)
 
@@ -448,7 +445,7 @@ class NGSolveMEVP:
     def cavity(self, no_of_cells=1, no_of_modules=1, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
                fid=None, bc=33, pol='monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
                sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
-               expansion=None, expansion_r=None, mesh_args=None, opt=False, deformation_params=None):
+               expansion=None, expansion_r=None, mesh_args=None, opt=False, deformation_params=None, eigenmode_config=None):
         """
         Write geometry file and run eigenmode analysis with NGSolveMEVP
 
@@ -500,9 +497,18 @@ class NGSolveMEVP:
         else:
             pol_subdir = 'monopole'
 
+        mesh_h = 20
+        mesh_p = 1
+        if eigenmode_config:
+            if 'mesh_config' in eigenmode_config.keys():
+                mesh_config = eigenmode_config['mesh_config']
+                if 'h' in mesh_config.keys():
+                    mesh_h = mesh_config['h']
+
+                if 'p' in mesh_config.keys():
+                    mesh_p = mesh_config['p']
+
         # change save directory
-        if mesh_args is None:
-            mesh_args = [20, 20]
         if opt:
             # consider making better. This was just an adhoc fix
             run_save_directory = os.path.join(projectDir, fr'SimulationData/Optimisation/{fid}')
@@ -555,7 +561,7 @@ class NGSolveMEVP:
 
             # mesh
             A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(mid_cells_par[:7])
-            maxh = L / mesh_args[0] * 1e-3
+            maxh = L / mesh_h * 1e-3
 
             # try to generate mesh
             try:
@@ -572,7 +578,7 @@ class NGSolveMEVP:
             self.save_mesh(run_save_directory, mesh)
 
             # define finite element space
-            fes = HCurl(mesh, order=1, dirichlet='default')
+            fes = HCurl(mesh, order=mesh_p, dirichlet='default')
 
             u, v = fes.TnT()
 
@@ -600,7 +606,7 @@ class NGSolveMEVP:
                 proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
 
                 projpre = proj @ pre.mat
-                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=mesh_args[1],
+                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=20,
                                               printrates=False)
 
             freq_fes = []
@@ -608,6 +614,7 @@ class NGSolveMEVP:
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
 
+            print(freq_fes)
             # plot results
             gfu_E = []
             gfu_H = []
@@ -652,7 +659,7 @@ class NGSolveMEVP:
                          fid=None, bc=33, pol='monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
                          sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
                          expansion=None, expansion_r=None, mesh_args=None, opt=False,
-                         deformation_params=None):
+                         deformation_params=None, eigenmode_config=None):
         """
         Write geometry file and run eigenmode analysis with NGSolveMEVP
 
@@ -708,6 +715,8 @@ class NGSolveMEVP:
         # change save directory
         if mesh_args is None:
             mesh_args = [20, 20]
+
+
         if opt:  # consider making better. This was just an adhoc fix
             run_save_directory = projectDir / fr'SimulationData/Optimisation/{fid}'
         else:
@@ -718,10 +727,8 @@ class NGSolveMEVP:
                 run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}'
 
         # write
-        # st1 = time.time()
         self.write_geometry_multicell(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par,
                                       beampipes, plot=False)
-        # error('Time to write geom: ', time.time()-st1)
 
         # read geometry
         # error(run_save_directory)
@@ -735,8 +742,6 @@ class NGSolveMEVP:
             cav_geom.to_csv(f'{run_save_directory}\geodata_deformed.n', sep='\t')
 
         cav_geom = cav_geom[[1, 0]]
-        # plt.plot(cav_geom[0], cav_geom[1])
-        # plt.show()
 
         pnts = list(cav_geom.itertuples(index=False, name=None))
         wp = WorkPlane()
@@ -852,7 +857,7 @@ class NGSolveMEVP:
                        fid=None, bc=33, pol='monopole', f_shift='default', beta=1, n_modes=None, beampipes='None',
                        sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
                        expansion=None, expansion_r=None, mesh_args=None, opt=False,
-                       deformation_params=None):
+                       deformation_params=None, eigenmode_config=None):
         """
         Write geometry file and run eigenmode analysis with NGSolveMEVP
 
@@ -1218,7 +1223,6 @@ class NGSolveMEVP:
             # plt.show()
 
             pnts = list(cav_geom.itertuples(index=False, name=None))
-            print('len of pts:: ', len(pnts))
             wp = WorkPlane()
             wp.MoveTo(*pnts[0])
             for p in pnts[1:]:
@@ -1400,7 +1404,6 @@ class NGSolveMEVP:
         freq_fes = []
         for i, lam in enumerate(evals):
             freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-
         # plot results
         gfu = GridFunction(fes, multidim=len(evecs))
         for i in range(len(evecs)):
@@ -1561,9 +1564,9 @@ class NGSolveMEVP:
             plt.show()
         else:
             if which == 'E':
-                Draw(Norm(gfu_E[mode]), mesh, order=2)
+                Draw(Norm(gfu_E[mode]), mesh, order=2, settings={'Objects': {'Wireframe': False}})
             else:
-                Draw(Norm(gfu_E[mode]), mesh, order=2)
+                Draw(Norm(gfu_E[mode]), mesh, order=2, settings={'Objects': {'Wireframe': False}})
 
     def plot_mesh(self, folder, plotter='ngsolve'):
         mesh = self.load_mesh(folder)

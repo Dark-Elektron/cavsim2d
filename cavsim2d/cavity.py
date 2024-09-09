@@ -1564,6 +1564,8 @@ class Cavity:
         name
         """
 
+        self.convergence_df_data = None
+        self.convergence_df = None
         self.uq_weights = None
         self.V_rf_config = 0
         self.Eacc_rf_config = 0
@@ -1925,8 +1927,78 @@ class Cavity:
                 # replace initial value
                 self.shape['IC'][VAR_TO_INDEX_DICT[key]] = current_var
 
-    def study_convergence(self, step_refinement, max_steps):
-        pass
+    def study_mesh_convergence(self, h=2, h_passes=10, h_step=1, p=2, p_passes=3, p_step=1):
+        """
+
+        Parameters
+        ----------
+        h
+        passes
+        solver
+        type: str
+            h or p refinement
+
+        Returns
+        -------
+
+        """
+
+        convergence_df_ph = None
+        convergence_df_data_ph = None
+        # define start value, refinement (adaptive? fixed step?)
+        hs = h
+        for ip in range(p_passes):
+            convergence_dict_h = {}
+            for ih in range(h_passes):
+                eigenmode_config = {'boundary_conditions': 'mm',
+                                    'solver_save_directory': 'ngsolvemevp',
+                                    'uq_config': {},
+                                    'opt': False,
+                                    'mesh_config': {
+                                        'h': hs,
+                                        'p': p
+                                    }
+                                    }
+
+                run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir,
+                                eigenmode_config)
+                # read results
+                self.get_eigenmode_qois()
+
+                convergence_dict_h[ih] = self.eigenmode_qois
+                convergence_dict_h[ih]['h'] = hs
+                convergence_dict_h[ih]['p'] = p
+
+                hs += h_step
+            convergence_df_data_h = pd.DataFrame.from_dict(convergence_dict_h, orient='index')
+            convergence_df_h = self.calculate_rel_errors(convergence_df_data_h)
+
+            if convergence_df_ph is None:
+                convergence_df_data_ph = convergence_df_data_h
+                convergence_df_ph = convergence_df_h
+            else:
+                convergence_df_data_ph = pd.concat([convergence_df_data_ph,
+                                                    convergence_df_data_h], ignore_index=True)
+                convergence_df_ph = pd.concat([convergence_df_ph,
+                                               convergence_df_h], ignore_index=True)
+            hs = h
+            p += p_step
+
+        # convert to dataframe
+        self.convergence_df_data = convergence_df_data_ph
+        self.convergence_df = convergence_df_ph
+
+    def calculate_rel_errors(self, df):
+        # Specify the columns to exclude
+        columns_to_exclude = ['h', 'p']
+        df_to_compute = df.drop(columns=columns_to_exclude)
+        df_prev = df_to_compute.shift(1)
+        relative_errors = (df_to_compute - df_prev).abs() / df_prev.abs()
+        relative_errors.columns = [f'rel_error_{col}' for col in df_to_compute.columns]
+        excluded_columns = df[columns_to_exclude]
+        rel_errors_df = pd.concat([relative_errors, excluded_columns], axis=1)
+
+        return rel_errors_df
 
     def run_eigenmode(self, solver='ngsolve', freq_shift=0, boundary_cond=None, subdir='', uq_config=None):
         """
@@ -2321,11 +2393,13 @@ class Cavity:
 
                     p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
 
-                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
+                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
+                                self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
                     pdyn_expe, pdyn_std = weighted_mean_obj(np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
                     pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std}
 
-                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
+                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (
+                                self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
                     pstat_expe, pstat_std = weighted_mean_obj(np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
                     pstat = {'expe': pstat_expe, 'stdDev': pstat_std}
 
@@ -2338,7 +2412,8 @@ class Cavity:
                             # n_cav[stat_mom] = [
                             #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
 
-                            p_in[stat_mom] = [p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
+                            p_in[stat_mom] = [
+                                p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
 
                         # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
                         #     p_cryo[stat_mom] = [
@@ -2586,9 +2661,17 @@ class Cavity:
                                           tangent_check=True, lw=1,
                                           plot=True,
                                           ignore_degenerate=True)
-
                 # Update the sum display
                 sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+
+            def run_eigenmode(b):
+                eigenmode_config = {'processes': 1}
+                boundary_conds = 'mm'
+                eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
+
+                shape_space = {}
+
+                # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
 
             # Create sliders for each variable
             A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
@@ -2609,12 +2692,18 @@ class Cavity:
             # Create a label to display the sum of A + a
             sum_label = Label()
 
+            # create run tune and run eigenmode button
+            button_tune = widgets.Button(description="Tune")
+            button_eigenmode = widgets.Button(description="Eigenmode")
+            button_eigenmode.on_click(run_eigenmode)
+
             # Arrange the sliders in a 3x3 layout
             ui = VBox([
                 HBox([A_slider, B_slider, a_slider]),
                 HBox([b_slider, Ri_slider, L_slider]),
                 HBox([Req_slider]),
-                sum_label  # Add the sum label to the layout
+                sum_label,  # Add the sum label to the layout
+                # HBox([button_tune, button_eigenmode])
             ])
 
             # Create an interactive widget to update the plot
@@ -4177,8 +4266,8 @@ class Cavities(Optimisation):
                     for ii, (opt, df, df_nominal) in enumerate(zip(op_points_list, df_list, df_nominal_list)):
                         sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                         bar = ax.bar(sub_df['cavity'], sub_df['mean'], color=colors[i],
-                                                    fc='none', ec=colors[i], lw=2, zorder=100,
-                                                    label=fr'{label} ({LABELS[opt]})')
+                                     fc='none', ec=colors[i], lw=2, zorder=100,
+                                     label=fr'{label} ({LABELS[opt]})')
                         ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], fmt=opt_format[ii],
                                     capsize=10, lw=2, mfc='none',
                                     color=bar.get_edgecolor()[0])
@@ -6831,6 +6920,330 @@ class Dakota:
             if os.path.exists(os.path.join(self.projectDir, self.name, 'cst_sweep_files')):
                 shutil.rmtree(os.path.join(self.projectDir, self.name, 'cst_sweep_files'))
 
+    def plot_sobol_indices(self, filepath, objectives, which=None, kind='stacked', orientation='vertical',
+                           normalise=True,
+                           group=None, reorder_index=None,
+                           selection_index=None, figsize=None):
+
+        if figsize is None:
+            figsize = (8, 4)
+
+        if which is None:
+            which = ['Main']
+
+        start_keyword = "Main"
+        interaction_start_keyword = "Interaction"
+        pattern = r'\s+(-?\d\.\d+e[+-]\d+)\s+(-?\d\.\d+e[+-]\d+)\s+(\w+)'
+        pattern_interaction = r'\s*(-?\d+\.\d+e[-+]\d+)\s+(\w+)\s+(\w+)\s*'
+
+        with open(filepath, "r") as file:
+            # read the file line by line
+            lines = file.readlines()
+
+            # initialize a flag to indicate when to start and stop recording lines
+            record = False
+            record_interaction = False
+
+            # initialize a list to store the lines between the keywords
+            result = {}
+            result_interaction = {}
+            count = 0
+            # loop through each line in the file
+            for line in lines:
+                # check if the line contains the start keyword
+                if start_keyword in line:
+                    # if it does, set the flag to start recording lines
+                    record = True
+                    result[count] = []
+                    continue
+
+                if interaction_start_keyword in line:
+                    record_interaction = True
+                    result_interaction[count] = []
+                    continue
+
+                # if the flag is set to record, add the line to the result list
+                if record:
+                    if re.match(pattern, line):
+                        result[count].append(re.findall("\S+", line))
+                    else:
+                        record = False
+                        count += 1
+
+                if record_interaction:
+                    if re.match(pattern_interaction, line):
+                        result_interaction[count - 1].append(re.findall("\S+", line))
+                    else:
+                        record_interaction = False
+
+        if selection_index:
+            result = {i: result[key] for i, key in enumerate(selection_index)}
+        # result = result_interaction
+        # check if any function is empty and repeat the first one
+        # result[0] = result[2]
+
+        df_merge = pd.DataFrame(columns=['main', 'total', 'vars'])
+
+        # print the lines between the keywords
+        # df_merge_list = []
+
+        for i, (k, v) in enumerate(result.items()):
+            df = pd.DataFrame(v, columns=['main', 'total', 'vars'])
+            df = df.astype({'main': 'float', 'total': 'float'})
+            # df_merge_list.append(df)
+            # ic(df)
+            # ic(df_merge)
+            if i == 0:
+                df_merge = df
+            else:
+                df_merge = pd.merge(df_merge, df, on='vars', suffixes=(f'{i}', f'{i + 1}'))
+            # df.plot.bar(x='var', y='Main')
+        # ic(df_merge_list)
+        # df_merge = pd.merge(df_merge_list, on='vars')
+        # ic(df_merge)
+
+        df_merge_interaction = pd.DataFrame(columns=['interaction', 'var1', 'var2'])
+        # ic(result_interaction.items())
+        for i, (k, v) in enumerate(result_interaction.items()):
+            df = pd.DataFrame(v, columns=['interaction', 'var1', 'var2'])
+            df = df.astype({'interaction': 'float'})
+            if i == 0:
+                df_merge_interaction = df
+            else:
+                # df_merge_interaction = pd.merge(df_merge_interaction, df, on=['var1', 'var2'])
+                pass
+            # ic(df_merge_interaction)
+
+            # combine var columns
+            # df_merge_interaction["vars"] = df_merge_interaction[["var1", "var2"]].agg(','.join, axis=1)
+            # df.plot.bar(x='var', y='Main')
+
+        # ic(df_merge)
+
+        # group columns
+        if group:
+            df_merge_T = df_merge.T
+            df_merge_T.columns = df_merge_T.loc['vars']
+            df_merge_T = df_merge_T.drop('vars')
+            for g in group:
+                df_merge_T[','.join(g)] = df_merge_T[g].sum(axis=1)
+
+                # drop columns
+                df_merge_T = df_merge_T.drop(g, axis=1)
+
+            # reorder index
+            if reorder_index:
+                df_merge_T = df_merge_T[reorder_index]
+            df_merge = df_merge_T.T.reset_index()
+            # ic(df_merge)
+
+        # ic(df_merge_interaction)
+
+        if normalise:
+            # normalise dataframe columns
+            for column in df_merge.columns:
+                if 'main' in column or 'total' in column:
+                    df_merge[column] = df_merge[column].abs() / df_merge[column].abs().sum()
+
+        # ic(df_merge)
+        # filter df
+        for w in which:
+            if w.lower() == 'main' or w.lower() == 'total':
+                dff = df_merge.filter(regex=f'{w.lower()}|vars')
+            else:
+                # create new column which is a combination of the two variable names
+                dff = df_merge_interaction.filter(regex=f'{w.lower()}|vars')
+                if not dff.empty:
+                    dff['vars'] = df_merge_interaction[['var1', 'var2']].apply(lambda x: '_'.join(x), axis=1)
+
+            cmap = 'tab20'
+
+            if not dff.empty:
+                if kind.lower() == 'stacked':
+                    dff_T = dff.set_index('vars').T
+                    if orientation == 'vertical':
+                        ax = dff_T.plot.bar(stacked=True, rot=0, figsize=(8, 4))  # , cmap=cmap
+                        ax.set_xlim(left=0)
+                        plt.legend(bbox_to_anchor=(1.04, 1), ncol=2)
+                    else:
+                        ax = dff_T.plot.barh(stacked=True, rot=0, edgecolor='k', figsize=(8, 4))  # , cmap=cmap
+                        ax.invert_yaxis()
+                        # for bars in ax.containers:
+                        #     ax.bar_label(bars, fmt='%.2f', label_type='center', color='white', fontsize=5)
+
+                        ax.set_xlim(left=0)
+                        ax.set_yticklabels(objectives)
+                        plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=4, loc='lower left', mode='expand')
+                else:
+                    if orientation == 'vertical':
+                        ax = dff.plot.bar(x='vars', stacked=True, figsize=(8, 4))  # , cmap=cmap
+                        ax.set_xlim(left=0)
+                        ax.axhline(0.05, c='k')
+                        plt.legend(bbox_to_anchor=(1.04, 1), ncol=2)
+                    else:
+                        ax = dff.plot.barh(x='vars', stacked=True, figsize=(8, 4))  # , cmap=cmap
+                        ax.set_xlim(left=0)
+                        ax.axvline(0.05, c='k')
+                        plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=4, loc='lower left', mode='expand')
+
+            else:
+                error(f"No {w} found.")
+
+    def get_sobol_indices(self, filepath, objectives, which=None, selection_index=None):
+        if which is None:
+            which = ['Main']
+
+        start_keyword = "Main"
+        interaction_start_keyword = "Interaction"
+        pattern = r'\s+(-?\d\.\d+e[+-]\d+)\s+(-?\d\.\d+e[+-]\d+)\s+(\w+)'
+        pattern_interaction = r'\s*(-?\d+\.\d+e[-+]\d+)\s+(\w+)\s+(\w+)\s*'
+
+        with open(filepath, "r") as file:
+            # read the file line by line
+            lines = file.readlines()
+
+            # initialize a flag to indicate when to start and stop recording lines
+            record = False
+            record_interaction = False
+
+            # initialize a list to store the lines between the keywords
+            result = {}
+            result_interaction = {}
+            count = 0
+            # loop through each line in the file
+            for line in lines:
+                # check if the line contains the start keyword
+                if start_keyword in line:
+                    # if it does, set the flag to start recording lines
+                    record = True
+                    result[count] = []
+                    continue
+
+                if interaction_start_keyword in line:
+                    record_interaction = True
+                    result_interaction[count] = []
+                    continue
+
+                # if the flag is set to record, add the line to the result list
+                if record:
+                    if re.match(pattern, line):
+                        result[count].append(re.findall("\S+", line))
+                    else:
+                        record = False
+                        count += 1
+
+                if record_interaction:
+                    if re.match(pattern_interaction, line):
+                        result_interaction[count - 1].append(re.findall("\S+", line))
+                    else:
+                        record_interaction = False
+
+        if selection_index:
+            result = {i: result[key] for i, key in enumerate(selection_index)}
+        # result = result_interaction
+        # check if any function is empty and repeat the first one
+        # result[0] = result[2]
+
+        df_merge = pd.DataFrame(columns=['main', 'total', 'vars'])
+
+        # print the lines between the keywords
+        # df_merge_list = []
+        for i, (k, v) in enumerate(result.items()):
+            df = pd.DataFrame(v, columns=[f'{objectives[i].replace("$", "")}_main',
+                                          f'{objectives[i].replace("$", "")}_total', 'vars'])
+            df = df.astype(
+                {f'{objectives[i].replace("$", "")}_main': 'float', f'{objectives[i].replace("$", "")}_total': 'float'})
+            # df_merge_list.append(df)
+            # ic(df)
+            # ic(df_merge)
+            if i == 0:
+                df_merge = df
+            else:
+                df_merge = pd.merge(df_merge, df, on='vars', suffixes=(f'{i}', f'{i + 1}'))
+            # df.plot.bar(x='var', y='Main')
+        # ic(df_merge_list)
+        # df_merge = pd.merge(df_merge_list, on='vars')
+        # ic(df_merge)
+
+        return df_merge
+
+    def quadrature_nodes_to_cst_par_input(self, filefolder, n=2):
+        filepath = fr"{filefolder}\sim_result_table.dat"
+        df = pd.read_csv(filepath, sep='\s+')
+
+        # delete unnecessary columns
+        df.drop(df.filter(regex='response|interface|eval_id').columns, axis=1, inplace=True)
+        df.to_excel(fr"{filefolder}\cubature_nodes_pars.xlsx", index=False)
+
+        # save parts
+        row_partition = len(df.index) // n
+        for i in range(n):
+            if i < n - 1:
+                df_part = df.loc[i * row_partition:(i + 1) * row_partition - 1]
+            else:
+                df_part = df.loc[i * row_partition:]
+
+            df_part.to_csv(fr"{filefolder}\cst_par_in_{i + 1}.txt", sep="\t", index=None)
+
+    def get_pce(self, filefolder):
+
+        filepath = fr"{filefolder}\uq_pce_expansion.dat"
+        df = pd.read_csv(filepath, sep='\s+', header=None)
+
+        poly = 0
+        for row in df.iterrows():
+            poly += 0
+
+    def quote_to_float(self, value):
+        if isinstance(value, str) and value.startswith('"') and value.endswith('"'):
+            return float(value[1:-1])
+        else:
+            return value
+
+    def combine_params_output(self, folder, N):
+        for i in range(N):
+            if i == 0:
+                df = pd.read_csv(f'{folder}/m{(i + 1):02d}.csv', engine='python', skipfooter=1)
+            else:
+                df = pd.concat([df, pd.read_csv(f'{folder}/m{(i + 1):02d}.csv', engine='python', skipfooter=1)])
+
+        # rearrange column according to the reference column order
+        df_reference = pd.read_excel(fr"{folder}\cubature_nodes_pars.xlsx")
+        columns = list(df_reference.columns)
+        # check if 3D Run ID in column and drop if yes
+        if ' 3D Run ID' in list(df.columns):
+            columns.append(' 3D Run ID')
+
+        columns = list(df_reference.columns) + (df.columns.drop(columns).tolist())
+
+        df = df[columns]
+
+        df.to_excel(fr"{folder}\cubature_nodes.xlsx", index=False)
+
+    def plot_sobol(self, config):
+        obj = config['obj']
+        group = config['group']
+        reorder_index = ['reorder_index']
+        filefolder = config['folder']
+        kind = config['kind']
+        normalise = config['normalise']
+        which = config['which']
+        orientation = config['orientation']
+        selection_index = config['selection_index']
+
+        # obj = [r"$Q_\mathrm{ext, FM}$", r"$\max(Q_\mathrm{ext, dip})$"]
+        # obj = [r"$S_\mathrm{max}~\mathrm{[dB]}$", r"$S_\mathrm{min}~\mathrm{[dB]}$", r"$f(S_\mathrm{max})~\mathrm{[MHz]}$", r"$f(S_\mathrm{min})~\mathrm{[MHz]}$"]
+        # obj =
+        # obj = [r"$freq [MHz]$",	fr"$R/Q [Ohm]$", r"$Epk/Eacc []$",	r"$Bpk/Eacc [mT/MV/m]$", 'G', 'kcc', 'ff']
+        # obj =
+        # obj = [r"$freq [MHz]$", 'kcc']
+        # plot_sobol_indices(fr"{filefolder}\dakota_HC.out", obj, ['main', 'Total', 'Interaction'], kind='stacked', orientation='horizontal', group=group, reorder_index=reorder_index, normalise=False)#
+        # plot_sobol_indices(fr"{filefolder}\dakota_HC.out", obj, ['main', 'Total', 'Interaction'], kind='stacked', orientation='horizontal', reorder_index=reorder_index, normalise=False)#
+        # plot_sobol_indices(fr"{filefolder}\dakota_HC.out", obj, ['main', 'Total', 'Interaction'], kind='stacked', orientation='horizontal', selection_index=selection_index, normalise=False)#
+
+        self.plot_sobol_indices(fr"{filefolder}\dakota.out", obj, which=which, kind=kind,
+                                selection_index=selection_index, orientation=orientation, normalise=normalise)  #
+
 
 class OperationPoints:
     def __init__(self, filepath=None):
@@ -7326,7 +7739,8 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
             ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                         n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
                                         beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                        parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
+                                        parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                        eigenmode_config=eigenmode_config)
 
         elif shape['CELL PARAMETERISATION'] == 'multicell':
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
@@ -7335,7 +7749,8 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
             ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
                                           n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
                                           beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                          parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
+                                          parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                          eigenmode_config=eigenmode_config)
         else:
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
@@ -7343,7 +7758,8 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
             ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                 n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc, beampipes=shape['BP'],
                                 sim_folder=solver_save_dir,
-                                parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='')
+                                parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                eigenmode_config=eigenmode_config)
 
         # run UQ
         if 'uq_config' in eigenmode_config.keys():
@@ -7723,7 +8139,8 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                               index=False, sep='\t', float_format='%.32f')
 
             data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
+            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False,
+                                sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
             # if delta is None:
@@ -7867,7 +8284,8 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                               index=False, sep='\t', float_format='%.32f')
 
             data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
+            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False,
+                                sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
             # if delta is None:
@@ -8438,7 +8856,8 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         data_table.to_csv(uq_path / 'nodes.csv', index=False, sep='\t', float_format='%.32f')
 
         data_table_w = pd.DataFrame(weights_, columns=['weights'])
-        data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t', float_format='%.32f')
+        data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False, sep='\t',
+                            float_format='%.32f')
 
         #  mean value of geometrical parameters
         no_parm, no_sims = np.shape(nodes_)

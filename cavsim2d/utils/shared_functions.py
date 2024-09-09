@@ -800,7 +800,7 @@ def normal_dist(x, mean, sd):
     return prob_density
 
 
-def linspace(start, stop, step=1.):
+def linspace(start, stop, step):
     """
     Like np.linspace but uses step instead of num
     This is inclusive to stop, so if start=1, stop=3, step=0.5
@@ -810,7 +810,6 @@ def linspace(start, stop, step=1.):
         ll = np.linspace(start, stop, int(np.ceil((stop - start) / abs(step) + 1)))
         if stop not in ll:
             ll = np.append(ll, stop)
-
         return ll
     else:
         ll = np.linspace(stop, start, int(np.ceil((start - stop) / abs(step) + 1)))
@@ -885,7 +884,8 @@ def arcTo(h, k, a, b, step, start, end, plot=False):
 
     """
 
-    C = np.pi * (a + b)  # <- approximate perimeter of ellipse
+    r_eff = (3*(a + b) - math.sqrt((3*a + b) * (a + 3*b)))/2  # <- Ramanujan approximate perimeter of ellipse
+    # r_eff = max(a, b)
     x1, y1 = start
     x2, y2 = end
     # calculate parameter start and end points
@@ -896,18 +896,20 @@ def arcTo(h, k, a, b, step, start, end, plot=False):
     if direction == 'clockwise':
         if t2 > t1:
             t1 += 2 * np.pi
-        t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
+        # t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
+        t = np.linspace(t1, t2, 5*int(np.ceil(r_eff * abs(t2 - t1) / step)))
     else:
         if t1 > t2:
             t2 += 2 * np.pi
-        t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
+        # t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
+        t = np.linspace(t1, t2, 5*int(np.ceil(r_eff * abs(t2 - t1) / step)))
 
     x = h + a * np.cos(t)
     y = k + b * np.sin(t)
     pts = np.column_stack((x, y))
 
     if plot:
-        plt.plot(pts[:, 0], pts[:, 1])  #, marker='x'
+        plt.plot(pts[:, 0], pts[:, 1], marker='x')  #
 
     return pts
 
@@ -1052,7 +1054,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
         L_bp_l = 0.000
         L_bp_r = 0.000
 
-    step = 0.005
+    step = 0.0005
 
     # calculate shift
     shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
@@ -1094,7 +1096,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     start_point = [-shift, 0]
     geo.append([start_point[1], start_point[0]])
 
-    lineTo(start_point, [-shift, Ri_el], step)
+    pts = lineTo(start_point, [-shift, Ri_el], step)
+    for pp in pts:
+        geo.append([pp[1], pp[0]])
     pt = [-shift, Ri_el]
     geo.append([pt[1], pt[0]])
 
@@ -1106,7 +1110,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
     # ADD BEAM PIPE LENGTH
     if L_bp_l != 0:
-        lineTo(pt, [L_bp_l - shift, Ri_el], step)
+        pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
+        for pp in pts:
+            geo.append([pp[1], pp[0]])
         pt = [L_bp_l - shift, Ri_el]
 
         geo.append([pt[1], pt[0]])
@@ -1138,7 +1144,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
-            lineTo(pt, [-shift + x2el, y2el], step)
+            pts = lineTo(pt, [-shift + x2el, y2el], step)
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
             pt = [-shift + x2el, y2el]
             geo.append([pt[1], pt[0]])
 
@@ -1197,7 +1205,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                 va='center', ha='left', rotation=90)
 
                     # STRAIGHT LINE TO NEXT POINT
-                    lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    for pp in pts:
+                        geo.append([pp[1], pp[0]])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
                     geo.append([pt[1], pt[0]])
 
@@ -1247,7 +1257,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     geo.append([pt[1], pt[0]])
 
                     # STRAIGHT LINE TO NEXT POINT
-                    lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    for pp in pts:
+                        geo.append([pp[1], pp[0]])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
                     geo.append([pt[1], pt[0]])
 
@@ -1293,7 +1305,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                 geo.append([pt[1], pt[0]])
 
                 # STRAIGHT LINE TO NEXT POINT
-                lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                for pp in pts:
+                    geo.append([pp[1], pp[0]])
                 pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
                 geo.append([pt[1], pt[0]])
 
@@ -1322,7 +1336,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
-            lineTo(pt, [-shift + x2, y2], step)
+            pts = lineTo(pt, [-shift + x2, y2], step)
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
             pt = [-shift + x2, y2]
             geo.append([pt[1], pt[0]])
 
@@ -1348,7 +1364,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             geo.append([pt[1], pt[0]])
 
             # STRAIGHT LINE TO NEXT POINT
-            lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+            pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
             pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
             geo.append([pt[1], pt[0]])
 
@@ -1376,7 +1394,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             geo.append([pt[1], pt[0]])
 
             # DRAW LINE CONNECTING ARCS
-            lineTo(pt, [-shift + x2, y2], step)
+            pts = lineTo(pt, [-shift + x2, y2], step)
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
             pt = [-shift + x2, y2]
             geo.append([pt[1], pt[0]])
 
@@ -1400,7 +1420,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             geo.append([pt[1], pt[0]])
 
             # STRAIGHT LINE TO NEXT POINT
-            lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+            pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+            for pp in pts:
+                geo.append([pp[1], pp[0]])
             pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
             geo.append([pt[1], pt[0]])
 
@@ -1420,12 +1442,16 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     shift = (L_bp_r + L_bp_l + (n_cell - 1) * 2 * L_m + L_el + L_er) / 2
 
     if L_bp_r > 0:  # if there's a problem, check here.
-        lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+        pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+        for pp in pts:
+            geo.append([pp[1], pp[0]])
         pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
         geo.append([pt[1], pt[0]])
 
     # END PATH
-    lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0], step)  # to add beam pipe to right
+    pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0], step)  # to add beam pipe to right
+    for pp in pts:
+        geo.append([pp[1], pp[0]])
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
     # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
     # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
