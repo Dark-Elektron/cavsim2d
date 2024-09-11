@@ -498,7 +498,7 @@ class NGSolveMEVP:
             pol_subdir = 'monopole'
 
         mesh_h = 20
-        mesh_p = 1
+        mesh_p = 3
         if eigenmode_config:
             if 'mesh_config' in eigenmode_config.keys():
                 mesh_config = eigenmode_config['mesh_config']
@@ -572,7 +572,9 @@ class NGSolveMEVP:
                 plt.show()
                 exit()
             mesh = Mesh(ngmesh)
-            mesh.Curve(3)
+            # mesh.RefineHP(levels=2, factor=0.2)
+            # if mesh_p > 2:
+            # mesh.Curve(mesh_p)
 
             # save mesh
             self.save_mesh(run_save_directory, mesh)
@@ -606,13 +608,13 @@ class NGSolveMEVP:
                 proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
 
                 projpre = proj @ pre.mat
-                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 1, maxit=20,
-                                              printrates=False)
+                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 15, maxit=20,
+                                              printrates=True)
 
             freq_fes = []
-            evals[0] = 1  # <- replace nan with zero
+            # evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
-                freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
+                freq_fes.append(c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6)
 
             print(freq_fes)
             # plot results
@@ -628,11 +630,13 @@ class NGSolveMEVP:
 
             # save fields
             self.save_fields(run_save_directory, gfu_E, gfu_H)
-
+            #
             # # alternative eigenvalue solver, but careful, mode numbering may change
-            # u = GridFunction(fes, multidim=30, name='resonances')
+            # u = GridFunction(fes, multidim=15, name='resonances')
             # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
-            #                         list(u.vecs), shift=300)
+            #                         list(u.vecs), shift=1200)
+            #
+            # print('arnoldi', c0 * np.sqrt(np.abs(lamarnoldi)) / (2 * np.pi) * 1e-6)
 
             # save json file
             shape = {'IC': update_alpha(mid_cells_par).tolist(),
@@ -1566,7 +1570,7 @@ class NGSolveMEVP:
             if which == 'E':
                 Draw(Norm(gfu_E[mode]), mesh, order=2, settings={'Objects': {'Wireframe': False}})
             else:
-                Draw(Norm(gfu_E[mode]), mesh, order=2, settings={'Objects': {'Wireframe': False}})
+                Draw(Norm(gfu_H[mode]), mesh, order=2, settings={'Objects': {'Wireframe': False}})
 
     def plot_mesh(self, folder, plotter='ngsolve'):
         mesh = self.load_mesh(folder)

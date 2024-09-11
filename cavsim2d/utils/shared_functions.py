@@ -897,12 +897,12 @@ def arcTo(h, k, a, b, step, start, end, plot=False):
         if t2 > t1:
             t1 += 2 * np.pi
         # t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
-        t = np.linspace(t1, t2, 5*int(np.ceil(r_eff * abs(t2 - t1) / step)))
+        t = np.linspace(t1, t2, int(np.ceil(r_eff * abs(t2 - t1) / step)))
     else:
         if t1 > t2:
             t2 += 2 * np.pi
         # t = np.linspace(t1, t2, int(np.ceil(C / step) * 2 * np.pi / abs(t2 - t1)))
-        t = np.linspace(t1, t2, 5*int(np.ceil(r_eff * abs(t2 - t1) / step)))
+        t = np.linspace(t1, t2, int(np.ceil(r_eff * abs(t2 - t1) / step)))
 
     x = h + a * np.cos(t)
     y = k + b * np.sin(t)
@@ -1054,7 +1054,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
         L_bp_l = 0.000
         L_bp_r = 0.000
 
-    step = 0.0005
+    step = 0.005
 
     # calculate shift
     shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
