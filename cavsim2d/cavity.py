@@ -1564,6 +1564,12 @@ class Cavity:
         name
         """
 
+        if isinstance(mid_cell, dict):
+            # then mid cell parameter is a shape
+            end_cell_left = mid_cell['OC']
+            end_cell_right = mid_cell['OC_R']
+            mid_cell = mid_cell['IC']
+
         self.convergence_df_data = None
         self.convergence_df = None
         self.uq_weights = None
@@ -2333,7 +2339,6 @@ class Cavity:
             ax.set_xlabel('X-axis (m)')
             ax.set_ylabel('Y-axis (m)')
             ax.set_title(f'Contour Plot for {frame_key}')
-            ax.grid(True)
 
         def animate_frames(data):
             fig, ax = plt.subplots(figsize=(18, 4))
@@ -2536,6 +2541,32 @@ class Cavity:
             ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
             return ax
 
+        if what.lower() == 'wpl':
+            if ax:
+                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
+                ax.plot(x, y, lw=3, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
+                ax.plot(x, y, lw=3, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
+
+            ax.set_xlabel('Distance from Bunch Head S [m]')
+            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC]")
+            return ax
+        if what.lower() == 'wpt':
+            if ax:
+                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
+            ax.set_xlabel('Distance from Bunch Head S [m]')
+            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC/m]")
+            return ax
+
         if what.lower() == 'convergence':
             try:
                 if ax:
@@ -2592,7 +2623,10 @@ class Cavity:
     def define_operating_points(self, op):
         self.operating_points = op
 
-    def inspect(self, cell_type='mid-cell', variation=0.2):
+    def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=True):
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_aspect('equal')
 
         if cell_type == 'mid-cell':
             cell = self.shape['IC']
@@ -2657,9 +2691,10 @@ class Cavity:
             # Define the function that plots the graph
             def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
                 cell = np.array([A, B, a, b, Ri, L, Req])
+                ax.clear()
                 write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-                                          tangent_check=True, lw=1,
-                                          plot=True,
+                                          tangent_check=tangent_check, lw=3,
+                                          plot=True, ax=ax,
                                           ignore_degenerate=True)
                 # Update the sum display
                 sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
@@ -3626,8 +3661,45 @@ class Cavities(Optimisation):
                     ax.margins(x=0)
                     ax = cav.plot('zt', ax, scale_x=scale_x[ii])
 
+            if what.lower() == 'wpl':
+                if scale_x is None:
+                    scale_x = [1 for _ in self.cavities_list]
+                else:
+                    if isinstance(scale_x, list):
+                        assert len(scale_x) == len(self.cavities_list), error(
+                            'Length of scale_x must be same as number of Cavity objects.')
+                    else:
+                        scale_x = [scale_x for _ in self.cavities_list]
+
+                if ax:
+                    ax = cav.plot('wpl', ax, scale_x=scale_x[ii])
+                else:
+                    fig, ax = plt.subplots(figsize=(12, 4))
+                    ax.margins(x=0)
+                    ax = cav.plot('wpl', ax, scale_x=scale_x[ii])
+
+            if what.lower() == 'wpt':
+                if scale_x is None:
+                    scale_x = [1 for _ in self.cavities_list]
+                else:
+                    if isinstance(scale_x, list):
+                        assert len(scale_x) == len(self.cavities_list), error(
+                            'Length of scale_x must be same as number of Cavity objects.')
+                    else:
+                        scale_x = [scale_x for _ in self.cavities_list]
+
+                if ax:
+                    ax = cav.plot('wpt', ax, scale_x=scale_x[ii])
+                else:
+                    fig, ax = plt.subplots(figsize=(12, 4))
+                    ax.margins(x=0)
+                    ax = cav.plot('wpt', ax, scale_x=scale_x[ii])
+
             if what.lower() == 'convergence':
                 ax = cav.plot('convergence', ax)
+        if 'logy' in kwargs:
+            if kwargs['logy']:
+                ax.set_yscale('log')
         return ax
 
     def set_cavities_field(self):

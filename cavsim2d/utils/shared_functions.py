@@ -1054,7 +1054,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
         L_bp_l = 0.000
         L_bp_r = 0.000
 
-    step = 0.005
+    step = 0.0005
 
     # calculate shift
     shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
@@ -1466,7 +1466,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             error('Check file path:: ', e)
 
     # append start point
-    geo.append([start_point[1], start_point[0]])
+    # geo.append([start_point[1], start_point[0]])
 
     if bc:
         # draw right boundary condition
@@ -1491,7 +1491,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                 shift_to_center = n_cell * L_m + L_bp_r
 
             top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
-        # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+            bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
 
         # plot legend wthout duplicates
         handles, labels = plt.gca().get_legend_handles_labels()

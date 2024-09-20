@@ -364,8 +364,12 @@ op_points = {
             }
 }
 wakefield_config = {
-    'bunch_length': 25,
-    'wakelength': 50,
+    'beam_config': {
+        'bunch_length': 25
+    },
+    'wake_config': {
+        'wakelength': 50
+    },
     'processes': 2,
     'rerun': True,
     'operating_points': op_points,
@@ -667,16 +671,24 @@ optimisation_config = {
                                 }
                             },
     },
-    'wakefield_config': {'n_cells': 1, 'n_modules': 1,
-                         'MROT': 2, 'MT': 4, 'NFS': 10000, 'UBT': 50, 'bunch_length': 25,
-                         'DDR_SIG': 0.1, 'DDZ_SIG': 0.1,
-                         'WG_M': None, 'marker': '',
-                        'uq_config': {
+    'wakefield_config': {'n_cells': 1, 'n_modules': 1, 
+                         'NFS': 10000,
+                         'polarisation': 2,
+                         'beam_config': {
+                             'bunch_length': 25,
+                         },
+                         'wake_config': {
+                             'wakelength': 50
+                         },
+                         'mesh_config': {
+                             'DDR_SIG': 0.1, 
+                             'DDZ_SIG': 0.1
+                         },                         
+                         'uq_config': {
                             'variables': ['A'],
                             'objectives': [["ZL", [1, 2, 5]], ["ZT", [2, 3, 4]]],
                             'delta': [0.05],
                             'processes': 4,
-                            'distribution': 'gaussian',
                             'method': ['Quadrature', 'Stroud3'],
                             'cell_type': 'mid-cell',
                             'cell complexity': 'simplecell'

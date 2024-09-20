@@ -26,14 +26,17 @@ class ABCIGeometry(Geometry):
 
         # defaults
         RDRIVE, ISIG = 5e-3, 5
-        LCRBW = 'F'
+        LCRBW = 'F'  # counter-rotating beam
+        ZSEP = 0.0
+        BSEP = 0
+        NBUNCH = 1
         BETA = 1
         LMATPR = 'F'
         LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
         LSAV, LCPUTM = 'F', 'F'
         LCBACK = 'T'
         LPLE = 'F'
-        NSHOT = 7
+        NSHOT = 40
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -72,6 +75,20 @@ class ABCIGeometry(Geometry):
                     if isinstance(value['save_fields'], dict):
                         if 'nshot' in value['save_fields'].keys():
                             NSHOT = value['save_fields']['nshot']
+
+                if 'wake' in value.keys():
+                    if 'counter_rotating'in value['wake'].keys():
+                        LCRBW = 'T'
+                        if 'separation' in value['wake']['counter_rotating'].keys():
+                            ZSEP = value['wake']['counter_rotating']['separation']
+
+                if 'beam' in value.keys():
+                    if 'beam_offset' in value['beam'].keys():
+                        RDRIVE = value['beam']['beam_offset']
+                    if 'nbunch' in value['beam'].keys():
+                        NBUNCH = value['beam']['nbunch']
+                    if 'separation' in value['beam'].keys():
+                        BSEP = value['beam']['separation']
 
         # Adding parameter arguments here for testing purposes # fid, fileID
         self.fid = f'{fid}'
@@ -155,7 +172,7 @@ class ABCIGeometry(Geometry):
             L_all_increment = 0
             self.L_all = 0
             with open(fname, 'w') as f:
-                f.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
                 f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
                 f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
                 f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
@@ -285,16 +302,16 @@ class ABCIGeometry(Geometry):
                     f.write('0 0 \n')
                     f.write('9999. 9999. \n')
 
-                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
+                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
                 f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = .{LCBACK}. &END \n')  # , NFS = {NFS}
-                # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK}, LCRBW = {LCRBW}, ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
-                f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T., LPLE = .{LPLE}., LPLC=.F. &END \n')
-                f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
-                        f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC= F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
 
             exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
@@ -453,7 +470,7 @@ class ABCIGeometry(Geometry):
             self.L_all = 0
             # print(fname)
             with open(fname, 'w') as f:
-                f.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
                 f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
                 f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
                 f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
@@ -613,13 +630,13 @@ class ABCIGeometry(Geometry):
                 f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
                 # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
                 f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
-                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = .{LCBACK}. &END \n')  # , NFS = {NFS}
-                # f.write(' &WAKE  UBT = {}, LCHIN = .F., LNAPOLY = .F., LNONAP = .F. &END \n'.format(UBT, wake_offset))
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
                 # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
-                f.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                        f'LINTZ = .F., LPATH = .T., LPLE = .{LPLE}., LPLC=.F. &END \n')
-                f.write(f' &PRIN  LMATPR = .{LMATPR}., LPRW = .{LPRW}., LPPW = .{LPPW}., LSVW = .{LSVW}., '
-                        f'LSVWA = .{LSVWA}., LSVWT = .{LSVWT}., LSVWL = .{LSVWL}.,  LSVF = .{LSVF}.   &END\n')
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC=F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
 
             exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
