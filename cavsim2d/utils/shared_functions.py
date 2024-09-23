@@ -1097,8 +1097,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     geo.append([start_point[1], start_point[0]])
 
     pts = lineTo(start_point, [-shift, Ri_el], step)
-    for pp in pts:
-        geo.append([pp[1], pp[0]])
+    # for pp in pts:
+    #     geo.append([pp[1], pp[0]])
     pt = [-shift, Ri_el]
     geo.append([pt[1], pt[0]])
 
@@ -1111,8 +1111,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     # ADD BEAM PIPE LENGTH
     if L_bp_l != 0:
         pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
-        for pp in pts:
-            geo.append([pp[1], pp[0]])
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0]])
         pt = [L_bp_l - shift, Ri_el]
 
         geo.append([pt[1], pt[0]])
@@ -1145,8 +1145,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2el, y2el], step)
-            for pp in pts:
-                geo.append([pp[1], pp[0]])
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
             pt = [-shift + x2el, y2el]
             geo.append([pt[1], pt[0]])
 
@@ -1206,8 +1206,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                     # STRAIGHT LINE TO NEXT POINT
                     pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                    for pp in pts:
-                        geo.append([pp[1], pp[0]])
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
                     geo.append([pt[1], pt[0]])
 
@@ -1258,8 +1258,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                     # STRAIGHT LINE TO NEXT POINT
                     pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                    for pp in pts:
-                        geo.append([pp[1], pp[0]])
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
                     geo.append([pt[1], pt[0]])
 
@@ -1306,8 +1306,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                 # STRAIGHT LINE TO NEXT POINT
                 pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
-                for pp in pts:
-                    geo.append([pp[1], pp[0]])
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0]])
                 pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
                 geo.append([pt[1], pt[0]])
 
@@ -1337,8 +1337,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
-            for pp in pts:
-                geo.append([pp[1], pp[0]])
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
             pt = [-shift + x2, y2]
             geo.append([pt[1], pt[0]])
 
@@ -1365,8 +1365,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
-            for pp in pts:
-                geo.append([pp[1], pp[0]])
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
             pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
             geo.append([pt[1], pt[0]])
 
@@ -1395,8 +1395,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
-            for pp in pts:
-                geo.append([pp[1], pp[0]])
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
             pt = [-shift + x2, y2]
             geo.append([pt[1], pt[0]])
 
@@ -1421,8 +1421,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-            for pp in pts:
-                geo.append([pp[1], pp[0]])
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
             pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
             geo.append([pt[1], pt[0]])
 
@@ -1443,15 +1443,15 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
     if L_bp_r > 0:  # if there's a problem, check here.
         pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
-        for pp in pts:
-            geo.append([pp[1], pp[0]])
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0]])
         pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
         geo.append([pt[1], pt[0]])
 
     # END PATH
     pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0], step)  # to add beam pipe to right
-    for pp in pts:
-        geo.append([pp[1], pp[0]])
+    # for pp in pts:
+    #     geo.append([pp[1], pp[0]])
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
     # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
     # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]

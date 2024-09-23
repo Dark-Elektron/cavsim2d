@@ -1043,15 +1043,15 @@ class Optimisation:
 
         # check inputs
         if 'bunch_length' in wakefield_config_keys:
-            assert not isinstance(wakefield_config['bunch_length'], str), error(
+            assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
                 'Bunch length must be of type integer or float.')
         else:
-            wakefield_config['bunch_length'] = bunch_length
+            wakefield_config['beam_config']['bunch_length'] = bunch_length
         if 'wakelength' in wakefield_config_keys:
-            assert not isinstance(wakefield_config['wakelength'], str), error(
+            assert not isinstance(wakefield_config['wake_config']['wakelength'], str), error(
                 'Wakelength must be of type integer or float.')
         else:
-            wakefield_config['wakelength'] = wakelength
+            wakefield_config['wake_config']['wakelength'] = wakelength
 
         processes = 1
         if 'processes' in wakefield_config.keys():
@@ -1083,10 +1083,10 @@ class Optimisation:
             wakefield_config['NFS'] = NFS
 
         if 'DDR_SIG' not in wakefield_config_keys:
-            wakefield_config['DDR_SIG'] = DDR_SIG
+            wakefield_config['mesh_config']['DDR_SIG'] = DDR_SIG
 
         if 'DDZ_SIG' not in wakefield_config_keys:
-            wakefield_config['DDZ_SIG'] = DDZ_SIG
+            wakefield_config['mesh_config']['DDZ_SIG'] = DDZ_SIG
 
         df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
         shape_space = {}
@@ -3544,18 +3544,6 @@ class Cavities(Optimisation):
             DDR_SIG = 0.1
             DDZ_SIG = 0.1
 
-            # check inputs
-            if 'bunch_length' in wakefield_config_keys:
-                assert not isinstance(wakefield_config['bunch_length'], str), error(
-                    'Bunch length must be of type integer or float.')
-            else:
-                wakefield_config['bunch_length'] = bunch_length
-            if 'wakelength' in wakefield_config_keys:
-                assert not isinstance(wakefield_config['wakelength'], str), error(
-                    'Wakelength must be of type integer or float.')
-            else:
-                wakefield_config['wakelength'] = wakelength
-
             processes = 1
             if 'processes' in wakefield_config.keys():
                 assert wakefield_config['processes'] > 0, error('Number of proceses must be greater than zero.')
@@ -3582,11 +3570,37 @@ class Cavities(Optimisation):
             else:
                 wakefield_config['NFS'] = NFS
 
-            if 'DDR_SIG' not in wakefield_config_keys:
-                wakefield_config['DDR_SIG'] = DDR_SIG
+            # check input configs
 
-            if 'DDZ_SIG' not in wakefield_config_keys:
-                wakefield_config['DDZ_SIG'] = DDZ_SIG
+            # beam config
+            wake_config = {}
+            beam_config = {}
+            mesh_config = {}
+            if 'beam_config' not in wakefield_config_keys:
+                wakefield_config['beam_config'] = beam_config
+            if 'wake_config' not in wakefield_config_keys:
+                wakefield_config['wake_config'] = wake_config
+            if 'mesh_config' not in wakefield_config_keys:
+                wakefield_config['mesh_config'] = mesh_config
+
+            if 'bunch_length' in beam_config.keys():
+                assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
+                    'Bunch length must be of type integer or float.')
+            else:
+                beam_config['bunch_length'] = bunch_length
+
+            # wake config
+            if 'wakelength' in wake_config.keys():
+                assert not isinstance(wake_config['wakelength'], str), error(
+                    'Wakelength must be of type integer or float.')
+            else:
+                wake_config['wakelength'] = wakelength
+
+            if 'DDR_SIG' not in mesh_config.keys():
+                mesh_config['DDR_SIG'] = DDR_SIG
+
+            if 'DDZ_SIG' not in mesh_config.keys():
+                mesh_config['DDZ_SIG'] = DDZ_SIG
 
             run_wakefield_parallel(self.shape_space, self.shape_space_multicell, wakefield_config,
                                    self.projectDir, marker='', rerun=rerun)
@@ -7932,10 +7946,10 @@ def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir
     MROT = wakefield_config['polarisation']
     MT = wakefield_config['MT']
     NFS = wakefield_config['NFS']
-    UBT = wakefield_config['wakelength']
-    bunch_length = wakefield_config['bunch_length']
-    DDR_SIG = wakefield_config['DDR_SIG']
-    DDZ_SIG = wakefield_config['DDZ_SIG']
+    UBT = wakefield_config['wake_config']['wakelength']
+    bunch_length = wakefield_config['beam_config']['bunch_length']
+    DDR_SIG = wakefield_config['mesh_config']['DDR_SIG']
+    DDZ_SIG = wakefield_config['mesh_config']['DDZ_SIG']
 
     operating_points = None
     if 'operating_points' in wakefield_config.keys():

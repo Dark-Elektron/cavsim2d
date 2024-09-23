@@ -609,14 +609,13 @@ class NGSolveMEVP:
 
                 projpre = proj @ pre.mat
                 evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 15, maxit=20,
-                                              printrates=True)
+                                              printrates=False)
 
             freq_fes = []
             # evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6)
 
-            print(freq_fes)
             # plot results
             gfu_E = []
             gfu_H = []
@@ -1481,6 +1480,7 @@ class NGSolveMEVP:
         # calculate field flatness
         peaks, _ = find_peaks(Eax)
         E_abs_peaks = Eax[peaks]
+        print(E_abs_peaks)
         # ff = min(E_abs_peaks)/max(E_abs_peaks) * 100
         ff = (1 - ((max(E_abs_peaks) - min(E_abs_peaks)) / np.average(E_abs_peaks))) * 100
 
