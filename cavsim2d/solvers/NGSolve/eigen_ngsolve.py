@@ -1306,7 +1306,7 @@ class NGSolveMEVP:
             evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-                print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
+                # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
             # plot results
             gfu_E = []
@@ -1480,7 +1480,7 @@ class NGSolveMEVP:
         # calculate field flatness
         peaks, _ = find_peaks(Eax)
         E_abs_peaks = Eax[peaks]
-        print(E_abs_peaks)
+        # print(E_abs_peaks)
         # ff = min(E_abs_peaks)/max(E_abs_peaks) * 100
         ff = (1 - ((max(E_abs_peaks) - min(E_abs_peaks)) / np.average(E_abs_peaks))) * 100
 
