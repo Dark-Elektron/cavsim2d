@@ -6386,7 +6386,19 @@ class Cavities(Optimisation):
         return freq
 
     def __str__(self):
-        return fr"{self.cavities_list}"
+        p = dict()
+        for name, cav in self.cavities_dict.items():
+            p[name] = {
+                'tune': cav.eigenmode_tune_res,
+                'fm': cav.eigenmode_qois,
+                'hom': cav.wakefield_qois,
+                'uq': {
+                    'tune': 0,
+                    'fm': cav.uq_fm_results,
+                    'hom': cav.uq_hom_results
+                }
+            }
+        return fr"{json.dumps(p, indent = 4)}"
 
     def __getitem__(self, key):
         if isinstance(key, int):
