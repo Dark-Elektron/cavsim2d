@@ -12,7 +12,7 @@ param_file = sys.argv[1]
 output_file = sys.argv[2]
 
 # open parameter file and get parameters
-df = pd.read_csv(param_file, sep='\s+', header=None)
+df = pd.read_csv(param_file, sep='\\s+', header=None)
 num_in_vars = int(df.loc[0, 0])
 
 pars_in = df.loc[1:num_in_vars, 0]

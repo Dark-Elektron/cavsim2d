@@ -747,7 +747,7 @@ class Optimisation:
                                     label='ea', ms=5, lw=0)
 
                     # # load interpolation error
-                    # error = pd.read_csv(error_file, header=None, sep='\s+')
+                    # error = pd.read_csv(error_file, header=None, sep='\\s+')
                     # axs[3].plot(error[0], label=lab)
                     # axs[4].plot(error[1], label=lab)
 
@@ -886,7 +886,7 @@ class Optimisation:
     #                                    label='ea', s=5)
     #
     #                 # load interpolation error
-    #                 error = pd.read_csv(error_file, header=None, sep='\s+')
+    #                 error = pd.read_csv(error_file, header=None, sep='\\s+')
     #                 # axs[3].plot(error[0], label=lab)
     #                 # axs[4].plot(error[1], label=lab)
     #
@@ -4011,7 +4011,7 @@ class Cavities(Optimisation):
                 if os.path.exists(f'{uq_geom_folder}/monopole/geodata.n'):
                     # read geometry
                     cav_geom = pd.read_csv(f'{uq_geom_folder}/monopole/geodata.n', header=None,
-                                           skipfooter=1, sep='\s+', engine='python')
+                                           skipfooter=1, sep='\\s+', engine='python')
 
                     cav_geom = cav_geom[[1, 0]]
                     ax.plot(cav_geom[1], cav_geom[0], ls='--', lw=1, c='gray')
@@ -5261,7 +5261,7 @@ class Cavities(Optimisation):
                 if ".mat" in f:
                     data[f] = spio.loadmat(fr"{folder}\\{f}")
                 else:
-                    data[f] = pd.read_csv(fr"{folder}\\{f}", sep='\s+', header=None)
+                    data[f] = pd.read_csv(fr"{folder}\\{f}", sep='\\s+', header=None)
 
             A = data["Acounter.mat"]["A"]
             At = data["Atcounter.mat"]["At"]
@@ -7162,7 +7162,7 @@ class Dakota:
 
         # read results
         filepath = fr"{self.projectDir}/{self.name}/sim_result_table.dat"
-        self.sim_results = pd.read_csv(filepath, sep='\s+')
+        self.sim_results = pd.read_csv(filepath, sep='\\s+')
 
         # delete unnecessary columns
         self.nodes = self.sim_results.drop(self.sim_results.filter(regex='response|interface|eval_id').columns, axis=1)
@@ -7431,7 +7431,7 @@ class Dakota:
 
     def quadrature_nodes_to_cst_par_input(self, filefolder, n=2):
         filepath = fr"{filefolder}\sim_result_table.dat"
-        df = pd.read_csv(filepath, sep='\s+')
+        df = pd.read_csv(filepath, sep='\\s+')
 
         # delete unnecessary columns
         df.drop(df.filter(regex='response|interface|eval_id').columns, axis=1, inplace=True)
@@ -7450,7 +7450,7 @@ class Dakota:
     def get_pce(self, filefolder):
 
         filepath = fr"{filefolder}\uq_pce_expansion.dat"
-        df = pd.read_csv(filepath, sep='\s+', header=None)
+        df = pd.read_csv(filepath, sep='\\s+', header=None)
 
         poly = 0
         for row in df.iterrows():
@@ -9105,7 +9105,7 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
             nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
         elif flag == 'load_from_file':
             nodes_ = pd.read_csv(fr'C:\Users\sosoho\DakotaProjects\Cavity\C3795_lhs\sim_result_table.dat',
-                                 sep='\s+').iloc[:, 2:-2]
+                                 sep='\\s+').iloc[:, 2:-2]
             nodes_ = nodes_.to_numpy().T
             weights_ = np.ones((nodes_.shape[1], 1))
         else:
@@ -9704,9 +9704,9 @@ def _get_nodes_and_weights(uq_config, rdim, degree):
         nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
     elif method[0].lower() == 'from file':
         if len(method) == 2:
-            nodes = pd.read_csv(method[1], sep='\s+').iloc[:, method[1]]
+            nodes = pd.read_csv(method[1], sep='\\s+').iloc[:, method[1]]
         else:
-            nodes = pd.read_csv(method[1], sep='\s+')
+            nodes = pd.read_csv(method[1], sep='\\s+')
 
         nodes = nodes.to_numpy().T
         weights = np.ones((nodes.shape[1], 1))

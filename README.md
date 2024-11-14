@@ -129,6 +129,7 @@ tesla.plot('geometry')
 ```
 > [!TIP]
 > If running from a terminal, take the following extra steps
+> ``` python
 > import matplotlib.pyplot as plt
 > plt.show()
 > ```

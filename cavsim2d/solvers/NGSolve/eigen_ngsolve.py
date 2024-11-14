@@ -153,7 +153,7 @@ class NGSolveMEVP:
                 error("There was a problem creating the directory for the simulation files. Please check folder.")
                 exit()
 
-        file_path = fr"{folder}\geodata.n"
+        file_path = os.path.join(folder, "geodata.n")
         if cell_parameterisation == 'simplecell':
             write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
         else:
@@ -215,7 +215,7 @@ class NGSolveMEVP:
                 error("There was a problem creating the directory for the simulation files. Please check folder.")
                 exit()
 
-        file_path = fr"{folder}\geodata.n"
+        file_path = os.path.join(folder, 'geodata.n')
         if cell_parameterisation == 'normal':
             writeCavityForMultipac_multicell(file_path, n_cells, mid_cell, end_cell_left, end_cell_right, beampipe,
                                              plot=plot)
@@ -511,7 +511,7 @@ class NGSolveMEVP:
         # change save directory
         if opt:
             # consider making better. This was just an adhoc fix
-            run_save_directory = os.path.join(projectDir, fr'SimulationData/Optimisation/{fid}')
+            run_save_directory = os.path.join(projectDir, 'SimulationData', 'Optimisation', fid)
         else:
             # change save directory
             if subdir == '':
@@ -523,16 +523,16 @@ class NGSolveMEVP:
         self.write_geometry(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes,
                             plot=False)
 
-        if os.path.exists(fr'{run_save_directory}\geodata.n'):
+        if os.path.exists(os.path.join(run_save_directory, 'geodata.n')):
             # read geometry
-            cav_geom = pd.read_csv(fr'{run_save_directory}\geodata.n',
-                                   header=None, skiprows=1, sep='\s+', engine='python')
+            cav_geom = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
+                                   header=None, skiprows=1, sep='\\s+', engine='python')
 
             if deformation_params is not None:
                 cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
                                                 deformation_params)
                 # save deformed cavity profile
-                cav_geom.to_csv(fr'{run_save_directory}\geodata_deformed.n', sep='\t')
+                cav_geom.to_csv(os.path.join(run_save_directory, 'geodata_deformed.n'), sep='\t')
 
             cav_geom = cav_geom[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
@@ -649,7 +649,7 @@ class NGSolveMEVP:
             qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
             # error(qois)
 
-            with open(fr'{run_save_directory}\qois.json', "w") as f:
+            with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
 
             return True
@@ -735,8 +735,8 @@ class NGSolveMEVP:
 
         # read geometry
         # error(run_save_directory)
-        cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
-                               header=None, skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0, 2]]
+        cav_geom = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
+                               header=None, skiprows=3, skipfooter=1, sep='\\s+', engine='python')[[1, 0, 2]]
 
         if deformation_params is not None:
             cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
@@ -852,7 +852,7 @@ class NGSolveMEVP:
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
         # error(qois)
 
-        with open(fr'{run_save_directory}\qois.json', "w") as f:
+        with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
 
     def cavity_flattop(self, no_of_cells=1, no_of_modules=1,
@@ -928,14 +928,14 @@ class NGSolveMEVP:
                             cell_parameterisation='flattop', plot=False)
 
         # read geometry
-        cav_geom = pd.read_csv(fr'{run_save_directory}\geodata.n',
-                               header=None, skiprows=1, sep='\s+', engine='python')
+        cav_geom = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
+                               header=None, skiprows=1, sep='\\s+', engine='python')
 
         if deformation_params is not None:
             cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
                                             deformation_params)
             # save deformed cavity profile
-            cav_geom.to_csv(fr'{run_save_directory}\geodata_deformed.n', sep='\t')
+            cav_geom.to_csv(os.path.join(run_save_directory, 'geodata_deformed.n'), sep='\t')
 
         cav_geom = cav_geom[[1, 0]]
         # plt.plot(cav_geom[0], cav_geom[1])
@@ -1032,7 +1032,7 @@ class NGSolveMEVP:
 
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L + l / 2, gfu_E, gfu_H, mesh, freq_fes)
 
-        with open(fr'{run_save_directory}\qois.json', "w") as f:
+        with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
 
     def geometry_from_file(self, filepath):
@@ -1056,7 +1056,7 @@ class NGSolveMEVP:
             mesh_args = [20, 20]
         if opt:
             # consider making better. This was just an adhoc fix
-            run_save_directory = os.path.join(projectDir, fr'SimulationData/Optimisation/{fid}')
+            run_save_directory = os.path.join(projectDir, 'SimulationData', 'Optimisation', fid)
         else:
             # change save directory
             if subdir == '':
@@ -1065,19 +1065,19 @@ class NGSolveMEVP:
                 run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}'
 
         # write geometry
-        file_path = f'{run_save_directory}\geodata.n'
+        file_path = os.path.join(run_save_directory, 'geodata.n')
         write_pillbox_geometry(file_path, no_of_cells, cell_par, beampipes)
 
         if os.path.exists(file_path):
             # read geometry
-            cav_geom = pd.read_csv(f'{run_save_directory}\geodata.n',
-                                   header=None, sep='\s+', engine='python')[[1, 0, 2]]
+            cav_geom = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
+                                   header=None, sep='\\s+', engine='python')[[1, 0, 2]]
 
             if deformation_params is not None:
                 cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),
                                                 deformation_params)
                 # save deformed cavity profile
-                cav_geom.to_csv(f'{run_save_directory}\geodata_deformed.n', sep='\t')
+                cav_geom.to_csv(os.path.join(run_save_directory, 'geodata_deformed.n'), sep='\t')
 
             cav_geom = cav_geom[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
@@ -1177,12 +1177,12 @@ class NGSolveMEVP:
 
             # save json file
             shape = {'IC': cell_par}
-            with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
+            with open(Path(os.path.join(run_save_directory, "geometric_parameters.json")), 'w') as f:
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
             qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
 
-            with open(fr'{run_save_directory}\qois.json', "w") as f:
+            with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
             return True
         else:
@@ -1204,7 +1204,7 @@ class NGSolveMEVP:
             mesh_args = [20, 20]
         if opt:
             # consider making better. This was just an adhoc fix
-            run_save_directory = os.path.join(projectDir, fr'SimulationData/Optimisation/{fid}')
+            run_save_directory = os.path.join(projectDir, 'SimulationData', 'Optimisation', fid)
         else:
             # change save directory
             if subdir == '':
@@ -1213,13 +1213,13 @@ class NGSolveMEVP:
                 run_save_directory = projectDir / fr'SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}'
 
         # write geometry
-        file_path = f'{run_save_directory}\geodata.n'
+        file_path = os.path.join(run_save_directory, 'geodata.n')
         write_gun_geometry(file_path)
 
         if os.path.exists(file_path):
             # read geometry
-            cav_geom_ = pd.read_csv(f'{run_save_directory}\geodata.n',
-                                    header=None, skiprows=1, sep='\s+', engine='python')
+            cav_geom_ = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
+                                    header=None, skiprows=1, sep='\\s+', engine='python')
 
             cav_geom = cav_geom_[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
@@ -1336,7 +1336,7 @@ class NGSolveMEVP:
             #
             # qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
             #
-            # with open(fr'{run_save_directory}\qois.json', "w") as f:
+            # with open(os.path.join(run_save_directory, 'qois.json')), "w") as f:
             #     json.dump(qois, f, indent=4, separators=(',', ': '))
             # return True
         else:
@@ -1347,7 +1347,7 @@ class NGSolveMEVP:
     def eigen3d(geometry_dir):
         # define geometry
         cav_geom = pd.read_csv('D:\Dropbox\multipacting\MPGUI21\geodata.n',
-                               header=None, skiprows=3, skipfooter=1, sep='\s+', engine='python')[[1, 0]]
+                               header=None, skiprows=3, skipfooter=1, sep='\\s+', engine='python')[[1, 0]]
 
         pnts = list(cav_geom.itertuples(index=False, name=None))
         wp = WorkPlane()
@@ -1513,19 +1513,19 @@ class NGSolveMEVP:
     @staticmethod
     def save_fields(project_folder, gfu_E, gfu_H):
         # save mode fields
-        with open(f"{project_folder}/gfu_EH.pkl", "wb") as f:
+        with open(os.path.join(project_folder, 'gfu_EH.pkl'), "wb") as f:
             pickle.dump([gfu_E, gfu_H], f)
 
     @staticmethod
     def save_mesh(project_folder, mesh):
         # save mesh
         folder = os.path.dirname(project_folder)
-        with open(f"{folder}/mesh.pkl", "wb") as f:
+        with open(os.path.join(folder, "mesh.pkl"), "wb") as f:
             pickle.dump(mesh, f)
 
     @staticmethod
     def load_fields(folder, mode):
-        with open(f'{folder}/gfu_EH.pkl', "rb") as f:
+        with open(os.path.join(folder, 'gfu_EH.pkl'), "rb") as f:
             [gfu_E, gfu_H] = pickle.load(f)
         return gfu_E, gfu_H
 
@@ -1533,7 +1533,7 @@ class NGSolveMEVP:
     def load_mesh(folder):
         folder = os.path.dirname(folder)
         # pickle mesh and fields
-        with open(f'{folder}/mesh.pkl', 'rb') as f:
+        with open(os.path.join(folder, 'mesh.pkl'), 'rb') as f:
             mesh = pickle.load(f)
 
         return mesh
