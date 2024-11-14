@@ -56,16 +56,19 @@ Or through the command line with
 
 ```
 mkdir <root folder>/cavsim2d/solver/ABCI
-copy <root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP64_12_5.exe <root folder>/cavsim2d/solver/ABCI
+tar -xf <root folder>/ABCI_MP_12_5.zip
+copy '<root folder>/ABCI_MP_12_5/ABCI_MP_12_5/ABCI_MP application for Windows/ABCI_MP64_12_5.exe' <root folder>/cavsim2d/solver/ABCI
 cd <root folder>/cavsim2d/solver/ABCI
 ren ABCI_MP64_12_5.exe ABCI.exe
 ```
 
-Before diving in, I would install `pprintpp`. It is not necessay but it sure does makes the print readable.
-```python
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
+Before diving in, I would install `pprintpp`. It is not necessary but it sure does make the print readable.
+
 ```
+pip install pprintpp
+```
+
+If jupyter and ipywidgets are not already installed, now will be a good time to installl it.
 
 --------------------------------------------
 Examples - TESLA Elliptical Cavity
@@ -75,6 +78,9 @@ The core components of `cavsim2d` are `Cavities` and `Cavity` objects. `Cavities
 instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:
 
 ```python
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 from cavsim2d.cavity import Cavity, Cavities
 
 cavs = Cavities()

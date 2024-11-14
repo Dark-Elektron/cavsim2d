@@ -81,13 +81,17 @@ class Tuner:
                         tune_var, freq = 0, 0
 
                 if tune_var != 0 and freq != 0:
-                    if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+                    if (cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell'
+                            or cell_type.lower() == 'mid_cell'):
+                        print('it is in here', tune_variable, tune_var, freq)
                         tuned_mid_cell = pseudo_shape['IC'][:7]
                         tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
                         tuned_end_cell = pseudo_shape['OC'][:7]
                         # enforce equator continuity
                         tuned_end_cell[6] = tuned_mid_cell[6]
-                    elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+                    elif (cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell'
+                          or cell_type.lower() == 'mid_end_cell'):
+                        print('it is in here', tune_variable, tune_var, freq)
                         tuned_mid_cell = pseudo_shape['IC'][:7]
                         tuned_end_cell = pseudo_shape['OC'][:7]
                         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
@@ -97,11 +101,18 @@ class Tuner:
                         tuned_end_cell = pseudo_shape['OC'][:7]
                         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
                         tuned_mid_cell = copy.deepcopy(tuned_end_cell)
-                    else:
+                    elif cell_type.lower() == 'single_cell' or cell_type.lower() == 'single cell':
                         tuned_mid_cell = pseudo_shape['IC'][:7]
                         tuned_end_cell = pseudo_shape['OC'][:7]
                         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
                         tuned_mid_cell = copy.deepcopy(tuned_end_cell)
+                    else:
+                        info('Valid cell_type not selected. Defaulting to end_cell')
+                        tuned_mid_cell = pseudo_shape['IC'][:7]
+                        tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
+                        tuned_end_cell = pseudo_shape['OC'][:7]
+                        # enforce equator continuity
+                        tuned_end_cell[6] = tuned_mid_cell[6]
 
                         # # enforce equator continuity
                         # tuned_mid_cell[6] = tuned_end_cell[6]
@@ -133,8 +144,8 @@ class Tuner:
                     tuned_shape_space[key] = {"IC": inner_cell, "OC": outer_cell, "OC_R": outer_cell, "BP": 'both', 'FREQ': freq}
 
                     # write tune results
-                    d_tune_res = {'IC': list(tuned_mid_cell), 'OC': list(tuned_end_cell),
-                                  'OC_R': list(tuned_end_cell),
+                    d_tune_res = {'IC': list(inner_cell), 'OC': list(outer_cell),
+                                  'OC_R': list(outer_cell),
                                   'TUNED VARIABLE': tune_variable, 'CELL TYPE': cell_type, 'FREQ': freq}
 
                     abs_err_dict = {'abs_err': abs_err_list}

@@ -1609,7 +1609,7 @@ class Cavity:
         self.wakefield_qois = {}
         self.wake_op_points = {}
         self.convergence_list = []
-        self.eigenmode_tune_res = {}
+        self.tune_results = {}
         self.operating_points = None
         self.color = color
         self.Q0 = None
@@ -1679,8 +1679,14 @@ class Cavity:
             self.to_multicell()  # <- get multicell representation
         else:
             self.mid_cell = np.array(mid_cell)[:7]
-            self.end_cell_left = np.array(end_cell_left)[:7]
-            self.end_cell_right = np.array(end_cell_right)[:7]
+            if end_cell_left:
+                self.end_cell_left = np.array(end_cell_left)[:7]
+            else:
+                self.end_cell_left = np.copy(self.mid_cell)
+            if end_cell_right:
+                self.end_cell_right = np.array(end_cell_right)[:7]
+            else:
+                self.end_cell_right = np.copy(self.end_cell_left)
 
             if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
                 end_cell_left = mid_cell
@@ -1758,6 +1764,8 @@ class Cavity:
 
         """
         self.cell_parameterisation = cell_parameterisation
+        self.shape['CELL PARAMETERISATION'] = cell_parameterisation
+        self.to_multicell()
 
     def set_plot_label(self, plot_label):
         """
@@ -1792,6 +1800,8 @@ class Cavity:
 
         """
         self.n_cells = int(n_cells)
+        self.shape['n_cells'] = n_cells
+        self.to_multicell()
 
     def set_mid_cell(self, cell):
         """
@@ -1807,6 +1817,8 @@ class Cavity:
 
         """
         self.mid_cell = cell
+        self.shape['IC'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
 
     def set_end_cell_left(self, cell):
         """
@@ -1822,6 +1834,8 @@ class Cavity:
 
         """
         self.end_cell_left = cell
+        self.shape['OC'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
 
     def set_end_cell_right(self, cell):
         """
@@ -1837,6 +1851,8 @@ class Cavity:
 
         """
         self.end_cell_right = cell
+        self.shape['OC_R'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
 
     def set_boundary_conditions(self, bc):
         """
@@ -1867,6 +1883,8 @@ class Cavity:
 
         """
         self.beampipe = bp
+        self.shape['BP'] = bp
+        self.to_multicell()
 
     def load(self):
         """
@@ -2224,11 +2242,11 @@ class Cavity:
         tune_res = 'tune_res.json'
         if os.path.exists(fr"{self.projectDir}\SimulationData\Optimisation\{self.name}\{tune_res}"):
             with open(fr"{self.projectDir}\SimulationData\Optimisation\{self.name}\{tune_res}", 'r') as json_file:
-                self.eigenmode_tune_res = json.load(json_file)
-            self.freq = self.eigenmode_tune_res['FREQ']
-            self.shape['IC'] = self.eigenmode_tune_res['IC']
-            self.shape['OC'] = self.eigenmode_tune_res['OC']
-            self.shape['OC_R'] = self.eigenmode_tune_res['OC_R']
+                self.tune_results = json.load(json_file)
+            self.freq = self.tune_results['FREQ']
+            self.shape['IC'] = self.tune_results['IC']
+            self.shape['OC'] = self.tune_results['OC']
+            self.shape['OC_R'] = self.tune_results['OC_R']
             self.mid_cell = self.shape['IC']
             self.end_cell_left = self.shape['OC']
             self.end_cell_right = self.shape['OC_R']
@@ -2623,10 +2641,7 @@ class Cavity:
     def define_operating_points(self, op):
         self.operating_points = op
 
-    def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=True):
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.set_aspect('equal')
+    def inspect(self, cell_type='mid-cell', variation=0.2):
 
         if cell_type == 'mid-cell':
             cell = self.shape['IC']
@@ -2691,22 +2706,13 @@ class Cavity:
             # Define the function that plots the graph
             def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
                 cell = np.array([A, B, a, b, Ri, L, Req])
-                ax.clear()
                 write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-                                          tangent_check=tangent_check, lw=3,
-                                          plot=True, ax=ax,
+                                          tangent_check=True, lw=1,
+                                          plot=True,
                                           ignore_degenerate=True)
+
                 # Update the sum display
                 sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
-
-            def run_eigenmode(b):
-                eigenmode_config = {'processes': 1}
-                boundary_conds = 'mm'
-                eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
-
-                shape_space = {}
-
-                # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
 
             # Create sliders for each variable
             A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
@@ -2727,18 +2733,12 @@ class Cavity:
             # Create a label to display the sum of A + a
             sum_label = Label()
 
-            # create run tune and run eigenmode button
-            button_tune = widgets.Button(description="Tune")
-            button_eigenmode = widgets.Button(description="Eigenmode")
-            button_eigenmode.on_click(run_eigenmode)
-
             # Arrange the sliders in a 3x3 layout
             ui = VBox([
                 HBox([A_slider, B_slider, a_slider]),
                 HBox([b_slider, Ri_slider, L_slider]),
                 HBox([Req_slider]),
-                sum_label,  # Add the sum label to the layout
-                # HBox([button_tune, button_eigenmode])
+                sum_label  # Add the sum label to the layout
             ])
 
             # Create an interactive widget to update the plot
@@ -2748,6 +2748,132 @@ class Cavity:
 
         # Display the layout
         display(out, ui)
+
+    # def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=False):
+    #
+    #     fig, ax = plt.subplots(figsize=(12, 6))
+    #     ax.set_aspect('equal')
+    #
+    #     if cell_type == 'mid-cell':
+    #         cell = self.shape['IC']
+    #     elif cell_type == 'end-cell-left':
+    #         cell = self.shape['OC']
+    #     elif cell_type == 'end-cell-right':
+    #         cell = self.shape['OC_R']
+    #     else:
+    #         cell = self.shape['IC']
+    #
+    #     if self.cell_parameterisation == 'flattop':
+    #         A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
+    #
+    #         # Define the function that plots the graph
+    #         def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
+    #             cell = np.array([A, B, a, b, Ri, L, Req, l])
+    #             write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
+    #                                               n_cell=1, tangent_check=True, lw=1,
+    #                                               plot=True,
+    #                                               ignore_degenerate=True)
+    #
+    #             # Update the sum display
+    #             sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
+    #
+    #         # Create sliders for each variable
+    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+    #                                        description='A')
+    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+    #                                        description='B')
+    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+    #                                        description='a')
+    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+    #                                        description='b')
+    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+    #                                         description='Ri')
+    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+    #                                        description='L')
+    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+    #                                          value=Req_,
+    #                                          description='Req')
+    #         l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
+    #                                        description='l')
+    #         # Create a label to display the sum of A + a
+    #         sum_label = Label()
+    #
+    #         # Arrange the sliders in a 3x3 layout
+    #         ui = VBox([
+    #             HBox([A_slider, B_slider, a_slider]),
+    #             HBox([b_slider, Ri_slider, L_slider]),
+    #             HBox([Req_slider, l_slider]),
+    #             sum_label  # Add the sum label to the layout
+    #         ])
+    #
+    #         # Create an interactive widget to update the plot
+    #         out = widgets.interactive_output(plot_cavity_geometry_flattop,
+    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
+    #
+    #     else:
+    #         A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
+    #
+    #         # Define the function that plots the graph
+    #         def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
+    #             cell = np.array([A, B, a, b, Ri, L, Req])
+    #             # ax.clear()
+    #             write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
+    #                                       tangent_check=tangent_check, lw=3,
+    #                                       plot=True, ax=ax,
+    #                                       ignore_degenerate=True)
+    #             # Update the sum display
+    #             sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+    #
+    #         def run_eigenmode(b):
+    #             eigenmode_config = {'processes': 1}
+    #             boundary_conds = 'mm'
+    #             eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
+    #
+    #             shape_space = {}
+    #
+    #             # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
+    #
+    #         # Create sliders for each variable
+    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+    #                                        description='A')
+    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+    #                                        description='B')
+    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+    #                                        description='a')
+    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+    #                                        description='b')
+    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+    #                                         description='Ri')
+    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+    #                                        description='L')
+    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+    #                                          value=Req_,
+    #                                          description='Req')
+    #         # Create a label to display the sum of A + a
+    #         sum_label = Label()
+    #
+    #         # create run tune and run eigenmode button
+    #         button_tune = widgets.Button(description="Tune")
+    #         button_eigenmode = widgets.Button(description="Eigenmode")
+    #         button_eigenmode.on_click(run_eigenmode)
+    #
+    #         # Arrange the sliders in a 3x3 layout
+    #         ui = VBox([
+    #             HBox([A_slider, B_slider, a_slider]),
+    #             HBox([b_slider, Ri_slider, L_slider]),
+    #             HBox([Req_slider]),
+    #             sum_label,  # Add the sum label to the layout
+    #             # HBox([button_tune, button_eigenmode])
+    #         ])
+    #
+    #         # Create an interactive widget to update the plot
+    #         out = widgets.interactive_output(plot_cavity_geometry,
+    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
+    #
+    #     # Display the layout
+    #     display(out, ui)
 
     def to_multicell(self):
         mid_cell = self.shape['IC']
@@ -2861,6 +2987,20 @@ class Cavity:
 
         dir_util.copy_tree(src, dst)
 
+    def __str__(self):
+        p = dict()
+        p[self.name] = {
+            'tune': self.tune_results,
+            'fm': self.eigenmode_qois,
+            'hom': self.wakefield_qois,
+            'uq': {
+                'tune': 0,
+                'fm': self.uq_fm_results,
+                'hom': self.uq_hom_results
+            }
+        }
+        return fr"{json.dumps(p, indent=4)}"
+
 
 class Cavities(Optimisation):
     """
@@ -2896,7 +3036,7 @@ class Cavities(Optimisation):
             self.name = name
         self.eigenmode_qois = {}
         self.wakefield_qois = {}
-        self.eigenmode_tune_res = {}
+        self.tune_results = {}
 
         self.uq_fm_results = {}
         self.uq_hom_results = {}
@@ -3202,7 +3342,7 @@ class Cavities(Optimisation):
                                 'NGSolveMEVP': None,
                                 'NativeEig': None,
                                 'ABCI': None,
-                                'CavitiesAnalysis': None
+                                'Optimisation': None
                             },
                             'PostprocessingData': {
                                 'Plots': None,
@@ -3294,6 +3434,30 @@ class Cavities(Optimisation):
 
         """
 
+        if tune_config is None:
+            # set default tune_config
+            tune_config = {
+                'parameters': ['Req' for _ in self],
+                'freqs': [c0/(4*cav.L*1e-3)*1e-6 for cav in self],
+                'cell_types': ['mid_cell' for _ in self]
+            }
+            info(f'Tune variable and frequency not entered, defaulting to {json.dumps(tune_config, indent = 4)}')
+
+        if 'freqs' not in tune_config.keys():
+            # set default tune_config
+            tune_config['freqs'] = [c0 / (4 * cav.L * 1e-3) * 1e-6 for cav in self]
+            info(f'Target frequency not entered, defaulting to {tune_config["freqs"]}')
+
+        if 'parameters' not in tune_config.keys():
+            # set default tune_config
+            tune_config['parameters'] = ['Req' for _ in self]
+            info(f'"parameters" not entered, defaulting to {tune_config["parameters"]}')
+
+        if 'cell_types' not in tune_config.keys():
+            # set default tune_config
+            tune_config['cell_types'] = ['mid_cell' for _ in self]
+            info(f'"cell_types" not entered, defaulting to {tune_config["cell_types"]}')
+
         if 'uq_config' in tune_config.keys():
             uq_config = tune_config['uq_config']
             if 'delta' in uq_config.keys():
@@ -3346,7 +3510,7 @@ class Cavities(Optimisation):
         for key, cav in self.cavities_dict.items():
             try:
                 cav.get_ngsolve_tune_res()
-                self.eigenmode_tune_res[cav.name] = cav.eigenmode_tune_res
+                self.tune_results[cav.name] = cav.tune_results
             except FileNotFoundError:
                 error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
@@ -6389,7 +6553,7 @@ class Cavities(Optimisation):
         p = dict()
         for name, cav in self.cavities_dict.items():
             p[name] = {
-                'tune': cav.eigenmode_tune_res,
+                'tune': cav.tune_results,
                 'fm': cav.eigenmode_qois,
                 'hom': cav.wakefield_qois,
                 'uq': {
@@ -7606,9 +7770,9 @@ def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP'
     else:
         processes = 1
 
-    assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
-    assert 'parameters' in tune_config_keys, error('Please enter the tune variable in tune_config_dict')
-    assert 'cell_types' in tune_config_keys, error('Please enter the cell_type in tune_config_dict')
+    assert 'freqs' in tune_config_keys, error('Please enter the target tune "freqs" in tune_config.')
+    assert 'parameters' in tune_config_keys, error('Please enter the tune "parameters"  in tune_config')
+    assert 'cell_types' in tune_config_keys, error('Please enter the "cell_types" in tune_config')
     freqs = tune_config['freqs']
     tune_parameters = tune_config['parameters']
     cell_types = tune_config['cell_types']
@@ -7703,7 +7867,7 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
             if 'eigenmode_config' in tune_config_keys:
                 eigenmode_config = tune_config['eigenmode_config']
             else:
-                info('tune_config not contain eigenmode_config. Default values are used for eigenmode analysis.')
+                info('tune_config does not contain eigenmode_config. Default values are used for eigenmode analysis.')
 
             eigenmode_config['solver_save_directory'] = 'Optimisation'
             eigenmode_config['opt'] = True

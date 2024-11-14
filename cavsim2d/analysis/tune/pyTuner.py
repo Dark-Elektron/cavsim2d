@@ -60,6 +60,7 @@ class PyTuneNGSolve:
             right = tuned_cell
             beampipes = 'none'
         elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+            print(par_mid)
             mid = par_mid
             left = par_mid
             tuned_cell = par_end

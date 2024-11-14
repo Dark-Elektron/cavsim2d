@@ -1480,8 +1480,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     geo = np.array(geo)
 
     if plot:
+
         if dimension:
-            top = ax.plot(geo[:, 1], geo[:, 0], **kwargs)
+            top = ax.plot(geo[:, 1]*1e3, geo[:, 0]*1e3, **kwargs)
         else:
             # recenter asymmetric cavity to center
             shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
@@ -1490,10 +1491,10 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             else:
                 shift_to_center = n_cell * L_m + L_bp_r
 
-            top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
-            bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+            top = ax.plot((geo[:, 1] - shift_left + shift_to_center)*1e3, geo[:, 0]*1e3, **kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center)*1e3, -geo[:, 0]*1e3, c=top[0].get_color(), **kwargs)
 
-        # plot legend wthout duplicates
+        # plot legend without duplicates
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         ax.legend(by_label.values(), by_label.keys())
