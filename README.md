@@ -23,13 +23,15 @@ git clone https://github.com/Dark-Elektron/cavsim2d.git
 `cd` into this directory and run
 
 ```python
-python3 setup.py install
+pip install .
+pip install requirements.txt
 ```
 
 for system-wide installation, or
 
 ```python
-python3 setup.py --user install
+pip install --user .
+pip install requirements.txt
 ```
 
 for local installation.
@@ -125,6 +127,11 @@ The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. A
 tesla.plot('geometry')
 # tesla.inspect()
 ```
+> [!TIP]
+> If running from a terminal, take the following extra steps
+> import matplotlib.pyplot as plt
+> plt.show()
+> ```
 
 Now the cavity can be added to the cavities object.
 
