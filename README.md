@@ -24,7 +24,7 @@ git clone https://github.com/Dark-Elektron/cavsim2d.git
 
 ```python
 pip install .
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 for system-wide installation, or
