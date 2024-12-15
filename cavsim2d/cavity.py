@@ -14,6 +14,7 @@ from matplotlib.animation import FuncAnimation
 from scipy.interpolate import griddata
 from IPython.core.display import HTML, Image, display_html, Math
 from IPython.core.display_functions import display
+from scipy.signal import find_peaks
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.special import jn_zeros, jnp_zeros
 import matplotlib as mpl
@@ -1564,6 +1565,11 @@ class Cavity:
         name
         """
 
+        self.eigenmode_qois_all_modes = {}
+        self.Epk_Eacc = None
+        self.Bpk_Eacc = None
+        self.Q = None
+        self.Ez_0_abs = {'z(0, 0)': [], '|Ez(0, 0)|': []}
         if isinstance(mid_cell, dict):
             # then mid cell parameter is a shape
             end_cell_left = mid_cell['OC']
@@ -1630,11 +1636,11 @@ class Cavity:
         if self.cell_parameterisation == 'flattop':
             assert len(mid_cell) > 7, error('Flattop cavity mid-cells require at least 8 input parameters, '
                                             'with the 8th representing length (l).')
-            if end_cell_left:
+            if end_cell_left is not None:
                 assert len(end_cell_left) > 7, error(
                     'Flattop cavity left end-cells require at least 8 input parameters, '
                     'with the 8th representing length (l).')
-            if end_cell_right:
+            if end_cell_right is not None:
                 assert len(end_cell_right) > 7, error(
                     'Flattop cavity right end-cells require at least 8 input parameters,'
                     'with the 8th representing length (l).')
@@ -1679,11 +1685,11 @@ class Cavity:
             self.to_multicell()  # <- get multicell representation
         else:
             self.mid_cell = np.array(mid_cell)[:7]
-            if end_cell_left:
+            if end_cell_left is not None:
                 self.end_cell_left = np.array(end_cell_left)[:7]
             else:
                 self.end_cell_left = np.copy(self.mid_cell)
-            if end_cell_right:
+            if end_cell_right is not None:
                 self.end_cell_right = np.array(end_cell_right)[:7]
             else:
                 self.end_cell_right = np.copy(self.end_cell_left)
@@ -2264,8 +2270,14 @@ class Cavity:
         qois = 'qois.json'
         assert os.path.exists(fr"{self.projectDir}/SimulationData/NGSolveMEVP/{self.name}/monopole/{qois}"), (
             error('Eigenmode result does not exist, please run eigenmode simulation.'))
-        with open(fr"{self.projectDir}/SimulationData/NGSolveMEVP/{self.name}/monopole/{qois}") as json_file:
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', qois)) as json_file:
             self.eigenmode_qois = json.load(json_file)
+
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'qois_all_modes.json')) as json_file:
+            self.eigenmode_qois_all_modes = json.load(json_file)
+
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'Ez_0_abs.csv')) as csv_file:
+            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
 
         self.freq = self.eigenmode_qois['freq [MHz]']
         self.k_cc = self.eigenmode_qois['kcc [%]']
@@ -2276,11 +2288,79 @@ class Cavity:
         self.Q = self.eigenmode_qois['Q []']
         self.e = self.eigenmode_qois['Epk/Eacc []']
         self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
+        self.Epk_Eacc = self.e
+        self.Bpk_Eacc = self.b
+
+    def plot_dispersion(self):
+        fig, ax = plt.subplots()
+
+        df = pd.DataFrame.from_dict(self.eigenmode_qois_all_modes, orient='index')
+        freqs = df['freq [MHz]'][1:self.n_cells+1]
+        ax.plot(freqs, marker='o', mec='k')
+
+    def plot_axis_field(self, show_min_max=True):
+        fig, ax = plt.subplots(figsize=(12, 3))
+        if len(self.Ez_0_abs['z(0, 0)']) != 0:
+            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'])
+            if show_min_max:
+                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'])
+                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
+                ax.axhline(min(Ez_0_abs_peaks), c='k')
+                ax.axhline(max(Ez_0_abs_peaks), c='k')
+        else:
+            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'Ez_0_abs.csv')):
+                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'Ez_0_abs.csv')) as csv_file:
+                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'])
+                if show_min_max:
+                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'])
+                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                    ax.axhline(min(Ez_0_abs_peaks), c='k')
+                    ax.axhline(max(Ez_0_abs_peaks), c='k')
+            else:
+                error('Axis field plot data not found.')
+
+    def plot_spectra(self, var, ax=None):
+        if len(self.uq_fm_results_all_modes) != 0:
+            df = pd.DataFrame({k: {sub_k: v[0] for sub_k, v in sub_dict.items()} for k, sub_dict in
+                               self.uq_fm_results_all_modes.items()})
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(12, 4))
+
+            # Generate KDE data
+            for col in ['freq_1 [MHz]', 'freq_2 [MHz]', 'freq_3 [MHz]', 'freq_4 [MHz]', 'freq_5 [MHz]', 'freq_6 [MHz]',
+                        'freq_7 [MHz]', 'freq_8 [MHz]', 'freq_9 [MHz]']:
+                mean = df[col]["expe"]
+                std = df[col]["stdDev"]
+                x_values = np.linspace(mean - 10, mean + 10, 100000)  # Adjust range as needed
+                if std / mean < 1e-4:  # set a very narrow range for the x-axis around the mean.
+                    x = np.linspace(mean - 10, mean + 10, 100000)
+                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
+                    ax.plot(x, y_values * 1e-8, label=col)
+                else:
+                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
+                    ax.plot(x_values, y_values * 1e-8, label=col)
+
+            # Plot settings
+            ax.set_title("KDE Plots for Frequencies")
+            ax.set_xlabel("Frequency (MHz)")
+            ax.set_ylabel("Density")
+            ax.set_xlim(1270, 1310)
+            # ax.set_ylim(0, 3)
+            ax.legend()
+
+        else:
+            error("uq_fm_results_all_modes not found")
 
     def get_uq_fm_results(self, folder):
         # load uq result
         with open(fr'{folder}\uq.json', 'r') as json_file:
             self.uq_fm_results = json.load(json_file)
+
+        if os.path.exists(fr'{folder}\uq_all_modes.json'):
+            with open(fr'{folder}\uq_all_modes.json', 'r') as json_file:
+                self.uq_fm_results_all_modes = json.load(json_file)
 
         # get neighbours and all qois
         neighbours = {}
@@ -3018,6 +3098,7 @@ class Cavities(Optimisation):
         """
 
         super().__init__()
+        self.uq_fm_results_all_modes = {}
         self.rf_config = None
         self.power_qois_uq = {}
         self.shape_space = {}
@@ -3035,6 +3116,7 @@ class Cavities(Optimisation):
             assert isinstance(name, str), error('Please enter valid project name.')
             self.name = name
         self.eigenmode_qois = {}
+        self.eigenmode_qois_all_modes = {}
         self.wakefield_qois = {}
         self.tune_results = {}
 
@@ -3601,9 +3683,11 @@ class Cavities(Optimisation):
             try:
                 cav.get_eigenmode_qois()
                 self.eigenmode_qois[cav.name] = cav.eigenmode_qois
+                self.eigenmode_qois_all_modes[cav.name] = cav.eigenmode_qois_all_modes
                 if uq_config:
                     cav.get_uq_fm_results(fr"{self.projectDir}\SimulationData\NGSolveMEVP\{cav.name}")
                     self.uq_fm_results[cav.name] = cav.uq_fm_results
+                    self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
             except FileNotFoundError:
                 error("Could not find the eigenmode results. Please rerun eigenmode analysis.")
                 return False
@@ -7832,7 +7916,7 @@ def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP'
 
 
 def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell_types, tune_config, projectDir, resume,
-               p):
+               p, sim_folder='Optimisation'):
     # perform necessary checks
     if tune_config is None:
         tune_config = {}
@@ -7844,7 +7928,6 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
             rerun = tune_config['rerun']
 
     def _run_tune():
-        sim_folder = 'Optimisation'
         tuned_shape_space, d_tune_res, conv_dict, abs_err_dict = tuner.tune_ngsolve({key: shape}, 33,
                                                                                     SOFTWARE_DIRECTORY,
                                                                                     projectDir, key,
@@ -7869,9 +7952,19 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
             else:
                 info('tune_config does not contain eigenmode_config. Default values are used for eigenmode analysis.')
 
-            eigenmode_config['solver_save_directory'] = 'Optimisation'
-            eigenmode_config['opt'] = True
-            run_eigenmode_parallel(tuned_shape_space, tuned_shape_space_multi, eigenmode_config, projectDir)
+            eigenmode_config['solver_save_directory'] = sim_folder.split(os.sep)[0]
+            if sim_folder == 'Optimisation':
+                eigenmode_config['opt'] = True
+            else:
+                eigenmode_config['opt'] = False
+
+            # might cause some problems later
+            if len(sim_folder.split(os.sep)) > 1:
+                subdir = os.path.basename(sim_folder)
+            else:
+                subdir = ''
+            run_eigenmode_parallel(tuned_shape_space, tuned_shape_space_multi, eigenmode_config, projectDir,
+                                   subdir=subdir)
 
             # save tune results
             save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
@@ -7882,18 +7975,18 @@ def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell
 
     for i, (key, shape) in enumerate(processor_shape_space.items()):
         shape['FREQ'] = proc_freqs[i]
-        if os.path.exists(os.path.join(projectDir, "SimulationData", "Optimisation", key)):
+        if os.path.exists(os.path.join(projectDir, "SimulationData", sim_folder, key)):
             if rerun:
                 # clear previous results
-                shutil.rmtree(os.path.join(projectDir, "SimulationData", "Optimisation", key))
-                os.mkdir(os.path.join(projectDir, "SimulationData", "Optimisation", key))
+                shutil.rmtree(os.path.join(projectDir, "SimulationData", sim_folder, key))
+                os.mkdir(os.path.join(projectDir, "SimulationData", sim_folder, key))
                 _run_tune()
         else:
             _run_tune()
 
 
 def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config,
-                           projectDir):
+                           projectDir, subdir=''):
     if 'processes' in eigenmode_config.keys():
         processes = eigenmode_config['processes']
         assert processes > 0, error('Number of proceses must be greater than zero.')
@@ -7921,7 +8014,7 @@ def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config,
         processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
         processor_shape_space_multi = {key: shape_space_multi[key] for key in proc_keys_list}
         service = mp.Process(target=run_eigenmode_s, args=(processor_shape_space, processor_shape_space_multi,
-                                                           projectDir, eigenmode_config))
+                                                           projectDir, eigenmode_config, subdir))
 
         service.start()
         jobs.append(service)
@@ -7930,7 +8023,7 @@ def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config,
         job.join()
 
 
-def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config):
+def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config, subdir):
     """
     Run eigenmode analysis
 
@@ -7979,14 +8072,14 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
     # else:
     #     eigenmode_config['uq_config'] = uq_config
 
-    def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir):
+    def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir, subdir):
         n_cells = shape['n_cells']
         n_modules = 1
         bc = eigenmode_config['boundary_conditions']
 
         start_time = time.time()
         # create folders for all keys
-        ngsolve_mevp.createFolder(name, projectDir, subdir='', opt=eigenmode_config['opt'])
+        ngsolve_mevp.createFolder(name, projectDir, subdir=subdir, opt=eigenmode_config['opt'])
 
         if 'OC_R' in shape.keys():
             OC_R = 'OC_R'
@@ -7996,31 +8089,32 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
         if shape['CELL PARAMETERISATION'] == 'flattop':
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
-                                solver=eigenmode_config['solver_save_directory'])
+                                solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
 
             ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                         n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
                                         beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                        parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                        parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
                                         eigenmode_config=eigenmode_config)
 
         elif shape['CELL PARAMETERISATION'] == 'multicell':
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
-                                solver=eigenmode_config['solver_save_directory'])
+                                solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
             ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
                                           n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
                                           beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                          parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                          parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
                                           eigenmode_config=eigenmode_config)
         else:
             write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
                                 projectDir=projectDir, cell_type="None",
-                                solver=eigenmode_config['solver_save_directory'])
+                                solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
+
             ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
                                 n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc, beampipes=shape['BP'],
                                 sim_folder=solver_save_dir,
-                                parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir='',
+                                parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
                                 eigenmode_config=eigenmode_config)
 
         # run UQ
@@ -8073,7 +8167,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
             if rerun:
                 # delete old results
                 shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
+                _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
 
             else:
                 # check if eigenmode analysis results exist
@@ -8082,9 +8176,9 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
                     pass
                 else:
                     shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                    _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
+                    _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
         else:
-            _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir)
+            _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
 
 
 def run_wakefield_parallel(shape_space, shape_space_multi, wakefield_config, projectDir, marker='', rerun=True):
@@ -8352,7 +8446,9 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
         for key, shape in shape_space.items():
             # n_cells = shape['n_cells']
             uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
+
             result_dict_eigen = {}
+            result_dict_eigen_all_modes = {}
             # eigen_obj_list = []
 
             # for o in objectives:
@@ -8397,11 +8493,11 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
 
             # save nodes and weights
             data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
-            data_table.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\nodes.csv',
+            data_table.to_csv(os.path.join(projectDir, 'SimulationData', analysis_folder, key, 'nodes.csv'),
                               index=False, sep='\t', float_format='%.32f')
 
             data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\weights.csv', index=False,
+            data_table_w.to_csv(os.path.join(projectDir, 'SimulationData', analysis_folder, key, 'weights.csv'), index=False,
                                 sep='\t', float_format='%.32f')
 
             no_parm, no_sims = np.shape(nodes_)
@@ -8451,13 +8547,16 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             for i1 in range(proc_count):
                 if i1 == 0:
                     df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
+                    df_all_modes = pd.read_csv(uq_path / fr'table_{i1}_all_modes.csv', sep='\t', engine='python')
                 else:
                     df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
+                    df_all_modes = pd.concat([df_all_modes, pd.read_csv(uq_path / fr'table_{i1}_all_modes.csv', sep='\t', engine='python')])
 
             df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
             df.to_excel(uq_path / 'table.xlsx', index=False)
 
             Ttab_val_f = df.to_numpy()
+            # print(Ttab_val_f.shape, weights_.shape)
             v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
 
             # # append results to dict
@@ -8468,9 +8567,30 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
                 result_dict_eigen[o] = {'expe': [], 'stdDev': []}
                 result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
                 result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
-
             with open(uq_path / fr'uq.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
+
+            # for all modes
+            df_all_modes.to_csv(uq_path / 'table_all_modes.csv', index=False, sep='\t', float_format='%.32f')
+            df_all_modes.to_excel(uq_path / 'table_all_modes.xlsx', index=False)
+
+            Ttab_val_f_all_modes = df_all_modes.to_numpy()
+            # print(Ttab_val_f_all_modes.shape, weights_.shape)
+            # print()
+            v_expe_fobj_all_modes, v_stdDev_fobj_all_modes = weighted_mean_obj(Ttab_val_f_all_modes, weights_)
+            # print(v_expe_fobj_all_modes)
+
+            # # append results to dict
+            # for i, o in enumerate(eigen_obj_list):
+            #     result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
+            #     result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            for i, o in enumerate(df_all_modes.columns):
+                result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': []}
+                result_dict_eigen_all_modes[o]['expe'].append(v_expe_fobj_all_modes[i])
+                result_dict_eigen_all_modes[o]['stdDev'].append(v_stdDev_fobj_all_modes[i])
+
+            with open(uq_path / fr'uq_all_modes.json', 'w') as file:
+                file.write(json.dumps(result_dict_eigen_all_modes, indent=4, separators=(',', ': ')))
 
     elif solver == 'wakefield':
         # parentDir = solver_args_dict['parentDir']
@@ -8644,6 +8764,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
 
     """
 
+    print(processor_nodes)
     if solver == 'eigenmode':
         parentDir = solver_args_dict['parentDir']
         projectDir = solver_args_dict['projectDir']
@@ -8656,6 +8777,10 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             epsilon = uq_config['epsilon']
         if 'delta' in uq_config.keys():
             delta = uq_config['delta']
+        if 'perturbed_cell' in uq_config.keys():
+            perturbed_cell = uq_config['perturbed_cell']
+        else:
+            perturbed_cell = 'mid-cell'
 
         # method = uq_config['method']
         uq_vars = uq_config['variables']
@@ -8663,6 +8788,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         err = False
         result_dict_eigen = {}
         Ttab_val_f = []
+        Ttab_val_f_all_modes = []
 
         # eigen_obj_list = objectives
         eigen_obj_list = []
@@ -8685,6 +8811,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         cell_node = shape['IC']
         cell_node_left = shape['OC']
         cell_node_right = shape['OC_R']
+        print('before: ', cell_node, cell_node_left, cell_node_right)
         perturbed_cell_node = np.array(cell_node)
         perturbed_cell_node_left = np.array(cell_node_left)
         perturbed_cell_node_right = np.array(cell_node_right)
@@ -8694,17 +8821,36 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             for j, uq_var in enumerate(uq_vars):
                 uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
                 if epsilon:
-                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
-                        j, i1]
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
-                                                             processor_nodes[j, i1]
+                    if perturbed_cell.lower() == 'mid cell' or perturbed_cell.lower() == 'mid-cell' or perturbed_cell.lower() == 'mid_cell':
+                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                    elif perturbed_cell.lower() == 'end cell' or perturbed_cell.lower() == 'end-cell' or perturbed_cell.lower() == 'end_cell':
+                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
+                            j, i1]
+                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
+                                                                 processor_nodes[j, i1]
+                    else:
+                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
+                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
+                            j, i1]
+                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
+                                                                 processor_nodes[j, i1]
+
                 else:
-                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                            1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                            1 + delta[j] * processor_nodes[j, i1])
+                    if perturbed_cell.lower() == 'mid cell' or perturbed_cell.lower() == 'mid-cell' or perturbed_cell.lower() == 'mid_cell':
+                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                    elif perturbed_cell.lower() == 'end cell' or perturbed_cell.lower() == 'end-cell' or perturbed_cell.lower() == 'end_cell':
+                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+                    else:
+                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
+                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
+                                1 + delta[j] * processor_nodes[j, i1])
+
+            print('\tafter: ', perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
 
             # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
             #     # cell_node = shape['IC']
@@ -8735,7 +8881,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             fid = fr'{key}_Q{proc_key}'
 
             # check if folder exists and skip if it does
-            if os.path.exists(fr'{projectDir}\SimulationData\{analysis_folder}\{key}\{fid}'):
+            if os.path.exists(os.path.join(projectDir, 'SimulationData', analysis_folder, key, fid)):
                 skip = True
                 info(["Skipped: ", fid, fr'{projectDir}\SimulationData\ABCI\{key}\{fid}'])
 
@@ -8744,23 +8890,44 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
                 # it does not seem to make sense to perform uq on a multi cell by repeating the same perturbation
                 # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
                 # independent perturbations to all cells individually
-                if cell_parameterisation == 'simplecell':
-                    ngsolve_mevp.cavity(shape['n_cells'], 1, perturbed_cell_node,
-                                        perturbed_cell_node_left, perturbed_cell_node_right,
-                                        f_shift=0, bc=33, beampipes=shape['BP'],
-                                        fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                        projectDir=projectDir,
-                                        subdir=sub_dir)
-                if cell_parameterisation == 'flattop':
-                    ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
-                                                perturbed_cell_node_left, perturbed_cell_node_right,
-                                                f_shift=0, bc=33,
-                                                beampipes=shape['BP'],
-                                                fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                                projectDir=projectDir,
-                                                subdir=sub_dir)
+
+                if 'tune_config' in uq_config.keys():
+                    tune_config = uq_config['tune_config']
+                    # tune first before running
+                    processor_shape_space = {fid:
+                                                 {'IC': perturbed_cell_node,
+                                                  'OC': perturbed_cell_node_left,
+                                                  'OC_R': perturbed_cell_node_right,
+                                                  'BP': 'both',
+                                                  "n_cells": 9,
+                                                  'CELL PARAMETERISATION': 'simplecell'
+                                                  },
+                                             }
+                    # save tune results to uq cavity folders
+                    sim_folder = os.path.join(analysis_folder, key)
+
+                    run_tune_s(processor_shape_space, tune_config['parameters'], tune_config['freqs'],
+                               tune_config['cell_types'], tune_config, projectDir, False, fid, sim_folder)
+
+                else:
+                    if cell_parameterisation == 'simplecell':
+                        ngsolve_mevp.cavity(shape['n_cells'], 1, perturbed_cell_node,
+                                            perturbed_cell_node_left, perturbed_cell_node_right,
+                                            f_shift=0, bc=33, beampipes=shape['BP'],
+                                            fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                            projectDir=projectDir,
+                                            subdir=sub_dir)
+                    if cell_parameterisation == 'flattop':
+                        ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
+                                                    perturbed_cell_node_left, perturbed_cell_node_right,
+                                                    f_shift=0, bc=33,
+                                                    beampipes=shape['BP'],
+                                                    fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
+                                                    projectDir=projectDir,
+                                                    subdir=sub_dir)
 
             filename = uq_path / f'{fid}/monopole/qois.json'
+            filename_all_modes = uq_path / f'{fid}/monopole/qois_all_modes.json'
             if os.path.exists(filename):
                 qois_result_dict = dict()
 
@@ -8773,8 +8940,33 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
             else:
                 err = True
 
+            # for all modes
+            if os.path.exists(filename_all_modes):
+                qois_result_dict_all_modes = dict()
+                qois_result_all_modes = {}
+
+                with open(filename_all_modes) as json_file:
+                    qois_result_dict_all_modes.update(json.load(json_file))
+
+                tab_val_f_all_modes = []
+                for kk, val in qois_result_dict_all_modes.items():
+                    qois_result_all_modes[kk] = get_qoi_value(val, eigen_obj_list)
+
+                    tab_val_f_all_modes.append(qois_result_all_modes[kk])
+
+                tab_val_f_all_modes_flat = [item for sublist in tab_val_f_all_modes for item in sublist]
+                Ttab_val_f_all_modes.append(tab_val_f_all_modes_flat)
+            else:
+                err = True
+
         data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
         data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
+
+        # for all modes
+        keys = qois_result_dict_all_modes.keys()
+        eigen_obj_list_all_modes = [f"{name.split(' ')[0]}_{i} {name.split(' ', 1)[1]}" for i in keys for name in eigen_obj_list]
+        data_table = pd.DataFrame(Ttab_val_f_all_modes, columns=eigen_obj_list_all_modes)
+        data_table.to_csv(uq_path / fr'table_{proc_num}_all_modes.csv', index=False, sep='\t', float_format='%.32f')
 
     elif solver == 'wakefield':
         Ttab_val_f = []

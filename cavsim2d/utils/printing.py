@@ -3,11 +3,11 @@ from termcolor import colored
 
 
 def error(*arg):
-    print(colored(f'{arg[0]}', 'red'))
+    print(colored(f'ERROR:: {arg[0]}', 'red'))
 
 
 def warning(*arg):
-    print(colored(f'{arg[0]}', 'yellow'))
+    print(colored(f'WARNING:: {arg[0]}', 'yellow'))
 
 
 def running(*arg):
@@ -15,8 +15,8 @@ def running(*arg):
 
 
 def info(*arg):
-    print(colored(f'{arg[0]}', 'blue'))
+    print(colored(f'INFO:: {arg[0]}', 'blue'))
 
 
 def done(*arg):
-    print(colored(f'{arg[0]}', 'green'))
+    print(colored(f'DONE:: {arg[0]}', 'green'))

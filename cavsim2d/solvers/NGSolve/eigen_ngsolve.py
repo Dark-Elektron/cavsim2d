@@ -155,9 +155,10 @@ class NGSolveMEVP:
 
         file_path = os.path.join(folder, "geodata.n")
         if cell_parameterisation == 'simplecell':
-            write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells, write=file_path)
+            # print('what is written: ', mid_cell, end_cell_left, end_cell_right)
+            write_cavity_geometry_cli(mid_cell, end_cell_left, end_cell_right, beampipe, n_cell=n_cells, write=file_path)
         else:
-            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, 'both', n_cell=n_cells,
+            write_cavity_geometry_cli_flattop(mid_cell, end_cell_left, end_cell_right, beampipe, n_cell=n_cells,
                                               write=file_path)
 
     def write_geometry_multicell(self, folder, n_cells, mid_cell, end_cell_left=None, end_cell_right=None,
@@ -608,7 +609,7 @@ class NGSolveMEVP:
                 proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
 
                 projpre = proj @ pre.mat
-                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 15, maxit=20,
+                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 2, maxit=20,
                                               printrates=False)
 
             freq_fes = []
@@ -629,7 +630,7 @@ class NGSolveMEVP:
 
             # save fields
             self.save_fields(run_save_directory, gfu_E, gfu_H)
-            #
+
             # # alternative eigenvalue solver, but careful, mode numbering may change
             # u = GridFunction(fes, multidim=15, name='resonances')
             # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
@@ -646,11 +647,18 @@ class NGSolveMEVP:
                 json.dump(shape, f, indent=4, separators=(',', ': '))
 
             # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-            qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+            qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes, save_dir=run_save_directory)
             # error(qois)
 
             with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
+
+            qois_all_modes = {}
+            for ii, freq in enumerate(freq_fes):
+                qois_all_modes[ii] = self.evaluate_qois(cav_geom, ii, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+
+            with open(os.path.join(run_save_directory, 'qois_all_modes.json'), "w") as f:
+                json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
 
             return True
         else:
@@ -850,10 +858,18 @@ class NGSolveMEVP:
 
         # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+
+        qois_all_modes = {}
+        for ii, freq in enumerate(freq_fes):
+            qois_all_modes[ii] = self.evaluate_qois(cav_geom, ii+1, Req, L, gfu_E, gfu_H, mesh, freq_fes)
+
         # error(qois)
 
         with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
+
+        with open(os.path.join(run_save_directory, 'qois_all_modes.json'), "w") as f:
+            json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
 
     def cavity_flattop(self, no_of_cells=1, no_of_modules=1,
                        mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
@@ -1418,7 +1434,9 @@ class NGSolveMEVP:
         #                         list(u.vecs), shift=300)
 
     @staticmethod
-    def evaluate_qois(cav_geom, n, Req, L, gfu_E, gfu_H, mesh, freq_fes, beta=1):
+    def evaluate_qois(cav_geom, n, Req, L, gfu_E, gfu_H, mesh, freq_fes, beta=1, save_dir=None):
+        if n == 0:
+            n = -1
         w = 2 * pi * freq_fes[n] * 1e6
 
         # calculate Vacc and Eacc
@@ -1468,21 +1486,23 @@ class NGSolveMEVP:
 
         # OLD
         # Get axis field
-        xpnts_ax = np.linspace(min(cav_geom[1].tolist()), max(cav_geom[1].tolist()), 100)
-        Eax = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
+        minz, maxz = min(cav_geom[1].tolist()), max(cav_geom[1].tolist())
+        xpnts_ax = np.linspace(minz, maxz, int(5000*(maxz-minz)))
+        # Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
+        Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
 
         # # Get axis field
         # xmin = face.vertices.Min(X)
         # xmax = face.vertices.Max(X)
         # xpnts_ax = np.linspace(xmin.p[0], xmax.p[0], 100)
-        # Eax = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
+        # Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
 
         # calculate field flatness
-        peaks, _ = find_peaks(Eax)
-        E_abs_peaks = Eax[peaks]
+        peaks, _ = find_peaks(Ez_0_abs)
+        Ez_0_abs_peaks = Ez_0_abs[peaks]
         # print(E_abs_peaks)
-        # ff = min(E_abs_peaks)/max(E_abs_peaks) * 100
-        ff = (1 - ((max(E_abs_peaks) - min(E_abs_peaks)) / np.average(E_abs_peaks))) * 100
+        ff = min(Ez_0_abs_peaks)/max(Ez_0_abs_peaks) * 100
+        # ff = (1 - ((max(Ez_0_abs_peaks) - min(Ez_0_abs_peaks)) / np.average(Ez_0_abs_peaks))) * 100
 
         # calculate G
         G = Q * Rs
@@ -1507,6 +1527,11 @@ class NGSolveMEVP:
             "G [Ohm]": G,
             "GR/Q [Ohm^2]": G * RoQ
         }
+
+        Ez_0_abs_df = pd.DataFrame.from_dict({'z(0, 0)': xpnts_ax, '|Ez(0, 0)|': Ez_0_abs})
+        if save_dir:
+            # save axis field
+            Ez_0_abs_df.to_csv(os.path.join(save_dir, 'Ez_0_abs.csv'), index=False, sep='\t', float_format='%.32f')
 
         return qois
 

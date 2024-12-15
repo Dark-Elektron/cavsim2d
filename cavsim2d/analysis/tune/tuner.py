@@ -83,7 +83,6 @@ class Tuner:
                 if tune_var != 0 and freq != 0:
                     if (cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell'
                             or cell_type.lower() == 'mid_cell'):
-                        print('it is in here', tune_variable, tune_var, freq)
                         tuned_mid_cell = pseudo_shape['IC'][:7]
                         tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
                         tuned_end_cell = pseudo_shape['OC'][:7]
@@ -91,7 +90,6 @@ class Tuner:
                         tuned_end_cell[6] = tuned_mid_cell[6]
                     elif (cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell'
                           or cell_type.lower() == 'mid_end_cell'):
-                        print('it is in here', tune_variable, tune_var, freq)
                         tuned_mid_cell = pseudo_shape['IC'][:7]
                         tuned_end_cell = pseudo_shape['OC'][:7]
                         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
@@ -140,8 +138,7 @@ class Tuner:
                         and (90.0 <= alpha_i <= 180) \
                         and (90.0 <= alpha_o <= 180) and error_msg1 == 1 and error_msg2 == 1:
                     result = f"Success: {target_freq, freq}"
-
-                    tuned_shape_space[key] = {"IC": inner_cell, "OC": outer_cell, "OC_R": outer_cell, "BP": 'both', 'FREQ': freq}
+                    tuned_shape_space[key] = {"IC": inner_cell, "OC": outer_cell, "OC_R": outer_cell, "BP": beampipes, 'FREQ': freq}
 
                     # write tune results
                     d_tune_res = {'IC': list(inner_cell), 'OC': list(outer_cell),

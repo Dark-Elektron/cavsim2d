@@ -256,7 +256,7 @@ tune_config = {
     'rerun': True
 }
 cavs.run_tune(tune_config)
-pp.pprint(cavs.eigenmode_tune_res)
+pp.pprint(cavs.tune_results)
 ```
  
 ```
@@ -313,7 +313,7 @@ tune_config = {
     'rerun': True
 }
 cavs.run_tune(tune_config)
-pp.pprint(cavs.eigenmode_tune_res)
+pp.pprint(cavs.tune_results)
 ```
 
 Confirm from the output that the correct frequency and `A` is achieved.

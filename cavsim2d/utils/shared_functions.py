@@ -261,7 +261,7 @@ def jac(z, *data):
     return J
 
 
-def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, solver='slans'):
+def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, sub_dir='', opt=False, solver='NGSolveMEVP'):
     """
     Writes cavity geometric data that can be imported into CST Studio
 
@@ -290,7 +290,7 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
         folder = 'Optimisation'
 
     if cell_type is None:
-        path = fr'{projectDir}/SimulationData/{folder}/{key}/{key}.txt'
+        path = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}.txt')
 
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
@@ -306,8 +306,8 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, opt=False, 
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
 
     else:
-        path = fr'{projectDir}/SimulationData/{folder}/{key}/{key}.txt'
-        path_mc = fr'{projectDir}/SimulationData/{folder}/{key}/{key}_Multicell.txt'
+        path = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}.txt')
+        path_mc = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}_Multicell.txt')
 
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
@@ -1180,7 +1180,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     # half of bounding box is required,
                     # start is the lower coordinate of the bounding box and end is the upper
                     pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
-                                [L_el + L_er - x2er + + L_bp_l + L_bp_r - shift, y2er])
+                                [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
                     pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():

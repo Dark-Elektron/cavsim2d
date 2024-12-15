@@ -43,9 +43,9 @@ class PyTuneNGSolve:
             fid = f'_process_{proc}'
 
         # make directory
-        if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{fid}"):
-            shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
-        os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
+        if os.path.exists(os.path.join(projectDir, 'SimulationData', sim_folder, fid)):
+            shutil.rmtree(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
+        os.mkdir(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
 
         # get parameters
         freq_list = []
@@ -60,7 +60,6 @@ class PyTuneNGSolve:
             right = tuned_cell
             beampipes = 'none'
         elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            print(par_mid)
             mid = par_mid
             left = par_mid
             tuned_cell = par_end
@@ -98,12 +97,12 @@ class PyTuneNGSolve:
                 run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
 
             # get uq results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
             # get results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'monopole', 'qois.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
 
             freq = eigenmode_qois['freq [MHz]']
@@ -133,12 +132,12 @@ class PyTuneNGSolve:
                 run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
 
             # get uq results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
             # get results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'monopole', "qois.json")) as json_file:
                 eigenmode_qois = json.load(json_file)
 
             freq = eigenmode_qois['freq [MHz]']
@@ -146,7 +145,10 @@ class PyTuneNGSolve:
         freq_list.append(freq)
         tv_list.append(tv)
 
-        tol = 1e-2  # for testing purposes to reduce tuning time.
+        if 'tolerance' in tune_config.keys():
+            tol = tune_config['tolerance']
+        else:
+            tol = 1e-2  # for testing purposes to reduce tuning time.
         # max_iter = iter_set[2]
 
         n = 1
@@ -193,12 +195,12 @@ class PyTuneNGSolve:
                     run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
 
                 # get uq results and compare with set value
-                with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+                with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, "uq.json")) as json_file:
                     eigenmode_qois = json.load(json_file)
                 freq = eigenmode_qois['freq [MHz]']['expe'][0]
             else:
                 # get results and compare with set value
-                with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+                with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, "monopole/qois.json")) as json_file:
                     eigenmode_qois = json.load(json_file)
 
                 freq = eigenmode_qois['freq [MHz]']
@@ -238,6 +240,7 @@ class PyTuneNGSolve:
 
         # save convergence information
         conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
+        # print(tv_list, freq_list, key)
         return tv_list[key], freq_list[key], conv_dict, abs_err_list
 
     def tune_flattop(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
@@ -629,7 +632,7 @@ class PyTuneNGSolve:
     def write_output(tv_list, freq_list, fid, projectDir):
         dd = {"tv": tv_list, "freq": freq_list}
 
-        with open(fr"{projectDir}\SimulationData\SLANS_opt\{fid}\convergence_output.json", "w") as outfile:
+        with open(os.path.join(projectDir, 'SimulationData', 'SLANS_opt', fid, "convergence_output.json"), "w") as outfile:
             json.dump(dd, outfile, indent=4, separators=(',', ': '))
 
 
