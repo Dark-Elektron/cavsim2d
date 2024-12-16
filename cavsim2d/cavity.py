@@ -2301,22 +2301,42 @@ class Cavity:
     def plot_axis_field(self, show_min_max=True):
         fig, ax = plt.subplots(figsize=(12, 3))
         if len(self.Ez_0_abs['z(0, 0)']) != 0:
-            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'])
+            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+            ax.text(
+                0.95, 0.05,  # Position (normalized coordinates)
+                '$\eta='+fr'{self.ff:.2f}\%'+'$',  # Text content
+                fontsize=12,  # Font size
+                ha='right',  # Horizontal alignment
+                va='bottom',  # Vertical alignment
+                transform=plt.gca().transAxes  # Use axes-relative positioning
+            )
+            ax.legend(loc="upper right")
             if show_min_max:
-                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'])
+                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000*(maxz-minz))/50, width=100)
                 Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
                 ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
-                ax.axhline(min(Ez_0_abs_peaks), c='k')
+                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
                 ax.axhline(max(Ez_0_abs_peaks), c='k')
         else:
             if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'Ez_0_abs.csv')):
                 with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', 'Ez_0_abs.csv')) as csv_file:
                     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'])
+                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+                ax.text(
+                    0.95, 0.05,  # Position (normalized coordinates)
+                    '$\eta=$'+fr'{self.ff:.2f}\%'+'$',  # Text content
+                    fontsize=12,  # Font size
+                    ha='right',  # Horizontal alignment
+                    va='bottom',  # Vertical alignment
+                    transform=plt.gca().transAxes  # Use axes-relative positioning
+                )
+                ax.legend(loc="upper right")
                 if show_min_max:
-                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'])
+                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000*(maxz-minz))/100, width=100)
                     Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                    ax.axhline(min(Ez_0_abs_peaks), c='k')
+                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
                     ax.axhline(max(Ez_0_abs_peaks), c='k')
             else:
                 error('Axis field plot data not found.')

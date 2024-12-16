@@ -1498,7 +1498,7 @@ class NGSolveMEVP:
         # Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
 
         # calculate field flatness
-        peaks, _ = find_peaks(Ez_0_abs)
+        peaks, _ = find_peaks(Ez_0_abs, distance=int(5000*(maxz-minz))/100, width=100)
         Ez_0_abs_peaks = Ez_0_abs[peaks]
         # print(E_abs_peaks)
         ff = min(Ez_0_abs_peaks)/max(Ez_0_abs_peaks) * 100
