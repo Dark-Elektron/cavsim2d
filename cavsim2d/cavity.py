@@ -1469,20 +1469,10 @@ class Optimisation:
 
         for o in self.objectives:
             if o[0] == 'min':
-                if self.uq_config:
-                    datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] = datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]']* -1
-                    sense.append('min')
-                else:
-                    datapoints[o[1]] = datapoints[o[1]]* -1
-                    sense.append('min')
+                sense.append('min')
             elif o[0] == "equal":
-                if self.uq_config:
-                    datapoints[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = datapoints[
-                                                                             fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]']* -1
-                    sense.append('diff')
-                else:
-                    datapoints[o[1]] = datapoints[o[1]] * (-1)
-            else:
+                sense.append('diff')
+            elif o[0] == 'max':
                 sense.append('max')
 
         bool_array = paretoset(datapoints, sense=sense)  # the indices of the Pareto optimal designs
