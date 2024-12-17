@@ -4,6 +4,7 @@ import os.path
 import random
 import shutil
 import subprocess
+from paretoset import paretoset
 import sys
 from distutils import dir_util
 from math import floor
@@ -80,6 +81,7 @@ eps0 = 8.85418782e-12
 class Optimisation:
 
     def __init__(self):
+        self.poc = 0
         self.eigenmode_config = {}
         self.mid_cell = None
         self.wakefield_config = None
@@ -1447,6 +1449,52 @@ class Optimisation:
             self.recursive_save(df, filename, pareto_index)
 
     def pareto_front(self, df):
+        # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
+        # reverse list or not based on objective goal: minimize or maximize
+        # datapoints = [self.negate_list(df.loc[:, o[1]], o[0]) for o in self.objectives]
+        sense = []
+        if self.uq_config:
+            obj = []
+            for o in self.objectives:
+                if o[0] == 'min':
+                    obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
+                elif o[0] == 'max':
+                    obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
+                elif o[0] == 'equal':
+                    obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
+
+            datapoints = df.loc[:, obj]
+        else:
+            datapoints = df.loc[:, self.objective_vars]
+
+        for o in self.objectives:
+            if o[0] == 'min':
+                if self.uq_config:
+                    datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] = datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]']* -1
+                    sense.append('min')
+                else:
+                    datapoints[o[1]] = datapoints[o[1]]* -1
+                    sense.append('min')
+            elif o[0] == "equal":
+                if self.uq_config:
+                    datapoints[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = datapoints[
+                                                                             fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]']* -1
+                    sense.append('diff')
+                else:
+                    datapoints[o[1]] = datapoints[o[1]] * (-1)
+            else:
+                sense.append('max')
+
+        bool_array = paretoset(datapoints, sense=sense)  # the indices of the Pareto optimal designs
+        lst = np.where(bool_array)[0]
+        self.poc = len(lst)
+
+        reorder_idx = list(lst) + [i for i in range(len(df)) if i not in lst]
+
+        # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
+        return reorder_idx, lst
+
+    def __pareto_front_oapackage(self, df):
 
         # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
         # reverse list or not based on objective goal: minimize or maximize
@@ -2480,7 +2528,7 @@ class Cavity:
             ani.save(fr'{top_folder}/{self.name}_e_field_animation.mp4', writer='ffmpeg', dpi=150)
 
     def get_power_uq(self, rf_config, op_points_list):
-        stat_moms = ['expe', 'stdDev']
+        stat_moms = ['expe', 'stdDev', 'skew', 'kurtosis']
         for ii, op_pt in enumerate(op_points_list):
             self.rf_performance_qois_uq[op_pt] = {}
             val = self.operating_points[op_pt]
@@ -2489,25 +2537,25 @@ class Cavity:
                     sig_id = kk.split('_')[-1].split(' ')[0]
 
                     if 'Eacc [MV/m]' in rf_config.keys():
-                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0]}
+                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
                     else:
                         op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0]}
                         self.Eacc_rf_config = val['Eacc [MV/m]']
 
                     if 'V [GV]' in rf_config.keys():
-                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0]}
+                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
                     else:
-                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0]}
+                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
 
-                    Q0 = {'expe': [self.Q0], 'stdDev': [0]}
-                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0]}
-                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0]}
-                    n_cav = {'expe': [0], 'stdDev': [0]}
-                    p_in = {'expe': [0], 'stdDev': [0]}
-                    p_cryo = {'expe': [0], 'stdDev': [0]}
-                    pdyn = {'expe': [0], 'stdDev': [0]}
-                    pstat = {'expe': [0], 'stdDev': [0]}
-                    p_wp = {'expe': [0], 'stdDev': [0]}
+                    Q0 = {'expe': [self.Q0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    n_cav = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_in = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_cryo = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    pdyn = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    pstat = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_wp = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
 
                     # test
                     n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
@@ -2518,17 +2566,17 @@ class Cavity:
 
                     pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
                                 self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
-                    pdyn_expe, pdyn_std = weighted_mean_obj(np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
-                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std}
+                    pdyn_expe, pdyn_std, pdyn_skew, pdyn_kurtosis = weighted_mean_obj(np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
+                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std, 'skew': pdyn_skew, 'kurtosis': pdyn_kurtosis}
 
                     pstat_n = (self.l_cavity * v_rf['expe'][0] / (
                                 self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
-                    pstat_expe, pstat_std = weighted_mean_obj(np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
-                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std}
+                    pstat_expe, pstat_std, pstat_skew, pstat_kurtosis = weighted_mean_obj(np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
+                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std, 'skew': pstat_skew, 'kurtosis': pstat_kurtosis}
 
                     p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
-                    p_wp_expe, p_wp_std = weighted_mean_obj(np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
-                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std}
+                    p_wp_expe, p_wp_std, p_wp_skew, p_wp_kurtosis = weighted_mean_obj(np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
+                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std, 'skew': p_wp_skew, 'kurtosis': p_wp_kurtosis}
 
                     for stat_mom in stat_moms:
                         if op_field[stat_mom][0] != 0:
@@ -8474,7 +8522,7 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             # for o in objectives:
             #     if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
             #              "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-            #         result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+            #         result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
             #         eigen_obj_list.append(o)
 
             rdim = len(uq_vars)
@@ -8577,16 +8625,18 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
 
             Ttab_val_f = df.to_numpy()
             # print(Ttab_val_f.shape, weights_.shape)
-            v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+            mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
 
             # # append results to dict
             # for i, o in enumerate(eigen_obj_list):
-            #     result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-            #     result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            #     result_dict_eigen[o]['expe'].append(mean_obj[i])
+            #     result_dict_eigen[o]['stdDev'].append(std_obj[i])
             for i, o in enumerate(df.columns):
-                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
-                result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-                result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
+                result_dict_eigen[o]['expe'].append(mean_obj[i])
+                result_dict_eigen[o]['stdDev'].append(std_obj[i])
+                result_dict_eigen[o]['skew'].append(skew_obj[i])
+                result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
             with open(uq_path / fr'uq.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
 
@@ -8597,17 +8647,20 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             Ttab_val_f_all_modes = df_all_modes.to_numpy()
             # print(Ttab_val_f_all_modes.shape, weights_.shape)
             # print()
-            v_expe_fobj_all_modes, v_stdDev_fobj_all_modes = weighted_mean_obj(Ttab_val_f_all_modes, weights_)
-            # print(v_expe_fobj_all_modes)
+            mean_obj_all_modes, std_obj_all_modes, skew_obj_all_modes, kurtosis_obj_all_modes = weighted_mean_obj(Ttab_val_f_all_modes, weights_)
+            # print(mean_obj_all_modes)
 
             # # append results to dict
             # for i, o in enumerate(eigen_obj_list):
-            #     result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-            #     result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            #     result_dict_eigen[o]['expe'].append(mean_obj[i])
+            #     result_dict_eigen[o]['stdDev'].append(std_obj[i])
             for i, o in enumerate(df_all_modes.columns):
-                result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': []}
-                result_dict_eigen_all_modes[o]['expe'].append(v_expe_fobj_all_modes[i])
-                result_dict_eigen_all_modes[o]['stdDev'].append(v_stdDev_fobj_all_modes[i])
+                result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
+                result_dict_eigen_all_modes[o]['expe'].append(mean_obj_all_modes[i])
+                result_dict_eigen_all_modes[o]['stdDev'].append(std_obj_all_modes[i])
+                result_dict_eigen_all_modes[o]['skew'].append(skew_obj_all_modes[i])
+                result_dict_eigen_all_modes[o]['kurtosis'].append(kurtosis_obj_all_modes[i])
+
 
             with open(uq_path / fr'uq_all_modes.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen_all_modes, indent=4, separators=(',', ': ')))
@@ -8639,11 +8692,11 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             # for o in objectives:
             #     if isinstance(o, list):
             #         if o[1].split(' ')[0] in ['ZL', 'ZT']:
-            #             result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
+            #             result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
             #             wakefield_obj_list.append(o[1])
             #     else:
             #         if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-            #             result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
+            #             result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
             #             wakefield_obj_list.append(o)
 
             rdim = len(uq_vars)
@@ -8743,16 +8796,18 @@ def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
             df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
             df.to_excel(uq_path / 'table.xlsx', index=False)
             Ttab_val_f = df.to_numpy()
-            v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+            mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
             # # append results to dict
             # for i, o in enumerate(wakefield_obj_list):
-            #     result_dict_wakefield[o]['expe'].append(v_expe_fobj[i])
-            #     result_dict_wakefield[o]['stdDev'].append(v_stdDev_fobj[i])
+            #     result_dict_wakefield[o]['expe'].append(mean_obj[i])
+            #     result_dict_wakefield[o]['stdDev'].append(std_obj[i])
             #
             for i, o in enumerate(df.columns):
-                result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
-                result_dict_wakefield[o]['expe'].append(v_expe_fobj[i])
-                result_dict_wakefield[o]['stdDev'].append(v_stdDev_fobj[i])
+                result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
+                result_dict_wakefield[o]['expe'].append(mean_obj[i])
+                result_dict_wakefield[o]['stdDev'].append(std_obj[i])
+                result_dict_wakefield[o]['skew'].append(skew_obj[i])
+                result_dict_wakefield[o]['kurtosis'].append(kurtosis_obj[i])
 
             with open(uq_path / fr'uq.json', 'w') as f:
                 f.write(json.dumps(result_dict_wakefield, indent=4, separators=(',', ': ')))
@@ -8816,7 +8871,7 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         for o in objectives:
             if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
                      "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                 eigen_obj_list.append(o)
 
         # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
@@ -9024,11 +9079,11 @@ def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         for o in objectives:
             if isinstance(o, list):
                 if o[1].split(' ')[0] in ['ZL', 'ZT']:
-                    result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': []}
+                    result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                     wakefield_obj_list.append(o[1])
             else:
                 if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-                    result_dict_wakefield[o] = {'expe': [], 'stdDev': []}
+                    result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                     wakefield_obj_list.append(o)
 
         # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
@@ -9255,12 +9310,12 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         for o in objectives:
             if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
                      "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                 run_eigen = True
                 eigen_obj_list.append(o)
 
             if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
-                result_dict_abci[o] = {'expe': [], 'stdDev': []}
+                result_dict_abci[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                 run_abci = True
                 abci_obj_list.append(o)
 
@@ -9393,12 +9448,14 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         df.to_excel(uq_path / 'table.xlsx', index=False)
 
         Ttab_val_f = df.to_numpy()
-        v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+        mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
 
         # append results to dict
         for i, o in enumerate(eigen_obj_list):
-            result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-            result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+            result_dict_eigen[o]['expe'].append(mean_obj[i])
+            result_dict_eigen[o]['stdDev'].append(std_obj[i])
+            result_dict_eigen[o]['skew'].append(skew_obj[i])
+            result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
 
         with open(uq_path / fr'uq.json', 'w') as file:
             file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
@@ -9414,7 +9471,7 @@ def uq_multicell_s(n_cells, n_modules, shape, qois, n_modes, f_shift, bc, pol, p
     eigen_obj_list = qois
 
     for o in qois:
-        result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+        result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
 
     for i1 in proc_keys_list:
         skip = False

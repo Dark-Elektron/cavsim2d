@@ -777,22 +777,54 @@ def cn_gauss(rdim, degree):
 
 
 def weighted_mean_obj(tab_var, weights):
+    print(weights, weights.shape)
+    print(tab_var, tab_var.shape)
     rows_sims_no, cols = np.shape(tab_var)
     no_weights, dummy = np.shape(weights)
     if rows_sims_no == no_weights:
-        expe = np.zeros((cols, 1))
-        outvar = np.zeros((cols, 1))
-        for i in range(cols):
-            expe[i, 0] = np.dot(tab_var[:, i], weights)[0]
-            outvar[i, 0] = np.dot(tab_var[:, i] ** 2, weights)[0]
+        # expe = np.zeros((cols, 1))
+        # outvar = np.zeros((cols, 1))
+        # for i in range(cols):
+        #     expe[i, 0] = np.dot(tab_var[:, i], weights)[0]
+        #     outvar[i, 0] = np.dot(tab_var[:, i] ** 2, weights)[0]
+        #
+        # stdDev = np.sqrt(abs(outvar - expe ** 2))
 
-        stdDev = np.sqrt(abs(outvar - expe ** 2))
+        mean = weighted_mean(tab_var, weights.T[0])
+        std = np.sqrt(weighted_variance(tab_var, weights.T[0], mean))
+        skew = weighted_skew(tab_var, weights.T[0], mean, std)
+        kurtosis = weighted_kurtosis(tab_var, weights.T[0], mean, std)
+        print('statistical moments')
+        print(mean.reshape(-1, 1), std.reshape(-1, 1), skew, kurtosis)
     else:
-        expe = 0
-        stdDev = 0
+        mean = 0
+        std = 0
+        skew = 0
+        kurtosis = 0
         error('Cols_sims_no != No_weights')
+    return list(mean), list(std), list(skew), list(kurtosis)
 
-    return list(expe.T[0]), list(stdDev.T[0])
+
+def weighted_mean(var, wts):
+    """Calculates the weighted mean"""
+    return np.average(var, weights=wts, axis=0)
+
+
+def weighted_variance(var, wts, mean):
+    """Calculates the weighted variance"""
+    return np.average((var - mean)**2, weights=wts, axis=0)
+
+
+def weighted_skew(var, wts, mean, std):
+    """Calculates the weighted skewness"""
+    return (np.average((var - mean)**3, weights=wts, axis=0) /
+            std**3)
+
+
+def weighted_kurtosis(var, wts, mean, std):
+    """Calculates the weighted skewness"""
+    return (np.average((var - mean)**4, weights=wts, axis=0) /
+            std**4)
 
 
 def normal_dist(x, mean, sd):

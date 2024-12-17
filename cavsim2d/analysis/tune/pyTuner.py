@@ -721,11 +721,11 @@ def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict,
             for o in objectives:
                 if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
                          "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                    result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                    result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                     eigen_obj_list.append(o)
 
                 # if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
-                #     result_dict_abci[o] = {'expe': [], 'stdDev': []}
+                #     result_dict_abci[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                 #     run_abci = True
                 #     abci_obj_list.append(o)
 
@@ -828,12 +828,14 @@ def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict,
             df.to_excel(uq_path / 'table.xlsx', index=False)
 
             Ttab_val_f = df.to_numpy()
-            v_expe_fobj, v_stdDev_fobj = weighted_mean_obj(Ttab_val_f, weights_)
+            mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
 
             # append results to dict
             for i, o in enumerate(eigen_obj_list):
-                result_dict_eigen[o]['expe'].append(v_expe_fobj[i])
-                result_dict_eigen[o]['stdDev'].append(v_stdDev_fobj[i])
+                result_dict_eigen[o]['expe'].append(mean_obj[i])
+                result_dict_eigen[o]['stdDev'].append(std_obj[i])
+                result_dict_eigen[o]['skew'].append(skew_obj[i])
+                result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
 
             with open(uq_path / fr'uq.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
@@ -881,11 +883,11 @@ def uq_tuner(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         for o in objectives:
             if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
                      "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
                 eigen_obj_list.append(o)
 
         # for o in objectives:
-        #     result_dict_eigen[o] = {'expe': [], 'stdDev': []}
+        #     result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
 
         perturbed_cell_node = np.array(cell_node)
         for i1, proc_key in enumerate(proc_keys_list):
