@@ -7907,7 +7907,7 @@ class QuickTools:
     def __init__(self):
         pass
     @staticmethod
-    def circular_wg_cutoff(r):
+    def circular_wg_cutoff(r, l=0, mode=None):
         """
 
         Parameters
@@ -7923,19 +7923,92 @@ class QuickTools:
 
         if isinstance(r, float) or isinstance(r, int):
             r = [r]
+        if isinstance(l, float) or isinstance(l, int):
+            l = [l]
 
-        c = 299792458
         f_cutoff = {}
         mode_dict = {'te11': 1.841, 'tm01': 2.405, 'te21': 3.054, 'te01': 3.832, 'tm11': 3.832, 'tm21': 5.135,
                      'te12': 5.331, 'tm02': 5.520, 'te22': 6.706, 'te02': 7.016, 'tm12': 7.016, 'tm22': 8.417,
                      'te13': 8.536, 'tm03': 8.654, 'te23': 9.970, 'te03': 10.174, 'tm13': 10.174, 'tm23': 11.620}
-        for radius in r:
-            f_cutoff[f'{radius}'] = {}
-            for mode, j in mode_dict.items():
-                f = c / (2 * np.pi) * (j / (radius * 1e-3))
-                f_cutoff[f'{radius}'][mode] = f * 1e-6
+
+        if mode is None:
+            for radius in r:
+                f_cutoff[f'{radius}'] = {}
+                for mode, j in mode_dict.items():
+                    f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
+                    f_cutoff[f'{radius}'][mode] = f * 1e-6
+        else:
+            if isinstance(mode, list):
+                for mode_ in mode:
+                    for radius in r:
+                        f_cutoff[f'{radius}'] = {}
+                        try:
+                            j = mode_dict[mode_]
+                        except KeyError:
+                            error("One or more mode names is wrong. Please check mode names.")
+                            j = 0
+                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
+                        f_cutoff[f'{radius}'][mode_] = f * 1e-6
+            else:
+                if isinstance(mode, str):
+                    for radius in r:
+                        f_cutoff[f'{radius}'] = {}
+                        try:
+                            j = mode_dict[mode]
+                        except KeyError:
+                            error("One or more mode names is wrong. Please check mode names.")
+                            j = 0
+                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
+                        f_cutoff[f'{radius}'][mode] = f * 1e-6
+                else:
+                    error("One or more mode names is wrong. Please check mode names.")
 
         return f_cutoff
+
+    @staticmethod
+    def rect_wg_cutoff(a, b, mn=None, l=0, p=None):
+        if isinstance(a, float) or isinstance(a, int):
+            a = [a]
+        if isinstance(b, float) or isinstance(b, int):
+            b = [b]
+        if isinstance(l, float) or isinstance(l, int):
+            l = [l]
+
+        if mn is None:
+            mn = [[0, 1]]
+
+        if len(np.array(mn).shape) == 1:
+            mn = [mn]
+
+        if isinstance(p, int):
+            p = [p]
+
+        if p is None:
+            p = 0
+
+
+        f_cutoff = {}
+        try:
+            for a_ in a:
+                f_cutoff[f'a: {a_} mm'] = {}
+                for b_ in b:
+                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
+                    for l_ in l:
+                        f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
+                        for mn_ in mn:
+                            m, n = mn_
+                            if l_ == 0:
+                                f = (c0 / (2 * np.pi)) * ((m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2) ** 0.5
+                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'TE/TM({m},{n})'] = f * 1e-6
+                            else:
+                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'] = {}
+                                for p_ in p:
+                                    f = (c0 / (2 * np.pi)) * ((m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2 + (p_ * np.pi / (l_ * 1e-3)) ** 2) ** 0.5
+                                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'][f'TE/TM({m},{n},{p_})'] = f * 1e-6
+            return f_cutoff
+        except ValueError:
+            print("Please enter a valid number.")
+
 
 def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP',
                       resume=False):
