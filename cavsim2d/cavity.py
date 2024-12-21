@@ -7903,6 +7903,40 @@ class OperationPoints:
         })
 
 
+class QuickTools:
+    def __init__(self):
+        pass
+    @staticmethod
+    def circular_wg_cutoff(r):
+        """
+
+        Parameters
+        ----------
+        r: float, list
+            radius or list of radii in nmm
+
+        Returns
+        -------
+        f_cutoff: float, list
+            cutoff frequency or list of cutoff frequencies in MHz
+        """
+
+        if isinstance(r, float) or isinstance(r, int):
+            r = [r]
+
+        c = 299792458
+        f_cutoff = {}
+        mode_dict = {'te11': 1.841, 'tm01': 2.405, 'te21': 3.054, 'te01': 3.832, 'tm11': 3.832, 'tm21': 5.135,
+                     'te12': 5.331, 'tm02': 5.520, 'te22': 6.706, 'te02': 7.016, 'tm12': 7.016, 'tm22': 8.417,
+                     'te13': 8.536, 'tm03': 8.654, 'te23': 9.970, 'te03': 10.174, 'tm13': 10.174, 'tm23': 11.620}
+        for radius in r:
+            f_cutoff[f'{radius}'] = {}
+            for mode, j in mode_dict.items():
+                f = c / (2 * np.pi) * (j / (radius * 1e-3))
+                f_cutoff[f'{radius}'][mode] = f * 1e-6
+
+        return f_cutoff
+
 def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP',
                       resume=False):
     tune_config_keys = tune_config.keys()

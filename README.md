@@ -23,18 +23,8 @@ git clone https://github.com/Dark-Elektron/cavsim2d.git
 `cd` into this directory and run
 
 ```python
-pip install .
 pip install -r requirements.txt
 ```
-
-for system-wide installation, or
-
-```python
-pip install --user .
-pip install requirements.txt
-```
-
-for local installation.
 
 ### Third party code
 
