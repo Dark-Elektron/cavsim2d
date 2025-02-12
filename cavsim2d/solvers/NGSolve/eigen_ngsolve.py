@@ -535,28 +535,38 @@ class NGSolveMEVP:
                 # save deformed cavity profile
                 cav_geom.to_csv(os.path.join(run_save_directory, 'geodata_deformed.n'), sep='\t')
 
+            edge_bc = cav_geom[2]
             cav_geom = cav_geom[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
             # plt.show()
 
             pnts = list(cav_geom.itertuples(index=False, name=None))
+
             wp = WorkPlane()
             wp.MoveTo(*pnts[0])
             for p in pnts[1:]:
                 wp.LineTo(*p)
+
             wp.Close().Reverse()
             face = wp.Face()
+
+            bc_color_dict = {0: (1, 0, 0), 1: (0, 0, 1), 2: (0, 1, 0)}
+            bc_name_dict = {0: 'PEC', 1: 'PMC', 2: 'AXI'}
+
+            for edge, bc in zip(face.edges, edge_bc):
+                edge.name = bc_name_dict[bc]
+                edge.col = bc_color_dict[bc]
 
             # # get face from ngsolve geom <- coming later
             # face = self.cavgeom_ngsolve(no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes)
 
-            # name the boundaries
-            face.edges.Max(X).name = "r"
-            face.edges.Max(X).col = (1, 0, 0)
-            face.edges.Min(X).name = "l"
-            face.edges.Min(X).col = (1, 0, 0)
-            face.edges.Min(Y).name = "b"
-            face.edges.Min(Y).col = (1, 0, 0)
+            # # name the boundaries
+            # face.edges.Max(X).name = "r"
+            # face.edges.Max(X).col = (1, 0, 0)
+            # face.edges.Min(X).name = "l"
+            # face.edges.Min(X).col = (1, 0, 0)
+            # face.edges.Min(Y).name = "b"
+            # face.edges.Min(Y).col = (1, 0, 0)
 
             geo = OCCGeometry(face, dim=2)
 
@@ -581,7 +591,7 @@ class NGSolveMEVP:
             self.save_mesh(run_save_directory, mesh)
 
             # define finite element space
-            fes = HCurl(mesh, order=mesh_p, dirichlet='default')
+            fes = HCurl(mesh, order=mesh_p, dirichlet='PEC')
 
             u, v = fes.TnT()
 
@@ -633,8 +643,8 @@ class NGSolveMEVP:
 
             # # alternative eigenvalue solver, but careful, mode numbering may change
             # u = GridFunction(fes, multidim=15, name='resonances')
-            # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
-            #                         list(u.vecs), shift=1200)
+            lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
+                                    list(u.vecs), shift=1200)
             #
             # print('arnoldi', c0 * np.sqrt(np.abs(lamarnoldi)) / (2 * np.pi) * 1e-6)
 
@@ -1206,7 +1216,7 @@ class NGSolveMEVP:
             return False
 
     def vhf_gun(self, fid, pol='monopole', sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
-                mesh_args=None, opt=False):
+                mesh_args=None, opt=False, eigenmode_config=None):
         # variables
         # y1, T2, R2, L3, R4, L5, R6, R8, T9, R9, T10, R10, L11, R12, L13, R14, G, L_bp
 
@@ -1237,6 +1247,7 @@ class NGSolveMEVP:
             cav_geom_ = pd.read_csv(os.path.join(run_save_directory, 'geodata.n'),
                                     header=None, skiprows=1, sep='\\s+', engine='python')
 
+            edge_bc = cav_geom_[2]
             cav_geom = cav_geom_[[1, 0]]
             # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
             # plt.show()
@@ -1249,24 +1260,31 @@ class NGSolveMEVP:
             wp.Close().Reverse()
             face = wp.Face()
 
-            # print('edges_lehgth:: ', len(face.edges), len(face.vertices))
-            save_points = []
-            for ii, edge in enumerate(face.edges):
-                edge.name = fr'{cav_geom_[2][ii + 1]}'
-                # print(edge.start)
-                save_points.append([edge.start[1], edge.start[0]])
+            # # print('edges_lehgth:: ', len(face.edges), len(face.vertices))
+            # save_points = []
+            # for ii, edge in enumerate(face.edges):
+            #     edge.name = fr'{cav_geom_[2][ii + 1]}'
+            #     # print(edge.start)
+            #     save_points.append([edge.start[1], edge.start[0]])
 
-            # print([edge.name for edge in face.edges])
-            # name the boundaries
-            face.edges.Max(X).name = "3"
-            face.edges.Max(X).col = (1, 0, 0)
-            # face.edges.Min(X).name = "l"
-            # face.edges.Min(X).col = (1, 0, 0)
-            face.edges.Min(Y).name = "3"
-            face.edges.Min(Y).col = (1, 0, 0)
-            for edge in face.edges:
-                if edge.name == "3.0":
-                    edge.col = (1, 0, 0)
+            bc_color_dict = {0: (1, 0, 0), 1: (0, 0, 1), 2: (0, 1, 0)}
+            bc_name_dict = {0: 'PEC', 1: 'PMC', 2: 'AXI'}
+
+            for edge, bc in zip(face.edges, edge_bc):
+                edge.name = bc_name_dict[bc]
+                edge.col = bc_color_dict[bc]
+
+            # # print([edge.name for edge in face.edges])
+            # # name the boundaries
+            # face.edges.Max(X).name = "3"
+            # face.edges.Max(X).col = (1, 0, 0)
+            # # face.edges.Min(X).name = "l"
+            # # face.edges.Min(X).col = (1, 0, 0)
+            # face.edges.Min(Y).name = "3"
+            # face.edges.Min(Y).col = (1, 0, 0)
+            # for edge in face.edges:
+            #     if edge.name == "3.0":
+            #         edge.col = (1, 0, 0)
 
             # print([edge.name for edge in face.edges])
             Draw(face)
@@ -1288,7 +1306,7 @@ class NGSolveMEVP:
             self.save_mesh(run_save_directory, mesh)
 
             # define finite element space
-            fes = HCurl(mesh, order=1, dirichlet='2.0')
+            fes = HCurl(mesh, order=1, dirichlet='PEC')
 
             u, v = fes.TnT()
 
@@ -1322,7 +1340,7 @@ class NGSolveMEVP:
             evals[0] = 1  # <- replace nan with zero
             for i, lam in enumerate(evals):
                 freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-                # print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
+                print(i, lam, 'freq: ', c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6, "MHz")
 
             # plot results
             gfu_E = []
@@ -1360,91 +1378,17 @@ class NGSolveMEVP:
             return False
 
     @staticmethod
-    def eigen3d(geometry_dir):
-        # define geometry
-        cav_geom = pd.read_csv('D:\Dropbox\multipacting\MPGUI21\geodata.n',
-                               header=None, skiprows=3, skipfooter=1, sep='\\s+', engine='python')[[1, 0]]
-
-        pnts = list(cav_geom.itertuples(index=False, name=None))
-        wp = WorkPlane()
-        wp.MoveTo(*pnts[0])
-        for p in pnts[1:]:
-            wp.LineTo(*p)
-        wp.Close().Reverse()
-        face = wp.Face()
-
-        # name the boundaries
-        face.edges.Max(X).name = "r"
-        face.edges.Max(X).col = (1, 0, 0)
-        face.edges.Min(X).name = "l"
-        face.edges.Min(X).col = (1, 0, 0)
-        face.edges.Min(Y).name = "b"
-        face.edges.Min(Y).col = (1, 0, 0)
-
-        vol = face.Revolve(Axis((0, 0, 0), X), 360)
-        Draw(vol)
-        geo = OCCGeometry(vol, dim=3)
-
-        # mesh
-        ngmesh = geo.GenerateMesh(maxh=0.01)
-        mesh = Mesh(ngmesh)
-
-        # define finite element space
-        fes = HCurl(mesh, order=1, dirichlet='default')
-
-        u, v = fes.TnT()
-
-        a = BilinearForm(y * curl(u) * curl(v) * dx).Assemble()
-        m = BilinearForm(y * u * v * dx).Assemble()
-
-        apre = BilinearForm(y * curl(u) * curl(v) * dx + y * u * v * dx)
-        pre = Preconditioner(apre, "direct", inverse="sparsecholesky")
-
-        with TaskManager():
-            a.Assemble()
-            m.Assemble()
-            apre.Assemble()
-            freedof_matrix = a.mat.CreateSmoother(fes.FreeDofs())
-
-            # build gradient matrix as sparse matrix (and corresponding scalar FESpace)
-            gradmat, fesh1 = fes.CreateGradient()
-
-            gradmattrans = gradmat.CreateTranspose()  # transpose sparse matrix
-            math1 = gradmattrans @ m.mat @ gradmat  # multiply matrices
-            math1[0, 0] += 1  # fix the 1-dim kernel
-            invh1 = math1.Inverse(inverse="sparsecholesky", freedofs=fesh1.FreeDofs())
-
-            # build the Poisson projector with operator Algebra:
-            proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
-
-            projpre = proj @ pre.mat
-            evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=30, maxit=20, printrates=False);
-
-        freq_fes = []
-        for i, lam in enumerate(evals):
-            freq_fes.append(c0 * np.sqrt(lam) / (2 * np.pi) * 1e-6)
-        # plot results
-        gfu = GridFunction(fes, multidim=len(evecs))
-        for i in range(len(evecs)):
-            gfu.vecs[i].data = evecs[i]
-
-        # # alternative eigenvalue solver
-        # u = GridFunction(fes, multidim=30, name='resonances')
-        # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
-        #                         list(u.vecs), shift=300)
-
-    @staticmethod
     def evaluate_qois(cav_geom, n, Req, L, gfu_E, gfu_H, mesh, freq_fes, beta=1, save_dir=None):
         if n == 0:
             n = -1
         w = 2 * pi * freq_fes[n] * 1e6
 
         # calculate Vacc and Eacc
-        Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('b')))
+        Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('AXI')))
         Eacc = Vacc / (L * 1e-3 * 2 * n)
 
         # calculate U and R/Q
-        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], gfu_E[n]), mesh)
+        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], Conj(gfu_E[n])), mesh)
         # Uh = 2 * pi * 0.5 * mu0 * Integrate(y * InnerProduct(gfu_H[n], gfu_H[n]), mesh)
         RoQ = Vacc ** 2 / (w * U)
 
@@ -1473,8 +1417,8 @@ class NGSolveMEVP:
         # calculate surface power loss
         sigma_cond = 5.96e7  # <- conduction of copper
         Rs = np.sqrt(mu0 * w / (2 * sigma_cond))  # Surface resistance
-        Ploss = 2 * pi * 0.5 * Rs * Integrate(y * InnerProduct(CF(Hsurf), CF(Hsurf)), mesh,
-                                              definedon=mesh.Boundaries('default'))
+        Ploss = 2 * pi * 0.5 * Rs * Integrate(y * InnerProduct(CF(Hsurf), CF(Conj(Hsurf))), mesh,
+                                              definedon=mesh.Boundaries('PEC'))
 
         # calculate cell to cell coupling factor
         f_diff = freq_fes[n] - freq_fes[1]
@@ -1534,6 +1478,25 @@ class NGSolveMEVP:
             Ez_0_abs_df.to_csv(os.path.join(save_dir, 'Ez_0_abs.csv'), index=False, sep='\t', float_format='%.32f')
 
         return qois
+
+    # def calculate_lorentz_pressure(self, gfu_E, gfu_H):
+    #     """
+    #     p = {1\over 4}(\mu_0 H^2 - \epsilon_0 E^2)
+    #     Returns
+    #     -------
+    #
+    #     """
+    #
+    #     # Compute the magnitudes squared of H and E
+    #     H_squared = InnerProduct(gfu_H, Conj(gfu_H))  # H ⋅ H
+    #     E_squared = InnerProduct(gfu_E, Conj(gfu_E))  # E ⋅ E
+    #
+    #     p = 0.25 * (mu0 * H_squared - eps0 * E_squared)
+    #     fes = gfu_E.space  # Assuming same finite element space for simplicity
+    #     gfu_p = GridFunction(fes)
+    #     gfu_p.Set(p_cf)
+    #
+    #     # Visualisation or further processing
 
     @staticmethod
     def save_fields(project_folder, gfu_E, gfu_H):

@@ -1126,13 +1126,13 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
     # SHIFT POINT TO START POINT
     start_point = [-shift, 0]
-    geo.append([start_point[1], start_point[0]])
+    geo.append([start_point[1], start_point[0], 1])
 
     pts = lineTo(start_point, [-shift, Ri_el], step)
     # for pp in pts:
     #     geo.append([pp[1], pp[0]])
     pt = [-shift, Ri_el]
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 0])
 
     if bc:
         # draw left boundary condition
@@ -1147,7 +1147,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
         #     geo.append([pp[1], pp[0]])
         pt = [L_bp_l - shift, Ri_el]
 
-        geo.append([pt[1], pt[0]])
+        geo.append([pt[1], pt[0], 0])
 
     for n in range(1, n_cell + 1):
         if n == 1:
@@ -1172,15 +1172,15 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
             pt = [-shift + x1el, y1el]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2el, y2el], step)
             # for pp in pts:
-            #     geo.append([pp[1], pp[0]])
+            #     geo.append([pp[1], pp[0], 0])
             pt = [-shift + x2el, y2el]
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             if plot and dimension:
                 ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
@@ -1203,8 +1203,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
             pt = [L_bp_l + L_el - shift, Req]
             for pp in pts:
-                geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             if n_cell == 1:
                 if L_bp_r > 0:
@@ -1216,8 +1216,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
-                    geo.append([pt[1], pt[0]])
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
                     if plot and dimension:
                         ax.scatter(L_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
@@ -1239,9 +1239,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     # STRAIGHT LINE TO NEXT POINT
                     pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
                     # for pp in pts:
-                    #     geo.append([pp[1], pp[0]])
+                    #     geo.append([pp[1], pp[0], 0])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 0])
 
                     # ARC
                     # half of bounding box is required,
@@ -1270,9 +1270,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
+                            geo.append([pp[1], pp[0], 0])
 
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 0])
 
                     # calculate new shift
                     shift = shift - (L_el + L_er)
@@ -1285,15 +1285,15 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
-                    geo.append([pt[1], pt[0]])
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
                     # STRAIGHT LINE TO NEXT POINT
                     pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
                     # for pp in pts:
-                    #     geo.append([pp[1], pp[0]])
+                    #     geo.append([pp[1], pp[0], 0])
                     pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-                    geo.append([pt[1], pt[0]])
+                    geo.append([pt[1], pt[0], 0])
 
                     # ARC
                     # half of bounding box is required,
@@ -1321,8 +1321,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
-                            geo.append([pp[1], pp[0]])
-                    geo.append([pt[1], pt[0]])
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
             else:
                 # EQUATOR ARC TO NEXT POINT
@@ -1333,15 +1333,15 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                 pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0]])
-                geo.append([pt[1], pt[0]])
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
 
                 # STRAIGHT LINE TO NEXT POINT
                 pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
                 # for pp in pts:
-                #     geo.append([pp[1], pp[0]])
+                #     geo.append([pp[1], pp[0], 0])
                 pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
-                geo.append([pt[1], pt[0]])
+                geo.append([pt[1], pt[0], 0])
 
                 # ARC
                 # half of bounding box is required,
@@ -1351,8 +1351,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                 pt = [L_bp_l + L_el + L_m - shift, Ri_m]
                 for pp in pts:
                     if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0]])
-                geo.append([pt[1], pt[0]])
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
 
                 # calculate new shift
                 shift = shift - (L_el + L_m)
@@ -1364,24 +1364,24 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pt = [-shift + x1, y1]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
             # for pp in pts:
-            #     geo.append([pp[1], pp[0]])
+            #     geo.append([pp[1], pp[0], 0])
             pt = [-shift + x2, y2]
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 0])
 
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
@@ -1391,16 +1391,16 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
+                    geo.append([pp[1], pp[0], 0])
 
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
             # for pp in pts:
             #     geo.append([pp[1], pp[0]])
             pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # ARC
             # half of bounding box is required,
@@ -1411,8 +1411,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # calculate new shift
             shift = shift - 2 * L_m
@@ -1422,23 +1422,23 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pt = [-shift + x1, y1]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # DRAW LINE CONNECTING ARCS
             pts = lineTo(pt, [-shift + x2, y2], step)
             # for pp in pts:
-            #     geo.append([pp[1], pp[0]])
+            #     geo.append([pp[1], pp[0], 0])
             pt = [-shift + x2, y2]
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
             pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
             pt = [L_bp_l + L_m - shift, Req]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # EQUATOR ARC TO NEXT POINT
             # half of bounding box is required,
@@ -1448,15 +1448,15 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
 
             # STRAIGHT LINE TO NEXT POINT
             pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
             # for pp in pts:
             #     geo.append([pp[1], pp[0]])
             pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-            geo.append([pt[1], pt[0]])
+            geo.append([pt[1], pt[0], 0])
 
             # ARC
             # half of bounding box is required,
@@ -1466,8 +1466,11 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             pt = [L_bp_l + L_m + L_er - shift, Ri_er]
             for pp in pts:
                 if (np.around(pp, 12) != np.around(pt, 12)).all():
-                    geo.append([pp[1], pp[0]])
-            geo.append([pt[1], pt[0]])
+                    geo.append([pp[1], pp[0], 0])
+            if L_bp_r > 0:
+                geo.append([pt[1], pt[0], 0])
+            else:
+                geo.append([pt[1], pt[0], 1])
 
     # BEAM PIPE
     # reset shift
@@ -1476,29 +1479,34 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     if L_bp_r > 0:  # if there's a problem, check here.
         pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
         # for pp in pts:
-        #     geo.append([pp[1], pp[0]])
+        #     geo.append([pp[1], pp[0], 0])
         pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
-        geo.append([pt[1], pt[0]])
+        geo.append([pt[1], pt[0], 1])
 
     # END PATH
     pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0], step)  # to add beam pipe to right
     # for pp in pts:
-    #     geo.append([pp[1], pp[0]])
+    #     geo.append([pp[1], pp[0], 0])
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
     # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
     # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
-    geo.append([pt[1], pt[0]])
+    geo.append([pt[1], pt[0], 2])
 
     # write geometry
     if write:
         try:
-            df = pd.DataFrame(geo, columns=['r', 'z'])
+            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            # change point data precision
+            df['r'] = df['r'].round(8)
+            df['z'] = df['z'].round(8)
+            # drop duplicates
+            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
             df.to_csv(write, sep='\t', index=False)
         except FileNotFoundError as e:
             error('Check file path:: ', e)
 
     # append start point
-    # geo.append([start_point[1], start_point[0]])
+    # geo.append([start_point[1], start_point[0], 0])
 
     if bc:
         # draw right boundary condition
@@ -1508,7 +1516,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
     # CLOSE PATH
     # lineTo(pt, start_point, step)
-    # geo.append([start_point[1], start_point[0]])
+    # geo.append([start_point[1], start_point[0], 0])
     geo = np.array(geo)
 
     if plot:
@@ -2997,28 +3005,28 @@ def write_gun_geometry(write=None):
     R9 = (((y1+R2*np.sin(T2) + L3*np.cos(T2) + R4*np.sin(T2) + L5 + R6) -
          (R14 + L13 + R12*np.sin(T10) + L11*np.cos(T10) + R10*np.sin(T10) + x + R8*(1-np.sin(T9)))))/np.sin(T9)
 
-    step = 5*1e-3
+    step = 5*1e-2
     geo = []
 
     start_pt = [0, 0]
-    geo.append([start_pt[1], start_pt[0], 3])
+    geo.append([start_pt[1], start_pt[0], 1])
     # DRAW LINE CONNECTING ARCS
     lineTo(start_pt, [0, y1], step)
     pt = [0, y1]
-    geo.append([pt[1], pt[0], 3])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(-R2, y1, R2, R2, pt, [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)], 0, T2, step)
     pt = [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)], step)
     pt = [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]+R4*np.cos(T2), pt[1] + R4*np.sin(T2), R4, R4,
@@ -3026,34 +3034,34 @@ def write_gun_geometry(write=None):
     pt = [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [pt[0], pt[1]+L5], step)
     pt = [pt[0], pt[1]+L5]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]+R6, pt[1], R6, R6, pt, [pt[0]+R6, pt[1] + R6], np.pi, np.pi/2, step)
     pt = [pt[0]+R6, pt[1] + R6]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [pt[0]+L7, pt[1]], step)
     pt = [pt[0]+L7, pt[1]]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0], pt[1]-R8, R8, R8, pt, [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))], np.pi/2, T9, step)
     pt = [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]-R9*np.cos(T9), pt[1] -R9*np.sin(T9), R9, R9,
@@ -3061,8 +3069,8 @@ def write_gun_geometry(write=None):
     pt = [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]-R10, pt[1], R10, R10,
@@ -3070,13 +3078,13 @@ def write_gun_geometry(write=None):
     pt = [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)], step)
     pt = [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]+R12*np.cos(T10), pt[1] - R12*np.sin(T10), R12, R12,
@@ -3084,42 +3092,42 @@ def write_gun_geometry(write=None):
     pt = [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [pt[0], pt[1]-L13], step)
     pt = [pt[0], pt[1]-L13]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 0])
 
     # DRAW ARC:
     pts = arcToTheta(pt[0]+R14, pt[1], R14, R14, pt, [pt[0]+R14, pt[1] - R14], np.pi, -np.pi/2, step)
     pt = [pt[0]+R14, pt[1] - R14]
     for pp in pts:
         if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 2])
-    geo.append([pt[1], pt[0], 2])
+            geo.append([pp[1], pp[0], 0])
+    geo.append([pt[1], pt[0], 0])
 
     # line
     lineTo(pt, [pt[0]+10*y1, pt[1]], step)
     pt = [pt[0]+10*y1, pt[1]]
-    geo.append([pt[1], pt[0], 2])
+    geo.append([pt[1], pt[0], 1])
 
     # line
     lineTo(pt, [pt[0], pt[1]-y1], step)
     pt = [pt[0], pt[1]-x]
-    geo.append([pt[1], pt[0], 3])
+    geo.append([pt[1], pt[0], 2])
 
-    start_pt = [0, 0]
-    geo.append([start_pt[1], start_pt[0], 3])
+    # start_pt = [0, 0]
+    # geo.append([start_pt[1], start_pt[0], 1])
 
     # pandss
     df = pd.DataFrame(geo)
     # print(df[df.duplicated(keep=False)])
 
     geo = np.array(geo)
-    _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
-    geo = geo[np.sort(idx)]
+    # _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
+    # geo = geo[np.sort(idx)]
 
     print('length of geometry:: ', len(geo))
 
@@ -3137,6 +3145,11 @@ def write_gun_geometry(write=None):
     if write:
         try:
             df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            # change point data precision
+            df['r'] = df['r'].round(8)
+            df['z'] = df['z'].round(8)
+            # drop duplicates
+            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
             df.to_csv(write, sep='\t', index=False)
         except FileNotFoundError as e:
             error('Check file path:: ', e)
