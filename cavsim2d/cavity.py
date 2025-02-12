@@ -5385,16 +5385,16 @@ class Cavities(Optimisation):
         """
         for cav in self.cavities_list:
             # normalize fields
-            e_axis = np.abs(cav.axis_field['1'])
+            e_axis = np.abs(cav.Ez_0_abs['|Ez(0, 0)|'])
             e_axis_norm = e_axis / e_axis.max()
 
             # shift to mid
-            z = cav.axis_field['0']
+            z = cav.Ez_0_abs['z(0, 0)']
             z_shift = z - z.max() / 2
             plt.plot(z_shift, e_axis_norm, label=cav.name)
 
         plt.xlabel('$z$ [mm]')
-        plt.ylabel('$|E_\mathrm{axis}|/|E_\mathrm{axis}|_\mathrm{max}$')
+        plt.ylabel('$|E_\mathrm{0, z}|/|E_\mathrm{0, z}|_\mathrm{max}$')
         plt.axhline(1.02, c='k')
         plt.ylim(-0.01, 1.5)
         plt.legend(loc='upper center', ncol=len(self.cavities_list))
@@ -7155,25 +7155,23 @@ class Pillbox(Cavity):
 
 
 class RFGun(Cavity):
-    def __init__(self):
+    def __init__(self, shape, name='gun'):
         # self.shape_space = {
         #     'IC': [L, Req, Ri, S, L_bp],
         #     'BP': beampipe
         # }
         self.cell_parameterisation = 'simplecell'  # consider removing
-        self.name = 'gun'
+        self.name = name
         self.n_cells = 1
         self.n_modules = 1
         self.n_modes = 1
+        self.axis_field = None
         self.bc = 'mm'
         self.projectDir = None
         self.kind = 'vhf gun'
 
         self.shape = {
-                "IC": '',
-                "OC": '',
-                "OC_R": '',
-                "BP": '',
+                "geometry": shape['geometry'],
                 "n_cells": self.n_cells,
                 'CELL PARAMETERISATION': self.cell_parameterisation,
                 'kind': self.kind}
@@ -7182,7 +7180,7 @@ class RFGun(Cavity):
     def plot(self, what, ax=None, **kwargs):
         # file_path = os.path.join(self.projectDir, "SimulationData", "NGSolveMEVP", self.name, "monopole", "geodata.n")
         if what.lower() == 'geometry':
-            ax = write_gun_geometry()
+            ax = write_gun_geometry(self.shape['geometry'])
             ax.set_xlabel('$z$ [m]')
             ax.set_ylabel(r"$r$ [m]")
             return ax
@@ -7223,6 +7221,70 @@ class RFGun(Cavity):
                 return ax
             except ValueError:
                 info("Convergence data not available.")
+
+    def get_eigenmode_qois(self):
+        """
+        Get quantities of interest written by the SLANS code
+        Returns
+        -------
+
+        """
+        print('it is here')
+        qois = 'qois.json'
+        assert os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', qois)), (
+            error('Eigenmode result does not exist, please run eigenmode simulation.'))
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                               qois)) as json_file:
+            self.eigenmode_qois = json.load(json_file)
+
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                               'qois_all_modes.json')) as json_file:
+            self.eigenmode_qois_all_modes = json.load(json_file)
+
+        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                               'Ez_0_abs.csv')) as csv_file:
+            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+
+        self.freq = self.eigenmode_qois['freq [MHz]']
+        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
+        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
+        self.G = self.GR_Q / self.R_Q
+        self.Q = self.eigenmode_qois['Q []']
+        self.e = self.eigenmode_qois['Epk/Eacc []']
+        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
+        self.Epk_Eacc = self.e
+        self.Bpk_Eacc = self.b
+
+    def plot_axis_field(self, show_min_max=True):
+        fig, ax = plt.subplots(figsize=(12, 3))
+        if len(self.Ez_0_abs['z(0, 0)']) != 0:
+            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+
+            ax.legend(loc="upper right")
+            if show_min_max:
+                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 50, width=100)
+                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
+                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                ax.axhline(max(Ez_0_abs_peaks), c='k')
+        else:
+            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                           'Ez_0_abs.csv')):
+                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                       'Ez_0_abs.csv')) as csv_file:
+                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+                ax.legend(loc="upper right")
+                if show_min_max:
+                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
+                                          width=100)
+                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                    ax.axhline(max(Ez_0_abs_peaks), c='k')
+            else:
+                error('Axis field plot data not found.')
 
     def __str__(self):
         p = dict()
@@ -8501,12 +8563,12 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
     #     eigenmode_config['uq_config'] = uq_config
 
     def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir, subdir):
+
+        start_time = time.time()
         if shape['kind'] == 'elliptical cavity':
             n_cells = shape['n_cells']
             n_modules = 1
             bc = eigenmode_config['boundary_conditions']
-
-            start_time = time.time()
             # create folders for all keys
             ngsolve_mevp.createFolder(name, projectDir, subdir=subdir, opt=eigenmode_config['opt'])
 
@@ -8548,7 +8610,7 @@ def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config
                                     eigenmode_config=eigenmode_config)
         elif shape['kind'] == 'vhf gun':
             ngsolve_mevp.createFolder(name, projectDir, subdir=subdir, opt=eigenmode_config['opt'])
-            ngsolve_mevp.vhf_gun(fid=f"{name}", sim_folder=solver_save_dir,
+            ngsolve_mevp.vhf_gun(fid=f"{name}", shape=shape, sim_folder=solver_save_dir,
                                  parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
                                  eigenmode_config=eigenmode_config)
 

@@ -2997,9 +2997,24 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
     return plt.gca()
 
 
-def write_gun_geometry(write=None):
-    y1, R2, T2, L3, R4, L5, R6, L7, R8,  T9, R10, T10, L11, R12, L13, R14, x = \
-        [1.5*1e-2, 3*1e-2, np.deg2rad(45), 24*1e-2, 5*1e-2, 11*1e-2, 6*1e-2, 19*1e-2, 4*1e-2, np.deg2rad(8), 3*1e-2, np.deg2rad(40), 5*1e-2, 3*1e-2, 3*1e-2, 3*1e-2, 1*1e-2]
+def write_gun_geometry(shape_geom, write=None):
+    y1 = shape_geom['y1']
+    R2 = shape_geom['R2']
+    T2 = shape_geom['T2']
+    L3 = shape_geom['L3']
+    R4 = shape_geom['R4']
+    L5 = shape_geom['L5']
+    R6 = shape_geom['R6']
+    L7 = shape_geom['L7']
+    R8 = shape_geom['R8']
+    T9 = shape_geom['T9']
+    R10 = shape_geom['R10']
+    T10 = shape_geom['T10']
+    L11 = shape_geom['L11']
+    R12 = shape_geom['R12']
+    L13 = shape_geom['L13']
+    R14 = shape_geom['R14']
+    x = shape_geom['x']
 
     # calcualte R9
     R9 = (((y1+R2*np.sin(T2) + L3*np.cos(T2) + R4*np.sin(T2) + L5 + R6) -
@@ -3129,7 +3144,7 @@ def write_gun_geometry(write=None):
     # _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
     # geo = geo[np.sort(idx)]
 
-    print('length of geometry:: ', len(geo))
+    # print('length of geometry:: ', len(geo))
 
     top = plt.plot(geo[:, 1], geo[:, 0])
     bottom = plt.plot(geo[:, 1], -geo[:, 0], c=top[0].get_color())

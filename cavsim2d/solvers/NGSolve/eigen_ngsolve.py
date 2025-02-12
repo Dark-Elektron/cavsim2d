@@ -643,8 +643,8 @@ class NGSolveMEVP:
 
             # # alternative eigenvalue solver, but careful, mode numbering may change
             # u = GridFunction(fes, multidim=15, name='resonances')
-            lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
-                                    list(u.vecs), shift=1200)
+            # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),
+            #                         list(u.vecs), shift=1200)
             #
             # print('arnoldi', c0 * np.sqrt(np.abs(lamarnoldi)) / (2 * np.pi) * 1e-6)
 
@@ -1215,7 +1215,7 @@ class NGSolveMEVP:
             error('Could not run eigenmode analysis due to error in geometry.')
             return False
 
-    def vhf_gun(self, fid, pol='monopole', sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
+    def vhf_gun(self, fid, shape, pol='monopole', sim_folder='NGSolveMEVP', parentDir=None, projectDir=None, subdir='',
                 mesh_args=None, opt=False, eigenmode_config=None):
         # variables
         # y1, T2, R2, L3, R4, L5, R6, R8, T9, R9, T10, R10, L11, R12, L13, R14, G, L_bp
@@ -1240,7 +1240,7 @@ class NGSolveMEVP:
 
         # write geometry
         file_path = os.path.join(run_save_directory, 'geodata.n')
-        write_gun_geometry(file_path)
+        write_gun_geometry(shape['geometry'], file_path)
 
         if os.path.exists(file_path):
             # read geometry
@@ -1249,8 +1249,6 @@ class NGSolveMEVP:
 
             edge_bc = cav_geom_[2]
             cav_geom = cav_geom_[[1, 0]]
-            # plt.plot(cav_geom[1], cav_geom[0], ls='--', lw=4)
-            # plt.show()
 
             pnts = list(cav_geom.itertuples(index=False, name=None))
             wp = WorkPlane()
@@ -1260,13 +1258,6 @@ class NGSolveMEVP:
             wp.Close().Reverse()
             face = wp.Face()
 
-            # # print('edges_lehgth:: ', len(face.edges), len(face.vertices))
-            # save_points = []
-            # for ii, edge in enumerate(face.edges):
-            #     edge.name = fr'{cav_geom_[2][ii + 1]}'
-            #     # print(edge.start)
-            #     save_points.append([edge.start[1], edge.start[0]])
-
             bc_color_dict = {0: (1, 0, 0), 1: (0, 0, 1), 2: (0, 1, 0)}
             bc_name_dict = {0: 'PEC', 1: 'PMC', 2: 'AXI'}
 
@@ -1274,20 +1265,6 @@ class NGSolveMEVP:
                 edge.name = bc_name_dict[bc]
                 edge.col = bc_color_dict[bc]
 
-            # # print([edge.name for edge in face.edges])
-            # # name the boundaries
-            # face.edges.Max(X).name = "3"
-            # face.edges.Max(X).col = (1, 0, 0)
-            # # face.edges.Min(X).name = "l"
-            # # face.edges.Min(X).col = (1, 0, 0)
-            # face.edges.Min(Y).name = "3"
-            # face.edges.Min(Y).col = (1, 0, 0)
-            # for edge in face.edges:
-            #     if edge.name == "3.0":
-            #         edge.col = (1, 0, 0)
-
-            # print([edge.name for edge in face.edges])
-            Draw(face)
             geo = OCCGeometry(face, dim=2)
 
             # try to generate mesh
@@ -1333,7 +1310,7 @@ class NGSolveMEVP:
                 proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
 
                 projpre = proj @ pre.mat
-                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=10, maxit=mesh_args[1],
+                evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=2, maxit=mesh_args[1],
                                               printrates=False)
 
             freq_fes = []
@@ -1363,16 +1340,24 @@ class NGSolveMEVP:
             # print(np.sort(c0*np.sqrt(lamarnoldi)/(2*np.pi) * 1e-6))
 
             # save json file
-            # shape = {'IC': cell_par}
-            # # print(run_save_directory)
-            # with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
-            #     json.dump(shape, f, indent=4, separators=(',', ': '))
-            #
-            # qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)
-            #
-            # with open(os.path.join(run_save_directory, 'qois.json')), "w") as f:
-            #     json.dump(qois, f, indent=4, separators=(',', ': '))
-            # return True
+            # print(run_save_directory)
+            with open(os.path.join(run_save_directory, 'geometric_parameters.json'), 'w') as ff:
+                json.dump(shape, ff, indent=4, separators=(',', ': '))
+
+            qois = self.evaluate_qois_gun(cav_geom, 1, 3e-2, gfu_E, gfu_H, mesh, freq_fes,
+                                          save_dir=run_save_directory)
+
+            with open(os.path.join(run_save_directory, 'qois.json'), "w") as ff:
+                json.dump(qois, ff, indent=4, separators=(',', ': '))
+
+            qois_all_modes = {}
+            for ii, freq in enumerate(freq_fes):
+                qois_all_modes[ii] = self.evaluate_qois_gun(cav_geom, 1, 3e-2, gfu_E, gfu_H, mesh, freq_fes)
+
+            with open(os.path.join(run_save_directory, 'qois_all_modes.json'), "w") as ff:
+                json.dump(qois_all_modes, ff, indent=4, separators=(',', ': '))
+
+            return True
         else:
             error('Could not run eigenmode analysis due to error in geometry.')
             return False
@@ -1479,6 +1464,102 @@ class NGSolveMEVP:
 
         return qois
 
+    @staticmethod
+    def evaluate_qois_gun(cav_geom, n, L, gfu_E, gfu_H, mesh, freq_fes, beta=1, save_dir=None):
+        if n == 0:
+            n = -1
+        w = 2 * pi * freq_fes[n] * 1e6
+
+        # calculate Vacc and Eacc
+        Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh, definedon=mesh.Boundaries('AXI')))
+        Eacc = Vacc / (L * 1e-3 * 2 * n)
+
+        # calculate U and R/Q
+        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], Conj(gfu_E[n])), mesh)
+        # Uh = 2 * pi * 0.5 * mu0 * Integrate(y * InnerProduct(gfu_H[n], gfu_H[n]), mesh)
+        RoQ = Vacc ** 2 / (w * U)
+
+        # OLD GEOMETRY INPUT TYPE
+        # calculate peak surface fields
+        # xpnts_surf = cav_geom[(cav_geom[0] > 0) & (cav_geom[1] > min(cav_geom[1])) & (cav_geom[1] < max(cav_geom[1]))]
+        xpnts_surf = get_boundary_nodes(mesh, 'PEC')
+        Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
+        Epk = (max(Esurf))
+
+        # calculate peak surface fields
+        # xpnts = cav_geom[(cav_geom[0] > 0) & (cav_geom[1] > min(cav_geom[1])) & (cav_geom[1] < max(cav_geom[1]))]
+        Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
+        Hpk = (max(Hsurf))
+
+        # # calculate peak surface fields
+        # pec_boundary = mesh.Boundaries("default")
+        # bel = [xx.vertices for xx in pec_boundary.Elements()]
+        # bel_unique = list(set(itertools.chain(*bel)))
+        # xpnts_surf = sorted([mesh.vertices[xy.nr].point for xy in bel_unique])
+        # Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]
+        # Epk = (max(Esurf))
+        #
+        # Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]
+        # Hpk = (max(Hsurf))
+
+        # calculate surface power loss
+        sigma_cond = 5.96e7  # <- conduction of copper
+        Rs = np.sqrt(mu0 * w / (2 * sigma_cond))  # Surface resistance
+        Ploss = 2 * pi * 0.5 * Rs * Integrate(y * InnerProduct(CF(Hsurf), CF(Conj(Hsurf))), mesh,
+                                              definedon=mesh.Boundaries('PEC'))
+
+        # calculate cell to cell coupling factor
+        f_diff = freq_fes[n] - freq_fes[1]
+        f_add = (freq_fes[n] + freq_fes[1])
+        kcc = 2 * f_diff / f_add * 100
+
+        # calculate Q
+        Q = w * U / Ploss
+
+        # OLD
+        # Get axis field
+        # minz, maxz = min(cav_geom[1].tolist()), max(cav_geom[1].tolist())
+        # xpnts_ax = np.linspace(minz, maxz, int(5000*(maxz-minz)))
+        axis_nodes = get_boundary_nodes(mesh, 'AXI')
+        # for e in mesh.Elements(BND):
+        #     if e.mat == "AXI":
+        #         for v in e.vertices:
+        #             axis_nodes.append(mesh[v].point)
+        Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, yi)) for (xi, yi) in axis_nodes])
+
+        # # Get axis field
+        # xmin = face.vertices.Min(X)
+        # xmax = face.vertices.Max(X)
+        # xpnts_ax = np.linspace(xmin.p[0], xmax.p[0], 100)
+        # Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
+
+        # calculate G
+        G = Q * Rs
+
+        qois = {
+            "Normalization Length [mm]": 2 * L,
+            "freq [MHz]": freq_fes[n],
+            "Q []": Q,
+            "Vacc [MV]": Vacc * 1e-6,
+            "Eacc [MV/m]": Eacc * 1e-6,
+            "Epk [MV/m]": Epk * 1e-6,
+            "Hpk [A/m]": Hpk,
+            "Bpk [mT]": mu0 * Hpk * 1e3,
+            "Rsh [MOhm]": RoQ * Q * 1e-6,
+            "R/Q [Ohm]": RoQ,
+            "Epk/Eacc []": Epk / Eacc,
+            "Bpk/Eacc [mT/MV/m]": mu0 * Hpk * 1e9 / Eacc,
+            "G [Ohm]": G,
+            "GR/Q [Ohm^2]": G * RoQ
+        }
+
+        Ez_0_abs_df = pd.DataFrame.from_dict({'z(0, 0)': np.array(list(axis_nodes))[:, 0], '|Ez(0, 0)|': Ez_0_abs})
+        if save_dir:
+            # save axis field
+            Ez_0_abs_df.to_csv(os.path.join(save_dir, 'Ez_0_abs.csv'), index=False, sep='\t', float_format='%.32f')
+
+        return qois
+
     # def calculate_lorentz_pressure(self, gfu_E, gfu_H):
     #     """
     #     p = {1\over 4}(\mu_0 H^2 - \epsilon_0 E^2)
@@ -1496,7 +1577,7 @@ class NGSolveMEVP:
     #     gfu_p = GridFunction(fes)
     #     gfu_p.Set(p_cf)
     #
-    #     # Visualisation or further processing
+    #     # Visualisation or further processi
 
     @staticmethod
     def save_fields(project_folder, gfu_E, gfu_H):
@@ -1687,6 +1768,16 @@ class NGSolveMEVP:
         # # plt.gca().set_aspect('equal')
         # plt.show()
         return pd.DataFrame(surface_def, columns=[1, 0, 2])
+
+
+def get_boundary_nodes(mesh, boundary_name):
+    boundary_nodes = []
+    for e in mesh.Elements(BND):
+        if e.mat == boundary_name:
+            for v in e.vertices:
+                boundary_nodes.append(mesh[v].point)
+
+    return set(boundary_nodes)
 
 
 if __name__ == '__main__':
