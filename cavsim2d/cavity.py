@@ -2486,8 +2486,8 @@ class Cavity:
         """
         qois = 'qois.json'
 
-        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois')):
-            with open(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois')) as json_file:
+        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')):
+            with open(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')) as json_file:
                 all_wakefield_qois = json.load(json_file)
 
         # get only keys in op_points
@@ -6518,7 +6518,7 @@ class Cavities(Optimisation):
                              / (n * I0[i] * 1e-3 * alpha_c[i] * 1e-5 * tau_z[i] * 1e-3 * f)
                              if f > 1e-8 else 1e5 for f in f_list]
 
-                        Z_le.append(round((2 * E0[i] * 1e9 * nu_s[i])
+                        Z_le.append(np.round((2 * E0[i] * 1e9 * nu_s[i])
                                           / (n * I0[i] * 1e-3 * alpha_c[i] * 1e-5
                                              * tau_z[i] * 1e-3) * 1e-9 * 1e-3, 2))
 
@@ -6532,15 +6532,15 @@ class Cavities(Optimisation):
 
                 f_list = np.linspace(0, 10000, num=1000) * 1e6
                 try:
+                    # print(E0, beta_xy, tau_xy, n_cav, f_rev, I0)
                     for i, n in enumerate(n_cav):
-                        ZT = (2 * E0[i]) * 1e9 / (
-                                n * I0[i] * 1e-3 * beta_xy[i] * tau_xy[i] * 1e-3 * f_rev[i] * 1e3)
-                        ZT_le.append(round(ZT * 1e-3, 2))
-
+                        # print(E0[i], beta_xy[i], tau_xy[i], n_cav[i], f_rev[i], I0[i])
+                        ZT = (2 * E0[i]) * 1e9 / (n * I0[i] * 1e-3 * beta_xy[i] * tau_xy[i] * 1e-3 * f_rev[i] * 1e3)
+                        ZT_le.append(np.round(ZT * 1e-3, 2))
                         Z_list.append(np.array(ZT) * 1e-3)  # convert to kOhm/m
 
-                except ZeroDivisionError:
-                    error("ZeroDivisionError, check input")
+                except Exception as e:
+                    error("ZeroDivisionError, check input", e)
 
                 return f_list * 1e-6, Z_list, cols
         else:
