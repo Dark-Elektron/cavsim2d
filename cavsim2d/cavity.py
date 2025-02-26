@@ -231,9 +231,9 @@ class Optimisation:
                 if os.path.exists(folder):
                     for filename in os.listdir(folder):
                         try:
-                            shutil.rmtree(folder / fr"{filename}")
+                            shutil.rmtree(os.path.join(folder, filename))
                         except NotADirectoryError:
-                            os.remove(folder / fr"{filename}")
+                            os.remove(os.path.join(folder, filename))
                 else:
                     os.mkdir(folder)
 
