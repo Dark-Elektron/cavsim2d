@@ -107,9 +107,9 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
     #     # ic(df)
 
     data = ([0 + L_bp, Ri + b, L + L_bp, Req - B], [a, b, A, B])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-    checks = {"non-reentrant": [0.5, -0.5],
-              "reentrant": [0.85, -0.85],
-              "expansion": [0.15, -0.01]}
+    # checks = {"non-reentrant": [0.5, -0.5],
+    #           "reentrant": [0.85, -0.85],
+    #           "expansion": [0.15, -0.01]}
 
     max_restart = 4
     checks = {"non-reentrant": [[0.5, -0.5], [0.75, -0.25], [0.25, -0.75], [0.9, -0.1]],
@@ -131,7 +131,7 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
             msg = df[-2]
 
     x1, y1, x2, y2 = df[0]
-    alpha = 180 - np.arctan2(y2 - y1, (x2 - x1)) * 180 / np.pi
+    # alpha = 180 - np.arctan2(y2 - y1, (x2 - x1)) * 180 / np.pi
 
     if tangent_check:
         shift_x = -L - lft

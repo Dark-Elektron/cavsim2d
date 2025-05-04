@@ -27,7 +27,7 @@ from scipy.special import *
 from tqdm.auto import tqdm
 import time
 import datetime
-import oapackage
+# import oapackage
 import multiprocessing as mp
 from cavsim2d.analysis.tune.tuner import Tuner
 from cavsim2d.data_module.abci_data import ABCIData
@@ -802,36 +802,36 @@ class Optimisation:
         # ani.save(filename="D:\Dropbox\Quick presentation files/ffmpeg_example.gif", writer="pillow")
         # # plt.show()
 
-    def pareto_front_(self, df, columns, ax=None, show='all', label='', kwargs_dataframe=None, kwargs_pareto=None):
-        if kwargs_dataframe is None:
-            kwargs_dataframe = {}
-        if kwargs_pareto is None:
-            kwargs_pareto = {}
-
-        datapoints = df.loc[:, columns] * (-1)
-        pareto = oapackage.ParetoDoubleLong()
-        # ic(datapoints)
-        for ii in range(0, datapoints.shape[0]):
-            w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
-            pareto.addvalue(w, ii)
-        # pareto.show(verbose=1)  # Prints out the results from pareto
-
-        lst = pareto.allindices()  # the indices of the Pareto optimal designs
-        poc = len(lst)  # number of pareto shapes
-        reorder_idx = list(lst) + [i for i in range(len(df)) if
-                                   i not in lst]  # reordered index putting pareto shapes first
-
-        pareto_shapes = df.loc[lst, :]
-        # sort pareto shapes in ascending x axis data
-        pareto_shapes = pareto_shapes.sort_values(by=[columns[0]])
-
-        if ax:
-            if show == 'all':
-                ax.scatter(df[columns[0]], df[columns[1]], **kwargs_dataframe)
-
-            ax.plot(pareto_shapes[columns[0]], pareto_shapes[columns[1]], **kwargs_pareto, label=label)
-
-        return pareto_shapes
+    # def pareto_front_(self, df, columns, ax=None, show='all', label='', kwargs_dataframe=None, kwargs_pareto=None):
+    #     if kwargs_dataframe is None:
+    #         kwargs_dataframe = {}
+    #     if kwargs_pareto is None:
+    #         kwargs_pareto = {}
+    #
+    #     datapoints = df.loc[:, columns] * (-1)
+    #     pareto = oapackage.ParetoDoubleLong()
+    #     # ic(datapoints)
+    #     for ii in range(0, datapoints.shape[0]):
+    #         w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
+    #         pareto.addvalue(w, ii)
+    #     # pareto.show(verbose=1)  # Prints out the results from pareto
+    #
+    #     lst = pareto.allindices()  # the indices of the Pareto optimal designs
+    #     poc = len(lst)  # number of pareto shapes
+    #     reorder_idx = list(lst) + [i for i in range(len(df)) if
+    #                                i not in lst]  # reordered index putting pareto shapes first
+    #
+    #     pareto_shapes = df.loc[lst, :]
+    #     # sort pareto shapes in ascending x axis data
+    #     pareto_shapes = pareto_shapes.sort_values(by=[columns[0]])
+    #
+    #     if ax:
+    #         if show == 'all':
+    #             ax.scatter(df[columns[0]], df[columns[1]], **kwargs_dataframe)
+    #
+    #         ax.plot(pareto_shapes[columns[0]], pareto_shapes[columns[1]], **kwargs_pareto, label=label)
+    #
+    #     return pareto_shapes
 
     def plot_pareto_surface(self, df, columns, ax, kwargs=None):
         if kwargs is None:
@@ -1485,53 +1485,53 @@ class Optimisation:
         # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
         return reorder_idx, lst
 
-    def __pareto_front_oapackage(self, df):
-
-        # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
-        # reverse list or not based on objective goal: minimize or maximize
-        # datapoints = [self.negate_list(df.loc[:, o[1]], o[0]) for o in self.objectives]
-
-        if self.uq_config:
-            obj = []
-            for o in self.objectives:
-                if o[0] == 'min':
-                    obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == 'max':
-                    obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                elif o[0] == 'equal':
-                    obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-
-            datapoints = df.loc[:, obj]
-        else:
-            datapoints = df.loc[:, self.objective_vars]
-
-        for o in self.objectives:
-            if o[0] == 'min':
-                if self.uq_config:
-                    datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] = datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] * (-1)
-                else:
-                    datapoints[o[1]] = datapoints[o[1]] * (-1)
-            elif o[0] == "equal":
-                if self.uq_config:
-                    datapoints[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = datapoints[
-                                                                             fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] * (
-                                                                             -1)
-                else:
-                    datapoints[o[1]] = datapoints[o[1]] * (-1)
-        # convert datapoints to numpy array
-
-        pareto = oapackage.ParetoDoubleLong()
-        for ii in range(0, datapoints.shape[0]):
-            w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
-            pareto.addvalue(w, ii)
-        pareto.show(verbose=1)  # Prints out the results from pareto
-
-        lst = pareto.allindices()  # the indices of the Pareto optimal designs
-        self.poc = len(lst)
-        reorder_idx = list(lst) + [i for i in range(len(df)) if i not in lst]
-
-        # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
-        return reorder_idx, lst
+    # def __pareto_front_oapackage(self, df):
+    #
+    #     # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
+    #     # reverse list or not based on objective goal: minimize or maximize
+    #     # datapoints = [self.negate_list(df.loc[:, o[1]], o[0]) for o in self.objectives]
+    #
+    #     if self.uq_config:
+    #         obj = []
+    #         for o in self.objectives:
+    #             if o[0] == 'min':
+    #                 obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
+    #             elif o[0] == 'max':
+    #                 obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
+    #             elif o[0] == 'equal':
+    #                 obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
+    #
+    #         datapoints = df.loc[:, obj]
+    #     else:
+    #         datapoints = df.loc[:, self.objective_vars]
+    #
+    #     for o in self.objectives:
+    #         if o[0] == 'min':
+    #             if self.uq_config:
+    #                 datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] = datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] * (-1)
+    #             else:
+    #                 datapoints[o[1]] = datapoints[o[1]] * (-1)
+    #         elif o[0] == "equal":
+    #             if self.uq_config:
+    #                 datapoints[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = datapoints[
+    #                                                                          fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] * (
+    #                                                                          -1)
+    #             else:
+    #                 datapoints[o[1]] = datapoints[o[1]] * (-1)
+    #     # convert datapoints to numpy array
+    #
+    #     pareto = oapackage.ParetoDoubleLong()
+    #     for ii in range(0, datapoints.shape[0]):
+    #         w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
+    #         pareto.addvalue(w, ii)
+    #     pareto.show(verbose=1)  # Prints out the results from pareto
+    #
+    #     lst = pareto.allindices()  # the indices of the Pareto optimal designs
+    #     self.poc = len(lst)
+    #     reorder_idx = list(lst) + [i for i in range(len(df)) if i not in lst]
+    #
+    #     # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
+    #     return reorder_idx, lst
 
     @staticmethod
     def negate_list(ll, arg):
@@ -7386,7 +7386,6 @@ class Dakota:
         assert 'lower_bounds' in keys, error('Please enter keyword "lower_bounds"')
         assert 'upper_bounds' in keys, error('Please enter keyword "upper bounds"')
         kind = kwargs['kind']
-        lower_bounds = kwargs['lower_bounds']
         upper_bounds = kwargs['upper_bounds']
 
         assert len(upper_bounds) == len(lower_bounds), error("Length of upper and lower bounds must be equal.")
@@ -8196,8 +8195,8 @@ class QuickTools:
         D, d, x = D * 1e-3, d * 1e-3, x * 1e-3
 
         Z = 60 * np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D))
-        C = 2 * np.pi * epsr / (np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D))) * 1e-12
-        L = mu0 / (2 * np.pi) * np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D)) * 1e-9
+        C = 2 * np.pi * eps0 * epsr / (np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D))) * 1e12
+        L = mu0 / (2 * np.pi) * np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D)) * 1e9
         return {"L' [nH/m]": L, "C' [pF/m]": C, "Z' [Ohm/m]": Z}
 
     @staticmethod
