@@ -1,8 +1,11 @@
 import os.path
 from itertools import groupby
 
+import numpy as np
+from scipy.optimize import minimize, root_scalar
 from scipy.stats import qmc
 
+from cavsim2d.constants import SOFTWARE_DIRECTORY
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 import shutil
@@ -27,432 +30,670 @@ MAX_TUNE_ITERATION = 10
 class PyTuneNGSolve:
     def __init__(self):
         self.plot = None
+        self.beampipe = None
 
-    def tune(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
+    def tune(self, cav, tune_config=None):
+        self.cav = cav
+        self.tune_config = tune_config
+        self.target_freq = self.cav.shape['FREQ']
+        self.tune_var = self.tune_config['parameters']
+
+        if 'tol' in tune_config.keys():
+            tol = self.tune_config['tol']
+        else:
+            tol = 1e-4
+
+        if 'maxiter' in tune_config.keys():
+            maxiter = self.tune_config['maxiter']
+        else:
+            maxiter = 10
+
+        if 'method' in tune_config.keys():
+            method = self.tune_config['method']
+        else:
+            method = 'newton'
+
+        if cav.kind == 'elliptical cavity':
+            if '_m' in self.tune_var:
+                self. beampipe = 'none'
+            if '_el' in self.tune_var:
+                self. beampipe = 'left'
+            if '_er' in self.tune_var:
+                self. beampipe = 'right'
+
+        self.freq_list = []
+        self.tv_list = []
+        self.abs_err_list = []
+        self.convergence_list = []
+
+        res = None
+        try:
+            res = root_scalar(
+                self.tune_function,
+                method=method,
+                x0 = cav.parameters[self.tune_var],
+                xtol=tol,
+                rtol=tol,
+                maxiter=maxiter
+            )
+
+            self.tune_function(res.root)
+        except Exception as e:
+            error(f'An error occured while trying to tune the cavity:: {e}')
+
+        # # tune_var = tune_var  # temporary until I figure out a way to combine al tunes
+        # if tune_config is None:
+        #     tune_config = {}
+        #
+        # convergence_list = []
+        # # tv => tune variable
+        # # indx = VAR_TO_INDEX_DICT[tune_var]
+        #
+        # if proc == '':
+        #     fid = '_process_0'
+        # else:
+        #     fid = f'_process_{proc}'
+        #
+        # # get parameters
+        # freq_list = []
+        # tv_list = []
+        # abs_err_list = []
+        # err = 1
+        #
+        # res = ngsolve_mevp.solve(cav)
+        #
+        # if not res:
+        #     # make functionality later for restart for the tune variable
+        #     error('\tCannot continue with tuning -> Skipping degenerate geometry')
+        #     return 0, 0, [], []
+        #
+        # tv = cav.parameters[tune_var]
+        #
+        # if 'uq_config' in tune_config.keys():
+        #     uq_config = tune_config['uq_config']
+        #     # if uq_config:
+        #     #     shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
+        #     #     run_tune_uq(fid, shape, tune_config, SOFTWARE_DIRECTORY, projectDir)
+        #     #
+        #     # # get uq results and compare with set value
+        #     # with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
+        #     #     eigenmode_qois = json.load(json_file)
+        #     # freq = eigenmode_qois['freq [MHz]']['expe'][0]
+        # else:
+        #     # get results and compare with set value
+        #     with open(os.path.join(cav.self_dir, 'eigenmode', 'monopole', 'qois.json')) as json_file:
+        #         eigenmode_qois = json.load(json_file)
+        #
+        #     freq = eigenmode_qois['freq [MHz]']
+        #
+        # freq_list.append(freq)
+        # tv_list.append(tv)
+        #
+        # # first shot
+        # tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var.split('_')[0]] * 0.05 * cav.parameters[tune_var]
+        # cav.parameters[tune_var] = tv
+        #
+        # # enforce_Req_continuity(mid, left, right, cell_type)
+        #
+        # # update geometry
+        # cav.create()
+        # # run
+        # res = ngsolve_mevp.solve(cav)
+        # if not res:
+        #     # make functionality later for restart for the tune variable
+        #     error('Cannot continue with tuning -> Skipping degenerate geometry')
+        #     return 0, 0, [], []
+        #
+        # if 'uq_config' in tune_config.keys():
+        #     uq_config = tune_config['uq_config']
+        #     # if uq_config:
+        #     #     shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
+        #     #     run_tune_uq(fid, shape, tune_config, SOFTWARE_DIRECTORY, projectDir)
+        #     #
+        #     # # get uq results and compare with set value
+        #     # with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
+        #     #     eigenmode_qois = json.load(json_file)
+        #     # freq = eigenmode_qois['freq [MHz]']['expe'][0]
+        # else:
+        #     # get results and compare with set value
+        #     with open(os.path.join(cav.self_dir, 'eigenmode', 'monopole', 'qois.json')) as json_file:
+        #         eigenmode_qois = json.load(json_file)
+        #
+        #     freq = eigenmode_qois['freq [MHz]']
+        #
+        # freq_list.append(freq)
+        # tv_list.append(tv)
+        #
+        # if 'tolerance' in tune_config.keys():
+        #     tol = tune_config['tolerance']
+        # else:
+        #     tol = 1e-4  # for testing purposes to reduce tuning time.
+        # # max_iter = iter_set[2]
+        #
+        # n = 1
+        # while abs(err) > tol and n < MAX_TUNE_ITERATION:
+        #     # create matrix
+        #     mat = [np.array(freq_list)[-2:], np.ones(2)]
+        #     mat = np.array(mat).T
+        #
+        #     # solve for coefficients
+        #     coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
+        #
+        #     max_step = 0.2 * cav.parameters[tune_var]  # control order of convergence/stability with maximum step
+        #     # bound_factor = 0.1
+        #     # bound the maximum step
+        #     if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
+        #         coeffs[1] = tv + max_step - coeffs[0] * target_freq
+        #     if coeffs[0] * target_freq - (tv - coeffs[1]) < -max_step:
+        #         coeffs[1] = tv - max_step - coeffs[0] * target_freq
+        #
+        #     # define function
+        #     func = lambda x: coeffs[0] * x + coeffs[1]
+        #
+        #     # calculate approximate tv
+        #     tv = func(target_freq)
+        #
+        #     # change tv
+        #     cav.parameters[tune_var] = tv
+        #     # enforce_Req_continuity(mid, left, right, cell_type)
+        #
+        #     # update geometry
+        #     cav.create()
+        #     # run
+        #     res = ngsolve_mevp.solve(cav)
+        #     if not res:
+        #         # make functionality later for restart for the tune variable
+        #         error('Cannot continue with tuning -> Skipping degenerate geometry')
+        #         return 0, 0, 0
+        #
+        #     if 'uq_config' in tune_config.keys():
+        #         uq_config = tune_config['uq_config']
+        #         # if uq_config:
+        #         #     shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell',
+        #         #              'BP': beampipes}
+        #         #     run_tune_uq(fid, shape, tune_config, SOFTWARE_DIRECTORY, projectDir)
+        #         #
+        #         # # get uq results and compare with set value
+        #         # with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, "uq.json")) as json_file:
+        #         #     eigenmode_qois = json.load(json_file)
+        #         # freq = eigenmode_qois['freq [MHz]']['expe'][0]
+        #     else:
+        #         # get results and compare with set value
+        #         with open(os.path.join(cav.self_dir, 'eigenmode', 'monopole', 'qois.json')) as json_file:
+        #             eigenmode_qois = json.load(json_file)
+        #
+        #         freq = eigenmode_qois['freq [MHz]']
+        #
+        #     freq_list.append(freq)
+        #     tv_list.append(tv)
+        #
+        #     # if equal, break else continue with new shape
+        #     err = target_freq - freq_list[-1]
+        #     abs_err_list.append(abs(err))
+        #
+        #     if n == MAX_TUNE_ITERATION:
+        #         info('Maximum number of iterations exceeded. No solution found.')
+        #         break
+        #
+        #     # condition for repeated last four values
+        #     if self.all_equal(freq_list[-2:]):
+        #         error("Converged. Solution found.")
+        #         break
+        #
+        #     if tv_list[-1] < 0:
+        #         error("Negative value encountered. It is possible that there no solution for the parameter input set.")
+        #         break
+        #
+        #     n += 1
+        #
+        # # return best answer from iteration
+        # min_error = [abs(x - target_freq) for x in freq_list]
+        # key = min_error.index(min(min_error))
+        #
+        # print(tv_list, freq_list)
+        # # import matplotlib.pyplot as plt
+        # # plt.scatter(tv_list, freq_list)
+        # # plt.show()
+        # # update convergence list
+        self.convergence_list.extend([self.tv_list, self.freq_list])
+        # # save convergence information
+        self.conv_dict = {f'{self.tune_var}': self.convergence_list[0], 'freq [MHz]': self.convergence_list[1]}
+
+        # print(self.tv_list, self.freq_list, self.abs_err_list)
+        # print(self.tv_list.index(res.root))
+        if res:
+            return res.root, self.freq_list[self.tv_list.index(res.root)], self.conv_dict, self.abs_err_list
+        else:
+            return 0, 0, self.conv_dict, self.abs_err_list
+
+    def tune_function(self, x):
+        # update parameters
+        if isinstance(x, float):
+            self.cav.parameters[self.tune_var] = x
+            self.tv_list.append(x)
+        else:
+            self.cav.parameters[self.tune_var] = x[0]
+            self.tv_list.append(x[0])
+
+        if self.beampipe:
+            self.cav.create(1, self.beampipe, mode='tune')
+        else:
+            self.cav.create(1, 'none', mode='tune')
+
+        # run
+        res = ngsolve_mevp.solve(self.cav)
+        if not res:
+            # make functionality later for restart for the tune variable
+            error('Cannot continue with tuning -> Skipping degenerate geometry')
+            return 0, 0, [], []
+
+        # get results and compare with set value
+        if 'uq_config' in self.tune_config.keys():
+            uq_config = self.tune_config['uq_config']
+            if uq_config:
+                # shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
+                run_tune_uq(self.cav, self.tune_config)
+
+            # get uq results and compare with set value
+            with open(os.path.join(self.cav.self_dir, 'eigenmode', 'uq.json')) as json_file:
+                eigenmode_qois = json.load(json_file)
+            freq = eigenmode_qois['freq [MHz]']['expe'][0]
+        else:
+            with open(os.path.join(self.cav.self_dir, 'eigenmode', 'monopole', 'qois.json')) as json_file:
+                eigenmode_qois = json.load(json_file)
+
+        freq = eigenmode_qois['freq [MHz]']
+        self.freq_list.append(freq)
+
+        diff = abs(freq-self.target_freq)
+        self.abs_err_list.append(diff)
+
+        return diff
+
+    def tune_multicell(self, multicell, tune_var, target_freq, bc,
              sim_folder, parentDir, projectDir, proc=0, tune_config=None):
         if tune_config is None:
             tune_config = {}
 
-        convergence_list = []
-        # tv => tune variable
-        indx = VAR_TO_INDEX_DICT[tune_var]
+        n_half_cells = len(multicell)//8
 
-        if proc == '':
-            fid = '_process_0'
-        else:
-            fid = f'_process_{proc}'
+        convergence_dict = {}
+        # tuned_multicell = np.array([])
+        tv_dict, freq_dict = {}, {}
+        # print('multicell', multicell)
+        for ii in range(n_half_cells):
+            cell = multicell[ii*8:(ii+1)*8]  # this causes the multicell to be modified in place
 
-        # make directory
-        if os.path.exists(os.path.join(projectDir, 'SimulationData', sim_folder, fid)):
-            shutil.rmtree(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
-        os.mkdir(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
+            if ii == 0 or ii == n_half_cells-1:
+                bp = True
+            else:
+                bp = False
 
-        # get parameters
-        freq_list = []
-        tv_list = []
-        abs_err_list = []
-        err = 1
+            convergence_list = []
 
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            tuned_cell = par_mid
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'none'
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            mid = par_mid
-            left = par_mid
-            tuned_cell = par_end
-            right = tuned_cell
-            beampipes = 'right'
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            tuned_cell = par_end
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'right'
-        else:
-            tuned_cell = par_end
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'both'
+            # tv => tune variable
+            indx = VAR_TO_INDEX_DICT['L']
 
-        res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                                  n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                  sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+            if proc == '':
+                fid = '_process_0'
+            else:
+                fid = f'_process_{proc}'
 
-        if not res:
-            # make functionality later for restart for the tune variable
-            error('\tCannot continue with tuning -> Skipping degenerate geometry')
-            return 0, 0, [], []
+            # make directory
+            if os.path.exists(os.path.join(projectDir, 'SimulationData', sim_folder, fid)):
+                shutil.rmtree(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
+            os.mkdir(os.path.join(projectDir, 'SimulationData', sim_folder, fid))
 
-        tv = tuned_cell[indx]
+            # get parameters
+            freq_list = []
+            tv_list = []
+            abs_err_list = []
+            err = 1
+            # print(f'cell{ii}:: ({ii*8,(ii+1)*8})', cell)
+            res = ngsolve_mevp.cavity_quarter(cell, bp=False, fid=fid, f_shift=0, bc=bc,
+                                      sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
 
-        if 'uq_config' in tune_config.keys():
-            uq_config = tune_config['uq_config']
-            if uq_config:
-                shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
-                run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
+            if not res:
+                # make functionality later for restart for the tune variable
+                error('\tCannot continue with tuning -> Skipping degenerate geometry')
+                return 0, 0, [], []
 
-            # get uq results and compare with set value
-            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
-                eigenmode_qois = json.load(json_file)
-            freq = eigenmode_qois['freq [MHz]']['expe'][0]
-        else:
-            # get results and compare with set value
+            tv = cell[indx]
+
             with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'monopole', 'qois.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
 
-            freq = eigenmode_qois['freq [MHz]']
+                freq = eigenmode_qois['freq [MHz]']
 
-        freq_list.append(freq)
-        tv_list.append(tv)
+            freq_list.append(freq)
+            tv_list.append(tv)
 
-        # first shot
-        tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var] * 0.05 * tuned_cell[indx]
-        tuned_cell[indx] = tv
-
-        enforce_Req_continuity(mid, left, right, cell_type)
-
-        # run
-        res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                                  n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                  sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-        if not res:
-            # make functionality later for restart for the tune variable
-            error('Cannot continue with tuning -> Skipping degenerate geometry')
-            return 0, 0, [], []
-
-        if 'uq_config' in tune_config.keys():
-            uq_config = tune_config['uq_config']
-            if uq_config:
-                shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
-                run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
-
-            # get uq results and compare with set value
-            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'uq.json')) as json_file:
-                eigenmode_qois = json.load(json_file)
-            freq = eigenmode_qois['freq [MHz]']['expe'][0]
-        else:
-            # get results and compare with set value
-            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'monopole', "qois.json")) as json_file:
-                eigenmode_qois = json.load(json_file)
-
-            freq = eigenmode_qois['freq [MHz]']
-
-        freq_list.append(freq)
-        tv_list.append(tv)
-
-        if 'tolerance' in tune_config.keys():
-            tol = tune_config['tolerance']
-        else:
-            tol = 1e-2  # for testing purposes to reduce tuning time.
-        # max_iter = iter_set[2]
-
-        n = 1
-        while abs(err) > tol and n < MAX_TUNE_ITERATION:
-            # create matrix
-            mat = [np.array(freq_list)[-2:], np.ones(2)]
-            mat = np.array(mat).T
-
-            # solve for coefficients
-            coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
-
-            max_step = 0.2 * tuned_cell[indx]  # control order of convergence/stability with maximum step
-            # bound_factor = 0.1
-            # bound the maximum step
-            if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
-                coeffs[1] = tv + max_step - coeffs[0] * target_freq
-            if coeffs[0] * target_freq - (tv - coeffs[1]) < -max_step:
-                coeffs[1] = tv - max_step - coeffs[0] * target_freq
-
-            # define function
-            func = lambda x: coeffs[0] * x + coeffs[1]
-
-            # calculate approximate tv
-            tv = func(target_freq)
-
-            # change tv
-            tuned_cell[indx] = tv
-            enforce_Req_continuity(mid, left, right, cell_type)
+            # first shot
+            tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var] * 0.05 * cell[indx]
+            cell[indx] = tv
 
             # run
-            res = ngsolve_mevp.cavity(1, 1, mid, left, right,
-                                      n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+            res = ngsolve_mevp.cavity_quarter(cell, bp, fid=fid, f_shift=0, bc=bc,
                                       sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
             if not res:
                 # make functionality later for restart for the tune variable
                 error('Cannot continue with tuning -> Skipping degenerate geometry')
-                return 0, 0, 0
+                return 0, 0, [], []
 
-            if 'uq_config' in tune_config.keys():
-                uq_config = tune_config['uq_config']
-                if uq_config:
-                    shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell',
-                             'BP': beampipes}
-                    run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
+            # get results and compare with set value
+            with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, 'monopole', "qois.json")) as json_file:
+                eigenmode_qois = json.load(json_file)
 
-                # get uq results and compare with set value
-                with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, "uq.json")) as json_file:
-                    eigenmode_qois = json.load(json_file)
-                freq = eigenmode_qois['freq [MHz]']['expe'][0]
+                freq = eigenmode_qois['freq [MHz]']
+
+            freq_list.append(freq)
+            tv_list.append(tv)
+
+            if 'tolerance' in tune_config.keys():
+                tol = tune_config['tolerance']
             else:
+                tol = 1e-2  # for testing purposes to reduce tuning time.
+            # max_iter = iter_set[2]
+
+            n = 1
+            while abs(err) > tol and n < MAX_TUNE_ITERATION:
+                # create matrix
+                mat = [np.array(freq_list)[-2:], np.ones(2)]
+                mat = np.array(mat).T
+
+                # solve for coefficients
+                coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
+
+                max_step = 0.2 * cell[indx]  # control order of convergence/stability with maximum step
+                # bound_factor = 0.1
+                # bound the maximum step
+                if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
+                    coeffs[1] = tv + max_step - coeffs[0] * target_freq
+                if coeffs[0] * target_freq - (tv - coeffs[1]) < -max_step:
+                    coeffs[1] = tv - max_step - coeffs[0] * target_freq
+
+                # define function
+                func = lambda x: coeffs[0] * x + coeffs[1]
+
+                # calculate approximate tv
+                tv = func(target_freq)
+
+                # change tv
+                cell[indx] = tv
+
+                # run
+                res = ngsolve_mevp.cavity_quarter(cell, bp, fid=fid, f_shift=0, bc=bc,
+                                          sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+                if not res:
+                    # make functionality later for restart for the tune variable
+                    error('Cannot continue with tuning -> Skipping degenerate geometry')
+                    return 0, 0, 0
+
                 # get results and compare with set value
                 with open(os.path.join(projectDir, 'SimulationData', sim_folder, fid, "monopole/qois.json")) as json_file:
                     eigenmode_qois = json.load(json_file)
 
-                freq = eigenmode_qois['freq [MHz]']
+                    freq = eigenmode_qois['freq [MHz]']
 
-            freq_list.append(freq)
-            tv_list.append(tv)
+                freq_list.append(freq)
+                tv_list.append(tv)
 
-            # if equal, break else continue with new shape
-            err = target_freq - freq_list[-1]
-            abs_err_list.append(abs(err))
+                # if equal, break else continue with new shape
+                err = target_freq - freq_list[-1]
+                abs_err_list.append(abs(err))
 
-            if n == MAX_TUNE_ITERATION:
-                info('Maximum number of iterations exceeded. No solution found.')
-                break
+                if n == MAX_TUNE_ITERATION:
+                    info('Maximum number of iterations exceeded. No solution found.')
+                    break
 
-            # condition for repeated last four values
-            if self.all_equal(freq_list[-2:]):
-                error("Converged. Solution found.")
-                break
+                # condition for repeated last four values
+                if self.all_equal(freq_list[-2:]):
+                    error("Converged. Solution found.")
+                    break
 
-            if tv_list[-1] < 0:
-                error("Negative value encountered. It is possible that there no solution for the parameter input set.")
-                break
+                if tv_list[-1] < 0:
+                    error("Negative value encountered. It is possible that there no solution for the parameter input set.")
+                    break
 
-            n += 1
+                n += 1
 
-        # return best answer from iteration
-        min_error = [abs(x - target_freq) for x in freq_list]
-        key = min_error.index(min(min_error))
+            # return best answer from iteration
+            min_error = [abs(x - target_freq) for x in freq_list]
+            key = min_error.index(min(min_error))
 
-        # print(tv_list, freq_list)
-        # import matplotlib.pyplot as plt
-        # plt.scatter(tv_list, freq_list)
-        # plt.show()
-        # update convergence list
-        convergence_list.extend([tv_list, freq_list])
+            # print(tv_list, freq_list)
+            # import matplotlib.pyplot as plt
+            # plt.scatter(tv_list, freq_list)
+            # plt.show()
+            # update convergence list
+            convergence_list.extend([tv_list, freq_list])
+            tv_dict[ii] = tv_list
+            freq_dict[ii] = freq_list
 
-        # save convergence information
-        conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
-        # print(tv_list, freq_list, key)
-        return tv_list[key], freq_list[key], conv_dict, abs_err_list
+            # save convergence information
+            conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
+            convergence_dict[f'halfcell {ii}'] = convergence_dict
 
-    def tune_flattop(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
-                     sim_folder, parentDir, projectDir, proc=0, tune_config=None):
-        if tune_config is None:
-            tune_config = {}
+            # tuned_multicell = np.concatenate([tuned_multicell, np.array(cell)])
 
-        convergence_list = []
-        # tv => tune variable
-        indx = VAR_TO_INDEX_DICT[tune_var]
+            # print(ii, tv_list, freq_list, key)
 
-        if proc == '':
-            fid = '_process_0'
-        else:
-            fid = f'_process_{proc}'
+        # print("multicell", multicell)
+        # print("multicell_tuned", tuned_multicell)
 
-        # make directory
-        if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{fid}"):
-            shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
-        os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
+        # return multicell
+        return tv_dict, freq_dict, conv_dict, abs_err_list
 
-        # get parameters
-        freq_list = []
-        tv_list = []
-        abs_err_list = []
-        err = 1
-
-        if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            tuned_cell = par_mid
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'none'
-        elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            mid = par_mid
-            left = par_mid
-            tuned_cell = par_end
-            right = tuned_cell
-            beampipes = 'right'
-        elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-              or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            tuned_cell = par_end
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'right'
-        else:
-            tuned_cell = par_end
-            mid = tuned_cell
-            left = tuned_cell
-            right = tuned_cell
-            beampipes = 'both'
-
-        res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
-                                          n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                          sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-
-        if not res:
-            # make functionality later for restart for the tune variable
-            error('\tCannot continue with tuning -> Skipping degenerate geometry')
-            return 0, 0, [], []
-
-        tv = tuned_cell[indx]
-
-        if 'uq_config' in tune_config.keys():
-            uq_config = tune_config['uq_config']
-            if uq_config:
-                shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
-                run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
-
-            # get uq results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
-                eigenmode_qois = json.load(json_file)
-            freq = eigenmode_qois['freq [MHz]']['expe'][0]
-        else:
-            # get results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
-                eigenmode_qois = json.load(json_file)
-
-            freq = eigenmode_qois['freq [MHz]']
-
-        freq_list.append(freq)
-        tv_list.append(tv)
-
-        # first shot
-        tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var] * 0.05 * tuned_cell[indx]
-        tuned_cell[indx] = tv
-
-        enforce_Req_continuity(mid, left, right, cell_type)
-
-        # run
-        res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
-                                          n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                          sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-        if not res:
-            # make functionality later for restart for the tune variable
-            error('Cannot continue with tuning -> Skipping degenerate geometry')
-            return 0, 0, [], []
-
-        if 'uq_config' in tune_config.keys():
-            uq_config = tune_config['uq_config']
-            if uq_config:
-                shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
-                run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
-
-            # get uq results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
-                eigenmode_qois = json.load(json_file)
-            freq = eigenmode_qois['freq [MHz]']['expe'][0]
-        else:
-            # get results and compare with set value
-            with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
-                eigenmode_qois = json.load(json_file)
-
-            freq = eigenmode_qois['freq [MHz]']
-
-        freq_list.append(freq)
-        tv_list.append(tv)
-
-        tol = 1e-2  # for testing purposes to reduce tuning time.
-        # max_iter = iter_set[2]
-
-        n = 1
-        while abs(err) > tol and n < MAX_TUNE_ITERATION:
-            # create matrix
-            mat = [np.array(freq_list)[-2:], np.ones(2)]
-            mat = np.array(mat).T
-
-            # solve for coefficients
-            coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
-
-            max_step = 0.2 * tuned_cell[indx]  # control order of convergence/stability with maximum step
-            # bound_factor = 0.1
-            # bound the maximum step
-            if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
-                coeffs[1] = tv + max_step - coeffs[0] * target_freq
-            if coeffs[0] * target_freq - (tv - coeffs[1]) < -max_step:
-                coeffs[1] = tv - max_step - coeffs[0] * target_freq
-
-            # define function
-            func = lambda x: coeffs[0] * x + coeffs[1]
-
-            # calculate approximate tv
-            tv = func(target_freq)
-
-            # change tv
-            tuned_cell[indx] = tv
-            enforce_Req_continuity(mid, left, right, cell_type)
-
-            # run
-            res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
-                                              n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
-                                              sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-            if not res:
-                # make functionality later for restart for the tune variable
-                error('Cannot continue with tuning -> Skipping degenerate geometry')
-                return 0, 0, 0
-
-            if 'uq_config' in tune_config.keys():
-                uq_config = tune_config['uq_config']
-                if uq_config:
-                    shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell',
-                             'BP': beampipes}
-                    run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
-
-                # get uq results and compare with set value
-                with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
-                    eigenmode_qois = json.load(json_file)
-                freq = eigenmode_qois['freq [MHz]']['expe'][0]
-            else:
-                # get results and compare with set value
-                with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
-                    eigenmode_qois = json.load(json_file)
-
-                freq = eigenmode_qois['freq [MHz]']
-
-            freq_list.append(freq)
-            tv_list.append(tv)
-
-            # if equal, break else continue with new shape
-            err = target_freq - freq_list[-1]
-            abs_err_list.append(abs(err))
-
-            if n == MAX_TUNE_ITERATION:
-                info('Maximum number of iterations exceeded. No solution found.')
-                break
-
-            # condition for repeated last four values
-            if self.all_equal(freq_list[-2:]):
-                error("Converged. Solution found.")
-                break
-
-            if tv_list[-1] < 0:
-                error("Negative value encountered. It is possible that there no solution for the parameter input set.")
-                break
-
-            n += 1
-
-        # return best answer from iteration
-        min_error = [abs(x - target_freq) for x in freq_list]
-        key = min_error.index(min(min_error))
-
-        # print(tv_list, freq_list)
-        # import matplotlib.pyplot as plt
-        # plt.scatter(tv_list, freq_list)
-        # plt.show()
-        # update convergence list
-        convergence_list.extend([tv_list, freq_list])
-
-        # save convergence information
-        conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
-        return tv_list[key], freq_list[key], conv_dict, abs_err_list
+    # def tune_flattop(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
+    #                  sim_folder, parentDir, projectDir, proc=0, tune_config=None):
+    #     if tune_config is None:
+    #         tune_config = {}
+    #
+    #     convergence_list = []
+    #     # tv => tune variable
+    #     indx = VAR_TO_INDEX_DICT[tune_var]
+    #
+    #     if proc == '':
+    #         fid = '_process_0'
+    #     else:
+    #         fid = f'_process_{proc}'
+    #
+    #     # make directory
+    #     if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{fid}"):
+    #         shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
+    #     os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{fid}")
+    #
+    #     # get parameters
+    #     freq_list = []
+    #     tv_list = []
+    #     abs_err_list = []
+    #     err = 1
+    #
+    #     if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
+    #         tuned_cell = par_mid
+    #         mid = tuned_cell
+    #         left = tuned_cell
+    #         right = tuned_cell
+    #         beampipes = 'none'
+    #     elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
+    #         mid = par_mid
+    #         left = par_mid
+    #         tuned_cell = par_end
+    #         right = tuned_cell
+    #         beampipes = 'right'
+    #     elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
+    #           or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
+    #         tuned_cell = par_end
+    #         mid = tuned_cell
+    #         left = tuned_cell
+    #         right = tuned_cell
+    #         beampipes = 'right'
+    #     else:
+    #         tuned_cell = par_end
+    #         mid = tuned_cell
+    #         left = tuned_cell
+    #         right = tuned_cell
+    #         beampipes = 'both'
+    #
+    #     res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
+    #                                       n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+    #                                       sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+    #
+    #     if not res:
+    #         # make functionality later for restart for the tune variable
+    #         error('\tCannot continue with tuning -> Skipping degenerate geometry')
+    #         return 0, 0, [], []
+    #
+    #     tv = tuned_cell[indx]
+    #
+    #     if 'uq_config' in tune_config.keys():
+    #         uq_config = tune_config['uq_config']
+    #         if uq_config:
+    #             shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
+    #             run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
+    #
+    #         # get uq results and compare with set value
+    #         with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+    #             eigenmode_qois = json.load(json_file)
+    #         freq = eigenmode_qois['freq [MHz]']['expe'][0]
+    #     else:
+    #         # get results and compare with set value
+    #         with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+    #             eigenmode_qois = json.load(json_file)
+    #
+    #         freq = eigenmode_qois['freq [MHz]']
+    #
+    #     freq_list.append(freq)
+    #     tv_list.append(tv)
+    #
+    #     # first shot
+    #     tv = tv + TUNE_VAR_STEP_DIRECTION_DICT[tune_var] * 0.05 * tuned_cell[indx]
+    #     tuned_cell[indx] = tv
+    #
+    #     enforce_Req_continuity(mid, left, right, cell_type)
+    #
+    #     # run
+    #     res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
+    #                                       n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+    #                                       sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+    #     if not res:
+    #         # make functionality later for restart for the tune variable
+    #         error('Cannot continue with tuning -> Skipping degenerate geometry')
+    #         return 0, 0, [], []
+    #
+    #     if 'uq_config' in tune_config.keys():
+    #         uq_config = tune_config['uq_config']
+    #         if uq_config:
+    #             shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell', 'BP': beampipes}
+    #             run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
+    #
+    #         # get uq results and compare with set value
+    #         with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+    #             eigenmode_qois = json.load(json_file)
+    #         freq = eigenmode_qois['freq [MHz]']['expe'][0]
+    #     else:
+    #         # get results and compare with set value
+    #         with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+    #             eigenmode_qois = json.load(json_file)
+    #
+    #         freq = eigenmode_qois['freq [MHz]']
+    #
+    #     freq_list.append(freq)
+    #     tv_list.append(tv)
+    #
+    #     tol = 1e-2  # for testing purposes to reduce tuning time.
+    #     # max_iter = iter_set[2]
+    #
+    #     n = 1
+    #     while abs(err) > tol and n < MAX_TUNE_ITERATION:
+    #         # create matrix
+    #         mat = [np.array(freq_list)[-2:], np.ones(2)]
+    #         mat = np.array(mat).T
+    #
+    #         # solve for coefficients
+    #         coeffs = np.linalg.solve(mat, np.array(tv_list)[-2:])
+    #
+    #         max_step = 0.2 * tuned_cell[indx]  # control order of convergence/stability with maximum step
+    #         # bound_factor = 0.1
+    #         # bound the maximum step
+    #         if coeffs[0] * target_freq - (tv - coeffs[1]) > max_step:
+    #             coeffs[1] = tv + max_step - coeffs[0] * target_freq
+    #         if coeffs[0] * target_freq - (tv - coeffs[1]) < -max_step:
+    #             coeffs[1] = tv - max_step - coeffs[0] * target_freq
+    #
+    #         # define function
+    #         func = lambda x: coeffs[0] * x + coeffs[1]
+    #
+    #         # calculate approximate tv
+    #         tv = func(target_freq)
+    #
+    #         # change tv
+    #         tuned_cell[indx] = tv
+    #         enforce_Req_continuity(mid, left, right, cell_type)
+    #
+    #         # run
+    #         res = ngsolve_mevp.cavity_flattop(1, 1, mid, left, right,
+    #                                           n_modes=1, fid=fid, f_shift=0, bc=bc, beampipes=beampipes,
+    #                                           sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
+    #         if not res:
+    #             # make functionality later for restart for the tune variable
+    #             error('Cannot continue with tuning -> Skipping degenerate geometry')
+    #             return 0, 0, 0
+    #
+    #         if 'uq_config' in tune_config.keys():
+    #             uq_config = tune_config['uq_config']
+    #             if uq_config:
+    #                 shape = {'IC': mid, 'OC': left, 'OC_R': right, 'n_cells': 1, 'CELL TYPE': 'simplecell',
+    #                          'BP': beampipes}
+    #                 run_tune_uq(fid, shape, tune_config, parentDir, projectDir)
+    #
+    #             # get uq results and compare with set value
+    #             with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/uq.json") as json_file:
+    #                 eigenmode_qois = json.load(json_file)
+    #             freq = eigenmode_qois['freq [MHz]']['expe'][0]
+    #         else:
+    #             # get results and compare with set value
+    #             with open(fr"{projectDir}/SimulationData/{sim_folder}/{fid}/monopole/qois.json") as json_file:
+    #                 eigenmode_qois = json.load(json_file)
+    #
+    #             freq = eigenmode_qois['freq [MHz]']
+    #
+    #         freq_list.append(freq)
+    #         tv_list.append(tv)
+    #
+    #         # if equal, break else continue with new shape
+    #         err = target_freq - freq_list[-1]
+    #         abs_err_list.append(abs(err))
+    #
+    #         if n == MAX_TUNE_ITERATION:
+    #             info('Maximum number of iterations exceeded. No solution found.')
+    #             break
+    #
+    #         # condition for repeated last four values
+    #         if self.all_equal(freq_list[-2:]):
+    #             error("Converged. Solution found.")
+    #             break
+    #
+    #         if tv_list[-1] < 0:
+    #             error("Negative value encountered. It is possible that there no solution for the parameter input set.")
+    #             break
+    #
+    #         n += 1
+    #
+    #     # return best answer from iteration
+    #     min_error = [abs(x - target_freq) for x in freq_list]
+    #     key = min_error.index(min(min_error))
+    #
+    #     # print(tv_list, freq_list)
+    #     # import matplotlib.pyplot as plt
+    #     # plt.scatter(tv_list, freq_list)
+    #     # plt.show()
+    #     # update convergence list
+    #     convergence_list.extend([tv_list, freq_list])
+    #
+    #     # save convergence information
+    #     conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
+    #     return tv_list[key], freq_list[key], conv_dict, abs_err_list
 
     # def tune_last_gultig(self, par_mid, par_end, tune_var, target_freq, cell_type, beampipes, bc,
     #          sim_folder, parentDir, projectDir, proc=0):
@@ -636,7 +877,7 @@ class PyTuneNGSolve:
             json.dump(dd, outfile, indent=4, separators=(',', ': '))
 
 
-def run_tune_uq(name, shape, tune_config, parentDir, projectDir):
+def run_tune_uq(cav, tune_config):
     uq_config = tune_config['uq_config']
 
     objectives = uq_config['objectives']
@@ -644,8 +885,6 @@ def run_tune_uq(name, shape, tune_config, parentDir, projectDir):
     solver_args_dict = {'eigenmode': tune_config,
                         'n_cells': 1,
                         'n_modules': 1,
-                        'parentDir': parentDir,
-                        'projectDir': projectDir,
                         'analysis folder': 'Optimisation',
                         'cell_type': 'mid-cell',
                         'optimisation': True

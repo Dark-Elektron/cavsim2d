@@ -1,3213 +1,32 @@
-import copy
-import fnmatch
+import ast
+import operator as op
 import os.path
-import random
-import shutil
 import subprocess
-from paretoset import paretoset
-import sys
+from abc import ABC, abstractmethod
 from distutils import dir_util
-from math import floor
-import matplotlib
-import psutil
-import scipy.signal as sps
-from matplotlib.animation import FuncAnimation
-from scipy.interpolate import griddata
-from IPython.core.display import HTML, Image, display_html, Math
-from IPython.core.display_functions import display
-from scipy.signal import find_peaks
-from scipy.spatial import ConvexHull, Delaunay
-from scipy.special import jn_zeros, jnp_zeros
-import matplotlib as mpl
-import scipy.io as spio
-import scipy.interpolate as sci
-import pandas as pd
-from scipy.stats import qmc
-from scipy.special import *
-from tqdm.auto import tqdm
-import time
-import datetime
-# import oapackage
-import multiprocessing as mp
-from cavsim2d.analysis.tune.tuner import Tuner
-from cavsim2d.data_module.abci_data import ABCIData
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
-from cavsim2d.analysis.wakefield.abci_geometry import ABCIGeometry
-from cavsim2d.utils.shared_functions import *
 import ipywidgets as widgets
+from IPython.core.display import HTML, display_html
+from IPython.core.display_functions import display
 from ipywidgets import HBox, VBox, Label
-
-ngsolve_mevp = NGSolveMEVP()
-abci_geom = ABCIGeometry()
-tuner = Tuner()
-
-SOFTWARE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))  # str(Path().parents[0])
-CUSTOM_COLORS = ['#4b8f63', '#fc6d2d', '#6a7bbf', '#e567a7', '#8cd839', '#ff5f00', '#d1a67a', '#a3a3a3']
-VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
-TUNE_ACCURACY = 1e-4
-DIMENSION = 'm'
-DIMENSION_FACTOR = {'mm': 1, 'cm': 1e-1, 'm': 1e-3}
-BOUNDARY_CONDITIONS_DICT = {'ee': 11, 'em': 13, 'me': 31, 'mm': 33}
-LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
-          "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
-          "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",
-          "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", "Q []": r'$Q$ []',
-          'kcc [%]': r'$k_\mathrm{cc}$ [%]', 'GR/Q [Ohm^2]': '$G \cdot R/Q \mathrm{[\Omega^2]}$',
-          'ff [%]': r'$\eta_ff$ [%]',
-          'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
-          '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
-          '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
-          'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$",
-          'Z_2023': 'Z', 'W_2023': 'W', 'H_2023': 'H', 'ttbar_2023': r'$\mathrm{t \bar t}$',
-          'Z_b_2024': 'Z$_\mathrm{b}$', 'W_b_2024': 'W$_\mathrm{b}$',
-          'H_b_2024': 'H$_\mathrm{b}$', 'ttbar_b_2024': r'$\mathrm{t \bar t}_\mathrm{b}$',
-          'Z_b_2024_FB': 'Z$_\mathrm{b}$[FB]', 'W_b_2024_FB': 'W$_\mathrm{b}$[FB]',
-          'H_b_2024_FB': 'H$_\mathrm{b}$[FB]', 'ttbar_b_2024_FB': r'$\mathrm{t \bar t}_\mathrm{b}$[FB]',
-          r"Ncav": r"$N_\mathrm{cav}$",
-          r"Q0 []": r"$Q_0 ~\mathrm{[]}$",
-          r"Pstat/cav [W]": r"$P_\mathrm{stat}$/cav [W]",
-          r"Pdyn/cav [W]": r"$P_\mathrm{dyn}$/cav [W]",
-          r"Pwp/cav [kW]": r"$P_\mathrm{wp}$/cav [kW]",
-          r"Pin/cav [kW]": r"$P_\mathrm{in}$/cav [kW]",
-          r"PHOM/cav [kW]": r"$P_\mathrm{HOM}$/cav [kW]"
-          }
-
-m0 = 9.1093879e-31
-q0 = 1.6021773e-19
-c0 = 2.99792458e8
-mu0 = 4 * np.pi * 1e-7
-eps0 = 8.85418782e-12
-
-
-class Optimisation:
-
-    def __init__(self):
-        self.poc = 0
-        self.eigenmode_config = {}
-        self.mid_cell = None
-        self.wakefield_config = None
-        self.tune_config = None
-        self.f2_interp = None
-        self.processes_count = None
-        self.method = None
-        self.mutation_factor = None
-        self.crossover_factor = None
-        self.elites_to_crossover = None
-        self.chaos_factor = None
-        self.tune_parameter = None
-        self.uq_config = None
-        self.constraints = []
-        self.df = None
-        self.df_global = None
-        self.objs_dict = None
-        self.constraints_dict = None
-        self.n_interp = None
-        self.interp_error = None
-        self.interp_error_avg = None
-        self.cell_type = None
-        self.bounds = None
-        self.weights = None
-        self.objective_vars = None
-        self.objectives = None
-        self.objectives_unprocessed = None
-        self.ng_max = None
-        self.tune_freq = None
-        self.initial_points = None
-        self.projectDir = None
-        self.parentDir = None
-        self.pareto_history = None
-        self.optimisation_config = None
-        self.err = None
-
-    def start_optimisation(self, projectDir, config):
-        self.err = []
-        self.pareto_history = []
-        self.optimisation_config = config
-        # apply optimisation settings
-        self.parentDir = os.getcwd()
-        self.projectDir = projectDir
-        self.initial_points = config['initial_points']
-        self.ng_max = config['no_of_generation']
-        self.objectives_unprocessed = config['objectives']
-        self.objectives, weights = process_objectives(config['objectives'])
-        self.objective_vars = [obj[1] for obj in self.objectives]
-        if 'weights' in config.keys():
-            self.weights = config['weights']
-            assert len(self.weights) == len(weights), \
-                ("Length of delta must be equal to the length of the variables. For impedance Z entries, one less than"
-                 "the length of the interval list weights are needed. Eg. for ['min', 'ZL', [1, 2, 3]], two weights are"
-                 " required. ")
-        else:
-            self.weights = weights
-
-        self.bounds = config['bounds']
-        if 'constraints' in config:
-            self.constraints = self.process_constraints(config['constraints'])
-        self.processes_count = 1
-        if 'processes' in config.keys():
-            assert config['processes'] > 0, error('Number of processes must be greater than zero!')
-            assert isinstance(config['processes'], int), error('Number of processes must be integer!')
-            self.processes_count = config['processes']
-
-        self.method = config['method']
-        self.mutation_factor = config['mutation_factor']
-        self.crossover_factor = config['crossover_factor']
-        self.elites_to_crossover = config['elites_for_crossover']
-        self.chaos_factor = config['chaos_factor']
-
-        self.tune_config = config['tune_config']
-        tune_config_keys = self.tune_config.keys()
-        assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
-        assert 'parameters' in tune_config_keys, error('Please enter the tune variable in tune_config_dict')
-        assert 'cell_types' in tune_config_keys, error('Please enter the cell_type in tune_config_dict')
-
-        self.cell_type = self.tune_config['cell_types']
-        cts = ['end-cell', 'mid-end-cell', 'end-mid-cell', 'end_cell', 'mid_end_cell', 'end_mid_cell']
-        if self.cell_type in cts:
-            assert 'mid-cell' in config.keys(), error('To optimise an end-cell, mid cell dimensions are required')
-            assert len(config['mid-cell']) >= 7, error('Incomplete mid cell dimension.')
-            self.mid_cell = config['mid-cell']
-
-        self.tune_parameter = self.tune_config['parameters']
-        self.tune_freq = self.tune_config['freqs']
-
-        self.wakefield_config = {}
-        if (any(['ZL' in obj for obj in self.objective_vars])
-                or any(['ZT' in obj for obj in self.objective_vars])
-                or any([obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
-                        self.objective_vars])):
-            assert 'wakefield_config' in config.keys(), error('Wakefield impedance objective detected in objectives. '
-                                                              'Please include a field for wakefield_config. An empty'
-                                                              ' config entry implies that default values will be used.')
-            self.wakefield_config = config['wakefield_config']
-
-            if 'uq_config' in self.wakefield_config.keys():
-                self.uq_config = self.wakefield_config['uq_config']
-                # replace objectives with processed objectives
-                self.wakefield_config['uq_config']['objectives'] = self.objectives
-                self.wakefield_config['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
-
-                if self.uq_config['delta']:
-                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                        "The number of deltas must "
-                        "be equal to the number of "
-                        "variables.")
-
-        if 'eigenmode_config' in config.keys():
-            self.eigenmode_config = config['eigenmode_config']
-
-            if 'uq_config' in self.eigenmode_config.keys():
-                self.uq_config = self.eigenmode_config['uq_config']
-                if self.uq_config['delta']:
-                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                        "The number of deltas must "
-                        "be equal to the number of "
-                        "variables.")
-
-        self.df = None
-
-        # interpolation
-        self.df_global = pd.DataFrame()
-        self.objs_dict = {}
-        self.constraints_dict = {}
-        self.n_interp = 10000
-        self.interp_error = []
-        self.interp_error_avg = []
-        bar = tqdm(total=self.ng_max)
-        self.ea(0, bar)
-
-    def ea(self, n, bar):
-        if n == 0:
-            # update lists
-            self.df = self.generate_first_men(self.initial_points, 0)
-
-            self.f2_interp = [np.zeros(self.n_interp) for _ in range(len(self.objectives))]
-
-            folders = [os.path.join(self.projectDir, 'SimulationData', 'Optimisation'),
-                       os.path.join(self.projectDir, 'SimulationData', 'Optimisation')]
-
-            # clear folder to avoid reading from previous optimization attempt
-            for folder in folders:
-                if os.path.exists(folder):
-                    for filename in os.listdir(folder):
-                        try:
-                            shutil.rmtree(os.path.join(folder, filename))
-                        except NotADirectoryError:
-                            os.remove(os.path.join(folder, filename))
-                else:
-                    os.mkdir(folder)
-
-        # optimize by page rank
-        # remove the lowest ranking members
-        df = self.df
-
-        # compare with global dict and remove duplicates
-        compared_cols = ['A', 'B', 'a', 'b', 'Ri']
-        if not self.df_global.empty:
-            df = df.loc[~df.set_index(compared_cols).index.isin(
-                self.df_global.set_index(compared_cols).index)]  # this line of code removes duplicates
-
-        pseudo_shape_space = {}
-        for index, row in df.iterrows():
-            rw = row.tolist()
-
-            if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'none',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
-
-                assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
-                     "be provided in the optimisation_config dictionary.")
-                assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
-                                                                       "At least 7 geometric parameters "
-                                                                       "[A, B, a, b, Ri, L, Req] required.")
-                IC = self.optimisation_config['mid cell']
-                # check if mid-cell is not a degenerate geometry
-                df = tangent_coords(*np.array(IC)[0:8], 0)
-                assert df[-2] == 1, ("The mid-cell geometry dimensions given result in a degenerate geometry. "
-                                     "Please check.")
-
-                pseudo_shape_space[rw[0]] = {'IC': IC, 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
-                  or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
-
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            else:
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'both',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-        pseudo_shape_space = self.remove_duplicate_values(pseudo_shape_space)
-
-        ############################
-        # run tune
-        n_cells = 1
-
-        # self.run_tune_parallel(pseudo_shape_space, n_cells)
-        self.run_tune_opt(pseudo_shape_space, self.tune_config)
-        # get successfully tuned geometries and filter initial generation dictionary
-        processed_keys = []
-        tune_result = []
-        for key in pseudo_shape_space.keys():
-            filename = self.projectDir / fr'SimulationData\Optimisation\{key}\tune_res.json'
-            try:
-                with open(filename, 'r') as file:
-                    tune_res = json.load(file)
-
-                # get only tune_variable, alpha_i, and alpha_o and freq but why these quantities
-                freq = tune_res['FREQ']
-                tune_variable_value = tune_res['IC'][VAR_TO_INDEX_DICT[self.tune_parameter]]
-                alpha_i = tune_res['IC'][7]
-                alpha_o = tune_res['IC'][7]
-
-                tune_result.append([tune_variable_value, alpha_i, alpha_o, freq])
-                processed_keys.append(key)
-            except FileNotFoundError:
-                pass
-
-        # after removing duplicates, dataframe might change size
-        df = df.loc[df['key'].isin(processed_keys)]
-        df.loc[:, [self.tune_parameter, 'alpha_i', 'alpha_o', 'freq [MHz]']] = tune_result
-
-        # eigen objective variables
-        # for o in self.objectives:
-        intersection = set(self.objective_vars).intersection(
-            ["freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"])
-        if len(intersection) > 0:
-            # process tune results
-            obj_result = []
-            processed_keys = []
-            for key in pseudo_shape_space.keys():
-                filename = self.projectDir / fr'SimulationData\Optimisation\{key}\monopole\qois.json'
-                try:
-                    with open(filename, 'r') as file:
-                        qois = json.load(file)
-                    # extract objectives from tune_res
-                    obj = list(
-                        {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
-
-                    obj_result.append(obj)
-                    # tune_result.append(list(qois.values()))
-                    processed_keys.append(key)
-                except FileNotFoundError as e:
-                    pass
-
-            # after removing duplicates, dataframe might change size
-            if len(processed_keys) == 0:
-                error("Unfortunately, none survived. \n"
-                      "This is most likely due to all generated initial geometries being degenerate.\n"
-                      "Check the variable bounds or increase the number of initial geometries to increase the"
-                      "changes of survival. \n"
-                      "Can't even say that this was a good run."
-                      "Tune ended.")
-                return
-
-            df = df.loc[df['key'].isin(processed_keys)]
-
-            obj_eigen = [o[1] for o in self.objectives if
-                         o[1] in ["freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"]]
-            df[obj_eigen] = obj_result
-
-        # for o in self.objectives:
-        #     if o[1] in ["mts monopole", 'mts dipole']:
-        #         # process tune results
-        #         obj_vars = self.ui.ccb_Populate_Objectives.currentText().split(', ')
-        #         for i, obj_var in enumerate(obj_vars):
-        #             if obj_var == "mts monopole" or obj_var == "mts dipole":
-        #                 goal = self.ui.tw_Objectives.cellWidget(i, 1).currentText()
-        #                 if goal == 'equal':
-        #                     fshift = float(self.ui.tw_Objectives.item(i, 2).text())
-        #
-        #         obj_result = []
-        #         tune_result = []
-        #         processed_keys = []
-        #         # run dipole simulation with frequency shift
-        #         if o[1] == "mts monopole":
-        #             slans_shape_space = self.run_slans_parallel(df, n_cells, fshift, 'monopole')
-        #             for key, val in slans_shape_space.items():
-        #                 filename = self.projectDir / fr'SimulationData\SLANS_opt\{key}\cavity_33.svl'
-        #                 try:
-        #                     params = fr.svl_reader(filename)
-        #                     obj = self.get_objectives_value(params, self.objectives, norm_length, n_cells)
-        #
-        #                     obj_result.append(obj)
-        #
-        #                     df_slans_mts = pd.DataFrame(obj, columns=[key, o[1]])
-        #                     df = df.merge(df_slans_mts, on='key', how='inner')
-        #                 except FileNotFoundError:
-        #                     pass
-        #         else:
-        #             slans_shape_space = self.run_slans_parallel(df, n_cells, fshift, 'dipole')
-        #             for key, val in slans_shape_space.items():
-        #                 filename = self.projectDir / fr'SimulationData\SLANS_opt\{key}_n1\cavity_33_2.sv2'
-        #                 try:
-        #                     params = fr.sv2_reader(filename)
-        #                     obj = params['Frequency'][-1]
-        #                     obj_result.append([key, obj])
-        #                     processed_keys.append(key)
-        #                 except FileNotFoundError:
-        #                     pass
-        #
-        #             df_slans_mts = pd.DataFrame(obj_result, columns=['key', o[1]])
-        #             df = df.merge(df_slans_mts, on='key', how='inner')
-
-        # wakefield objective variables
-        for o in self.objectives:
-            if "ZL" in o[1] or "ZT" in o[1] or o[1] in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]',
-                                                        'P_HOM [kW]']:
-                # run wakefield analysis and return shape space
-                wake_shape_space = self.run_wakefield_opt(df, self.wakefield_config)
-
-                # process wakefield results
-                df_wake, processed_keys = get_wakefield_objectives_value(wake_shape_space,
-                                                                         self.objectives_unprocessed,
-                                                                         self.projectDir / fr'SimulationData\ABCI')
-
-                df = df.merge(df_wake, on='key', how='inner')
-                break
-
-        # apply UQ
-        if self.uq_config:
-
-            # get uq_parameters
-            uq_result_dict = {}
-            for key in df['key']:
-                filename_eigen = self.projectDir / fr'SimulationData\Optimisation\{key}\uq.json'
-                filename_abci = self.projectDir / fr'SimulationData\ABCI\{key}\uq.json'
-                if os.path.exists(filename_eigen):  # and os.path.exists(filename_abci):
-                    uq_result_dict[key] = []
-                    with open(filename_eigen, "r") as infile:
-                        uq_d = json.load(infile)
-                        for o in self.objectives:
-                            if o[1] in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                                        "G [Ohm]", "Q []"]:
-                                uq_result_dict[key].append(uq_d[o[1]]['expe'][0])
-                                uq_result_dict[key].append(uq_d[o[1]]['stdDev'][0])
-                                if o[0] == 'min':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] + 6 * uq_d[o[1]]['stdDev'][0])
-                                elif o[0] == 'max':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] - 6 * uq_d[o[1]]['stdDev'][0])
-                                else:
-                                    # for equal, calculate |expected_value - design_value| + 6sigma
-                                    uq_result_dict[key].append(
-                                        np.abs(uq_d[o[1]]['expe'][0] - o[2]) + uq_d[o[1]]['stdDev'][0])
-
-                if os.path.exists(filename_abci):
-                    if key not in uq_result_dict:
-                        uq_result_dict[key] = []
-
-                    with open(filename_abci, "r") as infile:
-                        uq_d = json.load(infile)
-                        for o in self.objectives:
-                            if o[1] not in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                                            "G [Ohm]", "Q []"]:
-                                uq_result_dict[key].append(uq_d[o[1]]['expe'][0])
-                                uq_result_dict[key].append(uq_d[o[1]]['stdDev'][0])
-                                if o[0] == 'min':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] + 6 * uq_d[o[1]]['stdDev'][0])
-                                elif o[0] == 'max':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] - 6 * uq_d[o[1]]['stdDev'][0])
-
-            uq_column_names = []
-            for o in self.objectives:
-                uq_column_names.append(fr'E[{o[1]}]')
-                uq_column_names.append(fr'std[{o[1]}]')
-                if o[0] == 'min':
-                    uq_column_names.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == 'max':
-                    uq_column_names.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                else:
-                    uq_column_names.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-
-            df_uq = pd.DataFrame.from_dict(uq_result_dict, orient='index')
-
-            assert len(df_uq) > 0, error('Unfortunately, no geometry was returned from uq, optimisation terminated.')
-            df_uq.columns = uq_column_names
-            df_uq.index.name = 'key'
-            df_uq.reset_index(inplace=True)
-            df = df.merge(df_uq, on='key', how='inner')
-
-        # filter by constraints
-        for const in self.constraints:
-            c = const.split(" ")
-
-            if c[1] == '>':
-                df = df.loc[(df[f'{c[0]}'] > float(c[2]))]
-            elif c[1] == '<':
-                df = df.loc[(df[f'{c[0]}'] < float(c[2]))]
-            elif c[1] == '<=':
-                df = df.loc[(df[f'{c[0]}'] <= float(c[2]))]
-            elif c[1] == '>=':
-                df = df.loc[(df[f'{c[0]}'] >= float(c[2]))]
-            elif c[1] == '==':
-                df = df.loc[(df[f'{c[0]}'] == float(c[2]))]
-
-        # update with global dataframe
-        if not self.df_global.empty:
-            df = pd.concat([self.df_global, df], ignore_index=True)
-
-        # reset total rank
-        df['total_rank'] = 0
-
-        # rank shapes by objectives
-        for i, obj in enumerate(self.objectives):
-
-            if self.uq_config:
-                if obj[0] == "min":
-                    df[f'rank_E[{obj[1]}] + 6*std[{obj[1]}]'] = df[fr'E[{obj[1]}] + 6*std[{obj[1]}]'].rank() * \
-                                                                self.weights[i]
-                elif obj[0] == "max":
-                    df[f'rank_E[{obj[1]}] - 6*std[{obj[1]}]'] = df[fr'E[{obj[1]}] - 6*std[{obj[1]}]'].rank(
-                        ascending=False) * self.weights[i]
-                elif obj[0] == "equal":
-                    df[fr'rank_|E[{obj[1]}] - {obj[2]}| + std[{obj[1]}]'] = df[
-                                                                                fr'|E[{obj[1]}] - {obj[2]}| + std[{obj[1]}]'].rank() * \
-                                                                            self.weights[i]
-
-                # if 'total_rank' in df.columns:
-                if obj[0] == 'min':
-                    df[f'total_rank'] = df[f'total_rank'] + df[f'rank_E[{obj[1]}] + 6*std[{obj[1]}]']
-                elif obj[0] == 'max':
-                    df[f'total_rank'] = df[f'total_rank'] + df[f'rank_E[{obj[1]}] - 6*std[{obj[1]}]']
-                else:
-                    df[f'total_rank'] = df[f'total_rank'] + df[fr'rank_|E[{obj[1]}] - {obj[2]}| + std[{obj[1]}]']
-                # else:
-                #     if obj[0] == 'min':
-                #         df[f'total_rank'] = df[f'rank_E[{obj[1]}] + 6*std[{obj[1]}]']
-                #     elif obj[0] == 'max':
-                #         df[f'total_rank'] = df[f'rank_E[{obj[1]}] - 6*std[{obj[1]}]']
-                #     else:
-                #         df[f'total_rank'] = df[f'rank_std[{obj[1]}]']
-            else:
-                if obj[0] == "min":
-                    df[f'rank_{obj[1]}'] = df[obj[1]].rank() * self.weights[i]
-                elif obj[0] == "max":
-                    df[f'rank_{obj[1]}'] = df[obj[1]].rank(ascending=False) * self.weights[i]
-                elif obj[0] == "equal" and obj[1] != 'freq [MHz]':  # define properly later
-                    df[f'rank_{obj[1]}'] = (df[obj[1]] - obj[2]).abs().rank() * self.weights[i]
-
-                df[f'total_rank'] = df[f'total_rank'] + df[f'rank_{obj[1]}']
-
-        # reorder
-        tot = df.pop(f'total_rank')
-        df[f'total_rank'] = tot / sum(self.weights)  # normalize by sum of weights
-
-        # order shapes by rank
-        df = df.sort_values(by=['total_rank'])
-        df = df.reset_index(drop=True)
-
-        # pareto condition
-        reorder_indx, pareto_indx_list = self.pareto_front(df)
-
-        # estimate convergence
-        obj_error = []
-        obj0 = self.objectives[0][1]
-        for i, obj in enumerate(self.objectives):
-            if i != 0:
-                pareto_shapes = df.loc[pareto_indx_list, [obj0, obj[1]]]
-                pareto_shapes_sorted = pareto_shapes.sort_values(obj0)
-                f1 = np.linspace(min(pareto_shapes[obj0]), max(pareto_shapes[obj0]), self.n_interp)
-                f2_interp = np.interp(f1, pareto_shapes_sorted[obj0], pareto_shapes_sorted[obj[1]])
-                rel_error = np.linalg.norm(f2_interp - self.f2_interp[i]) / max(np.abs(f2_interp))
-                obj_error.append(rel_error)
-
-                self.f2_interp[i] = f2_interp
-
-        # new error
-        # stack previous and current pareto fronts
-        # if n == 0:
-        #     pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
-        #     self.pareto_history.append(pareto_shapes)
-        # else:
-        #     pareto_shapes = df.loc[pareto_indx_list, self.objective_vars]
-        #     pareto_stack = np.vstack([self.pareto_history[-1], pareto_shapes])
-        #
-        #     # Compute Delaunay triangulation
-        #     delaunay = Delaunay(pareto_stack)
-        #     simplices = delaunay.simplices
-        #
-        #     hypervolumes = self.calculate_hypervolumes(pareto_stack, simplices)
-        #     self.err.append(sum(hypervolumes))
-
-        if len(obj_error) != 0:
-            self.interp_error.append(max(obj_error))
-            self.interp_error_avg.append(np.average(self.interp_error))
-
-        df = df.loc[reorder_indx, :]
-        # reset index
-        df = df.dropna().reset_index(drop=True)
-
-        # update global
-        self.df_global = df
-
-        # check if df_global is empty
-        if self.df_global.shape[0] == 0:
-            error("Unfortunately, none survived the constraints and the program has to end. "
-                  "Can't even say that this was a good run.")
-            return
-        done(self.df_global)
-
-        # save dataframe
-        filename = os.path.join(self.projectDir, 'SimulationData', 'Optimisation', 'Generation{n}.xlsx')
-        self.recursive_save(self.df_global, filename, reorder_indx)
-
-        # birth next generation
-        # crossover
-        if len(df) > 1:
-            df_cross = self.crossover(df, n, self.crossover_factor)
-        else:
-            df_cross = pd.DataFrame()
-
-        # mutation
-        df_mutation = self.mutation(df, n, self.mutation_factor)
-
-        # chaos
-        df_chaos = self.chaos(self.chaos_factor, n)
-
-        # take elites from previous generation over to next generation
-        df_ng = pd.concat([df_cross, df_mutation, df_chaos], ignore_index=True)
-
-        # update dictionary
-        self.df = df_ng
-
-        n += 1
-        info("=" * 80)
-        if n < self.ng_max:
-            bar.update(1)
-            return self.ea(n, bar)
-        else:
-            bar.update(1)
-            end = datetime.datetime.now()
-            info("End time: ", end)
-            plt.plot(self.interp_error, marker='P', label='max error')
-            plt.plot(self.interp_error_avg, marker='X', label='avereage')
-            plt.plot([x + 1 for x in range(len(self.err))], self.err, marker='o', label='convex hull vol')
-            plt.yscale('log')
-            plt.legend()
-
-            plt.xlabel('Generation $n$')
-            plt.ylabel(r"Pareto surface interp. error")
-            plt.show()
-            return
-
-    def run_uq(self, df, objectives, solver_dict, solver_args_dict, uq_config):
-        """
-
-        Parameters
-        ----------
-        df: pd.DataFrame
-            Pandas dataframe containing cavity geometry parameters
-        objectives: list|ndarray
-            List of objective functions
-        solver_dict: dict
-            Python dictionary of solver settings
-        solver_args_dict: dict
-            Python dictionary of solver arguments
-        uq_config:
-            Python dictionary of uncertainty quantification settings
-
-        Returns
-        -------
-
-        """
-        proc_count = uq_config['processes']
-
-        # get geometric parameters
-        df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
-        shape_space = {}
-
-        df = df.set_index('key')
-        for index, row in df.iterrows():
-            rw = row.tolist()
-
-            if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-
-            elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
-
-                assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
-                     "be provided in the optimisation_config dictionary.")
-                assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
-                                                                       "At least 7 geometric parameters "
-                                                                       "[A, B, a, b, Ri, L, Req] required.")
-
-                IC = self.optimisation_config['mid cell']
-                # check if mid-cell is not a degenerate geometry
-                df = tangent_coords(*np.array(IC)[0:8], 0)
-                assert df[-2] == 1, ("The mid-cell geometry dimensions given result in a degenerate geometry. "
-                                     "Please check.")
-                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw}
-
-            elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
-                  or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
-
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-
-            else:
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-
-        if solver_args_dict['eigenmode']:
-            if 'uq_config' in solver_args_dict['eigenmode'].keys():
-                solver_args_dict['eigenmode']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
-
-        if solver_args_dict['wakefield']:
-            if 'uq_config' in solver_args_dict['wakefield'].keys():
-                solver_args_dict['wakefield']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'wakefield')
-
-        return shape_space
-
-    @staticmethod
-    def calculate_hypervolumes(points, simplices):
-        volumes = []
-        for simplex in simplices:
-            hull = ConvexHull(points[simplex])
-            volumes.append(hull.volume)
-        return volumes
-
-    def plot_pareto(self, vars, which='last'):
-        ################## plot 2d ##################################
-        grid_results_folder = fr'D:\Dropbox\CavityDesignHub\KWT_simulations\PostprocessingData\Data\grid_results.xlsx'
-        fig, axs = plt.subplot_mosaic([[0, 1, 2], [3, 4, 5]], figsize=(12, 3))
-
-        columns_array = [['Epk/Eacc', 'Bpk/Eacc'], ['Epk/Eacc', 'R/Q'], ['Bpk/Eacc', 'R/Q']]
-        columns_par_array = [['A', 'B'], ['a', 'b'], ['A', 'Ri']]
-        cmap = matplotlib.colormaps['Pastel2_r']
-        norm = matplotlib.colors.Normalize(vmin=0, vmax=49)
-        ff = fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData'
-        for i, (columns, columns_par) in enumerate(zip(columns_array, columns_par_array)):
-            for r in [49]:
-                for lab, opt_code_result_folder, error_file in zip(['LHS', 'LHS2', 'Random'],
-                                                                   [fr'{ff}\SLANS_LHS\Generation{r}.xlsx',
-                                                                    fr'{ff}\SLANS_LHS2\Generation{r}.xlsx',
-                                                                    fr'{ff}\SLANS_kwt_random1\Generation{r}.xlsx'],
-                                                                   [fr'{ff}\SLANS_LHS2\inerp_error_and_average.txt',
-                                                                    fr'{ff}\SLANS_LHS2\inerp_error_and_average.txt',
-                                                                    fr'{ff}\SLANS_LHS2\inerp_error_and_average.txt']):
-                    opt_code_result = pd.read_excel(opt_code_result_folder, 'Sheet1')
-
-                    pareto_shapes = self.pareto_front(opt_code_result, columns, axs[i], show='none',
-                                                      label=f"{lab}: g{r} ($n$={len(opt_code_result.index)}).",
-                                                      kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'b'},
-                                                      kwargs_pareto={'marker': 'o', 'mec': 'k', 'ms': 3},
-                                                      # kwargs_pareto={'c': f'{matplotlib.colors.rgb2hex(cmap(norm(r)))}', 'marker': 'o',
-                                                      #                'mec': 'k'}
-                                                      )
-                    # axs[i+3].plot(grid_results[columns[0]], grid_results[columns[1]], marker='o', ms=5, lw=0)
-                    axs[i + 3].plot(opt_code_result[columns[0]], opt_code_result[columns[1]], marker='o', ms=5, lw=0)
-                    # axs[i+3].plot(qmc_pareto_shapes[columns[0]], qmc_pareto_shapes[columns[1]], marker='o', c='r', label='qmc', ms=5, lw=0)
-                    axs[i + 3].plot(pareto_shapes[columns[0]], pareto_shapes[columns[1]], marker='o', c='b', mec='k',
-                                    label='ea', ms=5, lw=0)
-
-                    # # load interpolation error
-                    # error = pd.read_csv(error_file, header=None, sep='\\s+')
-                    # axs[3].plot(error[0], label=lab)
-                    # axs[4].plot(error[1], label=lab)
-
-            axs[i].set_xlabel(columns[0])
-            axs[i].set_ylabel(columns[1])
-            axs[i + 3].set_xlabel(columns_par[0])
-            axs[i + 3].set_ylabel(columns_par[1])
-        lines, labels = axs[0].get_legend_handles_labels()
-        # axs[i].legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=10, loc='lower left', mode='expand')
-        fig.legend(*axs[0].get_legend_handles_labels(), loc="upper left", mode="expand", ncol=4)
-        axs[3].legend()
-
-        axs[3].set_yscale('log')
-        axs[4].set_yscale('log')
-        axs[3].set_xlabel('Interpolation error')
-        # axs[3].set_ylabel()
-        # plot error
-
-        plt.tight_layout()
-        plt.show()
-
-        # ################### plot surface #########################
-        # grid_results_folder = fr'D:\Dropbox\CavityDesignHub\KWT_simulations\PostprocessingData\Data\grid_results.xlsx'
-        # opt_code_result_folder_lhs = fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS_opt_KWT\Generation49.xlsx'
-        # opt_code_result_folder_random = fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS\Generation49.xlsx'
-        #
-        # grid_results = pd.read_excel(grid_results_folder, 'Sheet1')
-        # opt_code_result_lhs = pd.read_excel(opt_code_result_folder_lhs, 'Sheet1')
-        # opt_code_result_random = pd.read_excel(opt_code_result_folder_random, 'Sheet1')
-        #
-        # fig = plt.figure()
-        # ax1 = fig.add_subplot(1, 2, 1, projection='3d')
-        # ax2 = fig.add_subplot(1, 2, 2, projection='3d')
-        # # ax3 = fig.add_subplot(1, 2, 3, projection='3d')
-        # axs = [ax1, ax2]
-        #
-        # grid_pareto_surface = plot_pareto_surface(grid_results, ['Epk/Eacc', 'Bpk/Eacc', 'R/Q'], axs[0],
-        #                                           {'cmap': 'gray', 'edgecolor': 'k'})
-        # opt_pareto_surface_lhs = plot_pareto_surface(opt_code_result_lhs, ['Epk/Eacc', 'Bpk/Eacc', 'R/Q'], axs[1],
-        #                                              {'cmap': 'RdBu', 'edgecolor': 'k'})
-        # # opt_pareto_surface_random = plot_pareto_surface(opt_code_result_random, ['Epk/Eacc', 'Bpk/Eacc', 'R/Q'], axs[2],
-        # #                                                 {'cmap': 'RdBu', 'edgecolor': 'k'})
-        #
-        # plt.show()
-
-        # fig, axs = plt.subplot_mosaic([[0, 1, 2], [3, 4, 5]], figsize=(12, 5.5))
-        # ani = animation.FuncAnimation(fig=fig, func=create_evolution_animation, frames=49, interval=1000)
-        # ani.save(filename="D:\Dropbox\Quick presentation files/ffmpeg_example.gif", writer="pillow")
-        # # plt.show()
-
-    # def pareto_front_(self, df, columns, ax=None, show='all', label='', kwargs_dataframe=None, kwargs_pareto=None):
-    #     if kwargs_dataframe is None:
-    #         kwargs_dataframe = {}
-    #     if kwargs_pareto is None:
-    #         kwargs_pareto = {}
-    #
-    #     datapoints = df.loc[:, columns] * (-1)
-    #     pareto = oapackage.ParetoDoubleLong()
-    #     # ic(datapoints)
-    #     for ii in range(0, datapoints.shape[0]):
-    #         w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
-    #         pareto.addvalue(w, ii)
-    #     # pareto.show(verbose=1)  # Prints out the results from pareto
-    #
-    #     lst = pareto.allindices()  # the indices of the Pareto optimal designs
-    #     poc = len(lst)  # number of pareto shapes
-    #     reorder_idx = list(lst) + [i for i in range(len(df)) if
-    #                                i not in lst]  # reordered index putting pareto shapes first
-    #
-    #     pareto_shapes = df.loc[lst, :]
-    #     # sort pareto shapes in ascending x axis data
-    #     pareto_shapes = pareto_shapes.sort_values(by=[columns[0]])
-    #
-    #     if ax:
-    #         if show == 'all':
-    #             ax.scatter(df[columns[0]], df[columns[1]], **kwargs_dataframe)
-    #
-    #         ax.plot(pareto_shapes[columns[0]], pareto_shapes[columns[1]], **kwargs_pareto, label=label)
-    #
-    #     return pareto_shapes
-
-    def plot_pareto_surface(self, df, columns, ax, kwargs=None):
-        if kwargs is None:
-            kwargs = {}
-        pareto = self.pareto_front(df, columns)
-
-        x, y, z = pareto['Epk/Eacc []'], pareto['Bpk/Eacc'], pareto['R/Q']
-        xi, yi = np.meshgrid(np.linspace(min(x), max(x), 100),
-                             np.linspace(min(y), max(y), 100))
-        zi = griddata((x, y), z, (xi, yi), method='cubic')
-        surf = ax.plot_surface(xi, yi, zi, antialiased=False, **kwargs)
-
-        return surf
-
-    # def create_evolution_animation(self, frame):
-    #     for ax_index in axs:
-    #         axs[ax_index].clear()
-    #
-    #     ################### plot 2d ##################################
-    #     grid_results_folder = fr'D:\Dropbox\CavityDesignHub\KWT_simulations\PostprocessingData\Data\grid_results.xlsx'
-    #
-    #     columns_array = [['Epk/Eacc', 'Bpk/Eacc'], ['Epk/Eacc', 'R/Q'], ['Bpk/Eacc', 'R/Q']]
-    #     columns_par_array = [['A', 'B'], ['a', 'b'], ['A', 'Ri']]
-    #     cmap = matplotlib.colormaps['Pastel2_r']
-    #     norm = matplotlib.colors.Normalize(vmin=0, vmax=49)
-    #
-    #     for i, (columns, columns_par) in enumerate(zip(columns_array, columns_par_array)):
-    #         grid_results = pd.read_excel(grid_results_folder, 'Sheet1')
-    #         qmc_pareto_shapes = pareto_front(grid_results, columns, axs[i], show='pareto',
-    #                                          label=f'QMC \n({len(grid_results.index)} geoems.)',
-    #                                          kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'grey'},
-    #                                          kwargs_pareto={'c': 'k', 'marker': 'o', 'mec': 'k'})
-    #
-    #         for r in [frame]:
-    #             for lab, opt_code_result_folder, error_file in zip(['LHS2'],
-    #                                                                [
-    #                                                                    fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS\Generation{r}.xlsx'],
-    #                                                                [
-    #                                                                    fr'D:\Dropbox\CavityDesignHub\Cavity800\SimulationData\SLANS_LHS2\inerp_error_and_average.txt']):
-    #                 opt_code_result = pd.read_excel(opt_code_result_folder, 'Sheet1')
-    #
-    #                 pareto_shapes = pareto_front(opt_code_result, columns, axs[i], show='pareto',
-    #                                              label=f"{lab}: G{r} \n({len(opt_code_result.index)} geoms).",
-    #                                              kwargs_dataframe={'facecolors': 'none', 'edgecolor': 'b'},
-    #                                              kwargs_pareto={'marker': 'o',
-    #                                                             'mec': 'k'},
-    #                                              # kwargs_pareto={'c': f'{matplotlib.colors.rgb2hex(cmap(norm(r)))}', 'marker': 'o',
-    #                                              #                'mec': 'k'}
-    #                                              )
-    #                 axs[i + 3].scatter(grid_results[columns_par[0]], grid_results[columns_par[1]], s=5)
-    #                 axs[i + 3].scatter(opt_code_result[columns_par[0]], opt_code_result[columns_par[1]], s=5)
-    #                 axs[i + 3].scatter(qmc_pareto_shapes[columns_par[0]], qmc_pareto_shapes[columns_par[1]], c='r',
-    #                                    label='qmc', s=5)
-    #                 axs[i + 3].scatter(pareto_shapes[columns_par[0]], pareto_shapes[columns_par[1]], c='b',
-    #                                    edgecolor='k',
-    #                                    label='ea', s=5)
-    #
-    #                 # load interpolation error
-    #                 error = pd.read_csv(error_file, header=None, sep='\\s+')
-    #                 # axs[3].plot(error[0], label=lab)
-    #                 # axs[4].plot(error[1], label=lab)
-    #
-    #         axs[i].set_xlabel(columns[0])
-    #         axs[i].set_ylabel(columns[1])
-    #         axs[i + 3].set_xlabel(columns_par[0])
-    #         axs[i + 3].set_ylabel(columns_par[1])
-    #
-    #     # axs[i].legend(bbox_to_anchor=(0, 1.02, 1, 0.2), ncol=10, loc='lower left', mode='expand')
-    #     axs[0].legend()
-    #     axs[3].legend()
-    #
-    #     # axs[3].set_yscale('log')
-    #     # axs[4].set_yscale('log')
-    #     # axs[3].set_xlabel('Interpolation error')
-    #     # axs[3].set_ylabel()
-    #     # plot error
-    #
-    #     # plt.tight_layout()
-    #     # plt.show()
-
-    @staticmethod
-    def stroud(p):
-        # Stroud-3 method
-        #
-        # Input parameters:
-        #  p   number of dimensions
-        # Output parameters:
-        #  nodes   nodes of quadrature rule in [0,1]^p (column-wise)
-        #
-
-        nodes = np.zeros((p, 2 * p))
-        coeff = np.pi / p
-        fac = np.sqrt(2 / 3)
-
-        for i in range(2 * p):
-            for r in range(int(np.floor(0.5 * p))):
-                k = 2 * r
-                nodes[k, i] = fac * np.cos((k + 1) * (i + 1) * coeff)
-                nodes[k + 1, i] = fac * np.sin((k + 1) * (i + 1) * coeff)
-
-            if 0.5 * p != np.floor(0.5 * p):
-                nodes[-1, i] = ((-1) ** (i + 1)) / np.sqrt(3)
-
-        # transform nodes from [-1,+1]^p to [0,1]^p
-        nodes = 0.5 * nodes + 0.5
-
-        return nodes
-
-    def quad_stroud3(self, rdim, degree):
-        # data for Stroud-3 quadrature in [0,1]^k
-        # nodes and weights
-        nodes = self.stroud(rdim)
-        nodestr = 2. * nodes - 1.
-        weights = (1 / (2 * rdim)) * np.ones((2 * rdim, 1))
-
-        # evaluation of Legendre polynomials
-        bpoly = np.zeros((degree + 1, rdim, 2 * rdim))
-        for l in range(rdim):
-            for j in range(2 * rdim):
-                bpoly[0, l, j] = 1
-                bpoly[1, l, j] = nodestr[l, j]
-                for i in range(1, degree):
-                    bpoly[i + 1, l, j] = ((2 * (i + 1) - 1) * nodestr[l, j] * bpoly[i, l, j] - i * bpoly[
-                        i - 1, l, j]) / (i + 1)
-
-        # standardisation of Legendre polynomials
-        for i in range(1, degree + 1):
-            bpoly[i, :, :] = bpoly[i, :, :] * np.sqrt(2 * (i + 1) - 1)
-
-        return nodes, weights, bpoly
-
-    def weighted_mean_obj(self, tab_var, weights):
-        rows_sims_no, cols = np.shape(tab_var)
-        no_weights, dummy = np.shape(weights)  # z funckji quadr_stroud wekt columnowy
-
-        if rows_sims_no == no_weights:
-            expe = np.zeros((cols, 1))
-            outvar = np.zeros((cols, 1))
-            for i in range(cols):
-                expe[i, 0] = np.dot(tab_var[:, i], weights)
-                outvar[i, 0] = np.dot(tab_var[:, i] ** 2, weights)
-            stdDev = np.sqrt(outvar - expe ** 2)
-        else:
-            expe = 0
-            stdDev = 0
-            error('Cols_sims_no != No_weights')
-
-        return list(expe.T[0]), list(stdDev.T[0])
-
-    def run_tune_opt(self, pseudo_shape_space, tune_config):
-        tune_config_keys = tune_config.keys()
-        freqs = tune_config['freqs']
-        tune_parameters = tune_config['parameters']
-        cell_types = tune_config['cell_types']
-
-        # perform all necessary checks
-        if 'processes' in tune_config.keys():
-            processes = tune_config['processes']
-            assert processes > 0, error('Number of proceses must be greater than zero.')
-        else:
-            processes = 1
-
-        if isinstance(freqs, float) or isinstance(freqs, int):
-            freqs = np.array([freqs for _ in range(len(pseudo_shape_space))])
-        else:
-            assert len(freqs) == len(pseudo_shape_space), error(
-                'Number of target frequencies must correspond to the number of cavities')
-            freqs = np.array(freqs)
-
-        if isinstance(tune_parameters, str):
-            assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
-                'Please enter a valid tune parameter')
-            tune_variables = np.array([tune_parameters for _ in range(len(pseudo_shape_space))])
-            cell_types = np.array([cell_types for _ in range(len(pseudo_shape_space))])
-        else:
-            assert len(tune_parameters) == len(pseudo_shape_space), error(
-                'Number of tune parameters must correspond to the number of cavities')
-            assert len(cell_types) == len(pseudo_shape_space), error(
-                'Number of cell types must correspond to the number of cavities')
-            tune_variables = np.array(tune_parameters)
-            cell_types = np.array(cell_types)
-
-        run_tune_parallel(pseudo_shape_space, tune_config, self.projectDir, solver='NGSolveMEVP')
-
-    def run_wakefield_opt(self, df, wakefield_config):
-        # # get analysis parameters
-        # n_cells = 5
-        # n_modules = 1
-        #
-        # # change later
-        # WG_M = ['']  # half length of beam pipe between cavities in module
-        #
-        # # change all of these later
-        # MROT = 2  # run both longitudinal and transverse wakefield analysis
-        # MT = 4  # number of time steps for a beam to move one cell to another default = 3
-        # bunch_length = 25
-        # NFS = 10000  # Number of samples in FFT (max 10000)
-        # UBT = 50  # Wakelength in m
-        # DDZ_SIG = 0.1
-        # DDR_SIG = 0.1
-        # proc_count = self.processes_count
-
-        # get geometric parameters
-
-        wakefield_config_keys = wakefield_config.keys()
-        MROT = 2
-        MT = 10
-        NFS = 10000
-        wakelength = 50
-        bunch_length = 25
-        DDR_SIG = 0.1
-        DDZ_SIG = 0.1
-
-        # check inputs
-        if 'bunch_length' in wakefield_config_keys:
-            assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
-                'Bunch length must be of type integer or float.')
-        else:
-            wakefield_config['beam_config']['bunch_length'] = bunch_length
-        if 'wakelength' in wakefield_config_keys:
-            assert not isinstance(wakefield_config['wake_config']['wakelength'], str), error(
-                'Wakelength must be of type integer or float.')
-        else:
-            wakefield_config['wake_config']['wakelength'] = wakelength
-
-        processes = 1
-        if 'processes' in wakefield_config.keys():
-            assert wakefield_config['processes'] > 0, error('Number of proceses must be greater than zero.')
-            processes = wakefield_config['processes']
-        else:
-            wakefield_config['processes'] = processes
-
-        rerun = True
-        if 'rerun' in wakefield_config_keys:
-            if isinstance(wakefield_config['rerun'], bool):
-                rerun = wakefield_config['rerun']
-
-        if 'polarisation' in wakefield_config_keys:
-            assert wakefield_config['polarisation'] in [0, 1, 2], error('Polarisation should be 0 for longitudinal, '
-                                                                        '1 for transverse, 2 for both.')
-        else:
-            wakefield_config['polarisation'] = MROT
-
-        if 'MT' in wakefield_config_keys:
-            assert isinstance(wakefield_config['MT'], int), error('MT must be integer between 4 and 20, with 4 and 20 '
-                                                                  'included.')
-        else:
-            wakefield_config['MT'] = MT
-
-        if 'NFS' in wakefield_config_keys:
-            assert isinstance(wakefield_config['NFS'], int), error('NFS must be integer.')
-        else:
-            wakefield_config['NFS'] = NFS
-
-        if 'DDR_SIG' not in wakefield_config_keys:
-            wakefield_config['mesh_config']['DDR_SIG'] = DDR_SIG
-
-        if 'DDZ_SIG' not in wakefield_config_keys:
-            wakefield_config['mesh_config']['DDZ_SIG'] = DDZ_SIG
-
-        df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
-        shape_space = {}
-
-        df = df.set_index('key')
-        for index, row in df.iterrows():
-            rw = row.tolist()
-            if self.cell_type.lower() == 'end-mid cell':
-
-                A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i = self.mid_cell
-
-                IC = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i]
-
-                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
-                                           'CELL PARAMETERISATION': 'simplecell'}
-            else:
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
-                                           'CELL PARAMETERISATION': 'simplecell'}
-
-        shape_space_multicell = {}
-        for key, shape in shape_space.items():
-            shape_space_multicell[key] = to_multicell(1, shape)
-
-        run_wakefield_parallel(shape_space, shape_space_multicell, wakefield_config,
-                               self.projectDir, marker='', rerun=rerun)
-
-        return shape_space
-
-    def generate_first_men(self, initial_points, n):
-
-        if list(self.method.keys())[0] == "LHS":
-            seed = self.method['LHS']['seed']
-            if seed == '' or seed is None:
-                seed = None
-
-            columns = list(self.bounds.keys())
-            dim = len(columns)
-            l_bounds = np.array(list(self.bounds.values()))[:, 0]
-            u_bounds = np.array(list(self.bounds.values()))[:, 1]
-
-            const_var = []
-            for i in range(dim - 1, -1, -1):
-                if l_bounds[i] == u_bounds[i]:
-                    const_var.append([columns[i], l_bounds[i]])
-                    del columns[i]
-                    l_bounds = np.delete(l_bounds, i)
-                    u_bounds = np.delete(u_bounds, i)
-
-            reduced_dim = len(columns)
-            sampler = qmc.LatinHypercube(d=reduced_dim, scramble=False, seed=seed)
-            _ = sampler.reset()
-            sample = sampler.random(n=initial_points)
-            self.discrepancy = qmc.discrepancy(sample)
-
-            sample = qmc.scale(sample, l_bounds, u_bounds)
-
-            df = pd.DataFrame()
-            df['key'] = [f"G{n}_C{i}_P" for i in range(initial_points)]
-            df[columns] = sample
-
-            for i in range(len(const_var) - 1, -1, -1):
-                df[const_var[i][0]] = np.ones(initial_points) * const_var[i][1]
-
-            df['alpha_i'] = np.zeros(initial_points)
-            df['alpha_o'] = np.zeros(initial_points)
-
-            return df
-
-        elif list(self.method.keys())[0] == "Sobol Sequence":
-            seed = self.method['LHS']['seed']
-            if seed == '' or seed is None:
-                seed = None
-
-            columns = list(self.bounds.keys())
-            dim = len(columns)
-            index = self.method["Sobol Sequence"]['index']
-            l_bounds = np.array(list(list(self.bounds.values())))[:, 0]
-            u_bounds = np.array(list(list(self.bounds.values())))[:, 1]
-
-            const_var = []
-            for i in range(dim - 1, -1, -1):
-                if l_bounds[i] == u_bounds[i]:
-                    const_var.append([columns[i], l_bounds[i]])
-                    del columns[i]
-                    l_bounds = np.delete(l_bounds, i)
-                    u_bounds = np.delete(u_bounds, i)
-
-            reduced_dim = len(columns)
-            sampler = qmc.Sobol(d=reduced_dim, scramble=False, seed=seed)
-            _ = sampler.reset()
-            sample = sampler.random_base2(m=index)
-            sample = qmc.scale(sample, l_bounds, u_bounds)
-
-            df = pd.DataFrame()
-            df['key'] = [f"G0_C{i}_P" for i in range(initial_points)]
-            df[columns] = sample
-
-            for i in range(len(const_var) - 1, -1, -1):
-                df[const_var[i][0]] = np.ones(initial_points) * const_var[i][1]
-
-            df['alpha_i'] = np.zeros(initial_points)
-            df['alpha_o'] = np.zeros(initial_points)
-
-            return df
-        elif list(self.method.keys())[0] == "Random":
-            data = {'key': [f"G0_C{i}_P" for i in range(initial_points)],
-                    'A': random.sample(list(
-                        np.linspace(list(self.bounds.values())[0][0], list(self.bounds.values())[0][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'B': random.sample(list(
-                        np.linspace(list(self.bounds.values())[1][0], list(self.bounds.values())[1][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'a': random.sample(list(
-                        np.linspace(list(self.bounds.values())[2][0], list(self.bounds.values())[2][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'b': random.sample(list(
-                        np.linspace(list(self.bounds.values())[3][0], list(self.bounds.values())[3][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'Ri': random.sample(list(
-                        np.linspace(list(self.bounds.values())[4][0], list(self.bounds.values())[4][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'L': random.sample(list(
-                        np.linspace(list(self.bounds.values())[5][0], list(self.bounds.values())[5][1],
-                                    initial_points * 2)),
-                        initial_points),
-                    'Req': random.sample(list(
-                        np.linspace(list(self.bounds.values())[6][0], list(self.bounds.values())[6][1] + 1,
-                                    initial_points * 2)),
-                        initial_points),
-                    'alpha_i': np.zeros(initial_points),
-                    'alpha_o': np.zeros(initial_points)}
-            return pd.DataFrame.from_dict(data)
-        elif list(self.method.keys())[0] == "Uniform":
-            data = {'key': [f"G0_C{i}_P" for i in range(initial_points)],
-                    'A': np.linspace(list(self.bounds.values())[0][0], self.bounds[0][1], initial_points),
-                    'B': np.linspace(list(self.bounds.values())[1][0], self.bounds[1][1], initial_points),
-                    'a': np.linspace(list(self.bounds.values())[2][0], self.bounds[2][1], initial_points),
-                    'b': np.linspace(list(self.bounds.values())[3][0], self.bounds[3][1], initial_points),
-                    'Ri': np.linspace(list(self.bounds.values())[4][0], list(self.bounds.values())[4][1],
-                                      initial_points),
-                    'L': np.linspace(list(self.bounds.values())[5][0], list(self.bounds.values())[5][1],
-                                     initial_points),
-                    'Req': np.linspace(list(self.bounds.values())[6][0], list(self.bounds.values())[6][1] + 1,
-                                       initial_points),
-                    'alpha_i': np.zeros(initial_points),
-                    'alpha_o': np.zeros(initial_points)}
-            return pd.DataFrame.from_dict(data)
-
-    def process_constraints(self, constraints):
-        processed_constraints = []
-
-        for key, bounds in constraints.items():
-            if isinstance(bounds, list):
-                if len(bounds) == 2:
-                    processed_constraints.append(fr'{key} > {bounds[0]}')
-                    processed_constraints.append(fr'{key} < {bounds[1]}')
-                else:
-                    processed_constraints.append(fr'{key} > {bounds[0]}')
-            else:
-                processed_constraints.append(fr'{key} = {bounds}')
-
-        return processed_constraints
-
-    def crossover(self, df, generation, f):  # , rq, grq
-        elites = {}
-        for i, o in enumerate(self.objectives):
-
-            if self.uq_config:
-                if o[0] == "min":
-                    elites[f'E[{o[1]}] + 6*std[{o[1]}]'] = df.sort_values(f'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == "max":
-                    elites[f'E[{o[1]}] - 6*std[{o[1]}]'] = df.sort_values(f'E[{o[1]}] - 6*std[{o[1]}]', ascending=False)
-                elif o[0] == "equal":
-                    elites[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = df.sort_values(
-                        fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-            else:
-                if o[0] == "min":
-                    elites[f'{o[1]}'] = df.sort_values(f'{o[1]}')
-                elif o[0] == "max":
-                    elites[f'{o[1]}'] = df.sort_values(f'{o[1]}', ascending=False)
-                elif o[0] == "equal":
-                    elites[f'{o[1]}'] = df.sort_values(f'{o[1]}')
-
-        obj_dict = {}
-        for o in self.objectives:
-            if self.uq_config:
-                if o[0] == 'min':
-                    obj_dict[fr'E[{o[1]}] + 6*std[{o[1]}]'] = elites[fr'E[{o[1]}] + 6*std[{o[1]}]']
-                elif o[0] == 'max':
-                    obj_dict[fr'E[{o[1]}] - 6*std[{o[1]}]'] = elites[fr'E[{o[1]}] - 6*std[{o[1]}]']
-                else:
-                    obj_dict[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = elites[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]']
-            else:
-                # if o[0] != 'equal':
-                obj_dict[o[1]] = elites[o[1]]
-
-        obj = {}
-        for key, o in obj_dict.items():
-            obj[key] = o.reset_index(drop=True)
-
-        # e, b, rq = obj_list
-        # e = e.reset_index(drop=True)
-        # b = b.reset_index(drop=True)
-        # rq = rq.reset_index(drop=True)
-
-        # naming convention G<generation number>_C<cavity number>_<type>
-        # type refers to mutation M or crossover C
-        df_co = pd.DataFrame(columns=["key", 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"])
-
-        # select only best characteristics
-        A_inf = ['All']
-        B_inf = ['All']
-        a_inf = ['All']
-        b_inf = ['All']
-        Ri_inf = ['All']
-        L_inf = ['All']
-        Req_inf = ['All']
-
-        inf_dict = {"A": A_inf, "B": B_inf, "a": a_inf, "b": b_inf, "Ri": Ri_inf, "L": L_inf, "Req": Req_inf}
-        for key, influence in inf_dict.items():
-            if influence == [''] or influence == ['All']:
-                if self.uq_config:
-                    ll = []
-                    for o in self.objectives:
-                        if o[0] == 'min':
-                            ll.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                        elif o[0] == 'max':
-                            ll.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                        else:
-                            ll.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-                    inf_dict[key] = ll
-                else:
-                    # inf_dict[key] = [o[1] for o in self.objectives if o[0] != 'equal']
-                    inf_dict[key] = self.objective_vars
-
-        n_elites_to_cross = self.elites_to_crossover
-
-        for i in range(f):
-            # (<obj>[<rank>][<variable>] -> (b[c[1]][0]
-
-            df_co.loc[i] = [f"G{generation}_C{i}_CO",
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["A"] for key
-                                 in inf_dict["A"]]) / len(inf_dict["A"]),  # A
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["B"] for key
-                                 in inf_dict["B"]]) / len(inf_dict["B"]),  # B
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["a"] for key
-                                 in inf_dict["a"]]) / len(inf_dict["a"]),  # a
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["b"] for key
-                                 in inf_dict["b"]]) / len(inf_dict["b"]),  # b
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["Ri"] for
-                                 key in inf_dict["Ri"]]) / len(inf_dict["Ri"]),  # Ri
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["L"] for key
-                                 in inf_dict["L"]]) / len(inf_dict["L"]),  # L
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["Req"] for
-                                 key in inf_dict["Req"]]) / len(inf_dict["Req"]),
-                            0,
-                            0
-                            ]
-        return df_co
-
-    def mutation(self, df, n, f):
-
-        # get list based on mutation length
-        if df.shape[0] < f:
-            ml = np.arange(df.shape[0])
-        else:
-            ml = np.arange(f)
-
-        df_ng_mut = pd.DataFrame(columns=['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"])
-        if list(self.bounds.values())[0][0] == list(self.bounds.values())[0][1]:
-            df_ng_mut.loc[:, 'A'] = df.loc[ml, "A"]
-        else:
-            df_ng_mut.loc[:, 'A'] = df.loc[ml, "A"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[1][0] == list(self.bounds.values())[1][1]:
-            df_ng_mut.loc[:, 'B'] = df.loc[ml, "B"]
-        else:
-            df_ng_mut.loc[:, 'B'] = df.loc[ml, "B"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[2][0] == list(self.bounds.values())[2][1]:
-            df_ng_mut.loc[:, 'a'] = df.loc[ml, "a"]
-        else:
-            df_ng_mut.loc[:, 'a'] = df.loc[ml, "a"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[3][0] == list(self.bounds.values())[3][1]:
-            df_ng_mut.loc[:, 'b'] = df.loc[ml, "b"]
-        else:
-            df_ng_mut.loc[:, 'b'] = df.loc[ml, "b"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[4][0] == list(self.bounds.values())[4][1]:
-            df_ng_mut.loc[:, 'Ri'] = df.loc[ml, "Ri"]
-        else:
-            df_ng_mut.loc[:, 'Ri'] = df.loc[ml, "Ri"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[5][0] == list(self.bounds.values())[5][1]:
-            df_ng_mut.loc[:, 'L'] = df.loc[ml, "L"]
-        else:
-            df_ng_mut.loc[:, 'L'] = df.loc[ml, "L"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[6][0] == list(self.bounds.values())[6][1]:
-            df_ng_mut.loc[:, 'Req'] = df.loc[ml, "Req"]
-        else:
-            df_ng_mut.loc[:, 'Req'] = df.loc[ml, "Req"] * random.uniform(0.85, 1.5)
-
-        df_ng_mut.loc[:, ["alpha_i", "alpha_o"]] = df.loc[ml, ["alpha_i", "alpha_o"]]
-
-        key1, key2 = [], []
-        for i in range(len(df_ng_mut)):
-            key1.append(f"G{n}_C{i}_M")
-
-        df_ng_mut.loc[:, 'key'] = key1
-
-        return df_ng_mut
-
-    def chaos(self, f, n):
-        df = self.generate_first_men(f, n)
-        return df
-
-    @staticmethod
-    def remove_duplicate_values(d):
-        temp = []
-        res = dict()
-        for key, val in d.items():
-            if val not in temp:
-                temp.append(val)
-                res[key] = val
-        return res
-
-    @staticmethod
-    def proof_filename(filepath):
-        # check if extension is included
-        if filepath.split('.')[-1] != 'json':
-            filepath = f'{filepath}.json'
-
-        return filepath
-
-    def recursive_save(self, df, filename, pareto_index):
-        styler = self.color_pareto(df, self.poc)
-        try:
-            styler.to_excel(filename)
-            # df.to_excel(filename)
-        except PermissionError:
-            filename = filename.split('.xlsx')[0]
-            filename = fr'{filename}_1.xlsx'
-            self.recursive_save(df, filename, pareto_index)
-
-    def pareto_front(self, df):
-        # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
-        # reverse list or not based on objective goal: minimize or maximize
-        # datapoints = [self.negate_list(df.loc[:, o[1]], o[0]) for o in self.objectives]
-        sense = []
-        if self.uq_config:
-            obj = []
-            for o in self.objectives:
-                if o[0] == 'min':
-                    obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == 'max':
-                    obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                elif o[0] == 'equal':
-                    obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-
-            datapoints = df.loc[:, obj]
-        else:
-            datapoints = df.loc[:, self.objective_vars]
-
-        for o in self.objectives:
-            if o[0] == 'min':
-                sense.append('min')
-            elif o[0] == "equal":
-                sense.append('diff')
-            elif o[0] == 'max':
-                sense.append('max')
-
-        bool_array = paretoset(datapoints, sense=sense)  # the indices of the Pareto optimal designs
-        lst = np.where(bool_array)[0]
-        self.poc = len(lst)
-
-        reorder_idx = list(lst) + [i for i in range(len(df)) if i not in lst]
-
-        # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
-        return reorder_idx, lst
-
-    # def __pareto_front_oapackage(self, df):
-    #
-    #     # datapoints = np.array([reverse_list(x), reverse_list(y), reverse_list(z)])
-    #     # reverse list or not based on objective goal: minimize or maximize
-    #     # datapoints = [self.negate_list(df.loc[:, o[1]], o[0]) for o in self.objectives]
-    #
-    #     if self.uq_config:
-    #         obj = []
-    #         for o in self.objectives:
-    #             if o[0] == 'min':
-    #                 obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-    #             elif o[0] == 'max':
-    #                 obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-    #             elif o[0] == 'equal':
-    #                 obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-    #
-    #         datapoints = df.loc[:, obj]
-    #     else:
-    #         datapoints = df.loc[:, self.objective_vars]
-    #
-    #     for o in self.objectives:
-    #         if o[0] == 'min':
-    #             if self.uq_config:
-    #                 datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] = datapoints[fr'E[{o[1]}] + 6*std[{o[1]}]'] * (-1)
-    #             else:
-    #                 datapoints[o[1]] = datapoints[o[1]] * (-1)
-    #         elif o[0] == "equal":
-    #             if self.uq_config:
-    #                 datapoints[fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] = datapoints[
-    #                                                                          fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'] * (
-    #                                                                          -1)
-    #             else:
-    #                 datapoints[o[1]] = datapoints[o[1]] * (-1)
-    #     # convert datapoints to numpy array
-    #
-    #     pareto = oapackage.ParetoDoubleLong()
-    #     for ii in range(0, datapoints.shape[0]):
-    #         w = oapackage.doubleVector(tuple(datapoints.iloc[ii].values))
-    #         pareto.addvalue(w, ii)
-    #     pareto.show(verbose=1)  # Prints out the results from pareto
-    #
-    #     lst = pareto.allindices()  # the indices of the Pareto optimal designs
-    #     self.poc = len(lst)
-    #     reorder_idx = list(lst) + [i for i in range(len(df)) if i not in lst]
-    #
-    #     # return [optimal_datapoints[i, :] for i in range(datapoints.shape[0])]
-    #     return reorder_idx, lst
-
-    @staticmethod
-    def negate_list(ll, arg):
-        if arg == 'max':
-            return ll  # to find the pareto maxima
-        else:
-            return [-x for x in ll]  # to find the pareto minima
-
-    @staticmethod
-    def overwriteFolder(invar, projectDir):
-        path = os.path.join(projectDir, 'SimulationData', 'SLANS_opt', f'_process_{invar}')
-
-        if os.path.exists(path):
-            shutil.rmtree(path)
-            dir_util._path_created = {}
-
-        os.makedirs(path)
-
-    @staticmethod
-    def copyFiles(invar, parentDir, projectDir):
-        src = os.path.join(parentDir, 'exe', 'SLANS_exe')
-        dst = os.path.join(projectDir, 'SimulationData', 'SLANS_opt', f'_process_{invar}', 'SLANS_exe')
-
-        dir_util.copy_tree(src, dst)
-
-    @staticmethod
-    def color_pareto(df, no_pareto_optimal):
-        def color(row):
-            # if row.isnull().values.any():
-            if row.iloc[0] in df['key'].tolist()[0:no_pareto_optimal]:
-                return ['background-color: #6bbcd1'] * len(row)
-            return [''] * len(row)
-
-        # Save Styler Object for Later
-        styler = df.style
-        # Apply Styles (This can be chained or on separate lines)
-        styler.apply(color, axis=1)
-        # Export the styler to excel
-        return styler
-
-
-class Cavity:
-    """
-    Command Line Interface module for running analysis.
-
-    .. note::
-
-       Still under development so some functions might not work properly
-    """
-
-    def __init__(self, n_cells, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none', name='cavity',
-                 cell_parameterisation='simplecell', color='k', plot_label=None):
-        """
-        Initialise cavity object. A cavity object is defined by the number of cells, the cell geometric parameters,
-        if it has beampipes or not and the name. These properties could be changed and retrieved later using the
-        corresponding ``set`` and ``get`` functions.
-
-        Parameters
-        ----------
-        n_cells: int
-            Number of cells
-        mid_cell: list, ndarray
-            Mid cell geometric parameters of the cavity
-        end_cell_left: list, ndarray
-            Left end cell geometric parameters of the cavity
-        end_cell_right: list, ndarray
-            Right end cell geometric parameters of the cavity
-        beampipe: {'none', 'both', 'left', 'right'}
-            Beampipe options
-        name
-        """
-
-        self.kind = 'elliptical cavity'
-        self.eigenmode_qois_all_modes = {}
-        self.Epk_Eacc = None
-        self.Bpk_Eacc = None
-        self.Q = None
-        self.Ez_0_abs = {'z(0, 0)': [], '|Ez(0, 0)|': []}
-        if isinstance(mid_cell, dict):
-            # then mid cell parameter is a shape
-            end_cell_left = mid_cell['OC']
-            end_cell_right = mid_cell['OC_R']
-            mid_cell = mid_cell['IC']
-
-        self.convergence_df_data = None
-        self.convergence_df = None
-        self.uq_weights = None
-        self.V_rf_config = 0
-        self.Eacc_rf_config = 0
-        self.rf_performance_qois_uq = {}
-        self.rf_performance_qois = {}
-        self.uq_hom_results = None
-        self.sweep_results = {}
-        self.sweep_results_uq = {}
-        self.uq_fm_results = None
-        self.mesh = None
-        if plot_label is None:
-            self.plot_label = name
-        else:
-            self.plot_label = plot_label
-
-        self.n_modes = n_cells + 1
-        self.n_modules = 1
-        self.projectDir = None
-        self.bc = 33
-        self.name = name
-
-        # self.n_cav_op_field = {}
-        # self.op_field = {}
-        # self.p_wp = {}
-        # self.pstat = {}
-        # self.pdyn = {}
-        # self.p_cryo = {}
-        # self.p_in = {}
-        # self.Q0 = {}
-
-        self.beampipe = beampipe
-        self.no_of_modules = 1
-        self.eigenmode_qois = {}
-        self.custom_eig_qois = {}
-        self.wakefield_qois = {}
-        self.wake_op_points = {}
-        self.convergence_list = []
-        self.tune_results = {}
-        self.operating_points = None
-        self.color = color
-        self.Q0 = None
-        self.inv_eta = None
-        self.neighbours = {}
-
-        # eigenmode results
-        self.R_Q, self.k_fm, self.GR_Q, self.freq, self.e, self.b, \
-            self.G, self.ff, self.k_cc, self.axis_field, self.surface_field = [0 for _ in range(11)]
-
-        # wakefield results
-        self.k_fm, self.k_loss, self.k_kick, self.phom, self.sigma, self.I0 = [{} for _ in range(6)]
-
-        self.wall_material = None
-        self.n_cells = n_cells
-
-        self.cell_parameterisation = cell_parameterisation
-        if self.cell_parameterisation == 'flattop':
-            assert len(mid_cell) > 7, error('Flattop cavity mid-cells require at least 8 input parameters, '
-                                            'with the 8th representing length (l).')
-            if end_cell_left is not None:
-                assert len(end_cell_left) > 7, error(
-                    'Flattop cavity left end-cells require at least 8 input parameters, '
-                    'with the 8th representing length (l).')
-            if end_cell_right is not None:
-                assert len(end_cell_right) > 7, error(
-                    'Flattop cavity right end-cells require at least 8 input parameters,'
-                    'with the 8th representing length (l).')
-            self.mid_cell = np.array(mid_cell)[:8]
-            self.end_cell_left = np.array(end_cell_left)[:8]
-            self.end_cell_right = np.array(end_cell_right)[:8]
-
-            if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-                end_cell_left = mid_cell
-
-            if not (isinstance(end_cell_right, np.ndarray) or isinstance(end_cell_right, list)):
-                if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-                    end_cell_right = mid_cell
-                else:
-                    end_cell_right = end_cell_left
-
-            self.end_cell_left = end_cell_left
-            self.end_cell_right = end_cell_right
-
-            self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req, self.l = self.mid_cell[:8]
-            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el, self.l_el = self.end_cell_left[
-                                                                                                        :8]
-            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er, self.l_er = self.end_cell_right[
-                                                                                                        :8]
-
-            # active cavity length
-            self.l_active = (2 * (self.n_cells - 1) * self.L +
-                             (self.n_cells - 2) * self.l + self.L_el + self.l_el +
-                             self.L_er + self.l_er) * 1e-3
-            self.l_cavity = self.l_active + 8 * (self.L + self.l) * 1e-3
-
-            # get geometric parameters
-            self.shape = {
-                "IC": update_alpha(self.mid_cell[:8], self.cell_parameterisation),
-                "OC": update_alpha(self.end_cell_left[:8], self.cell_parameterisation),
-                "OC_R": update_alpha(self.end_cell_right[:8], self.cell_parameterisation),
-                "BP": beampipe,
-                "n_cells": self.n_cells,
-                'CELL PARAMETERISATION': self.cell_parameterisation,
-                'kind': self.kind
-            }
-            self.shape_multicell = {}
-            self.to_multicell()  # <- get multicell representation
-        else:
-            self.mid_cell = np.array(mid_cell)[:7]
-            if end_cell_left is not None:
-                self.end_cell_left = np.array(end_cell_left)[:7]
-            else:
-                self.end_cell_left = np.copy(self.mid_cell)
-            if end_cell_right is not None:
-                self.end_cell_right = np.array(end_cell_right)[:7]
-            else:
-                self.end_cell_right = np.copy(self.end_cell_left)
-
-            if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-                end_cell_left = mid_cell
-
-            if not (isinstance(end_cell_right, np.ndarray) or isinstance(end_cell_right, list)):
-                if not (isinstance(end_cell_left, np.ndarray) or isinstance(end_cell_left, list)):
-                    end_cell_right = mid_cell
-                else:
-                    end_cell_right = end_cell_left
-
-            self.end_cell_left = end_cell_left
-            self.end_cell_right = end_cell_right
-
-            self.A, self.B, self.a, self.b, self.Ri, self.L, self.Req = self.mid_cell[:7]
-            self.A_el, self.B_el, self.a_el, self.b_el, self.Ri_el, self.L_el, self.Req_el = self.end_cell_left[:7]
-            self.A_er, self.B_er, self.a_er, self.b_er, self.Ri_er, self.L_er, self.Req_er = self.end_cell_right[:7]
-
-            # active cavity length
-            self.l_active = (2 * (self.n_cells - 1) * self.L + self.L_el + self.L_er) * 1e-3
-            self.l_cavity = self.l_active + 8 * self.L * 1e-3
-
-            # get geometric parameters
-            self.shape = {
-                "IC": update_alpha(self.mid_cell[:7], self.cell_parameterisation),
-                "OC": update_alpha(self.end_cell_left[:7], self.cell_parameterisation),
-                "OC_R": update_alpha(self.end_cell_right[:7], self.cell_parameterisation),
-                "BP": beampipe,
-                "n_cells": self.n_cells,
-                'CELL PARAMETERISATION': self.cell_parameterisation,
-                'kind': self.kind
-            }
-        self.shape_multicell = {}
-        self.to_multicell()  # <- get multicell representation
-
-    def set_name(self, name):
-        """
-        Set cavity name
-
-        Parameters
-        ----------
-        name: str
-            Name of cavity
-
-        Returns
-        -------
-
-        """
-        self.name = name
-
-    def set_color(self, color):
-        """
-        Set cavity name
-
-        Parameters
-        ----------
-        color: str
-            color of cavity
-
-        Returns
-        -------
-
-        """
-        self.color = color
-
-    def set_parameterisation(self, cell_parameterisation):
-        """
-        Set cavity name
-
-        Parameters
-        ----------
-        name: str
-            Name of cavity
-
-        Returns
-        -------
-
-        """
-        self.cell_parameterisation = cell_parameterisation
-        self.shape['CELL PARAMETERISATION'] = cell_parameterisation
-        self.to_multicell()
-
-    def set_plot_label(self, plot_label):
-        """
-        Set cavity plot label
-
-        Parameters
-        ----------
-        plot_label: str
-            Cavity plot label
-
-        Returns
-        -------
-
-        """
-
-        if plot_label is None:
-            self.plot_label = self.name
-        else:
-            self.plot_label = plot_label
-
-    def set_n_cells(self, n_cells):
-        """
-        Sets number of cells of cavity
-
-        Parameters
-        ----------
-        n_cells: int
-            Number of cavity cells
-
-        Returns
-        -------
-
-        """
-        self.n_cells = int(n_cells)
-        self.shape['n_cells'] = n_cells
-        self.to_multicell()
-
-    def set_mid_cell(self, cell):
-        """
-        Set mid cell geometric parameters of cavity
-
-        Parameters
-        ----------
-        cell: list, array like
-            Geometric parameters of cells
-
-        Returns
-        -------
-
-        """
-        self.mid_cell = cell
-        self.shape['IC'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
-
-    def set_end_cell_left(self, cell):
-        """
-        Set left end cell geometric parameters of cavity
-
-        Parameters
-        ----------
-        cell: list, array like
-            Geometric parameters of cells
-
-        Returns
-        -------
-
-        """
-        self.end_cell_left = cell
-        self.shape['OC'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
-
-    def set_end_cell_right(self, cell):
-        """
-        Set right end cell geometric parameters of cavity
-
-        Parameters
-        ----------
-        cell: list, array like
-            Geometric parameters of cells
-
-        Returns
-        -------
-
-        """
-        self.end_cell_right = cell
-        self.shape['OC_R'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
-
-    def set_boundary_conditions(self, bc):
-        """
-        Sets boundary conditions for the beampipes of cavity
-
-        Parameters
-        ----------
-        bc: int
-            Boundary condition of left and right cell/beampipe ends
-
-        Returns
-        -------
-
-        """
-        self.bc = int(bc)
-
-    def set_beampipe(self, bp):
-        """
-        Set beampipe option of cavity
-
-        Parameters
-        ----------
-        bp: str
-            Beampipe option of cell
-
-        Returns
-        -------
-
-        """
-        self.beampipe = bp
-        self.shape['BP'] = bp
-        self.to_multicell()
-
-    def load(self):
-        """
-        Load existing cavity project folder
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def load_shape_space(self, filepath):
-        """
-        Get cavity geometric parameters from shape space
-
-        Parameters
-        ----------
-        filepath: str
-            Shape space directory
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def save_shape_space(self, filepath=None):
-        """
-        Save current geometric parameters as shape space
-
-        Parameters
-        ----------
-        filepath: str
-            Directory to save shape space to. If no input is given, it is saved to the Cavities directory
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def sweep(self, sweep_config, which='eigenmode', how='independent', uq_config=None):
-        if how == 'cross':
-            pass
-        else:
-            for key, interval_def in sweep_config.items():
-                # save nominal variable value form shape space
-                current_var = self.shape['IC'][VAR_TO_INDEX_DICT[key]]
-                par_vals = np.linspace(interval_def[0], interval_def[1], interval_def[2], endpoint=True)
-                self.sweep_results[f'{key}'] = {}
-                for val in par_vals:
-                    if which == 'eigenmode':
-                        # change value
-                        self.shape['IC'][VAR_TO_INDEX_DICT[key]] = val
-                        res = self.run_eigenmode()
-                        if res:
-                            self.sweep_results[f'{key}'][val] = copy.deepcopy(self.eigenmode_qois)
-                            if uq_config:
-                                self.sweep_results_uq[f'{key}'][val] = copy.deepcopy(self.uq_fm_results)
-
-                # replace initial value
-                self.shape['IC'][VAR_TO_INDEX_DICT[key]] = current_var
-
-    def study_mesh_convergence(self, h=2, h_passes=10, h_step=1, p=2, p_passes=3, p_step=1):
-        """
-
-        Parameters
-        ----------
-        h
-        passes
-        solver
-        type: str
-            h or p refinement
-
-        Returns
-        -------
-
-        """
-
-        convergence_df_ph = None
-        convergence_df_data_ph = None
-        # define start value, refinement (adaptive? fixed step?)
-        hs = h
-        for ip in range(p_passes):
-            convergence_dict_h = {}
-            for ih in range(h_passes):
-                eigenmode_config = {'boundary_conditions': 'mm',
-                                    'solver_save_directory': 'ngsolvemevp',
-                                    'uq_config': {},
-                                    'opt': False,
-                                    'mesh_config': {
-                                        'h': hs,
-                                        'p': p
-                                    }
-                                    }
-
-                run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir,
-                                eigenmode_config)
-                # read results
-                self.get_eigenmode_qois()
-
-                convergence_dict_h[ih] = self.eigenmode_qois
-                convergence_dict_h[ih]['h'] = hs
-                convergence_dict_h[ih]['p'] = p
-
-                hs += h_step
-            convergence_df_data_h = pd.DataFrame.from_dict(convergence_dict_h, orient='index')
-            convergence_df_h = self.calculate_rel_errors(convergence_df_data_h)
-
-            if convergence_df_ph is None:
-                convergence_df_data_ph = convergence_df_data_h
-                convergence_df_ph = convergence_df_h
-            else:
-                convergence_df_data_ph = pd.concat([convergence_df_data_ph,
-                                                    convergence_df_data_h], ignore_index=True)
-                convergence_df_ph = pd.concat([convergence_df_ph,
-                                               convergence_df_h], ignore_index=True)
-            hs = h
-            p += p_step
-
-        # convert to dataframe
-        self.convergence_df_data = convergence_df_data_ph
-        self.convergence_df = convergence_df_ph
-
-    def calculate_rel_errors(self, df):
-        # Specify the columns to exclude
-        columns_to_exclude = ['h', 'p']
-        df_to_compute = df.drop(columns=columns_to_exclude)
-        df_prev = df_to_compute.shift(1)
-        relative_errors = (df_to_compute - df_prev).abs() / df_prev.abs()
-        relative_errors.columns = [f'rel_error_{col}' for col in df_to_compute.columns]
-        excluded_columns = df[columns_to_exclude]
-        rel_errors_df = pd.concat([relative_errors, excluded_columns], axis=1)
-
-        return rel_errors_df
-
-    def run_eigenmode(self, solver='ngsolve', freq_shift=0, boundary_cond=None, subdir='', uq_config=None):
-        """
-        Run eigenmode analysis on cavity
-
-        Parameters
-        ----------
-        solver: {'SLANS', 'NGSolve'}
-            Solver to be used. Native solver is still under development. Results are not as accurate as that of SLANS.
-        freq_shift:
-            Frequency shift. Eigenmode solver searches for eigenfrequencies around this value
-        boundary_cond: int
-            Boundary condition of left and right cell/beampipe ends
-        subdir: str
-            Sub directory to save results to
-        uq_config: None | dict
-            Provides inputs required for uncertainty quantification. Default is None and disables uncertainty quantification.
-
-        Returns
-        -------
-
-        """
-
-        if boundary_cond:
-            self.bc = boundary_cond
-
-        if self.cell_parameterisation == 'multicell':
-            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
-                              self.n_modes,
-                              freq_shift, self.bc,
-                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-        else:
-            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
-                              self.n_modes,
-                              freq_shift, self.bc,
-                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
-
-        # load quantities of interest
-        try:
-            self.get_eigenmode_qois()
-            if uq_config:
-                self.get_uq_fm_results(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', f'{self.name}', 'uq.json'))
-            return True
-        except FileNotFoundError:
-            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
-            return False
-
-    def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
-                      DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
-        """
-        Run wakefield analysis on cavity
-
-        Parameters
-        ----------
-        MROT: {0, 1}
-            Polarisation 0 for longitudinal polarization and 1 for transversal polarization
-        MT: int
-            Number of time steps it takes for a beam to move from one mesh cell to the other
-        NFS: int
-            Number of frequency samples
-        wakelength:
-            Wakelength to be analysed
-        bunch_length: float
-            Length of the bunch
-        DDR_SIG: float
-            Mesh to bunch length ration in the r axis
-        DDZ_SIG: float
-            Mesh to bunch length ration in the z axis
-        WG_M:
-            For module simulation. Specifies the length of the beampipe between two cavities.
-        marker: str
-            Marker for the cavities. Adds this to the cavity name specified in a shape space json file
-        wp_dict: dict
-            Python dictionary containing relevant parameters for the wakefield analysis for a specific operating point
-        solver: {'ABCI'}
-            Only one solver is currently available
-
-        Returns
-        -------
-        :param MROT:
-        :param wakelength:
-        :param WG_M:
-        :param marker:
-        :param solver:
-        :param operating_points:
-
-        """
-
-        if operating_points is None:
-            wp_dict = {}
-        exist = False
-
-        # check if R/Q is set
-        if self.R_Q == 0:
-            self.get_eigenmode_qois()
-            self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-        if not exist:
-            if solver == 'ABCI':
-                self._run_abci(self.name, self.n_cells, self.n_modules, self.shape,
-                               MROT=MROT, MT=MT, NFS=NFS, UBT=wakelength, bunch_length=bunch_length,
-                               DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG,
-                               parentDir=SOFTWARE_DIRECTORY, projectDir=self.projectDir, WG_M=WG_M, marker=marker,
-                               operating_points=operating_points, freq=self.freq, R_Q=self.R_Q)
-
-                try:
-                    self.get_abci_data()
-                    self.get_wakefield_qois()
-                except FileNotFoundError:
-                    error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
-
-        else:
-            try:
-                self.get_abci_data()
-                self.get_wakefield_qois()
-            except FileNotFoundError:
-                error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
-
-    def calc_op_freq(self):
-        """
-        Calculates operating frequency. The operating frequency is used for tuning when a frequency is not given.
-        It is advisable to always include the desired tune frequency. Example
-
-        .. py:function:: cav.run_tune('Req', freq=1300)
-
-        Returns
-        -------
-
-        """
-        if not self.freq:
-            self.freq = (c0 / 4 * self.L)
-
-    @staticmethod
-    def _run_ngsolve(name, n_cells, n_modules, shape, shape_multi, n_modes, f_shift, bc, parentDir, projectDir,
-                     sub_dir='',
-                     uq_config=None):
-        parallel = False
-        start_time = time.time()
-        # create folders for all keys
-        ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
-
-        if 'OC_R' in shape.keys():
-            OC_R = 'OC_R'
-        else:
-            OC_R = 'OC'
-
-        # ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-        #                     n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-        #                     parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        if shape['CELL PARAMETERISATION'] == 'flattop':
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-
-            ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                        n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                        beampipes=shape['BP'],
-                                        parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-
-        elif shape['CELL PARAMETERISATION'] == 'multicell':
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-            ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
-                                          n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                          beampipes=shape['BP'],
-                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        else:
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-            ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                                parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-
-        # run UQ
-        if uq_config:
-            objectives = uq_config['objectives']
-            solver_dict = {'eigenmode': ngsolve_mevp}
-            solver_args_dict = {'eigenmode':
-                                    {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
-                                     'beampipes': shape['BP']
-                                     },
-                                'parentDir': parentDir,
-                                'projectDir': projectDir,
-                                'analysis folder': 'NGSolveMEVP',
-                                'cell_type': 'mid cell',
-                                'optimisation': False
-                                }
-
-            uq_cell_complexity = 'simplecell'
-            if 'cell_complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell_complexity']
-
-            if uq_cell_complexity == 'multicell':
-                shape_space = {name: shape_multi}
-                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            else:
-                shape_space = {name: shape}
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
-
-        done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
-
-    def set_wall_material(self, wm):
-        self.wall_material = wm
-
-    def get_ngsolve_tune_res(self):
-        """
-
-        Parameters
-        ----------
-        tune_variable: {'A', 'B', 'a'. 'b', 'Ri', 'L', 'Req'}
-            Tune variable.
-        cell_type: {'mid cell', 'end-mid cell', 'mid-end cell', 'single cell'}
-            Type of cell to tune
-
-        Returns
-        -------
-
-        """
-        tune_res = 'tune_res.json'
-        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'Optimisation', self.name, 'tune_res')):
-            with open(os.path.join(self.projectDir, 'SimulationData', 'Optimisation', self.name, 'tune_res'), 'r') as json_file:
-                self.tune_results = json.load(json_file)
-            self.freq = self.tune_results['FREQ']
-            self.shape['IC'] = self.tune_results['IC']
-            self.shape['OC'] = self.tune_results['OC']
-            self.shape['OC_R'] = self.tune_results['OC_R']
-            self.mid_cell = self.shape['IC']
-            self.end_cell_left = self.shape['OC']
-            self.end_cell_right = self.shape['OC_R']
-
-        else:
-            error("Tune results not found. Please tune the cavity")
-
-    def get_eigenmode_qois(self):
-        """
-        Get quantities of interest written by the SLANS code
-        Returns
-        -------
-
-        """
-        qois = 'qois.json'
-        assert os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', qois)), (
-            error('Eigenmode result does not exist, please run eigenmode simulation.'))
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               qois)) as json_file:
-            self.eigenmode_qois = json.load(json_file)
-
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               'qois_all_modes.json')) as json_file:
-            self.eigenmode_qois_all_modes = json.load(json_file)
-
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               'Ez_0_abs.csv')) as csv_file:
-            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-
-        self.freq = self.eigenmode_qois['freq [MHz]']
-        self.k_cc = self.eigenmode_qois['kcc [%]']
-        self.ff = self.eigenmode_qois['ff [%]']
-        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-        self.G = self.GR_Q / self.R_Q
-        self.Q = self.eigenmode_qois['Q []']
-        self.e = self.eigenmode_qois['Epk/Eacc []']
-        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
-        self.Epk_Eacc = self.e
-        self.Bpk_Eacc = self.b
-
-    def plot_dispersion(self, ax=None, show_continuous=True, **kwargs):
-        if ax is None:
-            fig, ax = plt.subplots()
-
-        df = pd.DataFrame.from_dict(self.eigenmode_qois_all_modes, orient='index')
-        freqs = df['freq [MHz]'][1:self.n_cells + 1]
-
-        k = np.linspace(np.pi / self.n_cells, np.pi, self.n_cells, endpoint=True)
-        axis_label = ['$' + f'({i + 1}/{self.n_cells})' + r'\pi$' if i - 1 != self.n_cells else r'$\pi$' for i in
-                      range(self.n_cells)]
-        ax.plot(k, freqs, marker='o', mec='k', label=self.name, **kwargs)
-        ax.set_xticklabels(axis_label)
-        ax.set_ylabel('$f$ [MHz]')
-        ax.set_xlabel('$k$')
-
-        # if show_continuous:
-        #     # calculate continuous
-        #     k = np.linspace(0, np.pi, 100, endpoint=True)
-        #     f_pi_over_2 = (freqs[0] + freqs[-1])/2
-        #     freq_c = np.sqrt(freqs[0]**2 + freqs[-1]**2 - 2*freqs[0]*freqs[-1]*np.cos(k))
-        #     ax.plot(k, freq_c, c='k', lw=2)
-
-        return ax
-
-    def plot_axis_field(self, show_min_max=True):
-        fig, ax = plt.subplots(figsize=(12, 3))
-        if len(self.Ez_0_abs['z(0, 0)']) != 0:
-            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-            ax.text(
-                0.95, 0.05,  # Position (normalized coordinates)
-                '$\eta=' + fr'{self.ff:.2f}\%' + '$',  # Text content
-                fontsize=12,  # Font size
-                ha='right',  # Horizontal alignment
-                va='bottom',  # Vertical alignment
-                transform=plt.gca().transAxes  # Use axes-relative positioning
-            )
-            ax.legend(loc="upper right")
-            if show_min_max:
-                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 50, width=100)
-                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
-                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                ax.axhline(max(Ez_0_abs_peaks), c='k')
-        else:
-            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                                           'Ez_0_abs.csv')):
-                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                                       'Ez_0_abs.csv')) as csv_file:
-                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-                ax.text(
-                    0.95, 0.05,  # Position (normalized coordinates)
-                    '$\eta=$' + fr'{self.ff:.2f}\%' + '$',  # Text content
-                    fontsize=12,  # Font size
-                    ha='right',  # Horizontal alignment
-                    va='bottom',  # Vertical alignment
-                    transform=plt.gca().transAxes  # Use axes-relative positioning
-                )
-                ax.legend(loc="upper right")
-                if show_min_max:
-                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
-                                          width=100)
-                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                    ax.axhline(max(Ez_0_abs_peaks), c='k')
-            else:
-                error('Axis field plot data not found.')
-
-    def plot_spectra(self, var, ax=None):
-        if len(self.uq_fm_results_all_modes) != 0:
-            df = pd.DataFrame({k: {sub_k: v[0] for sub_k, v in sub_dict.items()} for k, sub_dict in
-                               self.uq_fm_results_all_modes.items()})
-            if ax is None:
-                fig, ax = plt.subplots(figsize=(12, 4))
-
-            # Generate KDE data
-            for col in ['freq_1 [MHz]', 'freq_2 [MHz]', 'freq_3 [MHz]', 'freq_4 [MHz]', 'freq_5 [MHz]', 'freq_6 [MHz]',
-                        'freq_7 [MHz]', 'freq_8 [MHz]', 'freq_9 [MHz]']:
-                mean = df[col]["expe"]
-                std = df[col]["stdDev"]
-                x_values = np.linspace(mean - 10, mean + 10, 100000)  # Adjust range as needed
-                if std / mean < 1e-4:  # set a very narrow range for the x-axis around the mean.
-                    x = np.linspace(mean - 10, mean + 10, 100000)
-                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
-                    ax.plot(x, y_values * 1e-8, label=col)
-                else:
-                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
-                    ax.plot(x_values, y_values * 1e-8, label=col)
-
-            # Plot settings
-            ax.set_title("KDE Plots for Frequencies")
-            ax.set_xlabel("Frequency (MHz)")
-            ax.set_ylabel("Density")
-            ax.set_xlim(1270, 1310)
-            # ax.set_ylim(0, 3)
-            ax.legend()
-
-        else:
-            error("uq_fm_results_all_modes not found")
-
-    def get_uq_fm_results(self, folder):
-        # load uq result
-        with open(fr'{folder}\uq.json', 'r') as json_file:
-            self.uq_fm_results = json.load(json_file)
-
-        if os.path.exists(fr'{folder}\uq_all_modes.json'):
-            with open(fr'{folder}\uq_all_modes.json', 'r') as json_file:
-                self.uq_fm_results_all_modes = json.load(json_file)
-
-        # get neighbours and all qois
-        neighbours = {}
-        for dirr in os.listdir(folder):
-            if 'Q' in dirr.split('_')[-1]:
-                with open(fr'{folder}\{dirr}\monopole\qois.json', 'r') as json_file:
-                    neighbour_uq_fm_results = json.load(json_file)
-                neighbours[dirr] = neighbour_uq_fm_results
-
-        self.neighbours = pd.DataFrame.from_dict(neighbours, orient='index')
-
-        nodes, weights = cn_leg_05_2(7)
-        # write weights
-
-        data_table = pd.DataFrame(weights, columns=['weights'])
-        data_table.to_csv(fr'{folder}\weights.csv', index=False, sep='\t', float_format='%.32f')
-
-        # get weights
-        self.uq_weights = pd.read_csv(fr'{folder}\weights.csv')
-
-    def get_uq_hom_results(self, folder):
-        with open(folder, 'r') as json_file:
-            self.uq_hom_results = json.load(json_file)
-
-    def get_wakefield_qois(self, wakefield_config):
-        """
-        Get the quantities of interest written by the ABCI code
-
-        Parameters
-        ----------
-        opt: {'SR', 'BS'}
-            SR - Synchrotron radiation bunch length
-            BS - Bremsstrahlung
-
-        Returns
-        -------
-
-        """
-        qois = 'qois.json'
-
-        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')):
-            with open(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')) as json_file:
-                all_wakefield_qois = json.load(json_file)
-
-        # get only keys in op_points
-        if 'operating_points' in wakefield_config:
-            for op_pt in wakefield_config['operating_points'].keys():
-                for key, val in all_wakefield_qois.items():
-                    if op_pt in key:
-                        self.wakefield_qois[key] = val
-
-            for key, val in self.wakefield_qois.items():
-                self.k_fm[key] = val['k_FM [V/pC]']
-                self.k_loss[key] = val['|k_loss| [V/pC]']
-                self.k_kick[key] = val['|k_kick| [V/pC/m]']
-                self.phom[key] = val['P_HOM [kW]']
-                self.I0[key] = val['I0 [mA]']
-
-    def get_abci_data(self):
-        abci_data_dir = os.path.join(self.projectDir, "SimulationData", "ABCI")
-        self.abci_data = {'Long': ABCIData(abci_data_dir, self.name, 0),
-                          'Trans': ABCIData(abci_data_dir, self.name, 1)}
-
-    def plot_animate_wakefield(self, save=False):
-        def plot_contour_for_frame(data, frame_key, ax):
-            ax.clear()
-
-            colors = {'DOTS': 'k', 'SOLID': 'k'}
-
-            if frame_key in data:
-                for plot_type, df in data[frame_key]:
-                    ax.plot(df['X'], df['Y'], linestyle='-', color=colors[plot_type])
-
-            ax.set_xlabel('X-axis (m)')
-            ax.set_ylabel('Y-axis (m)')
-            ax.set_title(f'Contour Plot for {frame_key}')
-
-        def animate_frames(data):
-            fig, ax = plt.subplots(figsize=(18, 4))
-            frame_keys = sorted(data.keys(), key=lambda x: int(x.split('_')[1]))  # Sort frames by their order
-
-            def update(frame_key):
-                plot_contour_for_frame(data, frame_key, ax)
-
-            ani = FuncAnimation(fig, update, frames=frame_keys, repeat=True, interval=1000)
-            plt.close(fig)
-
-            return ani
-
-        top_folder = os.path.join(self.projectDir, "SimulationData", "ABCI", self.name)
-        efield_contour = get_wakefield_data(fr'{top_folder}/Cavity_MROT_0.top')
-        ani = animate_frames(efield_contour)
-        display_html(HTML(animate_frames(efield_contour).to_jshtml()))
-
-        if save:
-            # Save the animation as an MP4 file
-            ani.save(fr'{top_folder}/{self.name}_e_field_animation.mp4', writer='ffmpeg', dpi=150)
-
-    def get_power_uq(self, rf_config, op_points_list):
-        stat_moms = ['expe', 'stdDev', 'skew', 'kurtosis']
-        for ii, op_pt in enumerate(op_points_list):
-            self.rf_performance_qois_uq[op_pt] = {}
-            val = self.operating_points[op_pt]
-            for kk, vv in val.items():
-                if 'sigma' in kk:
-                    sig_id = kk.split('_')[-1].split(' ')[0]
-
-                    if 'Eacc [MV/m]' in rf_config.keys():
-                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    else:
-                        op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0]}
-                        self.Eacc_rf_config = val['Eacc [MV/m]']
-
-                    if 'V [GV]' in rf_config.keys():
-                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    else:
-                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-
-                    Q0 = {'expe': [self.Q0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    n_cav = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_in = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_cryo = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    pdyn = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    pstat = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_wp = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-
-                    # test
-                    n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
-
-                    # p_in = rf_config['SR per turn [MW]'] * 1e6 / n_cav * 1e-3  # maximum synchrotron radiation per beam
-
-                    p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
-
-                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
-                            self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
-                    pdyn_expe, pdyn_std, pdyn_skew, pdyn_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
-                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std, 'skew': pdyn_skew, 'kurtosis': pdyn_kurtosis}
-
-                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (
-                            self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
-                    pstat_expe, pstat_std, pstat_skew, pstat_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
-                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std, 'skew': pstat_skew, 'kurtosis': pstat_kurtosis}
-
-                    p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
-                    p_wp_expe, p_wp_std, p_wp_skew, p_wp_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
-                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std, 'skew': p_wp_skew, 'kurtosis': p_wp_kurtosis}
-
-                    for stat_mom in stat_moms:
-                        if op_field[stat_mom][0] != 0:
-                            # n_cav[stat_mom] = [
-                            #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
-
-                            p_in[stat_mom] = [
-                                p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
-
-                        # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
-                        #     p_cryo[stat_mom] = [
-                        #         8 / (np.sqrt(self.uq_fm_results['freq [MHz]'][stat_mom][0] / 500))]  # W/m
-                        #
-                        # if self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] * n_cav[stat_mom][0] != 0:
-                        #     pdyn[stat_mom] = [v_rf[stat_mom][0] * (op_field[stat_mom][0] * self.l_active) / (
-                        #             self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] *
-                        #             n_cav[stat_mom][0])]  # per cavity
-                        #
-                        # if op_field[stat_mom][0] != 0 and n_cav[stat_mom][0] != 0:
-                        #     pstat[stat_mom] = [(self.l_cavity * v_rf[stat_mom][0] / (
-                        #             self.l_active * op_field[stat_mom][0] * n_cav[stat_mom][0])) * p_cryo[stat_mom][
-                        #                            0]]
-                        #
-                        # if inv_eta[stat_mom][0] != 0:
-                        #     p_wp[stat_mom] = [
-                        #         (inv_eta[stat_mom][0]) * (pdyn[stat_mom][0] + pstat[stat_mom][0]) * 1e-3]  # per cavity
-
-                    self.rf_performance_qois_uq[op_pt][sig_id] = {
-                        r"Ncav": n_cav,
-                        r"Q0 []": Q0,
-                        r"Pstat/cav [W]": pstat,
-                        r"Pdyn/cav [W]": pdyn,
-                        r"Pwp/cav [kW]": p_wp,
-                        r"Pin/cav [kW]": p_in,
-                        r"PHOM/cav [kW]": self.uq_hom_results[fr'P_HOM [kW]_{op_pt}_{sig_id}_{vv}mm']
-                    }
-        return self.rf_performance_qois_uq
-
-    def get_power(self, rf_config, op_points_list):
-        for ii, op_pt in enumerate(op_points_list):
-            self.rf_performance_qois[op_pt] = {}
-            val = self.operating_points[op_pt]
-            for kk, vv in val.items():
-                if 'sigma' in kk:
-                    sig_id = kk.split('_')[-1].split(' ')[0]
-
-                    if 'Eacc [MV/m]' in rf_config.keys():
-                        op_field = self.Eacc_rf_config * 1e6
-                    else:
-                        op_field = val['Eacc [MV/m]'] * 1e6
-                        self.Eacc_rf_config = op_field
-
-                    if 'V [GV]' in rf_config.keys():
-                        v_rf = rf_config['V [GV]'][ii] * 1e9
-                    else:
-                        v_rf = val['V [GV]'] * 1e9
-
-                    Q0 = self.Q0
-                    inv_eta = self.inv_eta
-                    p_sr = rf_config['SR per turn [MW]'] * 1e6
-
-                    n_cav = int(np.ceil(v_rf / (op_field * self.l_active)))
-                    p_in = p_sr / n_cav  # maximum synchrotron radiation per beam
-
-                    p_cryo = 8 / (np.sqrt(self.freq / 500))
-
-                    pdyn = v_rf * (op_field * self.l_active) / (self.R_Q * Q0 * n_cav)
-
-                    pstat = (self.l_cavity * v_rf / (self.l_active * op_field * n_cav)) * p_cryo  # per cavity
-                    p_wp = (inv_eta) * (pdyn + pstat)  # per cavity
-
-                    self.rf_performance_qois[op_pt][sig_id] = {
-                        r"Ncav": n_cav,
-                        r"Q0 []": Q0,
-                        r"Pstat/cav [W]": pstat,
-                        r"Pdyn/cav [W]": pdyn,
-                        r"Pwp/cav [kW]": p_wp * 1e-3,
-                        r"Pin/cav [kW]": p_in * 1e-3,
-                        r"PHOM/cav [kW]": self.phom[fr'{op_pt}_{sig_id}_{vv}mm']
-                    }
-        return self.rf_performance_qois
-
-    def get_uq_post(self, qoi):
-        pass
-
-    def get_fields(self, mode=1):
-        gfu_E, gfu_H = ngsolve_mevp.load_fields(os.path.join(self.projectDir,
-                                                             'SimulationData', 'NGSolveMEVP',
-                                                             self.name, 'monopole'),
-                                                mode)
-        return gfu_E, gfu_H
-
-    def plot(self, what, ax=None, scale_x=1, **kwargs):
-        if what.lower() == 'geometry':
-            if 'mid_cell' in kwargs.keys():
-                new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
-                ax = write_cavity_geometry_cli(self.mid_cell, self.mid_cell, self.mid_cell,
-                                               'none', 1, scale=1, ax=ax, plot=True, **new_kwargs)
-            elif 'end_cell_left' in kwargs.keys():
-                ax = write_cavity_geometry_cli(self.end_cell_left, self.end_cell_left, self.end_cell_left,
-                                               'left', 1, scale=1, ax=ax, plot=True, **kwargs)
-            elif 'end_cell_right' in kwargs.keys():
-                ax = write_cavity_geometry_cli(self.end_cell_right, self.end_cell_right, self.end_cell_right,
-                                               'right', 1, scale=1, ax=ax, plot=True, **kwargs)
-            else:
-                ax = write_cavity_geometry_cli(self.mid_cell, self.end_cell_left, self.end_cell_right,
-                                               self.beampipe, self.n_cells, scale=1, ax=ax, plot=True, **kwargs)
-            ax.set_xlabel('$z$ [mm]')
-            ax.set_ylabel(r"$r$ [mm]")
-            return ax
-
-        if what.lower() == 'zl':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
-
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
-            return ax
-        if what.lower() == 'zt':
-            if ax:
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
-            return ax
-
-        if what.lower() == 'wpl':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
-
-            ax.set_xlabel('Distance from Bunch Head S [m]')
-            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC]")
-            return ax
-        if what.lower() == 'wpt':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
-            ax.set_xlabel('Distance from Bunch Head S [m]')
-            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC/m]")
-            return ax
-
-        if what.lower() == 'convergence':
-            try:
-                if ax:
-                    self._plot_convergence(ax)
-                else:
-                    fig, ax = plt.subplot_mosaic([['conv', 'abs_err']], layout='constrained', figsize=(12, 4))
-                    self._plot_convergence(ax)
-                return ax
-            except ValueError:
-                info("Convergence data not available.")
-
-    def plot_mesh(self, plotter='ngsolve'):
-        ngsolve_mevp.plot_mesh(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole'), plotter=plotter)
-
-    def plot_fields(self, mode=1, which='E', plotter='ngsolve'):
-        ngsolve_mevp.plot_fields(os.path.join(self.projectDir,
-                                              'SimulationData', 'NGSolveMEVP',
-                                              self.name, 'monopole'),
-                                 mode, which, plotter)
-
-    def _plot_convergence(self, ax):
-        keys = list(ax.keys())
-        # plot convergence
-        conv_filepath = os.path.join(self.projectDir, 'SimulationData', 'Optimisation', self.name, "convergence.json")
-        if os.path.exists(conv_filepath):
-            with open(conv_filepath, 'r') as f:
-                convergence_dict = json.load(f)
-            if len(convergence_dict) > 0:
-                x, y = convergence_dict[list(convergence_dict.keys())[0]], convergence_dict['freq [MHz]']
-                ax[keys[0]].scatter(x, y, ec='k')
-
-                # plot directions
-                for i in range(len(x) - 1):
-                    dx = x[i + 1] - x[i]
-                    dy = y[i + 1] - y[i]
-                    ax[keys[0]].quiver(x[i], y[i], dx, dy, ls='--', angles='xy',
-                                       scale_units='xy', scale=1, color='red',
-                                       width=0.005, units='width', headwidth=3, headlength=5,
-                                       headaxislength=4)
-
-        # plot absolute error
-        abs_err_filepath = os.path.join(self.projectDir, 'SimulationData', 'Optimisation', self.name, "absolute_error.json")
-        abs_err_dict = {}
-        if os.path.exists(conv_filepath):
-            with open(abs_err_filepath, 'r') as f:
-                abs_err_dict = json.load(f)
-        if len(abs_err_dict) > 0:
-            ax[keys[1]].plot(abs_err_dict['abs_err'], marker='o', mec='k')
-
-        ax[keys[0]].set_xlabel('Parameter')
-        ax[keys[0]].set_ylabel(r"Value")
-        ax[keys[1]].set_xlabel('Iteration')
-        ax[keys[1]].set_ylabel(r"Absolute error")
-        ax[keys[1]].set_yscale('log')
-
-    def define_operating_points(self, op):
-        self.operating_points = op
-
-    def inspect(self, cell_type='mid-cell', variation=0.2):
-
-        if cell_type == 'mid-cell':
-            cell = self.shape['IC']
-        elif cell_type == 'end-cell-left':
-            cell = self.shape['OC']
-        elif cell_type == 'end-cell-right':
-            cell = self.shape['OC_R']
-        else:
-            cell = self.shape['IC']
-
-        if self.cell_parameterisation == 'flattop':
-            A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
-
-            # Define the function that plots the graph
-            def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
-                cell = np.array([A, B, a, b, Ri, L, Req, l])
-                write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
-                                                  n_cell=1, tangent_check=True, lw=1,
-                                                  plot=True,
-                                                  ignore_degenerate=True)
-
-                # Update the sum display
-                sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
-
-            # Create sliders for each variable
-            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-                                           description='A')
-            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-                                           description='B')
-            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-                                           description='a')
-            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-                                           description='b')
-            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-                                            description='Ri')
-            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-                                           description='L')
-            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-                                             value=Req_,
-                                             description='Req')
-            l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
-                                           description='l')
-            # Create a label to display the sum of A + a
-            sum_label = Label()
-
-            # Arrange the sliders in a 3x3 layout
-            ui = VBox([
-                HBox([A_slider, B_slider, a_slider]),
-                HBox([b_slider, Ri_slider, L_slider]),
-                HBox([Req_slider, l_slider]),
-                sum_label  # Add the sum label to the layout
-            ])
-
-            # Create an interactive widget to update the plot
-            out = widgets.interactive_output(plot_cavity_geometry_flattop,
-                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
-
-        else:
-            A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
-
-            # Define the function that plots the graph
-            def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
-                cell = np.array([A, B, a, b, Ri, L, Req])
-                write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-                                          tangent_check=True, lw=1,
-                                          plot=True,
-                                          ignore_degenerate=True)
-
-                # Update the sum display
-                sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
-
-            # Create sliders for each variable
-            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-                                           description='A')
-            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-                                           description='B')
-            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-                                           description='a')
-            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-                                           description='b')
-            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-                                            description='Ri')
-            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-                                           description='L')
-            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-                                             value=Req_,
-                                             description='Req')
-            # Create a label to display the sum of A + a
-            sum_label = Label()
-
-            # Arrange the sliders in a 3x3 layout
-            ui = VBox([
-                HBox([A_slider, B_slider, a_slider]),
-                HBox([b_slider, Ri_slider, L_slider]),
-                HBox([Req_slider]),
-                sum_label  # Add the sum label to the layout
-            ])
-
-            # Create an interactive widget to update the plot
-            out = widgets.interactive_output(plot_cavity_geometry,
-                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
-
-        # Display the layout
-        display(out, ui)
-
-    # def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=False):
-    #
-    #     fig, ax = plt.subplots(figsize=(12, 6))
-    #     ax.set_aspect('equal')
-    #
-    #     if cell_type == 'mid-cell':
-    #         cell = self.shape['IC']
-    #     elif cell_type == 'end-cell-left':
-    #         cell = self.shape['OC']
-    #     elif cell_type == 'end-cell-right':
-    #         cell = self.shape['OC_R']
-    #     else:
-    #         cell = self.shape['IC']
-    #
-    #     if self.cell_parameterisation == 'flattop':
-    #         A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
-    #
-    #         # Define the function that plots the graph
-    #         def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
-    #             cell = np.array([A, B, a, b, Ri, L, Req, l])
-    #             write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
-    #                                               n_cell=1, tangent_check=True, lw=1,
-    #                                               plot=True,
-    #                                               ignore_degenerate=True)
-    #
-    #             # Update the sum display
-    #             sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
-    #
-    #         # Create sliders for each variable
-    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-    #                                        description='A')
-    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-    #                                        description='B')
-    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-    #                                        description='a')
-    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-    #                                        description='b')
-    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-    #                                         description='Ri')
-    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-    #                                        description='L')
-    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-    #                                          value=Req_,
-    #                                          description='Req')
-    #         l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
-    #                                        description='l')
-    #         # Create a label to display the sum of A + a
-    #         sum_label = Label()
-    #
-    #         # Arrange the sliders in a 3x3 layout
-    #         ui = VBox([
-    #             HBox([A_slider, B_slider, a_slider]),
-    #             HBox([b_slider, Ri_slider, L_slider]),
-    #             HBox([Req_slider, l_slider]),
-    #             sum_label  # Add the sum label to the layout
-    #         ])
-    #
-    #         # Create an interactive widget to update the plot
-    #         out = widgets.interactive_output(plot_cavity_geometry_flattop,
-    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
-    #
-    #     else:
-    #         A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
-    #
-    #         # Define the function that plots the graph
-    #         def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
-    #             cell = np.array([A, B, a, b, Ri, L, Req])
-    #             # ax.clear()
-    #             write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-    #                                       tangent_check=tangent_check, lw=3,
-    #                                       plot=True, ax=ax,
-    #                                       ignore_degenerate=True)
-    #             # Update the sum display
-    #             sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
-    #
-    #         def run_eigenmode(b):
-    #             eigenmode_config = {'processes': 1}
-    #             boundary_conds = 'mm'
-    #             eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
-    #
-    #             shape_space = {}
-    #
-    #             # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
-    #
-    #         # Create sliders for each variable
-    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-    #                                        description='A')
-    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-    #                                        description='B')
-    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-    #                                        description='a')
-    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-    #                                        description='b')
-    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-    #                                         description='Ri')
-    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-    #                                        description='L')
-    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-    #                                          value=Req_,
-    #                                          description='Req')
-    #         # Create a label to display the sum of A + a
-    #         sum_label = Label()
-    #
-    #         # create run tune and run eigenmode button
-    #         button_tune = widgets.Button(description="Tune")
-    #         button_eigenmode = widgets.Button(description="Eigenmode")
-    #         button_eigenmode.on_click(run_eigenmode)
-    #
-    #         # Arrange the sliders in a 3x3 layout
-    #         ui = VBox([
-    #             HBox([A_slider, B_slider, a_slider]),
-    #             HBox([b_slider, Ri_slider, L_slider]),
-    #             HBox([Req_slider]),
-    #             sum_label,  # Add the sum label to the layout
-    #             # HBox([button_tune, button_eigenmode])
-    #         ])
-    #
-    #         # Create an interactive widget to update the plot
-    #         out = widgets.interactive_output(plot_cavity_geometry,
-    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
-    #
-    #     # Display the layout
-    #     display(out, ui)
-
-    def to_multicell(self):
-        mid_cell = self.shape['IC']
-        mid_cell_multi = np.array([[[a, a] for _ in range(self.n_cells - 1)] for a in mid_cell])
-
-        self.shape_multicell['OC'] = self.shape['OC']
-        self.shape_multicell['OC_R'] = self.shape['OC_R']
-        self.shape_multicell['IC'] = mid_cell_multi
-        self.shape_multicell['BP'] = self.shape['BP']
-        self.shape_multicell['n_cells'] = self.shape['n_cells']
-        self.shape_multicell['CELL PARAMETERISATION'] = 'multicell'
-        self.shape_multicell['kind'] = self.kind
-
-    def _create_project(self, overwrite):
-        project_name = self.name
-        project_dir = self.projectDir
-
-        if project_name != '':
-
-            # check if folder already exist
-            e = self._check_if_path_exists(project_dir, project_name, overwrite)
-
-            if e:
-                def make_dirs_from_dict(d, current_dir=fr"{project_dir}"):
-                    for key, val in d.items():
-                        os.mkdir(os.path.join(current_dir, key))
-                        if type(val) == dict:
-                            make_dirs_from_dict(val, os.path.join(current_dir, key))
-
-                # create project structure in folders
-                project_dir_structure = {
-                    f'{project_name}':
-                        {
-                            'Cavities': None,
-                            'OperatingPoints': None,
-                            'SimulationData': {
-                                'SLANS': None,
-                                'SLANS_Opt': None,
-                                'NGSolveMEVP': None,
-                                'NativeEig': None,
-                                'ABCI': None,
-                                'CavitiesAnalysis': None
-                            },
-                            'PostprocessingData': {
-                                'Plots': None,
-                                'Data': None,
-                                'CSTData': None
-                            },
-                            'Reference': None
-                        }
-                }
-                try:
-                    make_dirs_from_dict(project_dir_structure)
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                    return True
-                except Exception as e:
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                    error("An exception occurred in created project: ", e)
-                    return False
-            else:
-                self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                return True
-        else:
-            info('\tPlease enter a valid project name')
-            self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-            return False
-
-    @staticmethod
-    def _check_if_path_exists(directory, folder, overwrite=False):
-        path = f"{directory}/{folder}"
-        if os.path.exists(path):
-            if overwrite:
-                x = 'y'
-            else:
-                x = 'n'
-
-            if x == 'y':
-                try:
-                    directory_list = os.listdir(path)
-
-                    if 'Cavities' in directory_list \
-                            and 'PostprocessingData' in directory_list \
-                            and 'SimulationData' in directory_list and len(directory_list) < 6:
-                        shutil.rmtree(path)
-                        return True
-                    else:
-                        info('\tIt seems that the folder specified is not a cavity project folder. Please check folder'
-                             'again to avoid deleting important files.')
-                        return False
-
-                except Exception as e:
-                    error("Exception occurred: ", e)
-                    return False
-            else:
-                return False
-        else:
-            return True
-
-    @staticmethod
-    def _overwriteFolder(invar, projectDir, name):
-        path = os.path.join(self.projectDir, 'SimulationData', 'SLANS', f'_process_{invar}')
-        if os.path.exists(path):
-            shutil.rmtree(path)
-            dir_util._path_created = {}
-
-        os.makedirs(path)
-
-    @staticmethod
-    def _copyFiles(invar, parentDir, projectDir, name):
-        src = os.path.join(parentDir, 'exe', 'SLANS_exe')
-        dst = os.path.join(projectDir, 'SimulationData', 'SLANS', f'_process_{invar}', 'SLANS_exe')
-
-        dir_util.copy_tree(src, dst)
-
-    def __str__(self):
-        p = dict()
-        p[self.name] = {
-            'tune': self.tune_results,
-            'fm': self.eigenmode_qois,
-            'hom': self.wakefield_qois,
-            'uq': {
-                'tune': 0,
-                'fm': self.uq_fm_results,
-                'hom': self.uq_hom_results
-            }
-        }
-        return fr"{json.dumps(p, indent=4)}"
-
+from matplotlib.animation import FuncAnimation
+from scipy.signal import find_peaks
+from scipy.special import *
+from cavsim2d.data_module.abci_data import ABCIData
+from cavsim2d.optimisation import Optimisation
+from cavsim2d.processes import *
+from cavsim2d.utils.shared_functions import *
+from cavsim2d.constants import *
+
+# Safe arithmetic evaluator for simple expressions
+_ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
+        ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg}
 
 class Cavities(Optimisation):
     """
     Cavities object is an object containing several Cavity objects.
     """
 
-    def __init__(self, name=None, cavities_list=None, names_list=None):
+    def __init__(self, folder, name=None, cavities_list=None, names_list=None, overwrite=False):
         """Constructs all the necessary attributes of the Cavity object
 
         Parameters
@@ -3218,12 +37,8 @@ class Cavities(Optimisation):
         """
 
         super().__init__()
-        self.uq_fm_results_all_modes = {}
-        self.rf_config = None
-        self.power_qois_uq = {}
-        self.shape_space = {}
-        self.shape_space_multicell = {}
-        self.sweep_results = None
+
+        self.projectDir = folder
         self.cavities_list = cavities_list
         self.cavities_dict = {}
         if cavities_list is None or cavities_list == []:
@@ -3235,6 +50,16 @@ class Cavities(Optimisation):
         if name:
             assert isinstance(name, str), error('Please enter valid project name.')
             self.name = name
+
+        self.save(folder, overwrite)
+
+        self.uq_nodes = {}
+        self.uq_fm_results_all_modes = {}
+        self.rf_config = None
+        self.power_qois_uq = {}
+        self.shape_space = {}
+        self.shape_space_multicell = {}
+        self.sweep_results = None
         self.eigenmode_qois = {}
         self.eigenmode_qois_all_modes = {}
         self.wakefield_qois = {}
@@ -3246,7 +71,6 @@ class Cavities(Optimisation):
         self.power_qois = {}
         self.fm_results = None
         self.hom_results = None
-        self.projectDir = None
 
         self.operating_points = None
         self.operating_points_threshold = {}
@@ -3278,6 +102,7 @@ class Cavities(Optimisation):
 
         if isinstance(cavs, Cavity):
             cavs.projectDir = self.projectDir
+
             if names:
                 cavs.set_name(names)
             else:
@@ -3288,23 +113,7 @@ class Cavities(Optimisation):
             else:
                 cavs.set_plot_label(plot_labels)
 
-            self.cavities_list.append(cavs)
-            self.cavities_dict[cavs.name] = cavs
-            self.shape_space[cavs.name] = cavs.shape
-            self.shape_space_multicell[cavs.name] = cavs.shape_multicell
-
-        elif isinstance(cavs, RFGun):
-            cavs.projectDir = self.projectDir
-            if names:
-                cavs.set_name(names)
-            else:
-                cavs.set_name(f'cav_{len(self.cavities_list)}')
-
-            if isinstance(plot_labels, list):
-                cavs.set_plot_label(plot_labels[0])
-            else:
-                cavs.set_plot_label(plot_labels)
-
+            cavs.create()
             self.cavities_list.append(cavs)
             self.cavities_dict[cavs.name] = cavs
             self.shape_space[cavs.name] = cavs.shape
@@ -3324,10 +133,13 @@ class Cavities(Optimisation):
             for i1, cav in enumerate(cavs):
                 cav.projectDir = self.projectDir
                 cav.set_name(names[i1])
+                cav.create()
+
                 cav.set_plot_label(plot_labels[i1])
 
                 self.cavities_list.append(cav)
                 self.cavities_dict[cav.name] = cav
+
                 self.shape_space[cav.name] = cav.shape
                 self.shape_space_multicell[cav.name] = cav.shape_multicell
 
@@ -3366,12 +178,16 @@ class Cavities(Optimisation):
         else:
             try:
                 self.projectDir = project_folder
-                success = self._create_project(overwrite)
+                success, i = self._create_project(overwrite)
                 if not success:
                     error(f"Project {project_folder} could not be created. Please check the folder and try again.")
                     return
                 else:
-                    done(f"Project {project_folder} created successfully/already exists.")
+                    if i == 1:
+                        done(f"Project {project_folder} created successfully.")
+                    if i == 2:
+                        done(f"Project {project_folder} created already exists. \n\tSet `overwrite=True` to overwrite.")
+
             except Exception as e:
                 error("Exception occurred: ", e)
                 return
@@ -3539,55 +355,39 @@ class Cavities(Optimisation):
         project_dir = self.projectDir
 
         if project_name != '':
-
             # check if folder already exist
             e = self._check_if_path_exists(project_dir, project_name, overwrite)
 
-            if e:
-                def make_dirs_from_dict(d, current_dir=fr"{project_dir}"):
-                    for key, val in d.items():
-                        os.mkdir(os.path.join(current_dir, key))
-                        if type(val) == dict:
-                            make_dirs_from_dict(val, os.path.join(current_dir, key))
-
+            if not e:
                 # create project structure in folders
                 project_dir_structure = {
                     f'{project_name}':
                         {
                             'Cavities': None,
                             'OperatingPoints': None,
-                            'SimulationData': {
-                                'SLANS': None,
-                                'SLANS_Opt': None,
-                                'NGSolveMEVP': None,
-                                'NativeEig': None,
-                                'ABCI': None,
-                                'Optimisation': None
-                            },
-                            'PostprocessingData': {
+                            'PostData': {
                                 'Plots': None,
-                                'Data': None,
-                                'CSTData': None
+                                'Data': None
                             },
                             'Reference': None
                         }
                 }
                 try:
-                    make_dirs_from_dict(project_dir_structure)
+                    make_dirs_from_dict(project_dir_structure, project_dir)
                     self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                    return True
+                    return True, 1
                 except Exception as e:
                     self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
                     error("An exception occurred in created project: ", e)
-                    return False
+                    return False, 0
             else:
                 # self.projectDir = os.path.join(project_dir, project_name)
                 self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-                return True
+                return True, 2
         else:
             error('\tPlease enter a valid project name')
             self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
-            return False
+            return False, 0
 
     @staticmethod
     def _check_if_path_exists(directory, folder, overwrite):
@@ -3602,22 +402,22 @@ class Cavities(Optimisation):
                     directory_list = os.listdir(path)
 
                     if 'Cavities' in directory_list \
-                            and 'PostprocessingData' in directory_list \
-                            and 'SimulationData' in directory_list and len(directory_list) < 6:
+                            and 'PostData' in directory_list \
+                             and len(directory_list) < 6:
                         shutil.rmtree(path)
-                        return True
+                        return False
                     else:
                         error('\tIt seems that the folder specified is not a cavity project folder. Please check folder'
                               'again to avoid deleting important files.')
-                        return False
+                        return True
 
                 except Exception as e:
                     error("Exception occurred: ", e)
-                    return False
+                    return True
             else:
-                return False
+                return True
         else:
-            return True
+            return False
 
     def sweep(self, sweep_config):
         self.sweep_results = {}
@@ -3724,7 +524,7 @@ class Cavities(Optimisation):
             tune_config['rerun'] = rerun
 
         if rerun:
-            run_tune_parallel(self.shape_space, tune_config, self.projectDir, solver='NGSolveMEVP', resume=False)
+            run_tune_parallel(self.cavities_dict, tune_config, solver='NGSolveMEVP', resume=False)
 
         self.tune_config = tune_config
         # get tune results
@@ -3782,6 +582,8 @@ class Cavities(Optimisation):
         if eigenmode_config is None:
             eigenmode_config = {}
 
+        eigenmode_config['target'] = run_eigenmode_s
+
         rerun = True
         if 'rerun' in eigenmode_config.keys():
             if isinstance(eigenmode_config['rerun'], bool):
@@ -3805,15 +607,12 @@ class Cavities(Optimisation):
                 if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
                     info('Epsilon and delta are both entered. Epsilon is preferred.')
 
-        else:
-            eigenmode_config['uq_config'] = uq_config
-
         if rerun:
             # add save directory field to eigenmode_config
             eigenmode_config['solver_save_directory'] = 'NGSolveMEVP'
             eigenmode_config['opt'] = False
 
-            run_eigenmode_parallel(self.shape_space, self.shape_space_multicell, eigenmode_config,
+            run_parallel(self.cavities_dict, eigenmode_config,
                                    self.projectDir)
 
         self.eigenmode_config = eigenmode_config
@@ -3827,11 +626,12 @@ class Cavities(Optimisation):
                 self.eigenmode_qois[cav.name] = cav.eigenmode_qois
                 self.eigenmode_qois_all_modes[cav.name] = cav.eigenmode_qois_all_modes
                 if uq_config:
-                    cav.get_uq_fm_results(os.path.join(self.projectDir, "SimulationData", "NGSolveMEVP", cav.name))
+                    cav.get_uq_fm_results(cav.uq_dir)
                     self.uq_fm_results[cav.name] = cav.uq_fm_results
+                    self.uq_nodes[cav.name] = cav.uq_nodes
                     self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
-            except FileNotFoundError:
-                error("Could not find the eigenmode results. Please rerun eigenmode analysis.")
+            except FileNotFoundError as e:
+                error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
                 return False
 
     def run_wakefield(self, wakefield_config=None):
@@ -3878,6 +678,7 @@ class Cavities(Optimisation):
 
         if wakefield_config is None:
             wakefield_config = {}
+        wakefield_config['target'] = run_wakefield_s
 
         wakefield_config_keys = wakefield_config.keys()
 
@@ -3992,8 +793,7 @@ class Cavities(Optimisation):
             if 'DDZ_SIG' not in mesh_config.keys():
                 mesh_config['DDZ_SIG'] = DDZ_SIG
 
-            run_wakefield_parallel(self.shape_space, self.shape_space_multicell, wakefield_config,
-                                   self.projectDir, marker='', rerun=rerun)
+            run_parallel(self.cavities_dict, wakefield_config)
 
         self.wakefield_config = wakefield_config
         self.get_wakefield_qois(uq_config)
@@ -4104,7 +904,12 @@ class Cavities(Optimisation):
         if 'logy' in kwargs:
             if kwargs['logy']:
                 ax.set_yscale('log')
+
+        plt.legend()
         return ax
+
+    def config_sample(self, kind):
+        return self.cavities_list[0].config_sample(kind)
 
     def set_cavities_field(self):
         """
@@ -5024,26 +1829,28 @@ class Cavities(Optimisation):
             # Step 2: Create a Mosaic Plot
             metrics = df['metric'].unique()
             layout = [[metric for metric in metrics]]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+            # layout = [metrics[:4], [*metrics[4:], '.']]
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(21, 3))
 
             # Plot each metric on a separate subplot
             for metric, ax in axd.items():
                 for i, label in enumerate(labels):
                     sub_df = df[(df['metric'] == metric) & (df['cavity'] == label)]
                     scatter_points = ax.scatter(sub_df['cavity'], sub_df['mean'], color=colors[i], s=150,
-                                                fc='none', ec=colors[i], label=label, lw=2, zorder=100)
-                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=2,
+                                                fc='none', ec=colors[i], label='Mean', lw=3, zorder=100)
+                    ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=3,
                                 color=scatter_points.get_edgecolor()[0])
 
                     # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none',
-                               ec='k', lw=1,
+                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='Design Point',
+                               ec='k', lw=1, s=75,
                                zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.margins(0.3)
-                ax.set_ylabel(LABELS[metric])
+                # ax.set_ylabel(LABELS[metric])
+                ax.set_xlabel(LABELS[metric])
 
             h, l = ax.get_legend_handles_labels()
 
@@ -6519,8 +3326,8 @@ class Cavities(Optimisation):
                              if f > 1e-8 else 1e5 for f in f_list]
 
                         Z_le.append(np.round((2 * E0[i] * 1e9 * nu_s[i])
-                                          / (n * I0[i] * 1e-3 * alpha_c[i] * 1e-5
-                                             * tau_z[i] * 1e-3) * 1e-9 * 1e-3, 2))
+                                             / (n * I0[i] * 1e-3 * alpha_c[i] * 1e-5
+                                                * tau_z[i] * 1e-3) * 1e-9 * 1e-3, 2))
 
                         Z_list.append(np.array(Z) * 1e-3)  # convert to kOhm
 
@@ -6802,10 +3609,4399 @@ class Cavities(Optimisation):
             raise TypeError("Invalid argument type. Must be int or str.")
 
 
+class Cavity(ABC):
+    """
+    Command Line Interface module for running analysis.
+
+    .. note::
+
+       Still under development so some functions might not work properly
+    """
+
+    def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
+                 end_cell_right=None, beampipe='none', name='cavity',
+                 cell_parameterisation='simplecell', color='k',
+                 plot_label=None, geo_filepath=None):
+        """
+        Initialise cavity object. You can either specify geometry by dimensions
+        (n_cells, mid_cell, end_cell_left, end_cell_right, etc.) *or* by providing
+        a path to a geometry file (`geo_filepath`). If `geo_filepath` is not None,
+        we load that file and skip the dimension‐based setup.
+
+        Parameters
+        ----------
+        n_cells: int
+            Number of cells (ignored if geo_filepath is provided)
+        mid_cell: list or ndarray
+            Mid‐cell geometric parameters (ignored if geo_filepath is provided)
+        end_cell_left: list or ndarray
+            Left end‐cell geometric parameters (ignored if geo_filepath is provided)
+        end_cell_right: list or ndarray
+            Right end‐cell geometric parameters (ignored if geo_filepath is provided)
+        beampipe: {'none', 'both', 'left', 'right'}
+            Beampipe options (ignored if geo_filepath is provided)
+        name: str
+            Name of the cavity
+        cell_parameterisation: {'simplecell', 'flattop', ...}
+            Parameterisation approach (ignored if geo_filepath is provided)
+        color: str
+            Colour for plotting
+        plot_label: str or None
+            Label for plotting; defaults to `name` if None
+        geo_filepath: str or None
+            If given, load geometry from this file instead of using dimensions.
+        """
+
+        # ───────────────────────────────────────────────────────────────────────────────────────────
+        #  1) Set all “always‐present” attributes first (so nothing else breaks).
+        # ───────────────────────────────────────────────────────────────────────────────────────────
+
+        self.self_dir = None
+        self.geo_filepath = None
+        self.eigenmode_dir = None
+        self.wakefield_dir = None
+        self.uq_dir = None
+
+        self.eigenmode_qois_all_modes = {}
+        self.Epk_Eacc = None
+        self.Bpk_Eacc = None
+        self.Q = None
+        self.Ez_0_abs = {'z(0, 0)': [], '|Ez(0, 0)|': []}
+        self.uq_nodes = None
+        self.convergence_df_data = None
+        self.convergence_df = None
+        self.uq_weights = None
+        self.V_rf_config = 0
+        self.Eacc_rf_config = 0
+        self.rf_performance_qois_uq = {}
+        self.rf_performance_qois = {}
+        self.uq_hom_results = None
+        self.sweep_results = {}
+        self.sweep_results_uq = {}
+        self.uq_fm_results = None
+        self.mesh = None
+
+        # plot_label: default to `name` if not provided
+        self.name = name
+        self.plot_label = plot_label if plot_label is not None else name
+
+        self.projectDir = None
+        self.bc = 33
+        self.eigenmode_qois = {}
+        self.custom_eig_qois = {}
+        self.wakefield_qois = {}
+        self.wake_op_points = {}
+        self.convergence_list = []
+        self.tune_results = {}
+        self.operating_points = None
+        self.Q0 = None
+        self.inv_eta = None
+        self.neighbours = {}
+        self.wall_material = None
+
+        # eigenmode results placeholders
+        (self.R_Q,
+         self.k_fm,
+         self.GR_Q,
+         self.freq,
+         self.e,
+         self.b,
+         self.G,
+         self.ff,
+         self.k_cc,
+         self.axis_field,
+         self.surface_field) = [0] * 11
+
+        # wakefield results placeholders
+        (self.k_fm,
+         self.k_loss,
+         self.k_kick,
+         self.phom,
+         self.sigma,
+         self.I0) = [{} for _ in range(6)]
+
+        self.geo_filepath = geo_filepath
+
+        # ───────────────────────────────────────────────────────────────────────────────────────────
+        #  2) Choose initialisation path: “from file” or “from dimensions”
+        # ───────────────────────────────────────────────────────────────────────────────────────────
+        self.parameters = {}
+
+        # If a geometry file is provided, skip dimension‐based setup:
+        if geo_filepath:
+            self._init_from_geo(geo_filepath)
+            self.get_geometric_parameters()
+
+    def _init_from_geo(self, filepath, kind='geo'):
+        """
+        Load geometry from a file (e.g. a .geo)
+        """
+        self.step_geo, self.mesh, self.bcs = ngsolve_mevp.load_geo(filepath)
+
+    def get_geometric_parameters(self):
+        with open(self.geo_filepath, "r") as file:
+            for line in file:
+                match = re.match(r'\s*(\w+)\s*=\s*DefineNumber\[\s*([\d.eE+-]+)\s*,\s*Name\s*"Parameters/[^"]*"\s*\];',
+                                 line)
+                if match:
+                    var_name, var_value = match.groups()
+                    self.parameters[var_name] = float(var_value)
+
+    def create(self):
+        pass
+
+    def set_name(self, name):
+        """
+        Set cavity name
+
+        Parameters
+        ----------
+        name: str
+            Name of cavity
+
+        Returns
+        -------
+
+        """
+        self.name = name
+
+    def set_color(self, color):
+        """
+        Set cavity name
+
+        Parameters
+        ----------
+        color: str
+            color of cavity
+
+        Returns
+        -------
+
+        """
+        self.color = color
+
+    def set_parameterisation(self, cell_parameterisation):
+        """
+        Set cavity name
+
+        Parameters
+        ----------
+        name: str
+            Name of cavity
+
+        Returns
+        -------
+
+        """
+        self.cell_parameterisation = cell_parameterisation
+        self.shape['CELL PARAMETERISATION'] = cell_parameterisation
+        self.to_multicell()
+
+    def set_plot_label(self, plot_label):
+        """
+        Set cavity plot label
+
+        Parameters
+        ----------
+        plot_label: str
+            Cavity plot label
+
+        Returns
+        -------
+
+        """
+
+        if plot_label is None:
+            self.plot_label = self.name
+        else:
+            self.plot_label = plot_label
+
+    def set_n_cells(self, n_cells):
+        """
+        Sets number of cells of cavity
+
+        Parameters
+        ----------
+        n_cells: int
+            Number of cavity cells
+
+        Returns
+        -------
+
+        """
+        self.n_cells = int(n_cells)
+        self.shape['n_cells'] = n_cells
+        self.to_multicell()
+
+    def set_mid_cell(self, cell):
+        """
+        Set mid cell geometric parameters of cavity
+
+        Parameters
+        ----------
+        cell: list, array like
+            Geometric parameters of cells
+
+        Returns
+        -------
+
+        """
+        self.mid_cell = cell
+        self.shape['IC'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
+
+    def set_end_cell_left(self, cell):
+        """
+        Set left end cell geometric parameters of cavity
+
+        Parameters
+        ----------
+        cell: list, array like
+            Geometric parameters of cells
+
+        Returns
+        -------
+
+        """
+        self.end_cell_left = cell
+        self.shape['OC'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
+
+    def set_end_cell_right(self, cell):
+        """
+        Set right end cell geometric parameters of cavity
+
+        Parameters
+        ----------
+        cell: list, array like
+            Geometric parameters of cells
+
+        Returns
+        -------
+
+        """
+        self.end_cell_right = cell
+        self.shape['OC_R'] = update_alpha(cell, self.cell_parameterisation)
+        self.to_multicell()
+
+    def set_boundary_conditions(self, bc):
+        """
+        Sets boundary conditions for the beampipes of cavity
+
+        Parameters
+        ----------
+        bc: int
+            Boundary condition of left and right cell/beampipe ends
+
+        Returns
+        -------
+
+        """
+        self.bc = int(bc)
+
+    def set_beampipe(self, bp):
+        """
+        Set beampipe option of cavity
+
+        Parameters
+        ----------
+        bp: str
+            Beampipe option of cell
+
+        Returns
+        -------
+
+        """
+        self.beampipe = bp
+        self.shape['BP'] = bp
+        self.to_multicell()
+
+    def load(self):
+        """
+        Load existing cavity project folder
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+        pass
+
+    def load_shape_space(self, filepath):
+        """
+        Get cavity geometric parameters from shape space
+
+        Parameters
+        ----------
+        filepath: str
+            Shape space directory
+
+        Returns
+        -------
+
+        """
+        pass
+
+    def save_shape_space(self, filepath=None):
+        """
+        Save current geometric parameters as shape space
+
+        Parameters
+        ----------
+        filepath: str
+            Directory to save shape space to. If no input is given, it is saved to the Cavities directory
+
+        Returns
+        -------
+
+        """
+        pass
+
+    def sweep(self, sweep_config, which='eigenmode', how='independent', uq_config=None):
+        if how == 'cross':
+            pass
+        else:
+            for key, interval_def in sweep_config.items():
+                # save nominal variable value form shape space
+                current_var = self.shape['IC'][VAR_TO_INDEX_DICT[key]]
+                par_vals = np.linspace(interval_def[0], interval_def[1], interval_def[2], endpoint=True)
+                self.sweep_results[f'{key}'] = {}
+                for val in par_vals:
+                    if which == 'eigenmode':
+                        # change value
+                        self.shape['IC'][VAR_TO_INDEX_DICT[key]] = val
+                        res = self.run_eigenmode()
+                        if res:
+                            self.sweep_results[f'{key}'][val] = copy.deepcopy(self.eigenmode_qois)
+                            if uq_config:
+                                self.sweep_results_uq[f'{key}'][val] = copy.deepcopy(self.uq_fm_results)
+
+                # replace initial value
+                self.shape['IC'][VAR_TO_INDEX_DICT[key]] = current_var
+
+    def study_mesh_convergence(self, h=2, h_passes=7, h_step=1.5, p=2, p_passes=6, p_step=1):
+        """
+
+        Parameters
+        ----------
+        h
+        passes
+        solver
+        type: str
+            h or p refinement
+
+        Returns
+        -------
+
+        """
+
+        convergence_df_ph = None
+        convergence_df_data_ph = None
+        # define start value, refinement (adaptive? fixed step?)
+        hs = h
+        for ip in range(p_passes):
+            convergence_dict_h = {}
+            for ih in range(h_passes):
+                eigenmode_config = {'boundary_conditions': 'mm',
+                                    'mesh_config': {
+                                        'h': hs,
+                                        'p': p
+                                    }
+                                    }
+
+                run_eigenmode_s({self.name: self}, eigenmode_config, '')
+                # read results
+                self.get_eigenmode_qois()
+
+                convergence_dict_h[ih] = self.eigenmode_qois
+                convergence_dict_h[ih]['h'] = hs
+                convergence_dict_h[ih]['p'] = p
+                convergence_dict_h[ih]['No of Mesh Elements'] = self.eigenmode_qois['No of Mesh Elements']
+
+                hs /= h_step
+            convergence_df_data_h = pd.DataFrame.from_dict(convergence_dict_h, orient='index')
+            convergence_df_h = self.calculate_rel_errors(convergence_df_data_h)
+
+            if convergence_df_ph is None:
+                convergence_df_data_ph = convergence_df_data_h
+                convergence_df_ph = convergence_df_h
+            else:
+                convergence_df_data_ph = pd.concat([convergence_df_data_ph,
+                                                    convergence_df_data_h], ignore_index=True)
+                convergence_df_ph = pd.concat([convergence_df_ph,
+                                               convergence_df_h], ignore_index=True)
+            hs = h
+            p += p_step
+
+        # convert to dataframe
+        self.convergence_df_data = convergence_df_data_ph
+        self.convergence_df = convergence_df_ph
+
+    def calculate_rel_errors(self, df):
+        # Specify the columns to exclude
+        columns_to_exclude = ['h', 'p', 'No of Mesh Elements']
+        df_to_compute = df.drop(columns=columns_to_exclude)
+        df_prev = df_to_compute.shift(1)
+        relative_errors = (df_to_compute - df_prev).abs() / df_prev.abs()
+        relative_errors.columns = [f'rel_error_{col}' for col in df_to_compute.columns]
+        excluded_columns = df[columns_to_exclude]
+        rel_errors_df = pd.concat([relative_errors, excluded_columns], axis=1)
+
+        return rel_errors_df
+
+    def run_eigenmode(self, solver='ngsolve', freq_shift=0, boundary_cond=None, subdir='', uq_config=None):
+        """
+        Run eigenmode analysis on cavity
+
+        Parameters ---------- solver: {'SLANS', 'NGSolve'} Solver to be used. Native solver is still under
+        development. Results are not as accurate as that of SLANS. freq_shift: Frequency shift. Eigenmode solver
+        searches for eigenfrequencies around this value boundary_cond: int Boundary condition of left and right
+        cell/beampipe ends subdir: str Sub directory to save results to uq_config: None | dict Provides inputs
+        required for uncertainty quantification. Default is None and disables uncertainty quantification.
+
+        Returns
+        -------
+
+        """
+
+        if boundary_cond:
+            self.bc = boundary_cond
+
+        if self.cell_parameterisation == 'multicell':
+            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
+                              self.n_modes,
+                              freq_shift, self.bc,
+                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+        else:
+            self._run_ngsolve(self.name, self.n_cells, self.n_modules, self.shape, self.shape_multicell,
+                              self.n_modes,
+                              freq_shift, self.bc,
+                              SOFTWARE_DIRECTORY, self.projectDir, sub_dir='', uq_config=uq_config)
+
+        # load quantities of interest
+        try:
+            self.get_eigenmode_qois()
+            if uq_config:
+                self.get_uq_fm_results(
+                    os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', f'{self.name}', 'uq.json'))
+            return True
+        except FileNotFoundError as e:
+            error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
+            return False
+
+    def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
+                      DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
+        """
+        Run wakefield analysis on cavity
+
+        Parameters
+        ----------
+        MROT: {0, 1}
+            Polarisation 0 for longitudinal polarization and 1 for transversal polarization
+        MT: int
+            Number of time steps it takes for a beam to move from one mesh cell to the other
+        NFS: int
+            Number of frequency samples
+        wakelength:
+            Wakelength to be analysed
+        bunch_length: float
+            Length of the bunch
+        DDR_SIG: float
+            Mesh to bunch length ration in the r axis
+        DDZ_SIG: float
+            Mesh to bunch length ration in the z axis
+        WG_M:
+            For module simulation. Specifies the length of the beampipe between two cavities.
+        marker: str
+            Marker for the cavities. Adds this to the cavity name specified in a shape space json file
+        wp_dict: dict
+            Python dictionary containing relevant parameters for the wakefield analysis for a specific operating point
+        solver: {'ABCI'}
+            Only one solver is currently available
+
+        Returns
+        -------
+        :param MROT:
+        :param wakelength:
+        :param WG_M:
+        :param marker:
+        :param solver:
+        :param operating_points:
+
+        """
+
+        if operating_points is None:
+            wp_dict = {}
+        exist = False
+
+        # check if R/Q is set
+        if self.R_Q == 0:
+            self.get_eigenmode_qois()
+            self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
+        if not exist:
+            if solver == 'ABCI':
+                self._run_abci(self.name, self.n_cells, self.n_modules, self.shape,
+                               MROT=MROT, MT=MT, NFS=NFS, UBT=wakelength, bunch_length=bunch_length,
+                               DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG,
+                               parentDir=SOFTWARE_DIRECTORY, projectDir=self.projectDir, WG_M=WG_M, marker=marker,
+                               operating_points=operating_points, freq=self.freq, R_Q=self.R_Q)
+
+                try:
+                    self.get_abci_data()
+                    self.get_wakefield_qois()
+                except FileNotFoundError:
+                    error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
+
+        else:
+            try:
+                self.get_abci_data()
+                self.get_wakefield_qois()
+            except FileNotFoundError:
+                error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
+
+    def calc_op_freq(self):
+        """
+        Calculates operating frequency. The operating frequency is used for tuning when a frequency is not given.
+        It is advisable to always include the desired tune frequency. Example
+
+        .. py:function:: cav.run_tune('Req', freq=1300)
+
+        Returns
+        -------
+
+        """
+        if not self.freq:
+            self.freq = (c0 / 4 * self.L)
+
+    @staticmethod
+    def _run_ngsolve(name, n_cells, n_modules, shape, shape_multi, n_modes, f_shift, bc, parentDir, projectDir,
+                     sub_dir='',
+                     uq_config=None):
+        parallel = False
+        start_time = time.time()
+        # create folders for all keys
+        ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
+
+        if 'OC_R' in shape.keys():
+            OC_R = 'OC_R'
+        else:
+            OC_R = 'OC'
+
+        # ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+        #                     n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
+        #                     parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+        if shape['CELL PARAMETERISATION'] == 'flattop':
+            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
+            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
+
+            ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                        n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
+                                        beampipes=shape['BP'],
+                                        parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+
+        elif shape['CELL PARAMETERISATION'] == 'multicell':
+            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
+            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
+            ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
+                                          n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
+                                          beampipes=shape['BP'],
+                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+        else:
+            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
+            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
+            ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
+                                n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
+                                parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
+
+        # run UQ
+        if uq_config:
+            objectives = uq_config['objectives']
+            solver_dict = {'eigenmode': ngsolve_mevp}
+            solver_args_dict = {'eigenmode':
+                                    {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
+                                     'beampipes': shape['BP']
+                                     },
+                                'parentDir': parentDir,
+                                'projectDir': projectDir,
+                                'analysis folder': 'NGSolveMEVP',
+                                'cell_type': 'mid cell',
+                                'optimisation': False
+                                }
+
+            uq_cell_complexity = 'simplecell'
+            if 'cell_complexity' in uq_config.keys():
+                uq_cell_complexity = uq_config['cell_complexity']
+
+            if uq_cell_complexity == 'multicell':
+                shape_space = {name: shape_multi}
+                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
+            else:
+                shape_space = {name: shape}
+                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
+
+        done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
+
+    def set_wall_material(self, wm):
+        self.wall_material = wm
+
+    def get_ngsolve_tune_res(self):
+        """
+
+        Parameters
+        ----------
+        tune_variable: {'A', 'B', 'a'. 'b', 'Ri', 'L', 'Req'}
+            Tune variable.
+        cell_type: {'mid cell', 'end-mid cell', 'mid-end cell', 'single cell'}
+            Type of cell to tune
+
+        Returns
+        -------
+
+        """
+        tune_res = 'tune_res.json'
+        if os.path.exists(os.path.join(self.self_dir, 'eigenmode', 'tune_res.json')):
+            with open(os.path.join(self.self_dir, 'eigenmode', 'tune_res.json'),
+                      'r') as json_file:
+                self.tune_results = json.load(json_file)
+            self.freq = self.tune_results['FREQ']
+            # self.shape['IC'] = self.tune_results['IC']
+            # self.shape['OC'] = self.tune_results['OC']
+            # self.shape['OC_R'] = self.tune_results['OC_R']
+            # self.mid_cell = self.shape['IC']
+            # self.end_cell_left = self.shape['OC']
+            # self.end_cell_right = self.shape['OC_R']
+
+        else:
+            error("Tune results not found. Please tune the cavity")
+
+    def get_eigenmode_qois(self):
+        """
+        Get quantities of interest written by the SLANS code
+        Returns
+        -------
+
+        """
+        qois = 'qois.json'
+        assert os.path.exists(
+            os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)), (
+            error('Eigenmode result does not exist, please run eigenmode simulation.'))
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)) as json_file:
+            self.eigenmode_qois = json.load(json_file)
+
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole',
+                               'qois_all_modes.json')) as json_file:
+            self.eigenmode_qois_all_modes = json.load(json_file)
+
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
+            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+
+        self.freq = self.eigenmode_qois['freq [MHz]']
+        self.k_cc = self.eigenmode_qois['kcc [%]']
+        self.ff = self.eigenmode_qois['ff [%]']
+        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
+        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
+        self.G = self.GR_Q / self.R_Q
+        self.Q = self.eigenmode_qois['Q []']
+        self.e = self.eigenmode_qois['Epk/Eacc []']
+        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
+        self.Epk_Eacc = self.e
+        self.Bpk_Eacc = self.b
+
+    def plot_dispersion(self, ax=None, show_continuous=True, **kwargs):
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        df = pd.DataFrame.from_dict(self.eigenmode_qois_all_modes, orient='index')
+        freqs = df['freq [MHz]'][1:self.n_cells + 1]
+
+        k = np.linspace(np.pi / self.n_cells, np.pi, self.n_cells, endpoint=True)
+        axis_label = ['$' + f'({i + 1}/{self.n_cells})' + r'\pi$' if i - 1 != self.n_cells else r'$\pi$' for i in
+                      range(self.n_cells)]
+        ax.plot(k, freqs, marker='o', mec='k', label=self.name, **kwargs)
+        ax.set_xticklabels(axis_label)
+        ax.set_ylabel('$f$ [MHz]')
+        ax.set_xlabel('$k$')
+
+        # if show_continuous:
+        #     # calculate continuous
+        #     k = np.linspace(0, np.pi, 100, endpoint=True)
+        #     f_pi_over_2 = (freqs[0] + freqs[-1])/2
+        #     freq_c = np.sqrt(freqs[0]**2 + freqs[-1]**2 - 2*freqs[0]*freqs[-1]*np.cos(k))
+        #     ax.plot(k, freq_c, c='k', lw=2)
+
+        return ax
+
+    def plot_axis_field(self, show_min_max=True):
+        fig, ax = plt.subplots(figsize=(12, 3))
+        if len(self.Ez_0_abs['z(0, 0)']) != 0:
+            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+            ax.text(
+                0.95, 0.05,  # Position (normalized coordinates)
+                '$\eta=' + fr'{self.ff:.2f}\%' + '$',  # Text content
+                fontsize=12,  # Font size
+                ha='right',  # Horizontal alignment
+                va='bottom',  # Vertical alignment
+                transform=plt.gca().transAxes  # Use axes-relative positioning
+            )
+            ax.legend(loc="upper right")
+            if show_min_max:
+                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 50, width=100)
+                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
+                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                ax.axhline(max(Ez_0_abs_peaks), c='k')
+        else:
+            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                           'Ez_0_abs.csv')):
+                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                       'Ez_0_abs.csv')) as csv_file:
+                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+                ax.text(
+                    0.95, 0.05,  # Position (normalized coordinates)
+                    '$\eta=$' + fr'{self.ff:.2f}\%' + '$',  # Text content
+                    fontsize=12,  # Font size
+                    ha='right',  # Horizontal alignment
+                    va='bottom',  # Vertical alignment
+                    transform=plt.gca().transAxes  # Use axes-relative positioning
+                )
+                ax.legend(loc="upper right")
+                if show_min_max:
+                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
+                                          width=100)
+                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                    ax.axhline(max(Ez_0_abs_peaks), c='k')
+            else:
+                error('Axis field plot data not found.')
+
+    def plot_spectra(self, var, ax=None):
+        if len(self.uq_fm_results_all_modes) != 0:
+            df = pd.DataFrame({k: {sub_k: v[0] for sub_k, v in sub_dict.items()} for k, sub_dict in
+                               self.uq_fm_results_all_modes.items()})
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(12, 4))
+
+            # Generate KDE data
+            for col in ['freq_1 [MHz]', 'freq_2 [MHz]', 'freq_3 [MHz]', 'freq_4 [MHz]', 'freq_5 [MHz]', 'freq_6 [MHz]',
+                        'freq_7 [MHz]', 'freq_8 [MHz]', 'freq_9 [MHz]']:
+                mean = df[col]["expe"]
+                std = df[col]["stdDev"]
+                x_values = np.linspace(mean - 10, mean + 10, 100000)  # Adjust range as needed
+                if std / mean < 1e-4:  # set a very narrow range for the x-axis around the mean.
+                    x = np.linspace(mean - 10, mean + 10, 100000)
+                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
+                    ax.plot(x, y_values * 1e-8, label=col)
+                else:
+                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
+                    ax.plot(x_values, y_values * 1e-8, label=col)
+
+            # Plot settings
+            ax.set_title("KDE Plots for Frequencies")
+            ax.set_xlabel("Frequency (MHz)")
+            ax.set_ylabel("Density")
+            ax.set_xlim(1270, 1310)
+            # ax.set_ylim(0, 3)
+            ax.legend()
+
+        else:
+            error("uq_fm_results_all_modes not found")
+
+    def get_uq_fm_results(self, folder):
+        # load uq result
+        with open(os.path.join(folder, 'uq.json'), 'r') as json_file:
+            self.uq_fm_results = json.load(json_file)
+
+        if os.path.exists(os.path.join(folder, 'uq_all_modes.json')):
+            with open(os.path.join(folder, 'uq_all_modes.json'), 'r') as json_file:
+                self.uq_fm_results_all_modes = json.load(json_file)
+
+        # get neighbours and all qois
+        neighbours = {}
+        for dirr in os.listdir(os.path.join(folder, 'Cavities')):
+            if 'Q' in dirr.split('_')[-1]:
+                with open(os.path.join(folder, 'Cavities', dirr, 'eigenmode', 'monopole', 'qois.json'), 'r') as json_file:
+                    neighbour_uq_fm_results = json.load(json_file)
+                neighbours[dirr] = neighbour_uq_fm_results
+
+        self.neighbours = pd.DataFrame.from_dict(neighbours, orient='index')
+
+        # nodes, weights = cn_leg_05_2(7)
+        # write weights
+
+        # data_table = pd.DataFrame(weights, columns=['weights'])
+        # data_table.to_csv(fr'{folder}\weights.csv', index=False, sep='\t', float_format='%.32f')
+
+        # get nodes
+        self.uq_nodes = pd.read_csv(os.path.join(folder, 'nodes.csv'), sep='\t')
+        # get weights
+        self.uq_weights = pd.read_csv(os.path.join(folder, 'weights.csv'))
+
+    def get_uq_hom_results(self, folder):
+        with open(folder, 'r') as json_file:
+            self.uq_hom_results = json.load(json_file)
+
+    def get_wakefield_qois(self, wakefield_config):
+        """
+        Get the quantities of interest written by the ABCI code
+
+        Parameters
+        ----------
+        opt: {'SR', 'BS'}
+            SR - Synchrotron radiation bunch length
+            BS - Bremsstrahlung
+
+        Returns
+        -------
+
+        """
+        qois = 'qois.json'
+
+        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')):
+            with open(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')) as json_file:
+                all_wakefield_qois = json.load(json_file)
+
+        # get only keys in op_points
+        if 'operating_points' in wakefield_config:
+            for op_pt in wakefield_config['operating_points'].keys():
+                for key, val in all_wakefield_qois.items():
+                    if op_pt in key:
+                        self.wakefield_qois[key] = val
+
+            for key, val in self.wakefield_qois.items():
+                self.k_fm[key] = val['k_FM [V/pC]']
+                self.k_loss[key] = val['|k_loss| [V/pC]']
+                self.k_kick[key] = val['|k_kick| [V/pC/m]']
+                self.phom[key] = val['P_HOM [kW]']
+                self.I0[key] = val['I0 [mA]']
+
+    def get_abci_data(self):
+        self.abci_data = {'Long': ABCIData(self.wakefield_dir, 'longitudinal', 0),
+                          'Trans': ABCIData(self.wakefield_dir, 'transversal', 1)}
+
+    def plot_animate_wakefield(self, save=False):
+        def plot_contour_for_frame(data, frame_key, ax):
+            ax.clear()
+
+            colors = {'DOTS': 'k', 'SOLID': 'k'}
+
+            if frame_key in data:
+                for plot_type, df in data[frame_key]:
+                    ax.plot(df['X'], df['Y'], linestyle='-', color=colors[plot_type])
+
+            ax.set_xlabel('X-axis (m)')
+            ax.set_ylabel('Y-axis (m)')
+            ax.set_title(f'Contour Plot for {frame_key}')
+
+        def animate_frames(data):
+            fig, ax = plt.subplots(figsize=(18, 4))
+            frame_keys = sorted(data.keys(), key=lambda x: int(x.split('_')[1]))  # Sort frames by their order
+
+            def update(frame_key):
+                plot_contour_for_frame(data, frame_key, ax)
+
+            ani = FuncAnimation(fig, update, frames=frame_keys, repeat=True, interval=1000)
+            plt.close(fig)
+
+            return ani
+
+        top_folder = os.path.join(self.projectDir, "SimulationData", "ABCI", self.name)
+        efield_contour = get_wakefield_data(fr'{top_folder}/Cavity_MROT_0.top')
+        ani = animate_frames(efield_contour)
+        display_html(HTML(animate_frames(efield_contour).to_jshtml()))
+
+        if save:
+            # Save the animation as an MP4 file
+            ani.save(fr'{top_folder}/{self.name}_e_field_animation.mp4', writer='ffmpeg', dpi=150)
+
+    def get_power_uq(self, rf_config, op_points_list):
+        stat_moms = ['expe', 'stdDev', 'skew', 'kurtosis']
+        for ii, op_pt in enumerate(op_points_list):
+            self.rf_performance_qois_uq[op_pt] = {}
+            val = self.operating_points[op_pt]
+            for kk, vv in val.items():
+                if 'sigma' in kk:
+                    sig_id = kk.split('_')[-1].split(' ')[0]
+
+                    if 'Eacc [MV/m]' in rf_config.keys():
+                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    else:
+                        op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0]}
+                        self.Eacc_rf_config = val['Eacc [MV/m]']
+
+                    if 'V [GV]' in rf_config.keys():
+                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    else:
+                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+
+                    Q0 = {'expe': [self.Q0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    n_cav = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_in = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_cryo = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    pdyn = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    pstat = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    p_wp = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+
+                    # test
+                    n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
+
+                    # p_in = rf_config['SR per turn [MW]'] * 1e6 / n_cav * 1e-3  # maximum synchrotron radiation per beam
+
+                    p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
+
+                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
+                            self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
+                    pdyn_expe, pdyn_std, pdyn_skew, pdyn_kurtosis = weighted_mean_obj(
+                        np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
+                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std, 'skew': pdyn_skew, 'kurtosis': pdyn_kurtosis}
+
+                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (
+                            self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
+                    pstat_expe, pstat_std, pstat_skew, pstat_kurtosis = weighted_mean_obj(
+                        np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
+                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std, 'skew': pstat_skew, 'kurtosis': pstat_kurtosis}
+
+                    p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
+                    p_wp_expe, p_wp_std, p_wp_skew, p_wp_kurtosis = weighted_mean_obj(
+                        np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
+                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std, 'skew': p_wp_skew, 'kurtosis': p_wp_kurtosis}
+
+                    for stat_mom in stat_moms:
+                        if op_field[stat_mom][0] != 0:
+                            # n_cav[stat_mom] = [
+                            #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
+
+                            p_in[stat_mom] = [
+                                p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
+
+                        # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
+                        #     p_cryo[stat_mom] = [
+                        #         8 / (np.sqrt(self.uq_fm_results['freq [MHz]'][stat_mom][0] / 500))]  # W/m
+                        #
+                        # if self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] * n_cav[stat_mom][0] != 0:
+                        #     pdyn[stat_mom] = [v_rf[stat_mom][0] * (op_field[stat_mom][0] * self.l_active) / (
+                        #             self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] *
+                        #             n_cav[stat_mom][0])]  # per cavity
+                        #
+                        # if op_field[stat_mom][0] != 0 and n_cav[stat_mom][0] != 0:
+                        #     pstat[stat_mom] = [(self.l_cavity * v_rf[stat_mom][0] / (
+                        #             self.l_active * op_field[stat_mom][0] * n_cav[stat_mom][0])) * p_cryo[stat_mom][
+                        #                            0]]
+                        #
+                        # if inv_eta[stat_mom][0] != 0:
+                        #     p_wp[stat_mom] = [
+                        #         (inv_eta[stat_mom][0]) * (pdyn[stat_mom][0] + pstat[stat_mom][0]) * 1e-3]  # per cavity
+
+                    self.rf_performance_qois_uq[op_pt][sig_id] = {
+                        r"Ncav": n_cav,
+                        r"Q0 []": Q0,
+                        r"Pstat/cav [W]": pstat,
+                        r"Pdyn/cav [W]": pdyn,
+                        r"Pwp/cav [kW]": p_wp,
+                        r"Pin/cav [kW]": p_in,
+                        r"PHOM/cav [kW]": self.uq_hom_results[fr'P_HOM [kW]_{op_pt}_{sig_id}_{vv}mm']
+                    }
+        return self.rf_performance_qois_uq
+
+    def get_power(self, rf_config, op_points_list):
+        for ii, op_pt in enumerate(op_points_list):
+            self.rf_performance_qois[op_pt] = {}
+            val = self.operating_points[op_pt]
+            for kk, vv in val.items():
+                if 'sigma' in kk:
+                    sig_id = kk.split('_')[-1].split(' ')[0]
+
+                    if 'Eacc [MV/m]' in rf_config.keys():
+                        op_field = self.Eacc_rf_config * 1e6
+                    else:
+                        op_field = val['Eacc [MV/m]'] * 1e6
+                        self.Eacc_rf_config = op_field
+
+                    if 'V [GV]' in rf_config.keys():
+                        v_rf = rf_config['V [GV]'][ii] * 1e9
+                    else:
+                        v_rf = val['V [GV]'] * 1e9
+
+                    Q0 = self.Q0
+                    inv_eta = self.inv_eta
+                    p_sr = rf_config['SR per turn [MW]'] * 1e6
+
+                    n_cav = int(np.ceil(v_rf / (op_field * self.l_active)))
+                    p_in = p_sr / n_cav  # maximum synchrotron radiation per beam
+
+                    p_cryo = 8 / (np.sqrt(self.freq / 500))
+
+                    pdyn = v_rf * (op_field * self.l_active) / (self.R_Q * Q0 * n_cav)
+
+                    pstat = (self.l_cavity * v_rf / (self.l_active * op_field * n_cav)) * p_cryo  # per cavity
+                    p_wp = (inv_eta) * (pdyn + pstat)  # per cavity
+
+                    self.rf_performance_qois[op_pt][sig_id] = {
+                        r"Ncav": n_cav,
+                        r"Q0 []": Q0,
+                        r"Pstat/cav [W]": pstat,
+                        r"Pdyn/cav [W]": pdyn,
+                        r"Pwp/cav [kW]": p_wp * 1e-3,
+                        r"Pin/cav [kW]": p_in * 1e-3,
+                        r"PHOM/cav [kW]": self.phom[fr'{op_pt}_{sig_id}_{vv}mm']
+                    }
+        return self.rf_performance_qois
+
+    def get_uq_post(self, qoi):
+        pass
+
+    def get_fields(self, mode=1):
+        gfu_E, gfu_H = ngsolve_mevp.load_fields(os.path.join(self.projectDir,
+                                                             'SimulationData', 'NGSolveMEVP',
+                                                             self.name, 'monopole'),
+                                                mode)
+        return gfu_E, gfu_H
+
+    def plot(self, what, ax=None, scale_x=1, **kwargs):
+        if what.lower() == 'geometry':
+            if 'mid_cell' in kwargs.keys():
+                new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
+                ax = write_cavity_geometry_cli(self.mid_cell, self.mid_cell, self.mid_cell,
+                                               'none', 1, scale=1, ax=ax, plot=True, **new_kwargs)
+            elif 'end_cell_left' in kwargs.keys():
+                ax = write_cavity_geometry_cli(self.end_cell_left, self.end_cell_left, self.end_cell_left,
+                                               'left', 1, scale=1, ax=ax, plot=True, **kwargs)
+            elif 'end_cell_right' in kwargs.keys():
+                ax = write_cavity_geometry_cli(self.end_cell_right, self.end_cell_right, self.end_cell_right,
+                                               'right', 1, scale=1, ax=ax, plot=True, **kwargs)
+            else:
+                ax = write_cavity_geometry_cli(self.mid_cell, self.end_cell_left, self.end_cell_right,
+                                               self.beampipe, self.n_cells, scale=1, ax=ax, plot=True, **kwargs)
+            ax.set_xlabel('$z$ [mm]')
+            ax.set_ylabel(r"$r$ [mm]")
+            return ax
+
+        if what.lower() == 'zl':
+            if ax:
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
+
+            ax.set_xlabel('f [MHz]')
+            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
+            return ax
+        if what.lower() == 'zt':
+            if ax:
+                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+
+                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
+                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
+            ax.set_xlabel('f [MHz]')
+            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
+            return ax
+
+        if what.lower() == 'wpl':
+            if ax:
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+
+                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+
+                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
+
+            ax.set_xlabel('Distance from Bunch Head S [m]')
+            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC]")
+            return ax
+        if what.lower() == 'wpt':
+            if ax:
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+
+                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+
+                if 'c' not in kwargs.keys():
+                    kwargs['c'] = self.color
+
+                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
+                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
+            ax.set_xlabel('Distance from Bunch Head S [m]')
+            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC/m]")
+            return ax
+
+        if what.lower() == 'convergence':
+            try:
+                if ax:
+                    self._plot_convergence(ax)
+                else:
+                    fig, ax = plt.subplot_mosaic([['conv', 'abs_err']], layout='constrained', figsize=(12, 4))
+                    self._plot_convergence(ax)
+                return ax
+            except ValueError:
+                info("Convergence data not available.")
+
+    def plot_mesh(self, plotter='ngsolve'):
+        mesh_path = os.path.join(self.self_dir, 'eigenmode', 'monopole')
+
+        if os.path.exists(mesh_path):
+            ngsolve_mevp.plot_mesh(mesh_path, plotter=plotter)
+        else:
+            error('The folder or mesh does not exist. Please check that a mesh file was writtten.')
+
+    def plot_fields(self, mode=1, which='E', plotter='ngsolve'):
+        field_path = os.path.join(self.self_dir, 'eigenmode', 'monopole')
+
+        if os.path.exists(field_path):
+            ngsolve_mevp.plot_fields(field_path, mode, which, plotter)
+        else:
+            error('The foler or field file does not exist. Please check that a mesh file was writtten.')
+
+    def _plot_convergence(self, ax):
+        keys = list(ax.keys())
+        # plot convergence
+        conv_filepath = os.path.join(self.self_dir, 'eigenmode', "tune_convergence.json")
+        if os.path.exists(conv_filepath):
+            with open(conv_filepath, 'r') as f:
+                convergence_dict = json.load(f)
+            if len(convergence_dict) > 0:
+                x, y = convergence_dict[list(convergence_dict.keys())[0]], convergence_dict['freq [MHz]']
+                ax[keys[0]].scatter(x, y, ec='k', label=self.name)
+
+                # plot directions
+                for i in range(len(x) - 1):
+                    dx = x[i + 1] - x[i]
+                    dy = y[i + 1] - y[i]
+                    ax[keys[0]].quiver(x[i], y[i], dx, dy, ls='--', angles='xy',
+                                       scale_units='xy', scale=1, color='red',
+                                       width=0.005, units='width', headwidth=3, headlength=5,
+                                       headaxislength=4)
+
+        # plot absolute error
+        abs_err_filepath = os.path.join(self.self_dir, 'eigenmode', "tune_absolute_error.json")
+        abs_err_dict = {}
+        if os.path.exists(conv_filepath):
+            with open(abs_err_filepath, 'r') as f:
+                abs_err_dict = json.load(f)
+        if len(abs_err_dict) > 0:
+            ax[keys[1]].plot(abs_err_dict['abs_err'], marker='o', mec='k', label=self.name)
+
+        ax[keys[0]].set_xlabel('Parameter')
+        ax[keys[0]].set_ylabel(r"Value")
+        ax[keys[1]].set_xlabel('Iteration')
+        ax[keys[1]].set_ylabel(r"Absolute error")
+        ax[keys[1]].set_yscale('log')
+
+    def define_operating_points(self, op):
+        self.operating_points = op
+
+    def inspect(self, cell_type='mid-cell', variation=0.2):
+
+        if cell_type == 'mid-cell':
+            cell = self.shape['IC']
+        elif cell_type == 'end-cell-left':
+            cell = self.shape['OC']
+        elif cell_type == 'end-cell-right':
+            cell = self.shape['OC_R']
+        else:
+            cell = self.shape['IC']
+
+        if self.cell_parameterisation == 'flattop':
+            A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
+
+            # Define the function that plots the graph
+            def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
+                cell = np.array([A, B, a, b, Ri, L, Req, l])
+                write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
+                                                  n_cell=1, tangent_check=True, lw=1,
+                                                  plot=True,
+                                                  ignore_degenerate=True)
+
+                # Update the sum display
+                sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
+
+            # Create sliders for each variable
+            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+                                           description='A')
+            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+                                           description='B')
+            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+                                           description='a')
+            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+                                           description='b')
+            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+                                            description='Ri')
+            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+                                           description='L')
+            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+                                             value=Req_,
+                                             description='Req')
+            l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
+                                           description='l')
+            # Create a label to display the sum of A + a
+            sum_label = Label()
+
+            # Arrange the sliders in a 3x3 layout
+            ui = VBox([
+                HBox([A_slider, B_slider, a_slider]),
+                HBox([b_slider, Ri_slider, L_slider]),
+                HBox([Req_slider, l_slider]),
+                sum_label  # Add the sum label to the layout
+            ])
+
+            # Create an interactive widget to update the plot
+            out = widgets.interactive_output(plot_cavity_geometry_flattop,
+                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
+
+        else:
+            A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
+
+            # Define the function that plots the graph
+            def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
+                cell = np.array([A, B, a, b, Ri, L, Req])
+                write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
+                                          tangent_check=True, lw=1,
+                                          plot=True,
+                                          ignore_degenerate=True)
+
+                # Update the sum display
+                sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+
+            # Create sliders for each variable
+            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+                                           description='A')
+            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+                                           description='B')
+            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+                                           description='a')
+            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+                                           description='b')
+            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+                                            description='Ri')
+            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+                                           description='L')
+            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+                                             value=Req_,
+                                             description='Req')
+            # Create a label to display the sum of A + a
+            sum_label = Label()
+
+            # Arrange the sliders in a 3x3 layout
+            ui = VBox([
+                HBox([A_slider, B_slider, a_slider]),
+                HBox([b_slider, Ri_slider, L_slider]),
+                HBox([Req_slider]),
+                sum_label  # Add the sum label to the layout
+            ])
+
+            # Create an interactive widget to update the plot
+            out = widgets.interactive_output(plot_cavity_geometry,
+                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
+
+        # Display the layout
+        display(out, ui)
+
+    def config_sample(self, kind):
+        if kind == 'eigenmode':
+            return EIGENMODE_CONFIG
+
+        if kind == 'wakefield':
+            return WAKEFIELD_CONFIG
+
+        if kind == 'tune':
+            return TUNE_CONFIG
+
+        if kind == 'uq':
+            return UQ_CONFIG
+
+        if kind == 'optimisation':
+            pass
+
+        if kind == 'sa':
+            return
+    # def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=False):
+    #
+    #     fig, ax = plt.subplots(figsize=(12, 6))
+    #     ax.set_aspect('equal')
+    #
+    #     if cell_type == 'mid-cell':
+    #         cell = self.shape['IC']
+    #     elif cell_type == 'end-cell-left':
+    #         cell = self.shape['OC']
+    #     elif cell_type == 'end-cell-right':
+    #         cell = self.shape['OC_R']
+    #     else:
+    #         cell = self.shape['IC']
+    #
+    #     if self.cell_parameterisation == 'flattop':
+    #         A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
+    #
+    #         # Define the function that plots the graph
+    #         def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
+    #             cell = np.array([A, B, a, b, Ri, L, Req, l])
+    #             write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
+    #                                               n_cell=1, tangent_check=True, lw=1,
+    #                                               plot=True,
+    #                                               ignore_degenerate=True)
+    #
+    #             # Update the sum display
+    #             sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
+    #
+    #         # Create sliders for each variable
+    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+    #                                        description='A')
+    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+    #                                        description='B')
+    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+    #                                        description='a')
+    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+    #                                        description='b')
+    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+    #                                         description='Ri')
+    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+    #                                        description='L')
+    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+    #                                          value=Req_,
+    #                                          description='Req')
+    #         l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
+    #                                        description='l')
+    #         # Create a label to display the sum of A + a
+    #         sum_label = Label()
+    #
+    #         # Arrange the sliders in a 3x3 layout
+    #         ui = VBox([
+    #             HBox([A_slider, B_slider, a_slider]),
+    #             HBox([b_slider, Ri_slider, L_slider]),
+    #             HBox([Req_slider, l_slider]),
+    #             sum_label  # Add the sum label to the layout
+    #         ])
+    #
+    #         # Create an interactive widget to update the plot
+    #         out = widgets.interactive_output(plot_cavity_geometry_flattop,
+    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
+    #
+    #     else:
+    #         A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
+    #
+    #         # Define the function that plots the graph
+    #         def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
+    #             cell = np.array([A, B, a, b, Ri, L, Req])
+    #             # ax.clear()
+    #             write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
+    #                                       tangent_check=tangent_check, lw=3,
+    #                                       plot=True, ax=ax,
+    #                                       ignore_degenerate=True)
+    #             # Update the sum display
+    #             sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
+    #
+    #         def run_eigenmode(b):
+    #             eigenmode_config = {'processes': 1}
+    #             boundary_conds = 'mm'
+    #             eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
+    #
+    #             shape_space = {}
+    #
+    #             # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
+    #
+    #         # Create sliders for each variable
+    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
+    #                                        description='A')
+    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
+    #                                        description='B')
+    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
+    #                                        description='a')
+    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
+    #                                        description='b')
+    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
+    #                                         description='Ri')
+    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
+    #                                        description='L')
+    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
+    #                                          value=Req_,
+    #                                          description='Req')
+    #         # Create a label to display the sum of A + a
+    #         sum_label = Label()
+    #
+    #         # create run tune and run eigenmode button
+    #         button_tune = widgets.Button(description="Tune")
+    #         button_eigenmode = widgets.Button(description="Eigenmode")
+    #         button_eigenmode.on_click(run_eigenmode)
+    #
+    #         # Arrange the sliders in a 3x3 layout
+    #         ui = VBox([
+    #             HBox([A_slider, B_slider, a_slider]),
+    #             HBox([b_slider, Ri_slider, L_slider]),
+    #             HBox([Req_slider]),
+    #             sum_label,  # Add the sum label to the layout
+    #             # HBox([button_tune, button_eigenmode])
+    #         ])
+    #
+    #         # Create an interactive widget to update the plot
+    #         out = widgets.interactive_output(plot_cavity_geometry,
+    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
+    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
+    #
+    #     # Display the layout
+    #     display(out, ui)
+
+    def eval_expr(self, expr, symbols):
+        """Evaluate numeric expression with symbols."""
+        node = ast.parse(expr, mode='eval').body
+
+        def _eval(n):
+            if isinstance(n, ast.Num): return n.n
+            if isinstance(n, ast.Name): return symbols[n.id]
+            if isinstance(n, ast.BinOp): return _ops[type(n.op)](_eval(n.left), _eval(n.right))
+            if isinstance(n, ast.UnaryOp): return _ops[type(n.op)](_eval(n.operand))
+            raise ValueError(f"Unsupported expression: {expr}")
+
+        return _eval(node)
+
+    # Main converter
+    def geo_to_abc(self, wakefield_config=None, **kwargs):
+        # Read input
+        with open(self.geo_filepath) as f:
+            lines = [l.split('%', 1)[0].strip() for l in f]
+
+        # 1) Build symbol table from DefineNumber
+        symbols = {}
+        define_re = re.compile(r"(\w+)\s*=\s*DefineNumber\[\s*([^,\]]+)")
+        for line in lines:
+            m = define_re.search(line)
+            if m:
+                symbols[m.group(1)] = m.group(2).strip()
+        # Evaluate until fixed
+        changed = True
+        while changed:
+            changed = False
+            for k, v in list(symbols.items()):
+                if isinstance(v, str):
+                    try:
+                        symbols[k] = self.eval_expr(v, symbols)
+                        changed = True
+                    except:
+                        pass
+
+        # 2) Parse geometry segments
+        point_re = re.compile(r"Point\((\d+)\)\s*=\s*\{([^}]+)\}")
+        ellipse_re = re.compile(r"Ellipse\(\d+\)\s*=\s*\{([^}]+)\}")
+
+        points = {}  # pid -> (r,z)
+        segments = []  # list of ('point', r, z) or ('ellipse', end_pid)
+
+        # First pass: collect points structs and z-values
+        zvals = []
+        for line in lines:
+            m = point_re.match(line)
+            if m:
+                pid = int(m.group(1))
+                coords = [p.strip() for p in m.group(2).split(',')]
+                z = self.eval_expr(coords[0], symbols)
+                r = self.eval_expr(coords[1], symbols)
+                points[pid] = (r, z)
+                zvals.append(z)
+
+        zmin = min(zvals) if zvals else 0.0
+
+        # Second pass: build segment list
+        for line in lines:
+            if line.startswith('Point('):
+                m = point_re.match(line)
+                pid = int(m.group(1))
+                r, z = points[pid]
+                segments.append(('point', r, z - zmin))
+            elif line.startswith('Line('):
+                continue
+            elif line.startswith('Ellipse('):
+                m = ellipse_re.match(line)
+                ids = [int(x.strip()) for x in m.group(1).split(',')]
+                # remove last 3 point segments
+                if len(segments) >= 3:
+                    segments = segments[:-3]
+                # add ellipse indicator + endpoint
+                mid_pid = ids[1]
+                end_pid = ids[3]
+                # segments.append(('ellipse', mid_pid))
+                segments.append(('ellipse', mid_pid, end_pid))
+
+        # Create geometry if not crated
+        self.create()
+
+        # 3) Write output
+        wakefield_folder_structure = {
+            'wakefield': {
+                'longitudinal': None,
+                'transversal': None
+            }
+        }
+        make_dirs_from_dict(wakefield_folder_structure, self.self_dir)
+
+        MROT = wakefield_config['polarisation']
+        if  MROT == 2:
+            for m in range(2):
+                self._write_abc(points, segments, zmin, symbols, m, wakefield_config, **kwargs)
+        else:
+            self._write_abc(points, segments, zmin, symbols, MROT, wakefield_config, **kwargs)
+
+    def _write_abc(self, points, segments, zmin, symbols, MROT, wakefield_config, **kwargs):
+        # defaults
+        RDRIVE, ISIG = 5e-3, 5
+        LCRBW = 'F'  # counter-rotating beam
+        ZSEP = 0.0
+        BSEP = 0
+        NBUNCH = 1
+        BETA = 1
+        LMATPR = '.F.'
+        LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = '.T.', '.T.', '.T.', '.F.', '.T.', '.T.', '.F.'
+        LSAV, LCPUTM = 'F', 'F'
+        LCBACK = '.T.'
+        LPLE = '.F.'
+        NSHOT = 0
+        UBT = 50
+        SIG = 25e-3
+        MT = 4
+        mesh_DDR = 0.00125
+        mesh_DDZ = 0.00125
+
+        # unpack kwargs
+        for key, value in kwargs.items():
+            if key == 'RADIAL BEAM OFFSET AT (RDRIVE)':
+                RDRIVE = value
+            if key == 'NUMBER OF WAKE POTENTIAL POINTS (NW)':
+                NW = value
+            if key == 'WAKE FOR A COUNTER-ROTATING BEAM (LCRBW)':
+                LCRBW = value
+            if key == 'VELOCITY OF THE BUNCH / C (BETA)':
+                BETA = value
+            if key == 'PRINTOUT OF CAVITY SHAPE USED (LMATPR)':
+                LMATPR = value
+            if key == 'PRINTOUT OF WAKE POTENTIALS (LPRW)':
+                LPRW = value
+            if key == 'LINE-PRINTER PLOT OF WAKE POT. (LPPW)':
+                LPPW = value
+            if key == 'SAVE WAKE POTENTIALS IN A FILE (LSVW)':
+                LSVW = value
+            if key == 'SAVE AZIMUTHAL WAKE IN A FILE (LSVWA)':
+                LSVWA = value
+            if key == 'SAVE TRANSVERSE WAKE IN A FILE (LSVWT)':
+                LSVWT = value
+            if key == 'SAVE LONGITUDINAL WAKE IN A FILE (LSVWL)':
+                LSVWL = value
+            if key == 'SAVE FFT RESULTS IN A FILE (LSVF)':
+                LSVF = value
+            if key == 'SAVE FIELDS INTO FILE (LSAV)':
+                LSAV = value
+            if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
+                LCPUTM = value
+
+        if 'save_fields' in wakefield_config.keys():
+            LPLE, LCBACK = 'T', 'F'
+            if isinstance(wakefield_config['save_fields'], dict):
+                if 'nshot' in wakefield_config['save_fields'].keys():
+                    NSHOT = wakefield_config['save_fields']['nshot']
+
+        if 'wake_config' in wakefield_config.keys():
+            wake_config = wakefield_config['wake_config']
+            if 'MT' in wake_config.keys():
+                MT = wake_config['MT']
+            if 'counter_rotating'in wakefield_config['wake_config'].keys():
+                LCRBW = 'T'
+                if 'separation' in wakefield_config['wake_config']['counter_rotating'].keys():
+                    ZSEP = wakefield_config['wake_config']['counter_rotating']['separation']
+
+        if 'beam_config' in wakefield_config.keys():
+            if 'beam_offset' in wakefield_config['beam_config'].keys():
+                RDRIVE = wakefield_config['beam_config']['beam_offset']
+            if 'nbunch' in wakefield_config['beam_config'].keys():
+                NBUNCH = wakefield_config['beam_config']['nbunch']
+            if 'separation' in wakefield_config['beam_config'].keys():
+                BSEP = wakefield_config['beam_config']['separation']
+
+        with open(os.path.join(self.self_dir, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
+            # Header
+            out.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
+            out.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
+            out.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
+            out.write(f' &MESH DDR = {mesh_DDR}, DDZ = {mesh_DDZ} &END \n')
+            out.write(" #CAVITYSHAPE\n0.\n")
+
+            # Body
+            for seg in segments:
+                if seg[0] == 'point':
+                    _, r, z = seg
+                    out.write(f"{r:.16f} {z:.16f}\n")
+                elif seg[0] == 'ellipse':
+                    _, pid_m, pid_e = seg
+                    r_m, z_m = points[pid_m]
+                    r_e, z_e = points[pid_e]
+                    out.write("-3., 0.000\n")
+                    out.write(f"{r_m:.16f} {z_m - zmin:.16f}\n")
+                    out.write(f"{r_e:.16f} {z_e - zmin:.16f}\n")
+
+            # Closing
+            out.write("0.000 0.000\n9999. 9999.\n")
+
+            # wakefield simulation paramters
+            out.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP} &END \n')
+            # out.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, 0.005))
+            out.write(f' &TIME  MT = {int(MT)} &END \n')
+            out.write(
+                f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK}, LCRBW = {LCRBW}, ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+            # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
+            # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
+            out.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
+                    f'LINTZ = .F., LPATH = .T., LPLE = {LPLE}, LPLC= .F. &END \n')
+            out.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                    f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
+            out.write('\nSTOP\n')
+
+    def to_multicell(self):
+        mid_cell = self.shape['IC']
+
+        self.shape_multicell = {}
+        mid_cell_multi = np.array([[[a, a] for _ in range(self.n_cells - 1)] for a in mid_cell])
+
+        self.shape_multicell['OC'] = self.shape['OC']
+        self.shape_multicell['OC_R'] = self.shape['OC_R']
+        self.shape_multicell['IC'] = mid_cell_multi
+        self.shape_multicell['BP'] = self.shape['BP']
+        self.shape_multicell['n_cells'] = self.shape['n_cells']
+        self.shape_multicell['CELL PARAMETERISATION'] = 'multicell'
+        self.shape_multicell['kind'] = self.kind
+        self.shape_multicell['geo_file'] = None
+
+    def _create_project(self, overwrite):
+        project_name = self.name
+        project_dir = self.projectDir
+
+        if project_name != '':
+
+            # check if folder already exist
+            e = self._check_if_path_exists(project_dir, project_name, overwrite)
+
+            if e:
+                def make_dirs_from_dict(d, current_dir=fr"{project_dir}"):
+                    for key, val in d.items():
+                        os.mkdir(os.path.join(current_dir, key))
+                        if type(val) == dict:
+                            make_dirs_from_dict(val, os.path.join(current_dir, key))
+
+                # create project structure in folders
+                project_dir_structure = {
+                    f'{project_name}':
+                        {
+                            'Cavities': None,
+                            'OperatingPoints': None,
+                            'SimulationData': {
+                                'SLANS': None,
+                                'SLANS_Opt': None,
+                                'NGSolveMEVP': None,
+                                'NativeEig': None,
+                                'ABCI': None,
+                                'CavitiesAnalysis': None
+                            },
+                            'PostprocessingData': {
+                                'Plots': None,
+                                'Data': None,
+                                'CSTData': None
+                            },
+                            'Reference': None
+                        }
+                }
+                try:
+                    make_dirs_from_dict(project_dir_structure)
+                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    return True
+                except Exception as e:
+                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    error("An exception occurred in created project: ", e)
+                    return False
+            else:
+                self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                return True
+        else:
+            info('\tPlease enter a valid project name')
+            self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+            return False
+
+    @staticmethod
+    def _check_if_path_exists(directory, folder, overwrite=False):
+        path = f"{directory}/{folder}"
+        if os.path.exists(path):
+            if overwrite:
+                x = 'y'
+            else:
+                x = 'n'
+
+            if x == 'y':
+                try:
+                    directory_list = os.listdir(path)
+
+                    if 'Cavities' in directory_list \
+                            and 'PostprocessingData' in directory_list \
+                            and 'SimulationData' in directory_list and len(directory_list) < 6:
+                        shutil.rmtree(path)
+                        return True
+                    else:
+                        info('\tIt seems that the folder specified is not a cavity project folder. Please check folder'
+                             'again to avoid deleting important files.')
+                        return False
+
+                except Exception as e:
+                    error("Exception occurred: ", e)
+                    return False
+            else:
+                return False
+        else:
+            return True
+
+    def _overwriteFolder(self, invar, projectDir, name):
+        path = os.path.join(self.projectDir, 'SimulationData', 'SLANS', f'_process_{invar}')
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            dir_util._path_created = {}
+
+        os.makedirs(path)
+
+    @staticmethod
+    def _copyFiles(invar, parentDir, projectDir, name):
+        src = os.path.join(parentDir, 'exe', 'SLANS_exe')
+        dst = os.path.join(projectDir, 'SimulationData', 'SLANS', f'_process_{invar}', 'SLANS_exe')
+
+        dir_util.copy_tree(src, dst)
+
+    def __str__(self):
+        p = dict()
+        p[self.name] = {
+            'tune': self.tune_results,
+            'fm': self.eigenmode_qois,
+            'hom': self.wakefield_qois,
+            'uq': {
+                'tune': 0,
+                'fm': self.uq_fm_results,
+                'hom': self.uq_hom_results
+            }
+        }
+        return fr"{json.dumps(p, indent=4)}"
+
+    @abstractmethod
+    def create(self):
+        pass
+
+
+class EllipticalCavity(Cavity):
+    def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
+                 end_cell_right=None, beampipe='none', name='cavity',
+                 cell_parameterisation='simplecell', color='k', plot_label=None):
+        """
+        All of the old “dimension‐based” logic has been moved here.
+        Assumes self.kind, self.name, self.color, etc. are already set.
+        """
+        super().__init__()
+
+        self.projectDir = None
+
+        self.plot_label = plot_label
+        self.name = name
+        self.kind = 'elliptical cavity'
+        self.beampipe = beampipe
+        self.color = color
+        self.geo_filepath = None
+        self.self_dir = None
+
+        self.n_cells = n_cells
+        self.cell_parameterisation = cell_parameterisation
+
+        # Basic counters / containers
+        self.n_modes = (n_cells + 1) if n_cells is not None else None
+        self.n_modules = 1
+        self.no_of_modules = 1
+
+        # Handle the special case: mid_cell can be a dict with keys OC, OC_R, IC
+        if isinstance(mid_cell, dict):
+            end_cell_left = mid_cell['OC']
+            end_cell_right = mid_cell['OC_R']
+            mid_cell = mid_cell['IC']
+
+        self.mid_cell = np.array(mid_cell)[:7]
+        if end_cell_left is not None:
+            self.end_cell_left = np.array(end_cell_left)[:7]
+        else:
+            self.end_cell_left = np.copy(self.mid_cell)
+
+        if end_cell_right is not None:
+            self.end_cell_right = np.array(end_cell_right)[:7]
+        else:
+            self.end_cell_right = np.copy(self.end_cell_left)
+
+        # Unpack 7 parameters
+        (self.A, self.B, self.a, self.b,
+         self.Ri, self.L, self.Req) = self.mid_cell[:7]
+
+        (self.A_el, self.B_el, self.a_el,
+         self.b_el, self.Ri_el, self.L_el,
+         self.Req_el) = self.end_cell_left[:7]
+
+        (self.A_er, self.B_er, self.a_er,
+         self.b_er, self.Ri_er, self.L_er,
+         self.Req_er) = self.end_cell_right[:7]
+
+        # Active length & cavity length
+        self.l_active = (
+                        2 * (self.n_cells - 1) * self.L +
+                        self.L_el +
+                        self.L_er
+                        ) * 1e-3
+        self.l_cavity = self.l_active + 8 * self.L * 1e-3
+
+        # Build self.shape dictionary
+        self.shape = {
+            "IC": update_alpha(self.mid_cell[:7], self.cell_parameterisation),
+            "OC": update_alpha(self.end_cell_left[:7], self.cell_parameterisation),
+            "OC_R": update_alpha(self.end_cell_right[:7], self.cell_parameterisation),
+            "BP": beampipe,
+            "n_cells": self.n_cells,
+            "CELL PARAMETERISATION": self.cell_parameterisation,
+            "kind": self.kind
+        }
+
+        self.to_multicell()
+        self.get_geometric_parameters()
+
+    def create(self, n_cells=None, beampipe=None, mode=None):
+        if n_cells is None:
+            n_cells = self.n_cells
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        if self.projectDir:
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+            # write geometry file to folder
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+
+            # define different paths for easier reference later
+            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
+            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
+            self.uq_dir = os.path.join(self.self_dir, 'uq')
+
+            self.geo_filepath = os.path.join(self.projectDir, 'Cavities', self.name, 'geometry', 'geodata.geo')
+            if mode is None:
+                self.write_geometry(self.parameters, n_cells, beampipe, write=self.geo_filepath)
+            else:
+                self.write_quarter_geometry(self.parameters, beampipe, write=self.geo_filepath)
+
+    def write_geometry(self, parameters, n_cells, BP, scale=1, ax=None, bc=None, tangent_check=False,
+                                  ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                  contour=False, **kwargs):
+        """
+        Plot cavity geometry
+
+        Parameters
+        ----------
+        tangent_check
+        bc
+        ax
+        ignore_degenerate
+        IC: list, ndarray
+            Inner Cell geometric parameters list
+        OC: list, ndarray
+            Left outer Cell geometric parameters list
+        OC_R: list, ndarray
+            Right outer Cell geometric parameters list
+        BP: str {"left", "right", "both", "none"}
+            Specify if beam pipe is on one or both ends or at no end at all
+        n_cell: int
+            Number of cavity cells
+        scale: float
+            Scale of the cavity geometry
+
+        Returns
+        -------
+
+        """
+
+        GEO = """
+        """
+        # IC, OC, OC_R = shape['IC'], shape['OC'], shape['OC_R']
+        # BP = self.beampipe
+        # n_cell = self.n_cells
+
+        if plot:
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(12, 6))
+                ax.set_aspect('equal')
+
+        names = ['A_m', 'B_m', 'a_m', 'b_m', 'Ri_m', 'L_m', 'Req_m',
+                 'A_el', 'B_el', 'a_el', 'b_el', 'Ri_el', 'L_el', 'Req_el',
+                 'A_er', 'B_er', 'a_er', 'b_er', 'Ri_er', 'L_er', 'Req_er']
+
+        A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, \
+            A_el, B_el, a_el, b_el, Ri_el, L_el, Req_el, \
+            A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er = (parameters[n]*1e-3 for n in names)
+
+        Req = Req_m  # CHANGE THIS, Req should be same
+
+        L_bp = 4 * L_m
+        if dimension or contour:
+            L_bp = 1 * L_m
+
+        if BP.lower() == 'both':
+            L_bp_l = L_bp
+            L_bp_r = L_bp
+        elif BP.lower() == 'left':
+            L_bp_l = L_bp
+            L_bp_r = 0.000
+        elif BP.lower() == 'right':
+            L_bp_l = 0.000
+            L_bp_r = L_bp
+        else:
+            L_bp_l = 0.000
+            L_bp_r = 0.000
+
+        step = 0.0005
+
+        # calculate shift
+        shift = (L_bp_r + L_bp_l + L_el + (n_cells - 1) * 2 * L_m + L_er) / 2
+
+        # calculate angles outside loop
+        # CALCULATE x1_el, y1_el, x2_el, y2_el
+
+        df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, tangent_check=tangent_check)
+        x1el, y1el, x2el, y2el = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        # CALCULATE x1, y1, x2, y2
+        df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, tangent_check=tangent_check)
+        x1, y1, x2, y2 = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, tangent_check=tangent_check)
+        x1er, y1er, x2er, y2er = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        geo = []
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            # # define parameters
+            # cav.write(f'\nA_el = DefineNumber[{A_el}, Name "Parameters/End cell 1 Equator ellipse major axis"];')
+            # cav.write(f'\nB_el = DefineNumber[{B_el}, Name "Parameters/End cell 1 Equator ellipse minor axis"];')
+            # cav.write(f'\na_el = DefineNumber[{a_el}, Name "Parameters/End cell 1 Iris ellipse major axis"];')
+            # cav.write(f'\nb_el = DefineNumber[{b_el}, Name "Parameters/End cell 1 Iris ellipse minor axis"];')
+            # cav.write(f'\nRi_el = DefineNumber[{Ri_el}, Name "Parameters/End cell 1 Iris radius"];')
+            # cav.write(f'\nL_el = DefineNumber[{L_el}, Name "Parameters/End cell 1 Half cell length"];')
+            # # cav.write(f'\nReq_el = DefineNumber[{Req}, Name "Parameters/End cell 1 Equator radius"];\n')
+            #
+            # cav.write(f'\nA_m = DefineNumber[{A_el}, Name "Parameters/Mid cell Equator ellipse major axis"];')
+            # cav.write(f'\nB_m = DefineNumber[{B_el}, Name "Parameters/Mid cell Equator ellipse minor axis"];')
+            # cav.write(f'\na_m = DefineNumber[{a_el}, Name "Parameters/Mid cell Iris ellipse major axis"];')
+            # cav.write(f'\nb_m = DefineNumber[{b_el}, Name "Parameters/Mid cell Iris ellipse minor axis"];')
+            # cav.write(f'\nRi_m = DefineNumber[{Ri_el}, Name "Parameters/Mid cell Iris radius"];')
+            # cav.write(f'\nL_m = DefineNumber[{L_el}, Name "Parameters/Mid cell Half cell length"];')
+            # cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Mid cell Equator radius"];\n')
+            #
+            # cav.write(f'\nA_er = DefineNumber[{A_el}, Name "Parameters/End cell 2 Equator ellipse major axis"];')
+            # cav.write(f'\nB_er = DefineNumber[{B_el}, Name "Parameters/End cell 2 Equator ellipse minor axis"];')
+            # cav.write(f'\na_er = DefineNumber[{a_el}, Name "Parameters/End cell 2 Iris ellipse major axis"];')
+            # cav.write(f'\nb_er = DefineNumber[{b_el}, Name "Parameters/End cell 2 Iris ellipse minor axis"];')
+            # cav.write(f'\nRi_er = DefineNumber[{Ri_el}, Name "Parameters/End cell 2 Iris radius"];')
+            # cav.write(f'\nL_er = DefineNumber[{L_el}, Name "Parameters/End cell 2 Half cell length"];')
+            # # cav.write(f'\nReq_er = DefineNumber[{Req}, Name "Parameters/End cell 2 Equator radius"];\n')
+
+            # SHIFT POINT TO START POINT
+            start_point = [-shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+            geo.append([start_point[1], start_point[0], 1])
+            pts = lineTo(start_point, [-shift, Ri_el], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
+            pt = [-shift, Ri_el]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            if bc:
+                # draw left boundary condition
+                ax.plot([-shift, -shift], [-Ri_el, Ri_el],
+                        [-shift - 0.2 * L_m, -shift - 0.2 * L_m], [-0.5 * Ri_el, 0.5 * Ri_el],
+                        [-shift - 0.4 * L_m, -shift - 0.4 * L_m], [-0.1 * Ri_el, 0.1 * Ri_el], c='b', lw=4, zorder=100)
+
+            # ADD BEAM PIPE LENGTH
+            if L_bp_l != 0:
+                pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0]])
+                pt = [L_bp_l - shift, Ri_el]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+            for n in range(1, n_cells + 1):
+                if n == 1:
+                    # DRAW ARC:
+                    if plot and dimension:
+                        ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                                 height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
+                                    xytext=(L_bp_l - shift, Ri_el + b_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+                        ax.annotate('', xy=(L_bp_l - shift, Ri_el),
+                                    xytext=(L_bp_l - shift, Ri_el + b_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+
+                        ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', ha='center',
+                                va='center')
+                        ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                                va='center', ha='center', rotation=90)
+
+                    start_pt = pt
+                    center_pt = [L_bp_l - shift, Ri_el + b_el]
+                    majax_pt = [L_bp_l - shift + a_el, Ri_el + b_el]
+                    end_pt = [-shift + x1el, y1el]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
+                    pt = [-shift + x1el, y1el]
+
+                    for pp in pts:
+                        geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2el, y2el], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [-shift + x2el, y2el]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    if plot and dimension:
+                        ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
+                                                                 height=2 * B_el, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
+                                    xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
+                        ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                    xytext=(L_el + L_bp_l - shift, Req - B_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+
+                        ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', ha='center',
+                                va='center')
+                        ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                                va='center', ha='center', rotation=90)
+
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+                    start_pt = pt
+                    center_pt = [L_el + L_bp_l - shift, Req - B_el]
+                    majax_pt = [L_el + L_bp_l - shift - A_el, Req - B_el]
+                    end_pt = [L_bp_l + L_el - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
+                    pt = [L_bp_l + L_el - shift, Req]
+
+                    for pp in pts:
+                        geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    if n_cells == 1:
+                        if L_bp_r > 0:
+                            # EQUATOR ARC TO NEXT POINT
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+
+                            start_pt = pt
+                            center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                            majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                            end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                        [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                            pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
+
+                            if plot and dimension:
+                                ax.scatter(L_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_er),
+                                                                         width=2 * A_er,
+                                                                         height=2 * B_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_er),
+                                            xytext=(L_el + L_bp_l - shift + A_er, Req - B_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                            xytext=(L_el + L_bp_l - shift, Req - B_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                                ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n',
+                                        ha='center',
+                                        va='center')
+                                ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
+                                        va='center', ha='left', rotation=90)
+
+                            # STRAIGHT LINE TO NEXT POINT
+                            pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                            # for pp in pts:
+                            #     geo.append([pp[1], pp[0], 0])
+                            pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                            pt_indx = add_point(cav, pt, pt_indx)
+                            curve_indx = add_line(cav, pt_indx, curve_indx)
+                            curve.append(curve_indx)
+
+                            geo.append([pt[1], pt[0], 0])
+
+                            # ARC
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            start_pt = pt
+                            center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                            majax_pt = [L_el + L_er + L_bp_l - shift + a_er, Ri_er + b_er]
+                            end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                        [L_bp_l + L_el + L_er - shift, Ri_er])
+
+                            if plot and dimension:
+                                ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                         width=2 * a_er,
+                                                                         height=2 * b_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                                ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                        ha='center', va='center')
+                                ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                        va='center', ha='center', rotation=90)
+
+                            pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+
+                            geo.append([pt[1], pt[0], 0])
+
+                            # calculate new shift
+                            shift = shift - (L_el + L_er)
+                        else:
+                            # EQUATOR ARC TO NEXT POINT
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            start_pt = pt
+                            center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                            majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                            end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                        [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                            pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
+
+                            # STRAIGHT LINE TO NEXT POINT
+                            pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                            # for pp in pts:
+                            #     geo.append([pp[1], pp[0], 0])
+                            pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                            pt_indx = add_point(cav, pt, pt_indx)
+                            curve_indx = add_line(cav, pt_indx, curve_indx)
+                            curve.append(curve_indx)
+
+                            geo.append([pt[1], pt[0], 0])
+
+                            # ARC
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            if plot and dimension:
+                                ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                         width=2 * a_er,
+                                                                         height=2 * b_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                                ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                        ha='center', va='center')
+                                ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                        va='center', ha='center', rotation=90)
+
+                            start_pt = pt
+                            center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                            majax_pt = [L_el + L_er + L_bp_l - shift + a_er - shift, Ri_er + b_er]
+                            end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                        [L_bp_l + L_el + L_er - shift, Ri_er])
+                            pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                            # pt_indx += 1
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
+
+                    else:
+                        # EQUATOR ARC TO NEXT POINT
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+
+                        start_pt = pt
+                        center_pt = [L_el + L_bp_l - shift, Req - B_m]
+                        majax_pt = [L_el + L_bp_l - shift + a_m, Req - B_m]
+                        end_pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                                    [L_el + L_m - x2 + 2 * L_bp_l - shift, y2])
+                        pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+                        geo.append([pt[1], pt[0], 0])
+
+                        # STRAIGHT LINE TO NEXT POINT
+                        pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                        # for pp in pts:
+                        #     geo.append([pp[1], pp[0], 0])
+                        pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
+
+                        pt_indx = add_point(cav, pt, pt_indx)
+                        curve_indx = add_line(cav, pt_indx, curve_indx)
+                        curve.append(curve_indx)
+
+                        geo.append([pt[1], pt[0], 0])
+
+                        # ARC
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        start_pt = pt
+                        center_pt = [L_el + L_m + L_bp_l - shift, Ri_m + b_m]
+                        majax_pt = [L_el + L_m + L_bp_l - shift - A_m, Ri_m + b_m]
+                        end_pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                    [L_bp_l + L_el + L_m - shift, Ri_m])
+                        pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+                        geo.append([pt[1], pt[0], 0])
+
+                        # calculate new shift
+                        shift = shift - (L_el + L_m)
+                        # ic(shift)
+
+                elif n > 1 and n != n_cells:
+                    # DRAW ARC:
+                    start_pt = pt
+                    center_pt = [L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_bp_l - shift + a_m, Ri_m + b_m]
+                    end_pt = [-shift + x1, y1]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                    pt = [-shift + x1, y1]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2, y2], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [-shift + x2, y2]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift - A_m, Req - B_m]
+                    end_pt = [L_bp_l + L_m - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                    pt = [L_bp_l + L_m - shift, Req]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift + A_m, Req - B_m]
+                    end_pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                                [L_m + L_m - x2 + 2 * L_bp_l - shift, y2])
+                    pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
+                    pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_m + L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_m + L_m + L_bp_l - shift - a_m, Ri_m + b_m]
+                    end_pt = [L_bp_l + L_m + L_m - shift, Ri_m]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                [L_bp_l + L_m + L_m - shift, Ri_m])
+                    pt = [L_bp_l + L_m + L_m - shift, Ri_m]
+
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # calculate new shift
+                    shift = shift - 2 * L_m
+                else:
+                    # DRAW ARC:
+                    start_pt = pt
+                    center_pt = [L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_bp_l - shift + a_er, Ri_m + b_m]
+                    end_pt = [-shift + x1, y1]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                    pt = [-shift + x1, y1]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2, y2], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [-shift + x2, y2]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift - A_er, Req - B_m]
+                    end_pt = [L_bp_l + L_m - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                    pt = [L_bp_l + L_m - shift, Req]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_er]
+                    majax_pt = [L_m + L_bp_l - shift + A_er, Req - B_er]
+                    end_pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                    pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
+                    pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_er + L_bp_l - shift, Ri_er + b_er]
+                    majax_pt = [L_m + L_er + L_bp_l - shift - a_er, Ri_er + b_er]
+                    end_pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_m + L_er - shift, Ri_er])
+                    pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    if L_bp_r > 0:
+                        geo.append([pt[1], pt[0], 0])
+                    else:
+                        geo.append([pt[1], pt[0], 1])
+
+            # BEAM PIPE
+            # reset shift
+            shift = (L_bp_r + L_bp_l + (n_cells - 1) * 2 * L_m + L_el + L_er) / 2
+
+            if L_bp_r > 0:  # if there's a problem, check here.
+                pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cells - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0], 0])
+                pt = [2 * (n_cells - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 1])
+
+            # END PATH
+            pts = lineTo(pt, [2 * (n_cells - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
+                         step)  # to add beam pipe to right
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [2 * (n_cells - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
+            # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
+            geo.append([pt[1], pt[0], 2])
+
+            pmcs = [1, curve[-2]]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+        # write geometry
+        # if write:
+        #     try:
+        #         df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+        #         # change point data precision
+        #         df['r'] = df['r'].round(8)
+        #         df['z'] = df['z'].round(8)
+        #         # drop duplicates
+        #         df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
+        #         df.to_csv(write, sep='\t', index=False)
+        #     except FileNotFoundError as e:
+        #         error('Check file path:: ', e)
+
+        # append start point
+        # geo.append([start_point[1], start_point[0], 0])
+
+        if bc:
+            # draw right boundary condition
+            ax.plot([shift, shift], [-Ri_er, Ri_er],
+                    [shift + 0.2 * L_m, shift + 0.2 * L_m], [-0.5 * Ri_er, 0.5 * Ri_er],
+                    [shift + 0.4 * L_m, shift + 0.4 * L_m], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+        # CLOSE PATH
+        # lineTo(pt, start_point, step)
+        # geo.append([start_point[1], start_point[0], 0])
+        geo = np.array(geo)
+
+        if plot:
+
+            if dimension:
+                top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+            else:
+                # recenter asymmetric cavity to center
+                shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
+                if n_cells == 1:
+                    shift_to_center = L_er + L_bp_r
+                else:
+                    shift_to_center = n_cells * L_m + L_bp_r
+
+                top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+                bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3,
+                                 c=top[0].get_color(),
+                                 **kwargs)
+
+            # plot legend without duplicates
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax.legend(by_label.values(), by_label.keys())
+
+        return ax
+
+    def write_quarter_geometry(self, parameters, bp='none', bc=None, tangent_check=False,
+                                          ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                          contour=False, **kwargs):
+        """
+        Plot cavity geometry
+
+        Parameters
+        ----------
+        tangent_check
+        bc
+        ax
+        ignore_degenerate
+        IC: list, ndarray
+            Inner Cell geometric parameters list
+        OC: list, ndarray
+            Left outer Cell geometric parameters list
+        OC_R: list, ndarray
+            Right outer Cell geometric parameters list
+        BP: str {"left", "right", "both", "none"}
+            Specify if beam pipe is on one or both ends or at no end at all
+        n_cell: int
+            Number of cavity cells
+        scale: float
+            Scale of the cavity geometry
+
+        Returns
+        -------
+
+        """
+
+        GEO = """
+        """
+
+        names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
+        if bp == 'none':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_m']*1e-3 for n in names)
+        elif bp == 'left':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_el']*1e-3 for n in names)
+        elif bp == 'right':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_er']*1e-3 for n in names)
+        else:
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_m']*1e-3 for n in names)
+
+        L_bp = 4 * L
+        if dimension or contour:
+            L_bp = 1 * L
+
+        if bp == 'left' or bp == 'right':
+            L_bp_l = L_bp
+        else:
+            L_bp_l = 0
+
+        step = 0.0005
+
+        # calculate shift
+        shift = (L_bp_l + L) / 2
+
+        geo = []
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            # define parameters
+            cav.write(f'\nA = DefineNumber[{A}, Name "Parameters/Equator ellipse major axis"];')
+            cav.write(f'\nB = DefineNumber[{B}, Name "Parameters/Equator ellipse minor axis"];')
+            cav.write(f'\na = DefineNumber[{a}, Name "Parameters/Iris ellipse major axis"];')
+            cav.write(f'\nb = DefineNumber[{b}, Name "Parameters/Iris ellipse minor axis"];')
+            cav.write(f'\nRi = DefineNumber[{Ri}, Name "Parameters/Iris radius"];')
+            cav.write(f'\nL = DefineNumber[{L}, Name "Parameters/Half cell length"];')
+            cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Equator radius"];\n')
+
+            # SHIFT POINT TO START POINT
+            start_point = [-shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+            geo.append([start_point[1], start_point[0], 1])
+
+            pt = [-shift, 'Ri']
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # ADD BEAM PIPE LENGTH
+            if L_bp_l != 0:
+                pt = [L_bp_l - shift, 'Ri']
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp_l, tangent_check=tangent_check)
+            x1, y1, x2, y2 = df[0]
+            if not ignore_degenerate:
+                msg = df[-2]
+                if msg != 1:
+                    error('Parameter set leads to degenerate geometry.')
+                    # save figure of error
+                    return
+
+            start_pt = pt
+            center_pt = [L_bp_l - shift, 'Ri + b']
+            majax_pt = [f'{L_bp_l - shift} + a', 'Ri + b']
+            end_pt = [-shift + x1, y1]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcTo(L_bp_l - shift, Ri + b, a, b, step, pt, [-shift + x1, y1])
+            pt = [-shift + x1, y1]
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            # geo.append([pt[1], pt[0], 0])
+
+            # DRAW LINE CONNECTING ARCS
+            pt = [-shift + x2, y2]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+            start_pt = pt
+            center_pt = [f'L + {L_bp_l - shift}', 'Req - B']
+            majax_pt = [f'L + {L_bp_l - shift} - A', 'Req - B']
+            end_pt = [f'{L_bp_l - shift} + L', 'Req']
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcTo(L + L_bp_l - shift, Req - B, A, B, step, pt, [L_bp_l + L - shift, Req])
+            pt = [f'{L_bp_l - shift} + L', 'Req']
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # BEAM PIPE
+            # reset shift
+            shift = (L_bp_l + L) / 2
+
+            # END PATH
+            # pts = lineTo(pt, [L+ L_bp_l + - shift, 0],
+            #              step)  # to add beam pipe to right
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [L + L_bp_l - shift, 0]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            geo.append([pt[1], pt[0], 2])
+
+            pmcs = [1]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    def get_geometric_parameters(self):
+        parameter_names = ["A", "B", "a", "b", "Ri", "L", "Req"]
+        shape_keys = {"IC": 'm', "OC": 'el', "OC_R": 'er'}
+
+        for key in shape_keys.keys():
+            values = self.shape[key]
+            for name, value in zip(parameter_names, values):
+                self.parameters[f"{name}_{shape_keys[key]}"] = value
+
+
+class SplineCavity(Cavity):
+    def __init__(self, shape, name='SplineCavity', kind='Berzier'):
+        # self.shape_space = {
+        #     'IC': [L, Req, Ri, S, L_bp],
+        #     'BP': beampipe
+        # }
+        super().__init__(name)
+        self.self_dir = None
+        self.cell_parameterisation = 'simplecell'  # consider removing
+        self.name = name
+
+        if 'n_cells' in shape.keys():
+            n_cells = shape['n_cells']
+        else:
+            self.n_cells = 1
+
+        if 'beampipe' in shape.keys():
+            beampipe = shape['beampipe']
+        else:
+            self.beampipe = 'none'
+
+        self.n_modes = 1
+        self.axis_field = None
+        self.bc = 'mm'
+        self.projectDir = None
+        self.kind = kind
+        self.n_cells = 1
+        if 'n_cells' in shape.keys():
+            self.n_cells = shape['n_cells']
+
+        self.shape = {
+            "geometry": shape['geometry'],
+            'BP': 'none',
+            'CELL PARAMETERISATION': self.cell_parameterisation,
+            'kind': self.kind}
+
+        self.shape_multicell = {'kind': self.kind}
+
+        self.get_geometric_parameters()
+
+    def create(self, n_cells=None, beampipe=None, mode=None):
+        if n_cells is None:
+            n_cells = self.n_cells
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        if self.projectDir:
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+            # write geometry file to folder
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+
+            # define different paths for easier reference later
+            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
+            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
+            self.uq_dir = os.path.join(self.self_dir, 'uq')
+
+            self.geo_filepath = os.path.join(self.self_dir, 'geometry', 'geodata.geo')
+            self.write_geometry(self.parameters, n_cells, beampipe,
+                                write=self.geo_filepath)
+
+    def get_geometric_parameters(self):
+        self.parameters = self.shape['geometry']
+
+    def write_geometry(self, parameters, n_cells=1, beampipe='none', write=None):
+        """
+        Plot cavity geometry
+
+        Parameters
+        ----------
+        tangent_check
+        bc
+        ax
+        ignore_degenerate
+        IC: list, ndarray
+            Inner Cell geometric parameters list
+        OC: list, ndarray
+            Left outer Cell geometric parameters list
+        OC_R: list, ndarray
+            Right outer Cell geometric parameters list
+        BP: str {"left", "right", "both", "none"}
+            Specify if beam pipe is on one or both ends or at no end at all
+        n_cell: int
+            Number of cavity cells
+        scale: float
+            Scale of the cavity geometry
+
+        Returns
+        -------
+
+        """
+
+        parameters = np.array(list(parameters.values()))*1e-3
+
+        Ri_el = parameters[0][0]
+        L_m = abs(parameters[0][1] - parameters[-1][1])
+
+        step = 0.0005
+        shift = 0
+
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            # SHIFT POINT TO START POINT
+            start_point = [shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+
+            pt = [-shift, Ri_el]
+            pt_indx = add_point(cav, parameters[0], pt_indx)
+
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # cavity cell surface
+            if self.kind == 'BSpline':
+                pt_indx, curve_indx = add_bspline(cav, pt_indx, curve_indx, parameters[1:], n_cells)
+                curve.append(curve_indx)
+            if self.kind == 'Bezier':
+                for i in range(n_cells):
+                    pt_indx, curve_indx = add_bezierspline(cav, pt_indx, curve_indx, parameters[1:])
+                    curve.append(curve_indx)
+
+                    if i < n_cells-1:
+                        parameters[:, 0] += parameters[-1][0]
+
+
+            # right iris
+            pt_indx = add_point(cav, [parameters[-1][0], 0], pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            pmcs = [1, curve[-2]]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    def write_quarter_geometry(self, parameters, bp='none', bc=None, tangent_check=False,
+                                          ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                          contour=False, **kwargs):
+        """
+        Plot cavity geometry
+
+        Parameters
+        ----------
+        tangent_check
+        bc
+        ax
+        ignore_degenerate
+        IC: list, ndarray
+            Inner Cell geometric parameters list
+        OC: list, ndarray
+            Left outer Cell geometric parameters list
+        OC_R: list, ndarray
+            Right outer Cell geometric parameters list
+        BP: str {"left", "right", "both", "none"}
+            Specify if beam pipe is on one or both ends or at no end at all
+        n_cell: int
+            Number of cavity cells
+        scale: float
+            Scale of the cavity geometry
+
+        Returns
+        -------
+
+        """
+
+        GEO = """
+        """
+
+        names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
+        if bp == 'none':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_m']*1e-3 for n in names)
+        elif bp == 'left':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_el']*1e-3 for n in names)
+        elif bp == 'right':
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_er']*1e-3 for n in names)
+        else:
+            A, B, a, b, Ri, L, Req = (parameters[f'{n}_m']*1e-3 for n in names)
+
+        L_bp = 4 * L
+        if dimension or contour:
+            L_bp = 1 * L
+
+        if bp == 'left' or bp == 'right':
+            L_bp_l = L_bp
+        else:
+            L_bp_l = 0
+
+        step = 0.0005
+
+        # calculate shift
+        shift = (L_bp_l + L) / 2
+
+        geo = []
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            # define parameters
+            cav.write(f'\nA = DefineNumber[{A}, Name "Parameters/Equator ellipse major axis"];')
+            cav.write(f'\nB = DefineNumber[{B}, Name "Parameters/Equator ellipse minor axis"];')
+            cav.write(f'\na = DefineNumber[{a}, Name "Parameters/Iris ellipse major axis"];')
+            cav.write(f'\nb = DefineNumber[{b}, Name "Parameters/Iris ellipse minor axis"];')
+            cav.write(f'\nRi = DefineNumber[{Ri}, Name "Parameters/Iris radius"];')
+            cav.write(f'\nL = DefineNumber[{L}, Name "Parameters/Half cell length"];')
+            cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Equator radius"];\n')
+
+            # SHIFT POINT TO START POINT
+            start_point = [-shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+            geo.append([start_point[1], start_point[0], 1])
+
+            pt = [-shift, 'Ri']
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # ADD BEAM PIPE LENGTH
+            if L_bp_l != 0:
+                pt = [L_bp_l - shift, 'Ri']
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp_l, tangent_check=tangent_check)
+            x1, y1, x2, y2 = df[0]
+            if not ignore_degenerate:
+                msg = df[-2]
+                if msg != 1:
+                    error('Parameter set leads to degenerate geometry.')
+                    # save figure of error
+                    return
+
+            start_pt = pt
+            center_pt = [L_bp_l - shift, 'Ri + b']
+            majax_pt = [f'{L_bp_l - shift} + a', 'Ri + b']
+            end_pt = [-shift + x1, y1]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcTo(L_bp_l - shift, Ri + b, a, b, step, pt, [-shift + x1, y1])
+            pt = [-shift + x1, y1]
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            # geo.append([pt[1], pt[0], 0])
+
+            # DRAW LINE CONNECTING ARCS
+            pt = [-shift + x2, y2]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+            start_pt = pt
+            center_pt = [f'L + {L_bp_l - shift}', 'Req - B']
+            majax_pt = [f'L + {L_bp_l - shift} - A', 'Req - B']
+            end_pt = [f'{L_bp_l - shift} + L', 'Req']
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcTo(L + L_bp_l - shift, Req - B, A, B, step, pt, [L_bp_l + L - shift, Req])
+            pt = [f'{L_bp_l - shift} + L', 'Req']
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # BEAM PIPE
+            # reset shift
+            shift = (L_bp_l + L) / 2
+
+            # END PATH
+            # pts = lineTo(pt, [L+ L_bp_l + - shift, 0],
+            #              step)  # to add beam pipe to right
+
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [L + L_bp_l - shift, 0]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            geo.append([pt[1], pt[0], 2])
+
+            pmcs = [1]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+
+class EllipticalCavityFlatTop(Cavity):
+    def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
+                 end_cell_right=None, beampipe='none', name='cavity',
+                 color='k', plot_label=None):
+        """
+        All of the old “dimension‐based” logic has been moved here.
+        Assumes self.kind, self.name, self.color, etc. are already set.
+        """
+        super().__init__()
+
+        self.projectDir = None
+        self.plot_label = plot_label
+        self.name = name
+        self.kind = 'elliptical cavity flat top'
+        self.beampipe = beampipe
+        self.color = color
+
+        self.n_cells = n_cells
+        self.cell_parameterisation = 'flattop'
+
+        # Basic counters / containers
+        self.n_modes = (n_cells + 1) if n_cells is not None else None
+        self.n_modules = 1
+        self.no_of_modules = 1
+
+        # Handle the special case: mid_cell can be a dict with keys OC, OC_R, IC
+        if isinstance(mid_cell, dict):
+            end_cell_left = mid_cell['OC']
+            end_cell_right = mid_cell['OC_R']
+            mid_cell = mid_cell['IC']
+
+        # Must have at least length = 8 in each cell‐parameter list
+        assert mid_cell is not None and len(mid_cell) > 7, \
+            ValueError(
+                "Flattop cavity mid‐cells require at least 8 input parameters, with the 8th representing length (l).")
+        if end_cell_left is not None:
+            assert len(end_cell_left) > 7, \
+                ValueError(
+                    "Flattop cavity left end‐cells require at least 8 input parameters, with the 8th representing "
+                    "length (l).")
+        if end_cell_right is not None:
+            assert len(end_cell_right) > 7, \
+                ValueError(
+                    "Flattop cavity right end‐cells require at least 8 input parameters, with the 8th representing "
+                    "length (l).")
+
+        # Truncate or pad to exactly 8 elements
+        self.mid_cell = np.array(mid_cell)[:8]
+        self.end_cell_left = np.array(end_cell_left)[:8] if end_cell_left is not None else self.mid_cell
+        self.end_cell_right = np.array(end_cell_right)[:8] if end_cell_right is not None else self.mid_cell
+
+        # Ensure end_cell_left / end_cell_right exist
+        if end_cell_left is None:
+            self.end_cell_left = self.mid_cell
+        if end_cell_right is None:
+            self.end_cell_right = self.end_cell_left
+
+        # Unpack
+        (self.A, self.B, self.a, self.b,
+         self.Ri, self.L, self.Req, self.l) = self.mid_cell[:8]
+
+        (self.A_el, self.B_el, self.a_el, self.b_el,
+         self.Ri_el, self.L_el, self.Req_el, self.l_el) = self.end_cell_left[:8]
+
+        (self.A_er, self.B_er, self.a_er, self.b_er,
+         self.Ri_er, self.L_er, self.Req_er, self.l_er) = self.end_cell_right[:8]
+
+        # Active length & cavity length
+        self.l_active = (
+                                2 * (self.n_cells - 1) * self.L +
+                                (self.n_cells - 2) * self.l +
+                                self.L_el + self.l_el +
+                                self.L_er + self.l_er
+                        ) * 1e-3
+        self.l_cavity = self.l_active + 8 * (self.L + self.l) * 1e-3
+
+        # Build self.shape dictionary
+        self.shape = {
+            "IC": update_alpha(self.mid_cell[:8], self.cell_parameterisation),
+            "OC": update_alpha(self.end_cell_left[:8], self.cell_parameterisation),
+            "OC_R": update_alpha(self.end_cell_right[:8], self.cell_parameterisation),
+            "BP": beampipe,
+            "n_cells": self.n_cells,
+            "CELL PARAMETERISATION": self.cell_parameterisation,
+            "kind": self.kind,
+            "geo_file": None
+        }
+
+        # Produce multicell representation
+        self.to_multicell()
+        self.get_geometric_parameters()
+
+    def create(self, n_cells=None, beampipe=None, tune=None):
+        if n_cells is None:
+            n_cells = self.n_cells
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        if self.projectDir:
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+            # write geometry file to folder
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+            self.geo_filepath = os.path.join(self.projectDir, 'Cavities', self.name, 'geometry', 'geodata.geo')
+            self.write_geometry(self.parameters, n_cells, beampipe,
+                                write=self.geo_filepath)
+
+    def write_geometry(self, parameters, n_cells, BP, scale=1, ax=None, bc=None, tangent_check=False,
+                       ignore_degenerate=False, plot=False, write=None, dimension=False,
+                       contour=False, **kwargs):
+        """
+        Write cavity geometry
+
+        Parameters
+        ----------
+        BP
+        OC_R
+        OC
+        ignore_degenerate
+        file_path: str
+            File path to write geometry to
+        n_cell: int
+            Number of cavity cells
+        mid_cell: list, ndarray
+            Array of cavity middle cells' geometric parameters
+        end_cell_left: list, ndarray
+            Array of cavity left end cell's geometric parameters
+        end_cell_right: list, ndarray
+            Array of cavity left end cell's geometric parameters
+        beampipe: str {"left", "right", "both", "none"}
+            Specify if beam pipe is on one or both ends or at no end at all
+        plot: bool
+            If True, the cavity geometry is plotted for viewing
+
+        Returns
+        -------
+
+        """
+
+        if plot:
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(12, 6))
+                ax.set_aspect('equal')
+
+        names = ['A_m', 'B_m', 'a_m', 'b_m', 'Ri_m', 'L_m', 'Req_m', 'l_m',
+                 'A_el', 'B_el', 'a_el', 'b_el', 'Ri_el', 'L_el', 'Req_el', 'l_el',
+                 'A_er', 'B_er', 'a_er', 'b_er', 'Ri_er', 'L_er', 'Req_er', 'l_er']
+
+        A_m, B_m, a_m, b_m, Ri_m, L_m, Req_m, l, \
+            A_el, B_el, a_el, b_el, Ri_el, L_el, Req_el, l_el, \
+            A_er, B_er, a_er, b_er, Ri_er, L_er, Req_er, l_er = (parameters[n]*1e-3 for n in names)
+        Req = Req_m
+
+        step = 0.005
+
+        L_bp = 4 * L_m
+        if dimension or contour:
+            L_bp = 1 * L_m
+
+        if BP.lower() == 'both':
+            L_bp_l = L_bp
+            L_bp_r = L_bp
+        elif BP.lower() == 'left':
+            L_bp_l = L_bp
+            L_bp_r = 0.000
+        elif BP.lower() == 'right':
+            L_bp_l = 0.000
+            L_bp_r = L_bp
+        else:
+            L_bp_l = 0.000
+            L_bp_r = 0.000
+
+        # calculate shift
+        shift = (L_bp_r + L_bp_l + L_el + (n_cells - 1) * 2 * L_m + L_er + (n_cells - 2) * l + l_el + l_er) / 2
+
+        # calculate angles outside loop
+        # CALCULATE x1_el, y1_el, x2_el, y2_el
+        df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, l_el / 2, tangent_check=tangent_check)
+        x1el, y1el, x2el, y2el = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        # CALCULATE x1, y1, x2, y2
+        df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, l / 2, tangent_check=tangent_check)
+        x1, y1, x2, y2 = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        # CALCULATE x1_er, y1_er, x2_er, y2_er
+        df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, l_er / 2, tangent_check=tangent_check)
+        x1er, y1er, x2er, y2er = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        geo = []
+
+        # SHIFT POINT TO START POINT
+        start_point = [-shift, 0]
+        geo.append([start_point[1], start_point[0], 3])
+
+        lineTo(start_point, [-shift, Ri_el], step)
+        pt = [-shift, Ri_el]
+        geo.append([pt[1], pt[0], 2])
+
+        # ADD BEAM PIPE LENGTH
+        if L_bp_l != 0:
+            lineTo(pt, [L_bp_l - shift, Ri_el], step)
+            pt = [L_bp_l - shift, Ri_el]
+
+            geo.append([pt[1], pt[0], 2])
+
+        for n in range(1, n_cells + 1):
+            if n == 1:
+                # DRAW ARC:
+                if plot and dimension:
+                    ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
+                    ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                             height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                             facecolor='none')
+                    ax.add_patch(ellipse)
+                    ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
+                                xytext=(L_bp_l - shift, Ri_el + b_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+                    ax.annotate('', xy=(L_bp_l - shift, Ri_el),
+                                xytext=(L_bp_l - shift, Ri_el + b_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+
+                    ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', va='center', ha='center')
+                    ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                            va='center', ha='center', rotation=90)
+
+                pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
+                pt = [-shift + x1el, y1el]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2el, y2el], step)
+                pt = [-shift + x2el, y2el]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                if plot and dimension:
+                    ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                    ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
+                                                             height=2 * B_el, angle=0, edgecolor='gray', ls='--',
+                                                             facecolor='none')
+                    ax.add_patch(ellipse)
+                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
+                                xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
+                                arrowprops=dict(arrowstyle='<-', color='black'))
+                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                xytext=(L_el + L_bp_l - shift, Req - B_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+
+                    ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', va='center',
+                            ha='center')
+                    ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                            va='center', ha='center', rotation=90)
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
+                pt = [L_bp_l + L_el - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # flat top
+                pts = lineTo(pt, [L_bp_l + L_el + l_el - shift, Req], step)
+                pt = [L_bp_l + L_el + l_el - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                if plot and dimension:
+                    ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                    # Plot the straight line
+                    line_start = [L_bp_l + L_el - shift, Req]
+                    line_end = pt
+                    ax.plot([line_start[0], line_end[0]], [line_start[1], line_end[1]], 'r', zorder=200)
+
+                    ax.annotate('', xy=(line_start[0], line_start[1] + 0.5), xytext=(line_end[0], line_end[1] + 0.5),
+                                arrowprops=dict(arrowstyle='<->', color='black'))
+                    ax.text((line_start[0] + line_end[0]) / 2, line_start[1] + 0.7,
+                            f'{round(l_el, 2)}\n', va='center', ha='center')
+
+                if n_cells == 1:
+                    if L_bp_r > 0:
+                        # EQUATOR ARC TO NEXT POINT
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        pts = arcTo(L_el + L_bp_l + l_el - shift, Req - B_er, A_er, B_er, step, pt,
+                                    [L_el + l_el + L_er - x2er + + L_bp_l + L_bp_r - shift, y2er])
+                        pt = [L_el + l_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 2])
+                        geo.append([pt[1], pt[0], 2])
+
+                        if plot and dimension:
+                            ax.scatter(L_el + l_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse((L_el + l_el + L_bp_l - shift, Req - B_er),
+                                                                     width=2 * A_er,
+                                                                     height=2 * B_er, angle=0, edgecolor='gray',
+                                                                     ls='--',
+                                                                     facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + l_el + L_bp_l - shift, Req - B_er),
+                                        xytext=(L_el + l_el + L_bp_l - shift + A_er, Req - B_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + l_el + L_bp_l - shift, Req),
+                                        xytext=(L_el + l_el + L_bp_l - shift, Req - B_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + l_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n',
+                                    va='center', ha='center')
+                            ax.text(L_el + l_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
+                                    va='center', ha='left', rotation=90)
+
+                        # STRAIGHT LINE TO NEXT POINT
+                        lineTo(pt, [L_el + l_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                        pt = [L_el + l_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                        geo.append([pt[1], pt[0], 2])
+
+                        if plot and dimension:
+                            ax.scatter(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse(
+                                (L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                width=2 * a_er,
+                                height=2 * b_er, angle=0, edgecolor='gray', ls='--',
+                                facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        xytext=(L_el + l_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + l_el + L_er + L_bp_l - shift, Ri_er),
+                                        xytext=(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + l_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er),
+                                    f'{round(a_er, 2)}\n',
+                                    va='center', ha='center')
+                            ax.text(L_el + l_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                    va='center', ha='center', rotation=90)
+
+                        # ARC
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        pts = arcTo(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                    [L_bp_l + L_el + l_el + L_er - shift, Ri_er])
+                        pt = [L_bp_l + L_el + l_el + L_er - shift, Ri_er]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 2])
+
+                        geo.append([pt[1], pt[0], 2])
+
+                        # calculate new shift
+                        shift = shift - (L_el + l_el + L_er)
+                    else:
+                        # EQUATOR ARC TO NEXT POINT
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        pts = arcTo(L_el + L_bp_l + l_el - shift, Req - B_er, A_er, B_er, step, pt,
+                                    [L_el + l_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                        pt = [L_el + l_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 2])
+                        geo.append([pt[1], pt[0], 2])
+
+                        # STRAIGHT LINE TO NEXT POINT
+                        lineTo(pt, [L_el + l_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                        pt = [L_el + l_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                        geo.append([pt[1], pt[0], 2])
+
+                        # ARC
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        if plot and dimension:
+                            ax.scatter(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse(
+                                (L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                width=2 * a_er,
+                                height=2 * b_er, angle=0, edgecolor='gray', ls='--',
+                                facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        xytext=(L_el + l_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + l_el + L_er + L_bp_l - shift, Ri_er),
+                                        xytext=(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + l_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er),
+                                    f'{round(a_er, 2)}\n',
+                                    va='center', ha='center')
+                            ax.text(L_el + l_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                    va='center', ha='center', rotation=90)
+
+                        pts = arcTo(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                    [L_bp_l + L_el + l_el + L_er - shift, Ri_er])
+
+                        pt = [L_bp_l + L_el + l_el + L_er - shift, Ri_er]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 2])
+                        geo.append([pt[1], pt[0], 2])
+
+                        pts = arcTo(L_el + l_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                    [L_bp_l + L_el + l_el + L_er - shift, Ri_er])
+                        pt = [L_bp_l + L_el + l_el + L_er - shift, Ri_er]
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 2])
+                        geo.append([pt[1], pt[0], 2])
+                else:
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_bp_l + L_el + l_el - shift, Req - B_m, A_m, B_m, step, pt,
+                                [L_el + l_el + L_m - x2 + 2 * L_bp_l - shift, y2])
+                    pt = [L_el + l_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 2])
+                    geo.append([pt[1], pt[0], 2])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_el + l_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                    pt = [L_el + l_el + L_m - x1 + 2 * L_bp_l - shift, y1]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 2])
+                    geo.append([pt[1], pt[0], 2])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    pts = arcTo(L_el + l_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                [L_bp_l + L_el + l_el + L_m - shift, Ri_m])
+                    pt = [L_bp_l + L_el + l_el + L_m - shift, Ri_m]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 2])
+                    geo.append([pt[1], pt[0], 2])
+
+                    # calculate new shift
+                    shift = shift - (L_el + L_m + l_el)
+                    # ic(shift)
+
+            elif n > 1 and n != n_cells:
+                # DRAW ARC:
+                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                pt = [-shift + x1, y1]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2, y2], step)
+                pt = [-shift + x2, y2]
+                for pp in pts:
+                    geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                pt = [L_bp_l + L_m - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # flat top
+                pts = lineTo(pt, [L_bp_l + L_m + l - shift, Req], step)
+                pt = [L_bp_l + L_m + l - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # EQUATOR ARC TO NEXT POINT
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_m + L_bp_l + l - shift, Req - B_m, A_m, B_m, step, pt,
+                            [L_m + L_m + l - x2 + 2 * L_bp_l - shift, y2])
+                pt = [L_m + L_m + l - x2 + 2 * L_bp_l - shift, y2]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+
+                geo.append([pt[1], pt[0], 2])
+
+                # STRAIGHT LINE TO NEXT POINT
+                pts = lineTo(pt, [L_m + L_m + l - x1 + 2 * L_bp_l - shift, y1], step)
+                pt = [L_m + L_m + l - x1 + 2 * L_bp_l - shift, y1]
+                for pp in pts:
+                    geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # ARC
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_m + L_m + l + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                            [L_bp_l + L_m + L_m + l - shift, Ri_m])
+                pt = [L_bp_l + L_m + L_m + l - shift, Ri_m]
+
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # calculate new shift
+                shift = shift - 2 * L_m - l
+            else:
+                # DRAW ARC:
+                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                pt = [-shift + x1, y1]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2, y2], step)
+                pt = [-shift + x2, y2]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                pt = [L_bp_l + L_m - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # flat top
+                pts = lineTo(pt, [L_bp_l + L_m + l_er - shift, Req], step)
+                pt = [L_bp_l + L_m + l_er - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # EQUATOR ARC TO NEXT POINT
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_m + l_er + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                            [L_m + L_er + l_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                pt = [L_m + L_er + l_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # STRAIGHT LINE TO NEXT POINT
+                pts = lineTo(pt, [L_m + L_er + l_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                pt = [L_m + L_er + l_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+                # ARC
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                pts = arcTo(L_m + L_er + l_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                            [L_bp_l + L_m + L_er + l_er - shift, Ri_er])
+                pt = [L_bp_l + L_m + L_er + l_er - shift, Ri_er]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 2])
+                geo.append([pt[1], pt[0], 2])
+
+        # BEAM PIPE
+        # reset shift
+
+        shift = (L_bp_r + L_bp_l + L_el + l_el + (n_cells - 1) * 2 * L_m + (n_cells - 2) * l + L_er + l_er) / 2
+        pts = lineTo(pt, [
+            L_bp_r + L_bp_l + 2 * (n_cells - 1) * L_m + (n_cells - 2) * l + l_el + l_er + L_el + L_er - shift,
+            Ri_er], step)
+
+        if L_bp_r != 0:
+            pt = [2 * (n_cells - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r + (n_cells - 2) * l + l_el + l_er - shift,
+                  Ri_er]
+            for pp in pts:
+                geo.append([pp[1], pp[0], 2])
+            geo.append([pt[1], pt[0], 2])
+
+        # END PATH
+        pts = lineTo(pt, [
+            2 * (n_cells - 1) * L_m + L_el + L_er + (n_cells - 2) * l + l_el + l_er + L_bp_l + L_bp_r - shift, 0],
+                     step)  # to add beam pipe to right
+        pt = [2 * (n_cells - 1) * L_m + L_el + L_er + (n_cells - 2) * l + l_el + l_er + L_bp_l + L_bp_r - shift, 0]
+        # lineTo(pt, [2 * n_cells * L_er + L_bp_l - shift, 0], step)
+        geo.append([pt[1], pt[0], 2])
+
+        # CLOSE PATH
+        lineTo(pt, start_point, step)
+        geo.append([pt[1], pt[0], 3])
+
+        # # write geometry
+        # if write:
+        #     try:
+        #         df = pd.DataFrame(geo, columns=['r', 'z'])
+        #         df.to_csv(write, sep='\t', index=False)
+        #     except FileNotFoundError as e:
+        #         error('Check file path:: ', e)
+
+        # append start point
+        geo.append([start_point[1], start_point[0], 3])
+
+        if bc:
+            # draw right boundary condition
+            ax.plot([shift, shift], [-Ri_er, Ri_er],
+                    [shift + 0.2 * L_m, shift + 0.2 * L_m], [-0.5 * Ri_er, 0.5 * Ri_er],
+                    [shift + 0.4 * L_m, shift + 0.4 * L_m], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+        # CLOSE PATH
+        # lineTo(pt, start_point, step)
+        # geo.append([start_point[1], start_point[0], 3])
+
+        geo = np.array(geo)
+
+        if plot:
+            if dimension:
+                top = ax.plot(geo[:, 1], geo[:, 0], **kwargs)
+            else:
+                # recenter asymmetric cavity to center
+                shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
+                if n_cells == 1:
+                    shift_to_center = L_er + L_bp_r
+                else:
+                    shift_to_center = n_cells * L_m + L_bp_r
+
+                top = ax.plot(geo[:, 1] - shift_left + shift_to_center, geo[:, 0], **kwargs)
+                # bottom = ax.plot(geo[:, 1] - shift_left + shift_to_center, -geo[:, 0], c=top[0].get_color(), **kwargs)
+
+            # plot legend wthout duplicates
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            plt.legend(by_label.values(), by_label.keys())
+
+            return ax
+
+
+    def get_geometric_parameters(self):
+        parameter_names = ["A", "B", "a", "b", "Ri", "L", "Req", "l"]
+        shape_keys = {"IC": 'm', "OC": 'el', "OC_R": 'er'}
+
+        for key in shape_keys.keys():
+            values = self.shape[key]
+            for name, value in zip(parameter_names, values):
+                self.parameters[f"{name}_{shape_keys[key]}"] = value
+
+
+class RFGun(Cavity):
+    def __init__(self, shape, name='gun'):
+        # self.shape_space = {
+        #     'IC': [L, Req, Ri, S, L_bp],
+        #     'BP': beampipe
+        # }
+        super().__init__(name)
+        self.self_dir = None
+        self.cell_parameterisation = 'simplecell'  # consider removing
+        self.name = name
+        self.n_cells = 1
+        self.beampipe = 'none'
+        self.n_modes = 1
+        self.axis_field = None
+        self.bc = 'mm'
+        self.projectDir = None
+        self.kind = 'vhf gun'
+
+        self.shape = {
+            "geometry": shape['geometry'],
+            'BP': 'none',
+            'CELL PARAMETERISATION': self.cell_parameterisation,
+            'kind': self.kind}
+
+        self.shape_multicell = {'kind': self.kind}
+
+        self.get_geometric_parameters()
+
+    def create(self, n_cells=None, beampipe=None, mode=None):
+        if n_cells is None:
+            n_cells = self.n_cells
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        if self.projectDir:
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+            # write geometry file to folder
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+
+            # define different paths for easier reference later
+            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
+            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
+            self.uq_dir = os.path.join(self.self_dir, 'uq')
+
+            self.geo_filepath = os.path.join(self.self_dir, 'geometry', 'geodata.geo')
+            self.write_geometry(self.parameters,
+                                write=self.geo_filepath)
+
+    def get_geometric_parameters(self):
+        self.parameters = self.shape['geometry']
+
+    def write_geometry(self, parameters, write=None):
+        names = [
+            "y1", "R2", "T2", "L3", "R4", "L5", "R6", "L7", "R8",
+            "T9", "R10", "T10", "L11", "R12", "L13", "R14", "x"
+        ]
+
+        y1, R2, T2, L3, R4, L5, R6, L7, R8, T9, R10, \
+            T10, L11, R12, L13, R14, x = (parameters[n] for n in names)
+
+
+        # calcualte R9
+        R9 = (((y1 + R2 * np.sin(T2) + L3 * np.cos(T2) + R4 * np.sin(T2) + L5 + R6) -
+               (R14 + L13 + R12 * np.sin(T10) + L11 * np.cos(T10) + R10 * np.sin(T10) + x + R8 * (
+                       1 - np.sin(T9))))) / np.sin(T9)
+
+        step = 5 * 1e-2
+        geo = []
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            start_pt = [0, 0]
+            pt_indx = add_point(cav, start_pt, pt_indx)
+
+            geo.append([start_pt[1], start_pt[0], 1])
+
+            # DRAW LINE CONNECTING ARCS
+            lineTo(start_pt, [0, y1], step)
+            pt = [0, y1]
+            geo.append([pt[1], pt[0], 0])
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [-R2, y1]
+            majax_pt = [-R2 + R2, y1]
+            end_pt = [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(-R2, y1, R2, R2, pt, [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)], 0, T2, step)
+            pt = [R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)], step)
+            pt = [R2 * np.cos(T2) - R2 - L3 * np.cos(T2), y1 + R2 * np.sin(T2) + L3 * np.sin(T2)]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] + R4 * np.cos(T2), pt[1] + R4 * np.sin(T2)]
+            majax_pt = [pt[0] + R4 * np.cos(T2) + R4, pt[1] + R4 * np.sin(T2)]
+            end_pt = [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] + R4 * np.cos(T2), pt[1] + R4 * np.sin(T2), R4, R4,
+            #                  pt, [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)], -(np.pi - T2), np.pi, step)
+            pt = [pt[0] - (R4 - R4 * np.cos(T2)), pt[1] + R4 * np.sin(T2)]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [pt[0], pt[1] + L5], step)
+            pt = [pt[0], pt[1] + L5]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] + R6, pt[1]]
+            majax_pt = [pt[0] + R6 + R6, pt[1]]
+            end_pt = [pt[0] + R6, pt[1] + R6]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] + R6, pt[1], R6, R6, pt, [pt[0] + R6, pt[1] + R6], np.pi, np.pi / 2, step)
+            pt = [pt[0] + R6, pt[1] + R6]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [pt[0] + L7, pt[1]], step)
+            pt = [pt[0] + L7, pt[1]]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0], pt[1] - R8]
+            majax_pt = [pt[0] + R8, pt[1] - R8]
+            end_pt = [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0], pt[1] - R8, R8, R8, pt, [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))],
+            #                  np.pi / 2, T9, step)
+            pt = [pt[0] + R8 * np.cos(T9), pt[1] - (R8 - R8 * np.sin(T9))]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] - R9 * np.cos(T9), pt[1] - R9 * np.sin(T9)]
+            majax_pt = [pt[0] - R9 * np.cos(T9) + R9, pt[1] - R9 * np.sin(T9)]
+            end_pt = [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] - R9 * np.cos(T9), pt[1] - R9 * np.sin(T9), R9, R9,
+            #                  pt, [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)], T9, 0, step)
+            pt = [pt[0] + (R9 - R9 * np.cos(T9)), pt[1] - R9 * np.sin(T9)]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] - R10, pt[1]]
+            majax_pt = [pt[0] - R10 + R10, pt[1]]
+            end_pt = [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] - R10, pt[1], R10, R10,
+            #                  pt, [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)], 0, -T10, step)
+            pt = [pt[0] - (R10 - R10 * np.cos(T10)), pt[1] - R10 * np.sin(T10)]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)], step)
+            pt = [pt[0] - L11 * np.sin(T10), pt[1] - L11 * np.cos(T10)]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] + R12 * np.cos(T10), pt[1] - R12 * np.sin(T10)]
+            majax_pt = [pt[0] + R12 * np.cos(T10) + R12, pt[1] - R12 * np.sin(T10)]
+            end_pt = [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] + R12 * np.cos(T10), pt[1] - R12 * np.sin(T10), R12, R12,
+            #                  pt, [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)], (np.pi - T10), np.pi,
+            #                  step)
+            pt = [pt[0] - (R12 - R12 * np.cos(T10)), pt[1] - R12 * np.sin(T10)]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [pt[0], pt[1] - L13], step)
+            pt = [pt[0], pt[1] - L13]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW ARC:
+            start_pt = pt
+            center_pt = [pt[0] + R14, pt[1]]
+            majax_pt = [pt[0] + R14 + R14, pt[1]]
+            end_pt = [pt[0] + R14, pt[1] - R14]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            # pts = arcToTheta(pt[0] + R14, pt[1], R14, R14, pt, [pt[0] + R14, pt[1] - R14], np.pi, -np.pi / 2, step)
+            pt = [pt[0] + R14, pt[1] - R14]
+            # for pp in pts:
+            #     if (np.around(pp, 12) != np.around(pt, 12)).all():
+            #         geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # line
+            lineTo(pt, [pt[0] + 10 * y1, pt[1]], step)
+            pt = [pt[0] + 10 * y1, pt[1]]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 1])
+
+            # line
+            lineTo(pt, [pt[0], pt[1] - y1], step)
+            pt = [pt[0], pt[1] - x]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            geo.append([pt[1], pt[0], 2])
+
+            pmcs = [1, curve[-2]]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+        # start_pt = [0, 0]
+        # geo.append([start_pt[1], start_pt[0], 1])
+
+        # pandss
+        # df = pd.DataFrame(geo)
+        # # print(df[df.duplicated(keep=False)])
+        #
+        # geo = np.array(geo)
+        # _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
+        # geo = geo[np.sort(idx)]
+
+        # print('length of geometry:: ', len(geo))
+
+        # top = plt.plot(geo[:, 1], geo[:, 0])
+        # bottom = plt.plot(geo[:, 1], -geo[:, 0], c=top[0].get_color())
+
+        # # plot legend wthout duplicates
+        # handles, labels = plt.gca().get_legend_handles_labels()
+        # by_label = dict(zip(labels, handles))
+        # plt.legend(by_label.values(), by_label.keys())
+        # plt.gca().set_aspect('equal')
+        # plt.xlim(left=-30 * 1e-2)
+        #
+        # # # write geometry
+        # # if write:
+        # #     try:
+        # #         df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+        # #         # change point data precision
+        # #         df['r'] = df['r'].round(8)
+        # #         df['z'] = df['z'].round(8)
+        # #         # drop duplicates
+        # #         df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
+        # #         df.to_csv(write, sep='\t', index=False)
+        # #     except FileNotFoundError as e:
+        # #         error('Check file path:: ', e)
+        #
+        # return plt.gca()
+
+    def plot(self, what, ax=None, **kwargs):
+        # file_path = os.path.join(self.projectDir, "SimulationData", "NGSolveMEVP", self.name, "monopole", "geodata.n")
+        if what.lower() == 'geometry':
+            ax = self.write_geometry(self.parameters)
+            ax.set_xlabel('$z$ [m]')
+            ax.set_ylabel(r"$r$ [m]")
+            return ax
+
+        if what.lower() == 'zl':
+            if ax:
+                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
+                ax.plot(x * 1e3, y)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
+                ax.plot(x * 1e3, y)
+
+            ax.set_xlabel('f [MHz]')
+            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
+            return ax
+        if what.lower() == 'zt':
+            if ax:
+                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
+                ax.plot(x * 1e3, y)
+            else:
+                fig, ax = plt.subplots(figsize=(12, 4))
+                ax.margins(x=0)
+                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
+                ax.plot(x * 1e3, y)
+            ax.set_xlabel('f [MHz]')
+            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
+            return ax
+
+        if what.lower() == 'convergence':
+            try:
+                if ax:
+                    self._plot_convergence(ax)
+                else:
+                    fig, ax = plt.subplot_mosaic([['conv', 'abs_err']], layout='constrained', figsize=(12, 4))
+                    self._plot_convergence(ax)
+                return ax
+            except ValueError:
+                info("Convergence data not available.")
+
+    def get_eigenmode_qois(self):
+        """
+        Get quantities of interest written by the SLANS code
+        Returns
+        -------
+
+        """
+        # print('it is here')
+        qois = 'qois.json'
+        assert os.path.exists(
+            os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)), (
+            error('Eigenmode result does not exist, please run eigenmode simulation.'))
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)) as json_file:
+            self.eigenmode_qois = json.load(json_file)
+
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'qois_all_modes.json')) as json_file:
+            self.eigenmode_qois_all_modes = json.load(json_file)
+
+        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
+            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+
+        self.freq = self.eigenmode_qois['freq [MHz]']
+        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
+        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
+        self.G = self.GR_Q / self.R_Q
+        self.Q = self.eigenmode_qois['Q []']
+        self.e = self.eigenmode_qois['Epk/Eacc []']
+        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
+        self.Epk_Eacc = self.e
+        self.Bpk_Eacc = self.b
+
+    def plot_axis_field(self, show_min_max=True):
+        fig, ax = plt.subplots(figsize=(12, 3))
+        if len(self.Ez_0_abs['z(0, 0)']) != 0:
+            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+
+            ax.legend(loc="upper right")
+            if show_min_max:
+                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(10000 * (maxz - minz)) / 50, width=100)
+                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
+                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                ax.axhline(max(Ez_0_abs_peaks), c='k')
+        else:
+            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                           'Ez_0_abs.csv')):
+                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
+                                       'Ez_0_abs.csv')) as csv_file:
+                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
+                ax.legend(loc="upper right")
+                if show_min_max:
+                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
+                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
+                                          width=100)
+                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
+                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
+                    ax.axhline(max(Ez_0_abs_peaks), c='k')
+            else:
+                error('Axis field plot data not found.')
+
+    def __str__(self):
+        p = dict()
+        # p[self.name] = {
+        #     'tune': self.tune_results,
+        #     'fm': self.eigenmode_qois,
+        #     'hom': self.wakefield_qois,
+        #     'uq': {
+        #         'tune': 0,
+        #         'fm': self.uq_fm_results,
+        #         'hom': self.uq_hom_results
+        #     }
+        # }
+        return fr"{json.dumps(p, indent=4)}"
+
+
 class Pillbox(Cavity):
-    def __init__(self, n_cells, L, Req, Ri, S, L_bp, beampipe='none'):
+    def __init__(self, n_cells, dims, beampipe='none'):
+        super().__init__(n_cells, beampipe)
+
+        L, Req, Ri, S, L_bp = dims
         self.n_cells = n_cells
         self.n_modes = n_cells + 1
+        self.kind = 'pillbox'
         self.n_modules = 1  # change later to enable module run
         self.L = L
         self.Req = Req
@@ -6814,10 +8010,229 @@ class Pillbox(Cavity):
         self.L_bp = L_bp
         self.beampipe = beampipe
         self.bc = 33
+        self.cell_parameterisation = 'simplecell'
 
-        self.shape_space = {
+        self.shape = {
             'IC': [L, Req, Ri, S, L_bp],
             'BP': beampipe
+        }
+        self.shape_multicell = None
+
+        self.get_geometric_parameters()
+
+    def create(self, n_cells=None, beampipe=None, mode=None):
+        if n_cells is None:
+            n_cells = self.n_cells
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        if self.projectDir:
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+
+            # write geometry file to folder
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+
+            # define different paths for easier reference later
+            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
+            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
+            self.uq_dir = os.path.join(self.self_dir, 'uq')
+
+            self.geo_filepath = os.path.join(self.projectDir, 'Cavities', self.name, 'geometry', 'geodata.geo')
+            self.write_geometry(self.parameters, n_cells, beampipe, write=self.geo_filepath)
+
+    def write_geometry(self, parameters, n_cells, beampipe='none', write=None, plot=False, **kwargs):
+        """
+
+        Parameters
+        ----------
+        file_path
+        n_cell
+        cell_par
+        beampipe
+        plot
+        kwargs
+
+        Returns
+        -------
+
+        """
+
+        names = ['L', 'Req', 'Ri', 'S', 'L_bp']
+        L, Req, Ri, S, L_bp = (parameters[n]*1e-3 for n in names)
+
+        step = 0.001
+
+        if beampipe.lower() == 'both':
+            L_bp_l = L_bp
+            L_bp_r = L_bp
+        elif beampipe.lower() == 'none':
+            L_bp_l = 0.000
+            L_bp_r = 0.000
+        elif beampipe.lower() == 'left':
+            L_bp_l = L_bp
+            L_bp_r = 0.000
+        elif beampipe.lower() == 'right':
+            L_bp_l = 0.000
+            L_bp_r = L_bp
+        else:
+            L_bp_l = 0.000
+            L_bp_r = 0.000
+
+        geo = []
+        curve = []
+        pt_indx = 1
+        curve_indx = 1
+        curve.append(curve_indx)
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+            shift = (L_bp_l + L_bp_r + n_cells * L + (n_cells - 1) * S) / 2
+
+            # SHIFT POINT TO START POINT
+            start_point = [-shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+            # cav.write(f"  {start_point[1]:.16E}  {start_point[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+            # lineTo(start_point, [-shift, Ri], step)
+            pt = [-shift, Ri]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+            # cav.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+            # add beampipe
+            if L_bp_l > 0:
+                # lineTo(pt, [-shift + L_bp_l, Ri], step)
+                pt = [-shift + L_bp_l, Ri]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+            for n in range(1, n_cells + 1):
+                if n == 1:
+                    # lineTo(pt, [-shift + L_bp_l, Req], step)
+                    pt = [-shift + L_bp_l, Req]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    # lineTo(pt, [-shift + L_bp_l + L, Req], step)
+                    pt = [-shift + L_bp_l + L, Req]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    # lineTo(pt, [-shift + L_bp_l + L, Ri], step)
+                    pt = [-shift + L_bp_l + L, Ri]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    shift -= L
+                elif n > 1:
+                    # lineTo(pt, [-shift + L_bp_l + S, Ri], step)
+                    pt = [-shift + L_bp_l + S, Ri]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    # lineTo(pt, [-shift + L_bp_l + S, Req], step)
+                    pt = [-shift + L_bp_l + S, Req]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    # lineTo(pt, [-shift + L_bp_l + S + L, Req], step)
+                    pt = [-shift + L_bp_l + S + L, Req]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    # lineTo(pt, [-shift + L_bp_l + S + L, Ri], step)
+                    pt = [-shift + L_bp_l + S + L, Ri]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+                    shift -= L
+
+            if L_bp_r > 0:
+                # lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, Ri], step)
+                pt = [-shift + L_bp_l + (n_cells - 1) * S + L_bp_r, Ri]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                # fil.write(f"  {pt[1]:.16E}  {pt[0]:.16E}   1.0000000e+00   1.0000000e+00\n")
+
+            # END PATH
+            # lineTo(pt, [-shift + L_bp_l + (n_cell - 1) * S + L_bp_r, 0], step)
+            pt = [-shift + L_bp_l + (n_cells - 1) * S + L_bp_r, 0]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+            pmcs = [1, curve[-2]]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    def get_geometric_parameters(self):
+        self.parameters = {
+            'Ri': self.Ri,
+            'L': self.L,
+            'Req': self.Req,
+            'S': self.S,
+            'L_bp': self.L_bp
         }
 
     def plot(self, what, ax=None, **kwargs):
@@ -6976,8 +8391,8 @@ class Pillbox(Cavity):
         # load quantities of interest
         try:
             self.get_eigenmode_qois()
-        except FileNotFoundError:
-            error("Could not find eigenmode results. Please rerun eigenmode analysis.")
+        except FileNotFoundError as e:
+            error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
 
     def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
@@ -7154,153 +8569,6 @@ class Pillbox(Cavity):
                 show_valid_operating_point_structure()
 
 
-class RFGun(Cavity):
-    def __init__(self, shape, name='gun'):
-        # self.shape_space = {
-        #     'IC': [L, Req, Ri, S, L_bp],
-        #     'BP': beampipe
-        # }
-        self.cell_parameterisation = 'simplecell'  # consider removing
-        self.name = name
-        self.n_cells = 1
-        self.n_modules = 1
-        self.n_modes = 1
-        self.axis_field = None
-        self.bc = 'mm'
-        self.projectDir = None
-        self.kind = 'vhf gun'
-
-        self.shape = {
-                "geometry": shape['geometry'],
-                "n_cells": self.n_cells,
-                'CELL PARAMETERISATION': self.cell_parameterisation,
-                'kind': self.kind}
-        self.shape_multicell = {'kind': self.kind}
-
-    def plot(self, what, ax=None, **kwargs):
-        # file_path = os.path.join(self.projectDir, "SimulationData", "NGSolveMEVP", self.name, "monopole", "geodata.n")
-        if what.lower() == 'geometry':
-            ax = write_gun_geometry(self.shape['geometry'])
-            ax.set_xlabel('$z$ [m]')
-            ax.set_ylabel(r"$r$ [m]")
-            return ax
-
-        if what.lower() == 'zl':
-            if ax:
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
-            return ax
-        if what.lower() == 'zt':
-            if ax:
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
-            return ax
-
-        if what.lower() == 'convergence':
-            try:
-                if ax:
-                    self._plot_convergence(ax)
-                else:
-                    fig, ax = plt.subplot_mosaic([['conv', 'abs_err']], layout='constrained', figsize=(12, 4))
-                    self._plot_convergence(ax)
-                return ax
-            except ValueError:
-                info("Convergence data not available.")
-
-    def get_eigenmode_qois(self):
-        """
-        Get quantities of interest written by the SLANS code
-        Returns
-        -------
-
-        """
-        print('it is here')
-        qois = 'qois.json'
-        assert os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole', qois)), (
-            error('Eigenmode result does not exist, please run eigenmode simulation.'))
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               qois)) as json_file:
-            self.eigenmode_qois = json.load(json_file)
-
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               'qois_all_modes.json')) as json_file:
-            self.eigenmode_qois_all_modes = json.load(json_file)
-
-        with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                               'Ez_0_abs.csv')) as csv_file:
-            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-
-        self.freq = self.eigenmode_qois['freq [MHz]']
-        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-        self.G = self.GR_Q / self.R_Q
-        self.Q = self.eigenmode_qois['Q []']
-        self.e = self.eigenmode_qois['Epk/Eacc []']
-        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
-        self.Epk_Eacc = self.e
-        self.Bpk_Eacc = self.b
-
-    def plot_axis_field(self, show_min_max=True):
-        fig, ax = plt.subplots(figsize=(12, 3))
-        if len(self.Ez_0_abs['z(0, 0)']) != 0:
-            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-
-            ax.legend(loc="upper right")
-            if show_min_max:
-                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 50, width=100)
-                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
-                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                ax.axhline(max(Ez_0_abs_peaks), c='k')
-        else:
-            if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                                           'Ez_0_abs.csv')):
-                with open(os.path.join(self.projectDir, 'SimulationData', 'NGSolveMEVP', self.name, 'monopole',
-                                       'Ez_0_abs.csv')) as csv_file:
-                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-                ax.legend(loc="upper right")
-                if show_min_max:
-                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
-                                          width=100)
-                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                    ax.axhline(max(Ez_0_abs_peaks), c='k')
-            else:
-                error('Axis field plot data not found.')
-
-    def __str__(self):
-        p = dict()
-        # p[self.name] = {
-        #     'tune': self.tune_results,
-        #     'fm': self.eigenmode_qois,
-        #     'hom': self.wakefield_qois,
-        #     'uq': {
-        #         'tune': 0,
-        #         'fm': self.uq_fm_results,
-        #         'hom': self.uq_hom_results
-        #     }
-        # }
-        return fr"{json.dumps(p, indent=4)}"
-
-
 class Dakota:
     def __init__(self, folder, name, scripts_folder=None):
         self.nodes = None
@@ -7387,6 +8655,7 @@ class Dakota:
         assert 'upper_bounds' in keys, error('Please enter keyword "upper bounds"')
         kind = kwargs['kind']
         upper_bounds = kwargs['upper_bounds']
+        lower_bounds = kwargs['lower_bounds']
 
         assert len(upper_bounds) == len(lower_bounds), error("Length of upper and lower bounds must be equal.")
 
@@ -8078,2471 +9347,6 @@ class OperationPoints:
                 "Nb [1e11]": 2.3
             }
         })
-
-
-class QuickTools:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def cwg_cutoff(r, l=0, mode=None):
-        """
-
-        Parameters
-        ----------
-        r: float, list
-            radius or list of radii in nmm
-
-        Returns
-        -------
-        f_cutoff: float, list
-            cutoff frequency or list of cutoff frequencies in MHz
-        """
-
-        if isinstance(r, float) or isinstance(r, int):
-            r = [r]
-        if isinstance(l, float) or isinstance(l, int):
-            l = [l]
-
-        f_cutoff = {}
-        mode_dict = {'te11': 1.841, 'tm01': 2.405, 'te21': 3.054, 'te01': 3.832, 'tm11': 3.832, 'tm21': 5.135,
-                     'te12': 5.331, 'tm02': 5.520, 'te22': 6.706, 'te02': 7.016, 'tm12': 7.016, 'tm22': 8.417,
-                     'te13': 8.536, 'tm03': 8.654, 'te23': 9.970, 'te03': 10.174, 'tm13': 10.174, 'tm23': 11.620}
-
-        if mode is None:
-            for radius in r:
-                f_cutoff[f'{radius}'] = {}
-                for mode, j in mode_dict.items():
-                    f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                    f_cutoff[f'{radius}'][mode] = f * 1e-6
-        else:
-            if isinstance(mode, list):
-                for mode_ in mode:
-                    for radius in r:
-                        f_cutoff[f'{radius}'] = {}
-                        try:
-                            j = mode_dict[mode_]
-                        except KeyError:
-                            error("One or more mode names is wrong. Please check mode names.")
-                            j = 0
-                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                        f_cutoff[f'{radius}'][mode_] = f * 1e-6
-            else:
-                if isinstance(mode, str):
-                    for radius in r:
-                        f_cutoff[f'{radius}'] = {}
-                        try:
-                            j = mode_dict[mode]
-                        except KeyError:
-                            error("One or more mode names is wrong. Please check mode names.")
-                            j = 0
-                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                        f_cutoff[f'{radius}'][mode] = f * 1e-6
-                else:
-                    error("One or more mode names is wrong. Please check mode names.")
-
-        return f_cutoff
-
-    @staticmethod
-    def rwg_cutoff(a, b, mn=None, l=0, p=None):
-        if isinstance(a, float) or isinstance(a, int):
-            a = [a]
-        if isinstance(b, float) or isinstance(b, int):
-            b = [b]
-        if isinstance(l, float) or isinstance(l, int):
-            l = [l]
-
-        if mn is None:
-            mn = [[0, 1]]
-
-        if len(np.array(mn).shape) == 1:
-            mn = [mn]
-
-        if isinstance(p, int):
-            p = [p]
-
-        if p is None:
-            p = 0
-
-        f_cutoff = {}
-        try:
-            for a_ in a:
-                f_cutoff[f'a: {a_} mm'] = {}
-                for b_ in b:
-                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
-                    for l_ in l:
-                        f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
-                        for mn_ in mn:
-                            m, n = mn_
-                            if l_ == 0:
-                                f = (c0 / (2 * np.pi)) * (
-                                        (m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2) ** 0.5
-                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'TE/TM({m},{n})'] = f * 1e-6
-                            else:
-                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'] = {}
-                                for p_ in p:
-                                    f = (c0 / (2 * np.pi)) * (
-                                            (m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2 + (
-                                            p_ * np.pi / (l_ * 1e-3)) ** 2) ** 0.5
-                                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'][
-                                        f'TE/TM({m},{n},{p_})'] = f * 1e-6
-            return f_cutoff
-        except ValueError:
-            print("Please enter a valid number.")
-
-    @staticmethod
-    def coaxial_tline(D, d, x=0, epsr=1):
-        D, d, x = D * 1e-3, d * 1e-3, x * 1e-3
-
-        Z = 60 * np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D))
-        C = 2 * np.pi * eps0 * epsr / (np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D))) * 1e12
-        L = mu0 / (2 * np.pi) * np.arccosh((d ** 2 + D ** 2 - x ** 2) / (2 * d * D)) * 1e9
-        return {"L' [nH/m]": L, "C' [pF/m]": C, "Z' [Ohm/m]": Z}
-
-    @staticmethod
-    def parallel_plate_capacitor(l, b, d, epsr=1):
-        l, b = l * 1e-3, b * 1e-3
-        C = epsr * l * b / d
-        return {"C' [pF]": C}
-
-    @staticmethod
-    def parallel_disc_capacitor(D, d, epsr=1):
-        D, d = D * 1e-3, d * 1e-3
-        C = epsr * np.pi * D ** 2 / (4 * d)
-        return {"C' [pF]": C}
-
-    @staticmethod
-    def cwg_analytical(m, n, kind='te', R=None, pol=None, component='abs'):
-        if R is None:
-            R = 1
-        if not pol:
-            pol = 0
-        else:
-            pol = 0
-
-        r_ = np.linspace(1e-6, R, 500)
-        t_ = np.linspace(0, 2 * np.pi, 500)
-        radius, theta = np.meshgrid(r_, t_)
-        A = 1
-        k = 0  # no propagation in z
-
-        if kind.lower() == 'te':
-            j_mn_p = jnp_zeros(m, n)[n - 1]
-            kc = j_mn_p / R
-            w = kc / np.sqrt(mu0 * eps0)
-
-            beta = np.sqrt(k ** 2 - kc ** 2)
-
-            Er = -1j * w * mu0 * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(
-                m,
-                kc * radius)
-            Et = 1j * w * mu0 / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-            Ez = 0
-            Hr = -1j * beta / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-            Ht = -1j * beta * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
-                                                                                                                    kc * radius)
-            Hz = A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jv(m, kc * radius)
-
-            Emag = np.abs(np.sqrt(Er ** 2 + Et ** 2 + Ez ** 2))
-            Hmag = np.abs(np.sqrt(Hr ** 2 + Ht ** 2 + Hz ** 2))
-        elif kind.lower() == 'tm':
-            j_mn = jn_zeros(m, n)[n - 1]
-            kc = j_mn / R
-            w = kc / np.sqrt(mu0 * eps0)
-            beta = np.sqrt(k ** 2 - kc ** 2)
-            Ez = A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jv(m, kc * radius)
-            Er = -1j * beta / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-            Et = -1j * beta * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
-                                                                                                                    kc * radius)
-            Hr = 1j * w * eps0 * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(
-                m, kc * radius)
-            Ht = -1j * w * eps0 / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-            Hz = 0
-
-            Emag = np.abs(np.sqrt(Er ** 2 + Et ** 2 + Ez ** 2))
-            Hmag = np.abs(np.sqrt(Hr ** 2 + Ht ** 2 + Hz ** 2))
-        else:
-            raise RuntimeError('Please enter valid cicular waveguide mode kind.')
-
-        if component.lower() == 'abs':
-            return radius, theta, Emag, Hmag
-        if component.lower() == 'azimuthal':
-            return radius, theta, Et, Ht
-        if component.lower() == 'radial':
-            return radius, theta, Er, Hr
-        if component.lower() == 'longitudinal':
-            return radius, theta, Ez, Hz
-
-    @staticmethod
-    def cwg_tm_analytical(m, n, theta, radius, R=None, pol=None, component='abs'):
-        if R is None:
-            R = 1
-        if pol is None:
-            pol = 0
-
-        r_ = np.linspace(1e-6, R, 500)
-        t_ = np.linspace(0, 2 * np.pi, 500)
-        radius, theta = np.meshgrid(r_, t_)
-
-        j_mn = jn_zeros(m, n)[n - 1]
-        A = 1
-        k = 0  # no propagation in z
-        kc = j_mn / R
-        w = kc / np.sqrt(mu0 * eps0)
-        beta = np.sqrt(k ** 2 - kc ** 2)
-        Ez = A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jv(m, kc * radius)
-        Er = -1j * beta / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-        Et = -1j * beta * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
-                                                                                                                kc * radius)
-        Hr = 1j * w * eps0 * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
-                                                                                                                   kc * radius)
-        Ht = -1j * w * eps0 / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
-        Hz = 0
-
-        Emag = np.abs(np.sqrt(Er ** 2 + Et ** 2 + Ez ** 2))
-        Hmag = np.abs(np.sqrt(Hr ** 2 + Ht ** 2 + Hz ** 2))
-
-        if component.lower() == 'abs':
-            return radius, theta, Emag, Hmag
-        if component.lower() == 'azimuthal':
-            return radius, theta, Et, Ht
-        if component.lower() == 'radial':
-            return radius, theta, Er, Hr
-        if component.lower() == 'longitudinal':
-            return radius, theta, Ez, Hz
-
-
-def run_tune_parallel(shape_space, tune_config, projectDir, solver='NGSolveMEVP',
-                      resume=False):
-    tune_config_keys = tune_config.keys()
-    if 'processes' in tune_config_keys:
-        processes = tune_config['processes']
-        assert processes > 0, error('Number of proceses must be greater than zero.')
-    else:
-        processes = 1
-
-    assert 'freqs' in tune_config_keys, error('Please enter the target tune "freqs" in tune_config.')
-    assert 'parameters' in tune_config_keys, error('Please enter the tune "parameters"  in tune_config')
-    assert 'cell_types' in tune_config_keys, error('Please enter the "cell_types" in tune_config')
-    freqs = tune_config['freqs']
-    tune_parameters = tune_config['parameters']
-    cell_types = tune_config['cell_types']
-
-    if isinstance(freqs, float) or isinstance(freqs, int):
-        freqs = np.array([freqs for _ in range(len(shape_space))])
-    else:
-        assert len(freqs) == len(shape_space), error(
-            'Number of target frequencies must correspond to the number of cavities')
-        freqs = np.array(freqs)
-
-    if isinstance(tune_parameters, str):
-        assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
-            'Please enter a valid tune parameter')
-        tune_parameters = np.array([tune_parameters for _ in range(len(shape_space))])
-        cell_types = np.array([cell_types for _ in range(len(shape_space))])
-    else:
-        assert len(tune_parameters) == len(shape_space), error(
-            'Number of tune parameters must correspond to the number of cavities')
-        assert len(cell_types) == len(shape_space), error(
-            'Number of cell types must correspond to the number of cavities')
-        tune_parameters = np.array(tune_parameters)
-        cell_types = np.array(cell_types)
-
-    # split shape_space for different processes/ MPI share process by rank
-    keys = list(shape_space.keys())
-
-    # check if number of processors selected is greater than the number of keys in the pseudo shape space
-    if processes > len(keys):
-        processes = len(keys)
-
-    shape_space_len = len(keys)
-    # share = int(round(shape_space_len / processes))
-    jobs = []
-    # for p in range(processes):
-    #     # try:
-    #     if p < processes - 1:
-    #         proc_keys_list = keys[p * share:p * share + share]
-    #         proc_tune_variables = tune_parameters[p * share:p * share + share]
-    #         proc_freqs = freqs[p * share:p * share + share]
-    #         proc_cell_types = cell_types[p * share:p * share + share]
-    #     else:
-    #         proc_keys_list = keys[p * share:]
-    #         proc_tune_variables = tune_parameters[p * share:]
-    #         proc_freqs = freqs[p * share:]
-    #         proc_cell_types = cell_types[p * share:]
-
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    start_idx = 0
-    for p in range(processes):
-        # Determine the size of the current chunk
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        proc_tune_variables = tune_parameters[start_idx:start_idx + current_chunk_size]
-        proc_freqs = freqs[start_idx:start_idx + current_chunk_size]
-        proc_cell_types = cell_types[start_idx:start_idx + current_chunk_size]
-
-        start_idx += current_chunk_size
-
-        processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
-        service = mp.Process(target=run_tune_s, args=(processor_shape_space, proc_tune_variables,
-                                                      proc_freqs, proc_cell_types, tune_config, projectDir, resume, p))
-
-        service.start()
-        jobs.append(service)
-
-    for job in jobs:
-        job.join()
-
-
-def run_tune_s(processor_shape_space, proc_tune_variables, proc_freqs, proc_cell_types, tune_config, projectDir, resume,
-               p, sim_folder='Optimisation'):
-    # perform necessary checks
-    if tune_config is None:
-        tune_config = {}
-    tune_config_keys = tune_config.keys()
-
-    rerun = True
-    if 'rerun' in tune_config_keys:
-        if isinstance(tune_config['rerun'], bool):
-            rerun = tune_config['rerun']
-
-    def _run_tune():
-        tuned_shape_space, d_tune_res, conv_dict, abs_err_dict = tuner.tune_ngsolve({key: shape}, 33,
-                                                                                    SOFTWARE_DIRECTORY,
-                                                                                    projectDir, key,
-                                                                                    resume=resume, proc=p,
-                                                                                    tune_variable=
-                                                                                    proc_tune_variables[i],
-                                                                                    cell_type=proc_cell_types[
-                                                                                        i],
-                                                                                    sim_folder=sim_folder,
-                                                                                    tune_config=tune_config)
-
-        if d_tune_res:
-            n_cells = processor_shape_space[key]['n_cells']
-            tuned_shape_space[key]['n_cells'] = n_cells
-            tuned_shape_space[key]['CELL PARAMETERISATION'] = processor_shape_space[key]['CELL PARAMETERISATION']
-            tuned_shape_space_multi = {kk: to_multicell(n_cells, tuned_shape) for kk, tuned_shape in
-                                       tuned_shape_space.items()}
-
-            eigenmode_config = {}
-            if 'eigenmode_config' in tune_config_keys:
-                eigenmode_config = tune_config['eigenmode_config']
-            else:
-                info('tune_config does not contain eigenmode_config. Default values are used for eigenmode analysis.')
-
-            eigenmode_config['solver_save_directory'] = sim_folder.split(os.sep)[0]
-            if sim_folder == 'Optimisation':
-                eigenmode_config['opt'] = True
-            else:
-                eigenmode_config['opt'] = False
-
-            # might cause some problems later
-            if len(sim_folder.split(os.sep)) > 1:
-                subdir = os.path.basename(sim_folder)
-            else:
-                subdir = ''
-            run_eigenmode_parallel(tuned_shape_space, tuned_shape_space_multi, eigenmode_config, projectDir,
-                                   subdir=subdir)
-
-            # save tune results
-            save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
-
-            # save convergence information
-            save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
-            save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
-
-    for i, (key, shape) in enumerate(processor_shape_space.items()):
-        shape['FREQ'] = proc_freqs[i]
-        if os.path.exists(os.path.join(projectDir, "SimulationData", sim_folder, key)):
-            if rerun:
-                # clear previous results
-                shutil.rmtree(os.path.join(projectDir, "SimulationData", sim_folder, key))
-                os.mkdir(os.path.join(projectDir, "SimulationData", sim_folder, key))
-                _run_tune()
-        else:
-            _run_tune()
-
-
-def run_eigenmode_parallel(shape_space, shape_space_multi, eigenmode_config,
-                           projectDir, subdir=''):
-    if 'processes' in eigenmode_config.keys():
-        processes = eigenmode_config['processes']
-        assert processes > 0, error('Number of proceses must be greater than zero.')
-    else:
-        processes = 1
-
-    # split shape_space for different processes/ MPI share process by rank
-    keys = list(shape_space.keys())
-
-    # check if number of processors selected is greater than the number of keys in the pseudo shape space
-    if processes > len(keys):
-        processes = len(keys)
-
-    shape_space_len = len(keys)
-    share = int(round(shape_space_len / processes))
-
-    jobs = []
-    # for p in range(processes):
-    #     if p < processes - 1:
-    #         proc_keys_list = keys[p * share:p * share + share]
-    #     else:
-    #         proc_keys_list = keys[p * share:]
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    start_idx = 0
-    for p in range(processes):
-        # Determine the size of the current chunk
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        start_idx += current_chunk_size
-
-        processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
-        processor_shape_space_multi = {key: shape_space_multi[key] for key in proc_keys_list}
-        service = mp.Process(target=run_eigenmode_s, args=(processor_shape_space, processor_shape_space_multi,
-                                                           projectDir, eigenmode_config, subdir))
-
-        service.start()
-        jobs.append(service)
-
-    for job in jobs:
-        job.join()
-
-
-def run_eigenmode_s(shape_space, shape_space_multi, projectDir, eigenmode_config, subdir):
-    """
-    Run eigenmode analysis
-
-    Parameters
-    ----------
-    shape_space
-    shape_space_multi
-    projectDir
-    eigenmode_config
-
-    Returns
-    -------
-
-    """
-
-    rerun = True
-    if 'rerun' in eigenmode_config.keys():
-        assert isinstance(eigenmode_config['rerun'], bool), error('rerun must be boolean.')
-        rerun = eigenmode_config['rerun']
-
-    # perform all necessary checks
-    processes = 1
-    if 'processes' in eigenmode_config.keys():
-        assert eigenmode_config['processes'] > 0, error('Number of proceses must be greater than zero.')
-        assert isinstance(eigenmode_config['processes'], int), error('Number of proceses must be integer.')
-    else:
-        eigenmode_config['processes'] = processes
-
-    freq_shifts = 0
-    if 'f_shifts' in eigenmode_config.keys():
-        freq_shifts = eigenmode_config['f_shifts']
-
-    boundary_conds = 'mm'
-    if 'boundary_conditions' in eigenmode_config.keys():
-        eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[eigenmode_config['boundary_conditions']]
-    else:
-        eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
-
-    # uq_config = None
-    # if 'uq_config' in eigenmode_config.keys():
-    #     uq_config = eigenmode_config['uq_config']
-    #     if uq_config:
-    #         assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-    #                                                                              "be equal to the number of "
-    #                                                                              "variables.")
-    # else:
-    #     eigenmode_config['uq_config'] = uq_config
-
-    def _run_ngsolve(name, shape, shape_multi, eigenmode_config, projectDir, subdir):
-
-        start_time = time.time()
-        if shape['kind'] == 'elliptical cavity':
-            n_cells = shape['n_cells']
-            n_modules = 1
-            bc = eigenmode_config['boundary_conditions']
-            # create folders for all keys
-            ngsolve_mevp.createFolder(name, projectDir, subdir=subdir, opt=eigenmode_config['opt'])
-
-            if 'OC_R' in shape.keys():
-                OC_R = 'OC_R'
-            else:
-                OC_R = 'OC'
-
-            if shape['CELL PARAMETERISATION'] == 'flattop':
-                write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
-                                    projectDir=projectDir, cell_type="None",
-                                    solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
-
-                ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                            n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
-                                            beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                            parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
-                                            eigenmode_config=eigenmode_config)
-
-            elif shape['CELL PARAMETERISATION'] == 'multicell':
-                write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
-                                    projectDir=projectDir, cell_type="None",
-                                    solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
-                ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'],
-                                              shape_multi[OC_R],
-                                              n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc,
-                                              beampipes=shape['BP'], sim_folder=solver_save_dir,
-                                              parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
-                                              eigenmode_config=eigenmode_config)
-            else:
-                write_cst_paramters(f"{name}", shape['IC'], shape['OC'], shape['OC_R'],
-                                    projectDir=projectDir, cell_type="None",
-                                    solver=eigenmode_config['solver_save_directory'], sub_dir=subdir)
-
-                ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                    n_modes=n_cells, fid=f"{name}", f_shift=0, bc=bc, beampipes=shape['BP'],
-                                    sim_folder=solver_save_dir,
-                                    parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
-                                    eigenmode_config=eigenmode_config)
-        elif shape['kind'] == 'vhf gun':
-            ngsolve_mevp.createFolder(name, projectDir, subdir=subdir, opt=eigenmode_config['opt'])
-            ngsolve_mevp.vhf_gun(fid=f"{name}", shape=shape, sim_folder=solver_save_dir,
-                                 parentDir=SOFTWARE_DIRECTORY, projectDir=projectDir, subdir=subdir,
-                                 eigenmode_config=eigenmode_config)
-
-        elif shape['kind'] == 'pillbox cavity':
-            pass
-        else:
-            pass
-
-        # run UQ
-        if 'uq_config' in eigenmode_config.keys():
-            uq_config = eigenmode_config['uq_config']
-            if uq_config:
-                opt = False
-                if eigenmode_config['solver_save_directory'].lower() == 'optimisation':
-                    opt = True
-                objectives = uq_config['objectives']
-                solver_dict = {'ngsolvemevp': ngsolve_mevp}
-                solver_args_dict = {'eigenmode': eigenmode_config,
-                                    'n_cells': n_cells,
-                                    'n_modules': n_modules,
-                                    'parentDir': SOFTWARE_DIRECTORY,
-                                    'projectDir': projectDir,
-                                    'analysis folder': eigenmode_config['solver_save_directory'],
-                                    'cell_type': 'mid-cell',
-                                    'cell_parameterisation': shape['CELL PARAMETERISATION'],
-                                    'optimisation': opt
-                                    }
-
-                uq_cell_complexity = 'simplecell'
-                if 'cell_complexity' in uq_config.keys():
-                    uq_cell_complexity = uq_config['cell_complexity']
-
-                if uq_cell_complexity == 'multicell':
-                    shape_space = {name: shape_multi}
-                    uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict)
-                else:
-                    shape_space = {name: shape}
-                    uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
-
-        done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
-
-    for i, (key, shape) in enumerate(list(shape_space.items())):
-        # if isinstance(freq_shifts, int) or isinstance(freq_shifts, float):
-        #     freq_shift = freq_shifts
-        # else:
-        #     freq_shift = freq_shifts[i]
-        #
-        # if isinstance(boundary_conds, str) or boundary_conds is None:
-        #     boundary_cond = boundary_conds
-        # else:
-        #     boundary_cond = boundary_conds[i]
-
-        solver_save_dir = eigenmode_config['solver_save_directory']
-
-        if os.path.exists(os.path.join(projectDir, "SimulationData", solver_save_dir, key)):
-            if rerun:
-                # delete old results
-                shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
-
-            else:
-                # check if eigenmode analysis results exist
-                if os.path.exists(os.path.join(projectDir, "SimulationData", solver_save_dir, key, "monopole",
-                                               "qois.json")):
-                    pass
-                else:
-                    shutil.rmtree(os.path.join(projectDir, "SimulationData", solver_save_dir, key))
-                    _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
-        else:
-            _run_ngsolve(key, shape, shape_space_multi[key], eigenmode_config, projectDir, subdir)
-
-
-def run_wakefield_parallel(shape_space, shape_space_multi, wakefield_config, projectDir, marker='', rerun=True):
-    processes = wakefield_config['processes']
-    # split shape_space for different processes/ MPI share process by rank
-    keys = list(shape_space.keys())
-
-    # # check if number of processors selected is greater than the number of keys in the pseudo shape space
-    # if processes > len(keys):
-    #     processes = len(keys)
-
-    shape_space_len = len(keys)
-    # share = int(round(shape_space_len / processes))
-    jobs = []
-    # for p in range(processes):
-    #     # try:
-    #     if p < processes - 1:
-    #         proc_keys_list = keys[p * share:p * share + share]
-    #     else:
-    #         proc_keys_list = keys[p * share:]
-
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    start_idx = 0
-    for p in range(processes):
-        # Determine the size of the current chunk
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        start_idx += current_chunk_size
-
-        processor_shape_space = {key: shape_space[key] for key in proc_keys_list}
-        processor_shape_space_multi = {key: shape_space_multi[key] for key in proc_keys_list}
-        service = mp.Process(target=run_wakefield_s, args=(processor_shape_space, processor_shape_space_multi,
-                                                           wakefield_config, projectDir, marker, rerun))
-
-        service.start()
-        jobs.append(service)
-
-    for job in jobs:
-        job.join()
-
-
-def run_wakefield_s(shape_space, shape_space_multi, wakefield_config, projectDir, marker, rerun):
-    MROT = wakefield_config['polarisation']
-    MT = wakefield_config['MT']
-    NFS = wakefield_config['NFS']
-    UBT = wakefield_config['wake_config']['wakelength']
-    bunch_length = wakefield_config['beam_config']['bunch_length']
-    DDR_SIG = wakefield_config['mesh_config']['DDR_SIG']
-    DDZ_SIG = wakefield_config['mesh_config']['DDZ_SIG']
-
-    operating_points = None
-    if 'operating_points' in wakefield_config.keys():
-        operating_points = wakefield_config['operating_points']
-
-    uq_config = wakefield_config['uq_config']
-    # if uq_config:
-    #     assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-    #                                                                          "be equal to the number of "
-    #                                                                          "variables.")
-
-    WG_M = None
-
-    def _run_abci(name, n_cells, n_modules, shape, shape_multi, wakefield_config, projectDir, WG_M=None, marker=''):
-
-        freq = 0
-        R_Q = 0
-        # run abci code
-        if WG_M is None:
-            WG_M = ['']
-
-        start_time = time.time()
-        # run both polarizations if MROT == 2
-        for ii in WG_M:
-            # run abci code
-            # run both polarizations if MROT == 2
-            if 'OC_R' in list(shape.keys()):
-                OC_R = 'OC_R'
-            else:
-                OC_R = 'OC'
-
-            if MROT == 2:
-                for m in range(2):
-                    if shape['kind'] == 'elliptical cavity':
-                        if shape['CELL PARAMETERISATION'] == 'simplecell':
-                            abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                             fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                             DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                             projectDir=projectDir,
-                                             WG_M=ii, marker=ii, wakefield_config=wakefield_config)
-                        if shape['CELL PARAMETERISATION'] == 'flattop':
-                            abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                                     fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                                     projectDir=projectDir,
-                                                     WG_M=ii, marker=ii, wakefield_config=wakefield_config)
-
-            else:
-                for m in range(2):
-                    if shape['kind'] == 'elliptical cavity':
-                        if shape['CELL PARAMETERISATION'] == 'simplecell':
-                            abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                             fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                             DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                             projectDir=projectDir,
-                                             WG_M=ii, marker=ii, wakefield_config=wakefield_config)
-                        if shape['CELL PARAMETERISATION'] == 'flattop':
-                            abci_geom.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                                     fid=name, MROT=m, MT=MT, NFS=NFS, UBT=UBT, bunch_length=bunch_length,
-                                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                                     projectDir=projectDir,
-                                                     WG_M=ii, marker=ii, wakefield_config=wakefield_config)
-
-        done(f'Cavity {name}. Time: {time.time() - start_time}')
-
-        if uq_config:
-            objectives = uq_config['objectives']
-            solver_dict = {'abci': abci_geom}
-            solver_args_dict = {'wakefield': wakefield_config,
-                                'n_cells': n_cells,
-                                'n_modules': n_modules,
-                                'parentDir': SOFTWARE_DIRECTORY,
-                                'projectDir': projectDir,
-                                'analysis folder': 'ABCI',
-                                # 'cell_type': cell_type,
-                                'cell_parameterisation': shape['CELL PARAMETERISATION'],
-                                'optimisation': False
-                                }
-
-            uq_cell_complexity = 'simplecell'
-            if 'cell_complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell_complexity']
-
-            if uq_cell_complexity == 'multicell':
-                shape_space = {name: shape_multi}
-                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            else:
-                shape_space = {name: shape}
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'wakefield')
-
-        if operating_points:
-            try:
-                # check folder for freq and R/Q
-                folder = os.path.join(projectDir, 'SimulationData', 'NGSolveMEVP', name, 'monopole', 'qois.json')
-                if os.path.exists(folder):
-                    try:
-                        with open(folder, 'r') as json_file:
-                            fm_results = json.load(json_file)
-                        freq = fm_results['freq [MHz]']
-                        R_Q = fm_results['R/Q [Ohm]']
-                    except OSError:
-                        info("To run analysis for working points, eigenmode simulation has to be run first"
-                             "to obtain the cavity operating frequency and R/Q")
-
-                if freq != 0 and R_Q != 0:
-                    d = {}
-                    # save qois
-                    for key_op, vals in operating_points.items():
-                        WP = key_op
-                        I0 = float(vals['I0 [mA]'])
-                        Nb = float(vals['Nb [1e11]'])
-                        sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
-                        bl_diff = ['SR', 'BS']
-
-                        # info("Running wakefield analysis for given operating points.")
-                        for i, s in enumerate(sigma_z):
-                            for ii in WG_M:
-                                fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
-                                OC_R = 'OC'
-                                if 'OC_R' in shape.keys():
-                                    OC_R = 'OC_R'
-                                for m in range(2):
-                                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                                     fid=fid, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
-                                                     bunch_length=s,
-                                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                                     projectDir=projectDir,
-                                                     WG_M=ii, marker=ii, sub_dir=f"{name}")
-
-                                dirc = os.path.join(projectDir, "SimulationData", "ABCI", name, marker)
-                                # try:
-                                k_loss = abs(ABCIData(dirc, f'{fid}', 0).loss_factor['Longitudinal'])
-                                k_kick = abs(ABCIData(dirc, f'{fid}', 1).loss_factor['Transverse'])
-                                # except:
-                                #     k_loss = 0
-                                #     k_kick = 0
-
-                                d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, n_cells)
-
-                    # save qoi dictionary
-                    run_save_directory = os.path.join(projectDir, "SimulationData", "ABCI", name, marker)
-                    with open(os.path.join(run_save_directory, "qois.json"), "w") as f:
-                        json.dump(d, f, indent=4, separators=(',', ': '))
-
-                    done("Done with the secondary analysis for working points")
-                else:
-                    info("To run analysis for working points, eigenmode simulation has to be run first"
-                         "to obtain the cavity operating frequency and R/Q")
-            except KeyError:
-                error('The working point entered is not valid. See below for the proper input structure.')
-                show_valid_operating_point_structure()
-
-    for i, (key, shape) in enumerate(shape_space.items()):
-        if os.path.exists(os.path.join(projectDir, "SimulationData", "ABCI", key)):
-            if rerun:
-                # remove old simulation results
-                shutil.rmtree(os.path.join(projectDir, "SimulationData", "ABCI", key))
-                os.mkdir(os.path.join(projectDir, "SimulationData", "ABCI", key))
-
-                _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config,
-                          projectDir, WG_M, marker)
-            else:
-                # check if eigenmode analysis results exist
-                if os.path.exists(os.path.join(projectDir, "SimulationData", "ABCI", key, "qois.json")):
-                    pass
-                else:
-                    _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir,
-                              WG_M, marker)
-        else:
-            _run_abci(key, shape['n_cells'], 1, shape, shape_space_multi[key], wakefield_config, projectDir, WG_M,
-                      marker)
-
-
-def uq_parallel(shape_space, objectives, solver_dict, solver_args_dict,
-                solver):
-    """
-
-    Parameters
-    ----------
-    key: str | int
-        Cavity geomery identifier
-    shape: dict
-        Dictionary containing geometric dimensions of cavity geometry
-    qois: list
-        Quantities of interest considered in uncertainty quantification
-    n_cells: int
-        Number of cavity cells
-    n_modules: int
-        Number of modules
-    n_modes: int
-        Number of eigenmodes to be calculated
-    f_shift: float
-        Since the eigenmode solver uses the power method, a shift can be provided
-    bc: int
-        Boundary conditions {1:inner contour, 2:Electric wall Et = 0, 3:Magnetic Wall En = 0, 4:Axis, 5:metal}
-        bc=33 means `Magnetic Wall En = 0` boundary condition at both ends
-    pol: int {Monopole, Dipole}
-        Defines whether to calculate for monopole or dipole modes
-    parentDir: str | path
-        Parent directory
-    projectDir: str|path
-        Project directory
-
-    Returns
-    -------
-    :param select_solver:
-
-    """
-
-    if solver == 'eigenmode':
-        # parentDir = solver_args_dict['parentDir']
-        projectDir = solver_args_dict['projectDir']
-        uq_config = solver_args_dict['eigenmode']['uq_config']
-        # cell_type = uq_config['cell_type']
-        analysis_folder = solver_args_dict['analysis folder']
-        # opt = solver_args_dict['optimisation']
-        # delta = uq_config['delta']
-
-        method = ['stroud3']
-        if 'method' in uq_config.keys():
-            method = uq_config['method']
-
-        uq_vars = uq_config['variables']
-        # assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
-
-        for key, shape in shape_space.items():
-            # n_cells = shape['n_cells']
-            uq_path = projectDir / fr'SimulationData\{analysis_folder}\{key}'
-
-            result_dict_eigen = {}
-            result_dict_eigen_all_modes = {}
-            # eigen_obj_list = []
-
-            # for o in objectives:
-            #     if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-            #              "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-            #         result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-            #         eigen_obj_list.append(o)
-
-            rdim = len(uq_vars)
-            degree = 1
-
-            if isinstance(method, str):
-                flag = method
-            else:
-                flag = method[0]
-
-            if flag.lower() == 'stroud3':
-                nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
-                nodes_ = 2. * nodes_ - 1.
-                # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
-                # gives a less accurate answer. the nodes are not the same as the custom function
-            elif flag.lower() == 'stroud5':
-                nodes_, weights_ = cn_leg_05_2(rdim)
-            elif flag.lower() == 'cn_gauss':
-                nodes_, weights_ = cn_gauss(rdim, 2)
-            elif flag.lower() == 'lhc':
-                sampler = qmc.LatinHypercube(d=rdim)
-                _ = sampler.reset()
-                nsamp = 2500
-                sample = sampler.random(n=nsamp)
-                # ic(qmc.discrepancy(sample))
-                l_bounds = [-1, -1, -1, -1, -1, -1]
-                u_bounds = [1, 1, 1, 1, 1, 1]
-                sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-                nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
-            else:
-                # issue warning
-                warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-                nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
-                nodes_ = 2. * nodes_ - 1.
-
-            # save nodes and weights
-            data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
-            data_table.to_csv(os.path.join(projectDir, 'SimulationData', analysis_folder, key, 'nodes.csv'),
-                              index=False, sep='\t', float_format='%.32f')
-
-            data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(os.path.join(projectDir, 'SimulationData', analysis_folder, key, 'weights.csv'),
-                                index=False,
-                                sep='\t', float_format='%.32f')
-
-            no_parm, no_sims = np.shape(nodes_)
-            # if delta is None:
-            #     delta = [0.05 for _ in range(len(uq_vars))]
-
-            sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
-
-            proc_count = 1
-            if 'processes' in uq_config.keys():
-                assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
-                assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
-                proc_count = uq_config['processes']
-            if proc_count > no_sims:
-                proc_count = no_sims
-
-            share = int(round(no_sims / proc_count))
-            jobs = []
-            # for p in range(proc_count):
-            #     # try:
-            #     end_already = False
-            #     if p != proc_count - 1:
-            #         if (p + 1) * share < no_sims:
-            #             proc_keys_list = np.arange(p * share, p * share + share)
-            #         else:
-            #             proc_keys_list = np.arange(p * share, no_sims)
-            #             end_already = True
-            #
-            #     if p == proc_count - 1 and not end_already:
-            #         proc_keys_list = np.arange(p * share, no_sims)
-
-            base_chunk_size = no_sims // proc_count
-            remainder = no_sims % proc_count
-
-            start_idx = 0
-            for p in range(proc_count):
-                # Determine the size of the current chunk
-                current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-                proc_keys_list = np.arange(start_idx, start_idx + current_chunk_size)
-                start_idx += current_chunk_size
-
-                processor_nodes = nodes_[:, proc_keys_list]
-                processor_weights = weights_[proc_keys_list]
-                service = mp.Process(target=uq, args=(key, objectives, uq_config, uq_path,
-                                                      solver_args_dict, sub_dir,
-                                                      proc_keys_list, processor_nodes, p, shape, solver))
-
-                service.start()
-                jobs.append(service)
-
-            for job in jobs:
-                job.join()
-
-            # combine results from processes
-            # qois_result_dict = {}
-            # Ttab_val_f = []
-            # keys = []
-            for i1 in range(proc_count):
-                if i1 == 0:
-                    df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
-                    df_all_modes = pd.read_csv(uq_path / fr'table_{i1}_all_modes.csv', sep='\t', engine='python')
-                else:
-                    df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
-                    df_all_modes = pd.concat(
-                        [df_all_modes, pd.read_csv(uq_path / fr'table_{i1}_all_modes.csv', sep='\t', engine='python')])
-
-            df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
-            df.to_excel(uq_path / 'table.xlsx', index=False)
-
-            Ttab_val_f = df.to_numpy()
-            # print(Ttab_val_f.shape, weights_.shape)
-            mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
-
-            # # append results to dict
-            # for i, o in enumerate(eigen_obj_list):
-            #     result_dict_eigen[o]['expe'].append(mean_obj[i])
-            #     result_dict_eigen[o]['stdDev'].append(std_obj[i])
-            for i, o in enumerate(df.columns):
-                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                result_dict_eigen[o]['expe'].append(mean_obj[i])
-                result_dict_eigen[o]['stdDev'].append(std_obj[i])
-                result_dict_eigen[o]['skew'].append(skew_obj[i])
-                result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
-            with open(uq_path / fr'uq.json', 'w') as file:
-                file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
-
-            # for all modes
-            df_all_modes.to_csv(uq_path / 'table_all_modes.csv', index=False, sep='\t', float_format='%.32f')
-            df_all_modes.to_excel(uq_path / 'table_all_modes.xlsx', index=False)
-
-            Ttab_val_f_all_modes = df_all_modes.to_numpy()
-            # print(Ttab_val_f_all_modes.shape, weights_.shape)
-            # print()
-            mean_obj_all_modes, std_obj_all_modes, skew_obj_all_modes, kurtosis_obj_all_modes = weighted_mean_obj(
-                Ttab_val_f_all_modes, weights_)
-            # print(mean_obj_all_modes)
-
-            # # append results to dict
-            # for i, o in enumerate(eigen_obj_list):
-            #     result_dict_eigen[o]['expe'].append(mean_obj[i])
-            #     result_dict_eigen[o]['stdDev'].append(std_obj[i])
-            for i, o in enumerate(df_all_modes.columns):
-                result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                result_dict_eigen_all_modes[o]['expe'].append(mean_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['stdDev'].append(std_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['skew'].append(skew_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['kurtosis'].append(kurtosis_obj_all_modes[i])
-
-            with open(uq_path / fr'uq_all_modes.json', 'w') as file:
-                file.write(json.dumps(result_dict_eigen_all_modes, indent=4, separators=(',', ': ')))
-
-    elif solver == 'wakefield':
-        # parentDir = solver_args_dict['parentDir']
-        projectDir = solver_args_dict['projectDir']
-        solver_args = solver_args_dict['wakefield']
-        # n_cells = solver_args['n_cells']
-        uq_config = solver_args['uq_config']
-        # delta = uq_config['delta']
-
-        method = 'stroud3'
-        if 'method' in uq_config.keys():
-            method = uq_config['method']
-
-        uq_vars = uq_config['variables']
-        # cell_type = uq_config['cell_type']
-        analysis_folder = solver_args_dict['analysis folder']
-
-        # assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
-
-        for key, shape in shape_space.items():
-            # n_cells = shape['n_cells']
-            uq_path = projectDir / fr'SimulationData\ABCI\{key}'
-            result_dict_wakefield = {}
-            # wakefield_obj_list = []
-
-            # for o in objectives:
-            #     if isinstance(o, list):
-            #         if o[1].split(' ')[0] in ['ZL', 'ZT']:
-            #             result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-            #             wakefield_obj_list.append(o[1])
-            #     else:
-            #         if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-            #             result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-            #             wakefield_obj_list.append(o)
-
-            rdim = len(uq_vars)
-            degree = 1
-
-            if isinstance(method, str):
-                flag = method
-            else:
-                flag = method[0]
-
-            if flag.lower() == 'stroud3':
-                nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
-                nodes_ = 2. * nodes_ - 1.
-                # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this
-                # gives a less accurate answer. the nodes are not the same as the custom function
-            elif flag.lower() == 'stroud5':
-                nodes_, weights_ = cn_leg_05_2(rdim)
-            elif flag.lower() == 'cn_gauss':
-                nodes_, weights_ = cn_gauss(rdim, 2)
-            elif flag.lower() == 'lhc':
-                sampler = qmc.LatinHypercube(d=rdim)
-                _ = sampler.reset()
-                nsamp = 2500
-                sample = sampler.random(n=nsamp)
-                # ic(qmc.discrepancy(sample))
-                l_bounds = [-1, -1, -1, -1, -1, -1]
-                u_bounds = [1, 1, 1, 1, 1, 1]
-                sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-                nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
-            else:
-                # issue warning
-                warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-                nodes_, weights_, bpoly = quad_stroud3(rdim, degree)
-                nodes_ = 2. * nodes_ - 1.
-
-            # save nodes
-            data_table = pd.DataFrame(nodes_.T, columns=uq_vars)
-            data_table.to_csv(os.path.join(projectDir, "SimulationData", analysis_folder, key, 'nodes.csv'),
-                              index=False, sep='\t', float_format='%.32f')
-
-            data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(os.path.join(projectDir, "SimulationData", analysis_folder, key, 'weights.csv'), index=False,
-                                sep='\t', float_format='%.32f')
-
-            no_parm, no_sims = np.shape(nodes_)
-            # if delta is None:
-            #     delta = [0.05 for _ in range(len(uq_vars))]
-
-            sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
-
-            proc_count = 1
-            if 'processes' in uq_config.keys():
-                assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
-                assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
-                proc_count = uq_config['processes']
-
-            jobs = []
-
-            # if proc_count > no_sims:
-            #     proc_count = no_sims
-            #
-            # share = int(round(no_sims / proc_count))
-            # for p in range(proc_count):
-            #     # try:
-            #     end_already = False
-            #     if p != proc_count - 1:
-            #         if (p + 1) * share < no_sims:
-            #             proc_keys_list = np.arange(p * share, p * share + share)
-            #         else:
-            #             proc_keys_list = np.arange(p * share, no_sims)
-            #             end_already = True
-            #
-            #     if p == proc_count - 1 and not end_already:
-            #         proc_keys_list = np.arange(p * share, no_sims)
-
-            base_chunk_size = no_sims // proc_count
-            remainder = no_sims % proc_count
-
-            start_idx = 0
-            for p in range(proc_count):
-                # Determine the size of the current chunk
-                current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-                proc_keys_list = np.arange(start_idx, start_idx + current_chunk_size)
-                start_idx += current_chunk_size
-
-                processor_nodes = nodes_[:, proc_keys_list]
-                processor_weights = weights_[proc_keys_list]
-
-                service = mp.Process(target=uq, args=(key, objectives, uq_config, uq_path,
-                                                      solver_args_dict, sub_dir, proc_keys_list, processor_nodes,
-                                                      p, shape, solver))
-
-                service.start()
-                jobs.append(service)
-
-            for job in jobs:
-                job.join()
-
-            # combine results from processes
-            # qois_result_dict = {}
-            # keys = []
-            # Ttab_val_f = []
-            for i1 in range(proc_count):
-                if i1 == 0:
-                    df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
-                else:
-                    df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
-
-            df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
-            df.to_excel(uq_path / 'table.xlsx', index=False)
-            Ttab_val_f = df.to_numpy()
-            mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
-            # # append results to dict
-            # for i, o in enumerate(wakefield_obj_list):
-            #     result_dict_wakefield[o]['expe'].append(mean_obj[i])
-            #     result_dict_wakefield[o]['stdDev'].append(std_obj[i])
-            #
-            for i, o in enumerate(df.columns):
-                result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                result_dict_wakefield[o]['expe'].append(mean_obj[i])
-                result_dict_wakefield[o]['stdDev'].append(std_obj[i])
-                result_dict_wakefield[o]['skew'].append(skew_obj[i])
-                result_dict_wakefield[o]['kurtosis'].append(kurtosis_obj[i])
-
-            with open(uq_path / fr'uq.json', 'w') as f:
-                f.write(json.dumps(result_dict_wakefield, indent=4, separators=(',', ': ')))
-
-    else:
-        pass
-
-
-def uq(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
-       proc_keys_list, processor_nodes, proc_num, shape, solver):
-    """
-
-    Parameters
-    ----------
-    shape_space: dict
-        Cavity geometry parameter space
-    objectives: list | ndarray
-        Array of objective functions
-    solver_dict: dict
-        Python dictionary of solver settings
-    solver_args_dict: dict
-        Python dictionary of solver arguments
-    uq_config:
-        Python dictionary of uncertainty quantification settings
-
-    Returns
-    -------
-    :param n_cells:
-
-    """
-
-    print(processor_nodes)
-    if solver == 'eigenmode':
-        parentDir = solver_args_dict['parentDir']
-        projectDir = solver_args_dict['projectDir']
-        # cell_type = uq_config['cell_type']
-        analysis_folder = solver_args_dict['analysis folder']
-        opt = solver_args_dict['optimisation']
-
-        epsilon, delta = [], []
-        if 'epsilon' in uq_config.keys():
-            epsilon = uq_config['epsilon']
-        if 'delta' in uq_config.keys():
-            delta = uq_config['delta']
-        if 'perturbed_cell' in uq_config.keys():
-            perturbed_cell = uq_config['perturbed_cell']
-        else:
-            perturbed_cell = 'mid-cell'
-
-        # method = uq_config['method']
-        uq_vars = uq_config['variables']
-        cell_parameterisation = solver_args_dict['cell_parameterisation']
-        err = False
-        result_dict_eigen = {}
-        Ttab_val_f = []
-        Ttab_val_f_all_modes = []
-
-        # eigen_obj_list = objectives
-        eigen_obj_list = []
-
-        for o in objectives:
-            if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                     "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                eigen_obj_list.append(o)
-
-        # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-        #     cell_node = shape['IC']
-        # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-        #     cell_node = shape['OC']
-        # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-        #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-        #     cell_node = shape['OC']
-        # else:
-        #     cell_node = shape['OC']
-        cell_node = shape['IC']
-        cell_node_left = shape['OC']
-        cell_node_right = shape['OC_R']
-        print('before: ', cell_node, cell_node_left, cell_node_right)
-        perturbed_cell_node = np.array(cell_node)
-        perturbed_cell_node_left = np.array(cell_node_left)
-        perturbed_cell_node_right = np.array(cell_node_right)
-
-        for i1, proc_key in enumerate(proc_keys_list):
-            skip = False
-            for j, uq_var in enumerate(uq_vars):
-                uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-                if epsilon:
-                    if perturbed_cell.lower() == 'mid cell' or perturbed_cell.lower() == 'mid-cell' or perturbed_cell.lower() == 'mid_cell':
-                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    elif perturbed_cell.lower() == 'end cell' or perturbed_cell.lower() == 'end-cell' or perturbed_cell.lower() == 'end_cell':
-                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * \
-                                                                processor_nodes[
-                                                                    j, i1]
-                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
-                                                                 processor_nodes[j, i1]
-                    else:
-                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * \
-                                                                processor_nodes[
-                                                                    j, i1]
-                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
-                                                                 processor_nodes[j, i1]
-
-                else:
-                    if perturbed_cell.lower() == 'mid cell' or perturbed_cell.lower() == 'mid-cell' or perturbed_cell.lower() == 'mid_cell':
-                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-                    elif perturbed_cell.lower() == 'end cell' or perturbed_cell.lower() == 'end-cell' or perturbed_cell.lower() == 'end_cell':
-                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-                    else:
-                        perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-                        perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-                        perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                                1 + delta[j] * processor_nodes[j, i1])
-
-            print('\tafter: ', perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
-
-            # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            #     # cell_node = shape['IC']
-            #     mid = perturbed_cell_node
-            #     left = shape['OC']
-            #     right = shape['OC_R']
-            # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            #     mid = shape['IC']
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-            #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            #     mid = perturbed_cell_node
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
-            #     mid = shape['IC']
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # else:
-            #     mid = perturbed_cell_node
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-
-            enforce_Req_continuity(perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
-
-            # perform checks on geometry
-            fid = fr'{key}_Q{proc_key}'
-
-            # check if folder exists and skip if it does
-            if os.path.exists(os.path.join(projectDir, 'SimulationData', analysis_folder, key, fid)):
-                skip = True
-                info(["Skipped: ", fid, os.path.join(projectDir, 'SimulationData', 'ABCI', key, fid)])
-
-            if not skip:
-                ngsolve_mevp.createFolder(fid, projectDir, subdir=sub_dir, opt=opt)
-                # it does not seem to make sense to perform uq on a multi cell by repeating the same perturbation
-                # to all multi cells at once. For multicells, the uq_multicell option is more suitable as it creates
-                # independent perturbations to all cells individually
-
-                if 'tune_config' in uq_config.keys():
-                    tune_config = uq_config['tune_config']
-                    # tune first before running
-                    processor_shape_space = {fid:
-                                                 {'IC': perturbed_cell_node,
-                                                  'OC': perturbed_cell_node_left,
-                                                  'OC_R': perturbed_cell_node_right,
-                                                  'BP': 'both',
-                                                  "n_cells": 9,
-                                                  'CELL PARAMETERISATION': 'simplecell'
-                                                  },
-                                             }
-                    # save tune results to uq cavity folders
-                    sim_folder = os.path.join(analysis_folder, key)
-
-                    run_tune_s(processor_shape_space, tune_config['parameters'], tune_config['freqs'],
-                               tune_config['cell_types'], tune_config, projectDir, False, fid, sim_folder)
-
-                else:
-                    if cell_parameterisation == 'simplecell':
-                        ngsolve_mevp.cavity(shape['n_cells'], 1, perturbed_cell_node,
-                                            perturbed_cell_node_left, perturbed_cell_node_right,
-                                            f_shift=0, bc=33, beampipes=shape['BP'],
-                                            fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                            projectDir=projectDir,
-                                            subdir=sub_dir)
-                    if cell_parameterisation == 'flattop':
-                        ngsolve_mevp.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
-                                                    perturbed_cell_node_left, perturbed_cell_node_right,
-                                                    f_shift=0, bc=33,
-                                                    beampipes=shape['BP'],
-                                                    fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                                                    projectDir=projectDir,
-                                                    subdir=sub_dir)
-
-            filename = uq_path / f'{fid}/monopole/qois.json'
-            filename_all_modes = uq_path / f'{fid}/monopole/qois_all_modes.json'
-            if os.path.exists(filename):
-                qois_result_dict = dict()
-
-                with open(filename) as json_file:
-                    qois_result_dict.update(json.load(json_file))
-                qois_result = get_qoi_value(qois_result_dict, eigen_obj_list)
-
-                tab_val_f = qois_result
-                Ttab_val_f.append(tab_val_f)
-            else:
-                err = True
-
-            # for all modes
-            if os.path.exists(filename_all_modes):
-                qois_result_dict_all_modes = dict()
-                qois_result_all_modes = {}
-
-                with open(filename_all_modes) as json_file:
-                    qois_result_dict_all_modes.update(json.load(json_file))
-
-                tab_val_f_all_modes = []
-                for kk, val in qois_result_dict_all_modes.items():
-                    qois_result_all_modes[kk] = get_qoi_value(val, eigen_obj_list)
-
-                    tab_val_f_all_modes.append(qois_result_all_modes[kk])
-
-                tab_val_f_all_modes_flat = [item for sublist in tab_val_f_all_modes for item in sublist]
-                Ttab_val_f_all_modes.append(tab_val_f_all_modes_flat)
-            else:
-                err = True
-
-        data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
-        data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
-
-        # for all modes
-        keys = qois_result_dict_all_modes.keys()
-        eigen_obj_list_all_modes = [f"{name.split(' ')[0]}_{i} {name.split(' ', 1)[1]}" for i in keys for name in
-                                    eigen_obj_list]
-        data_table = pd.DataFrame(Ttab_val_f_all_modes, columns=eigen_obj_list_all_modes)
-        data_table.to_csv(uq_path / fr'table_{proc_num}_all_modes.csv', index=False, sep='\t', float_format='%.32f')
-
-    elif solver == 'wakefield':
-        Ttab_val_f = []
-        parentDir = solver_args_dict['parentDir']
-        projectDir = solver_args_dict['projectDir']
-        solver_args = solver_args_dict['wakefield']
-        # n_cells = solver_args_dict['n_cells']
-        # n_modules = solver_args_dict['n_modules']
-        MROT = solver_args['polarisation']
-        MT = solver_args['MT']
-        NFS = solver_args['NFS']
-        UBT = solver_args['wakelength']
-        bunch_length = solver_args['bunch_length']
-        DDR_SIG = solver_args['DDR_SIG']
-        DDZ_SIG = solver_args['DDZ_SIG']
-        # WG_M = solver_args['WG_M']
-
-        epsilon, delta = [], []
-        if 'epsilon' in uq_config.keys():
-            epsilon = uq_config['epsilon']
-        if 'delta' in uq_config.keys():
-            delta = uq_config['delta']
-
-        # method = uq_config['method']
-        cell_parameterisation = solver_args_dict['cell_parameterisation']
-        uq_vars = uq_config['variables']
-        # cell_type = uq_config['cell_type']
-        analysis_folder = solver_args_dict['analysis folder']
-        # marker = solver_args['marker']
-
-        result_dict_wakefield = {}
-        # wakefield_obj_list = objectives
-        wakefield_obj_list = []
-
-        for o in objectives:
-            if isinstance(o, list):
-                if o[1].split(' ')[0] in ['ZL', 'ZT']:
-                    result_dict_wakefield[o[1]] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                    wakefield_obj_list.append(o[1])
-            else:
-                if o in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-                    result_dict_wakefield[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                    wakefield_obj_list.append(o)
-
-        # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-        #     cell_node = shape['IC']
-        # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-        #     cell_node = shape['OC']
-        # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-        #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-        #     cell_node = shape['OC']
-        # else:
-        #     cell_node = shape['OC']
-
-        cell_node = shape['IC']
-        cell_node_left = shape['OC']
-        cell_node_right = shape['OC_R']
-        perturbed_cell_node = np.array(cell_node)
-        perturbed_cell_node_left = np.array(cell_node_left)
-        perturbed_cell_node_right = np.array(cell_node_right)
-
-        uq_shape_space = {}
-        d_uq_op = {}
-        for i1, proc_key in enumerate(proc_keys_list):
-            skip = False
-            for j, uq_var in enumerate(uq_vars):
-                uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-                if epsilon:
-                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] + epsilon[j] * processor_nodes[j, i1]
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] + epsilon[j] * processor_nodes[
-                        j, i1]
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] + epsilon[j] * \
-                                                             processor_nodes[j, i1]
-                else:
-                    perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_left[uq_var_indx] = cell_node_left[uq_var_indx] * (
-                            1 + delta[j] * processor_nodes[j, i1])
-                    perturbed_cell_node_right[uq_var_indx] = cell_node_right[uq_var_indx] * (
-                            1 + delta[j] * processor_nodes[j, i1])
-
-            # if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-            #     # cell_node = shape['IC']
-            #     mid = perturbed_cell_node
-            #     left = shape['OC']
-            #     right = shape['OC_R']
-            # elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-            #     mid = shape['IC']
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-            #       or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-            #     mid = perturbed_cell_node
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # elif cell_type.lower() == 'end cell' or cell_type.lower() == 'end-cell' or cell_type.lower() == 'end_cell':
-            #     mid = shape['IC']
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-            # else:
-            #     mid = perturbed_cell_node
-            #     left = perturbed_cell_node
-            #     right = perturbed_cell_node
-
-            enforce_Req_continuity(perturbed_cell_node, perturbed_cell_node_left, perturbed_cell_node_right)
-
-            # perform checks on geometry
-            fid = fr'{key}_Q{proc_key}'
-
-            # check if folder exists and skip if it does
-            if os.path.exists(os.path.join(projectDir, 'SimulationData', analysis_folder, key, fid)):
-                skip = True
-                info(["Skipped: ", fid, os.path.join(projectDir, 'SimulationData', 'ABCI', key, fid)])
-
-            if not skip:
-                abci_geom.createFolder(fid, projectDir, subdir=sub_dir)
-                for wi in range(MROT):
-                    if cell_parameterisation == 'simplecell':
-                        abci_geom.cavity(shape['n_cells'], 1, perturbed_cell_node,
-                                         perturbed_cell_node_left, perturbed_cell_node_right, fid=fid, MROT=wi,
-                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=shape['BP'],
-                                         bunch_length=bunch_length,
-                                         MT=MT, NFS=NFS, UBT=UBT,
-                                         parentDir=parentDir, projectDir=projectDir, WG_M='',
-                                         marker='', sub_dir=sub_dir
-                                         )
-                    if cell_parameterisation == 'flattop':
-                        abci_geom.cavity_flattop(shape['n_cells'], 1, perturbed_cell_node,
-                                                 perturbed_cell_node_left, perturbed_cell_node_right, fid=fid, MROT=wi,
-                                                 DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, beampipes=shape['BP'],
-                                                 bunch_length=bunch_length,
-                                                 MT=MT, NFS=NFS, UBT=UBT,
-                                                 parentDir=parentDir, projectDir=projectDir, WG_M='',
-                                                 marker='', sub_dir=sub_dir
-                                                 )
-
-            uq_shape = {'IC': perturbed_cell_node, 'OC': perturbed_cell_node_left,
-                        'OC_R': perturbed_cell_node_right, 'n_cells': shape['n_cells'], 'BP': shape['BP']}
-            uq_shape_space[fid] = uq_shape
-
-            # calculate uq for operating points
-            if 'operating_points' in uq_config.keys():
-                operating_points = uq_config['operating_points']
-                try:
-                    # check folder for freq and R/Q
-                    freq, R_Q = 0, 0
-                    folder = os.path.join(projectDir, 'SimulationData', 'NGSolveMEVP', key, fid, 'monopole', 'qois.json')
-                    if os.path.exists(folder):
-                        try:
-                            with open(folder, 'r') as json_file:
-                                fm_results = json.load(json_file)
-                            freq = fm_results['freq [MHz]']
-                            R_Q = fm_results['R/Q [Ohm]']
-                        except OSError:
-                            info("To run analysis for working points, eigenmode simulation has to be run first"
-                                 "to obtain the cavity operating frequency and R/Q")
-
-                    if freq != 0 and R_Q != 0:
-                        d = {}
-                        # save qois
-                        for key_op, vals in operating_points.items():
-                            WP = key_op
-                            I0 = float(vals['I0 [mA]'])
-                            Nb = float(vals['Nb [1e11]'])
-                            sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
-                            bl_diff = ['SR', 'BS']
-
-                            # info("Running wakefield analysis for given operating points.")
-                            for i, s in enumerate(sigma_z):
-                                for ii in ['']:
-                                    fid_op = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
-                                    OC_R = 'OC'
-                                    if 'OC_R' in uq_shape.keys():
-                                        OC_R = 'OC_R'
-                                    for m in range(2):
-                                        abci_geom.cavity(shape['n_cells'], 1, uq_shape['IC'], uq_shape['OC'],
-                                                         uq_shape[OC_R],
-                                                         fid=fid_op, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
-                                                         bunch_length=s,
-                                                         DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                                         projectDir=projectDir,
-                                                         WG_M=ii, marker=ii, sub_dir=fr"{key}\{fid}")
-
-                                    dirc = os.path.join(projectDir, 'SimulationData', 'ABCI', key, fid)
-                                    # try:
-                                    k_loss = abs(ABCIData(dirc, f'{fid_op}', 0).loss_factor['Longitudinal'])
-                                    k_kick = abs(ABCIData(dirc, f'{fid_op}', 1).loss_factor['Transverse'])
-                                    # except:
-                                    #     k_loss = 0
-                                    #     k_kick = 0
-
-                                    d[fid_op] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, shape['n_cells'])
-
-                        d_uq_op[fid] = d
-                        # save qoi dictionary
-                        run_save_directory = os.path.join(projectDir, 'SimulationData', 'ABCI', key, fid)
-                        with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
-                            json.dump(d, f, indent=4, separators=(',', ': '))
-
-                        done("Done with the secondary analysis for working points")
-                    else:
-                        info("To run analysis for working points, eigenmode simulation has to be run first"
-                             "to obtain the cavity operating frequency and R/Q")
-                except KeyError:
-                    error('The working point entered is not valid. See below for the proper input structure.')
-                    show_valid_operating_point_structure()
-
-        df_uq_op = _data_uq_op(d_uq_op)
-
-        wakefield_folder = os.path.join(projectDir, 'SimulationData', 'ABCI', key)
-        data_table, _ = get_wakefield_objectives_value(uq_shape_space, uq_config['objectives_unprocessed'],
-                                                       wakefield_folder)
-
-        # merge with data table
-        if d_uq_op:
-            data_table_merged = pd.merge(df_uq_op, data_table, on='key', how='inner')
-        else:
-            data_table_merged = data_table
-        data_table_merged = data_table_merged.set_index('key')
-        data_table_merged.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
-
-
-def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict):
-    """
-
-    Parameters
-    ----------
-    shape_space: dict
-        Cavity geometry parameter space
-    objectives: list | ndarray
-        Array of objective functions
-    solver_dict: dict
-        Python dictionary of solver settings
-    solver_args_dict: dict
-        Python dictionary of solver arguments
-    uq_config:
-        Python dictionary of uncertainty quantification settings
-
-    Returns
-    -------
-
-    """
-    parentDir = solver_args_dict['parentDir']
-    projectDir = solver_args_dict['projectDir']
-    uq_config = solver_args_dict['eigenmode']['uq_config']
-    cell_type = uq_config['cell_type']
-    analysis_folder = solver_args_dict['analysis folder']
-    opt = solver_args_dict['optimisation']
-    delta = uq_config['delta']
-
-    method = 'stroud3'
-    if 'method' in uq_config.keys():
-        method = uq_config['method']
-
-    uq_vars = uq_config['variables']
-    n_cells = solver_args_dict['eigenmode']['n_cells']
-    assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
-
-    for key, shape in shape_space.items():
-        # n_cells = shape['IC'].shape[1] + 1
-        uq_path = projectDir / fr'SimulationData\NGSolveMEVP\{key}'
-        err = False
-        result_dict_eigen, result_dict_abci = {}, {}
-        run_eigen, run_abci = False, False
-        eigen_obj_list, abci_obj_list = [], []
-
-        for o in objectives:
-            if o in ["Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                     "G [Ohm]", "Q []", 'kcc [%]', "ff [%]"]:
-                result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                run_eigen = True
-                eigen_obj_list.append(o)
-
-            if o.split(' ')[0] in ['ZL', 'ZT', 'k_loss', 'k_kick']:
-                result_dict_abci[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                run_abci = True
-                abci_obj_list.append(o)
-
-        cav_var_list = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
-        midcell_var_dict = dict()
-        for i1 in range(len(cav_var_list)):
-            for i2 in range(n_cells):
-                for i3 in range(2):
-                    midcell_var_dict[f'{cav_var_list[i1]}_{i2}_m{i3}'] = [i1, i2, i3]
-
-        # create random variables
-        multicell_mid_vars = shape['IC']
-
-        if n_cells == 1:
-            # EXAMPLE: p_true = np.array([1, 2, 3, 4, 5]).T
-            p_true = [np.array(shape['OC'])[:7], np.array(shape['OC_R'])[:7]]
-            rdim = len(np.array(shape['OC'])[:7]) + len(
-                np.array(shape['OC_R'])[:7])  # How many variabels will be considered as random in our case 5
-        else:
-            # EXAMPLE: p_true = np.array([1, 2, 3, 4, 5]).T
-            p_true = [np.array(shape['OC'])[:7], multicell_mid_vars, np.array(shape['OC_R'])[:7]]
-            rdim = len(np.array(shape['OC'])[:7]) + multicell_mid_vars.size + len(
-                np.array(shape['OC_R'])[:7])  # How many variabels will be considered as random in our case 5
-            # rdim = rdim - (n_cells*2 - 1)  # <- reduce dimension by making iris and equator radii to be equal
-
-        # ic(rdim, multicell_mid_vars.size)
-        # rdim = n_cells*3  # How many variables will be considered as random in our case 5
-        degree = 1
-
-        if isinstance(method, str):
-            flag = method
-        else:
-            flag = method[0]
-
-        if flag == 'stroud3':
-            nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
-            nodes_ = 2. * nodes_ - 1.
-            # nodes_, weights_ = cn_leg_03_1(rdim)  # <- for some reason unknown this gives a less accurate answer.
-            # the nodes are not the same as the custom function
-        elif flag == 'stroud5':
-            nodes_, weights_ = cn_leg_05_2(rdim)
-        elif flag == 'cn_gauss':
-            nodes_, weights_ = cn_gauss(rdim, 2)
-        elif flag == 'lhc':
-            sampler = qmc.LatinHypercube(d=rdim)
-            _ = sampler.reset()
-            nsamp = 3000
-            sample = sampler.random(n=nsamp)
-            # ic(qmc.discrepancy(sample))
-            l_bounds = -np.ones(rdim)
-            u_bounds = np.ones(rdim)
-            sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-            nodes_, weights_ = sample_scaled.T, np.ones((nsamp, 1))
-        elif flag == 'load_from_file':
-            nodes_ = pd.read_csv(fr'C:\Users\sosoho\DakotaProjects\Cavity\C3795_lhs\sim_result_table.dat',
-                                 sep='\\s+').iloc[:, 2:-2]
-            nodes_ = nodes_.to_numpy().T
-            weights_ = np.ones((nodes_.shape[1], 1))
-        else:
-            # defaults to Stroud3
-            nodes_, weights_, bpoly_ = quad_stroud3(rdim, degree)
-            nodes_ = 2. * nodes_ - 1.
-
-        # save nodes
-        data_table = pd.DataFrame(nodes_.T)
-        data_table.to_csv(uq_path / 'nodes.csv', index=False, sep='\t', float_format='%.32f')
-
-        data_table_w = pd.DataFrame(weights_, columns=['weights'])
-        data_table_w.to_csv(os.path.join(projectDir, 'SimulationData', analysis_folder, key, 'weights.csv'), index=False, sep='\t',
-                            float_format='%.32f')
-
-        #  mean value of geometrical parameters
-        no_parm, no_sims = np.shape(nodes_)
-
-        sub_dir = fr'{key}'  # the simulation runs at the quadrature points are saved to the key of mean value run
-
-        proc_count = 1
-        if 'processes' in uq_config.keys():
-            assert uq_config['processes'] > 0, error('Number of processes must be greater than zero')
-            assert isinstance(uq_config['processes'], int), error('Number of processes must be integer')
-            proc_count = uq_config['processes']
-
-        # if proc_count > no_sims:
-        #     proc_count = no_sims
-        #
-        # share = int(round(no_sims / proc_count))
-        # for p in range(proc_count):
-        #     # try:
-        #     end_already = False
-        #     if p != proc_count - 1:
-        #         if (p + 1) * share < no_sims:
-        #             proc_keys_list = np.arange(p * share, p * share + share)
-        #         else:
-        #             proc_keys_list = np.arange(p * share, no_sims)
-        #             end_already = True
-        #
-        #     if p == proc_count - 1 and not end_already:
-        #         proc_keys_list = np.arange(p * share, no_sims)
-        jobs = []
-
-        base_chunk_size = no_sims // proc_count
-        remainder = no_sims % proc_count
-
-        start_idx = 0
-        for p in range(proc_count):
-            # Determine the size of the current chunk
-            current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-            proc_keys_list = np.arange(start_idx, start_idx + current_chunk_size)
-            start_idx += current_chunk_size
-
-            processor_nodes = nodes_[:, proc_keys_list]
-            processor_weights = weights_[proc_keys_list]
-
-            service = mp.Process(target=uq_multicell_s, args=(
-                n_cells, 1, shape, objectives, n_cells, 0, 33, 'monopole', parentDir,
-                projectDir, sub_dir, key, uq_path,
-                proc_keys_list, processor_nodes, processor_weights, p, p_true))
-
-            service.start()
-            jobs.append(service)
-
-        for job in jobs:
-            job.join()
-
-        # combine results from processes
-        qois_result_dict = {}
-        Ttab_val_f = []
-        keys = []
-        for i1 in range(no_sims):
-            if i1 == 0:
-                df = pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')
-            else:
-                try:
-                    df = pd.concat([df, pd.read_csv(uq_path / fr'table_{i1}.csv', sep='\t', engine='python')])
-                except:
-                    pass
-
-        df.to_csv(uq_path / 'table.csv', index=False, sep='\t', float_format='%.32f')
-        df.to_excel(uq_path / 'table.xlsx', index=False)
-
-        Ttab_val_f = df.to_numpy()
-        mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
-
-        # append results to dict
-        for i, o in enumerate(eigen_obj_list):
-            result_dict_eigen[o]['expe'].append(mean_obj[i])
-            result_dict_eigen[o]['stdDev'].append(std_obj[i])
-            result_dict_eigen[o]['skew'].append(skew_obj[i])
-            result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
-
-        with open(uq_path / fr'uq.json', 'w') as file:
-            file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
-
-
-def uq_multicell_s(n_cells, n_modules, shape, qois, n_modes, f_shift, bc, pol, parentDir, projectDir, sub_dir,
-                   key, uq_path, proc_keys_list, processor_nodes,
-                   proc_num, p_true):
-    start = time.time()
-    err = False
-    result_dict_eigen = {}
-    Ttab_val_f = []
-    eigen_obj_list = qois
-
-    for o in qois:
-        result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-
-    for i1 in proc_keys_list:
-        skip = False
-        if n_cells == 1:
-            p_init_el = p_true[0] + processor_nodes[0:len(p_true[0]), i1 - min(proc_keys_list)]
-            p_init_er = p_true[1] + processor_nodes[len(p_true[0]):, i1 - min(proc_keys_list)]
-            par_mid = p_init_el
-        else:
-            proc_node = processor_nodes[:, i1 - min(proc_keys_list)]
-            # # one dimension of nodes_ is dimension of number of variables. The variables must be expanded to the unreduced dimension
-            # # by filling the missing slots with radius values. Insert from end of list, index(Req) + 7 and index(Ri) + 6
-            # moved_val_indx = 7
-            # proc_nodes_len = len(processor_nodes)
-            # for i2 in range(2 * n_cells - 1):
-            #     if i2 % 2 == 0:
-            #         proc_node = np.insert(proc_node, proc_nodes_len - moved_val_indx + 7, proc_node[proc_nodes_len - moved_val_indx])
-            #         # update index
-            #         moved_val_indx += 7
-            #     else:
-            #         proc_node = np.insert(proc_node, proc_nodes_len - moved_val_indx + 6, proc_node[proc_nodes_len - moved_val_indx])
-            #         moved_val_indx += 5
-
-            # p_init_el = processor_nodes[0:len(p_true[0]), i1 - min(proc_keys_list)]
-            # p_init_m = processor_nodes[len(p_true[0]):len(p_true[0]) + p_true[1].size,
-            #            i1 - min(proc_keys_list)].reshape(np.shape(p_true[1])[::-1]).T
-            # p_init_er = processor_nodes[len(p_true[0]) + p_true[1].size:, i1 - min(proc_keys_list)]
-
-            p_init_el = p_true[0] + processor_nodes[0:len(p_true[0]), i1 - min(proc_keys_list)]
-            p_init_m = p_true[1] + processor_nodes[len(p_true[0]):len(p_true[0]) + p_true[1].size,
-                                   i1 - min(proc_keys_list)].reshape(np.shape(p_true[1]))
-            p_init_er = p_true[2] + processor_nodes[len(p_true[0]) + p_true[1].size:, i1 - min(proc_keys_list)]
-            # ic(proc_node, proc_node.shape)
-
-            # p_init_el = p_true[0] + proc_node[0:len(p_true[0])]
-            # p_init_m = p_true[1] + proc_node[len(p_true[0]):len(p_true[0])+p_true[1].size].reshape(np.shape(p_true[1]))
-            # p_init_er = p_true[2] + proc_node[len(p_true[0])+p_true[1].size:]
-
-            par_mid = p_init_m
-
-        par_end_l = p_init_el
-        par_end_r = p_init_er
-
-        fid = fr'{key}_Q{i1}'
-
-        # check if folder already exist (simulation already completed)
-
-        if os.path.exists(uq_path / f'{fid}/monopole/qois.json'):
-            skip = True
-            info(f'processor {proc_num} skipped ', fid, 'Result already exists.')
-
-        # skip analysis if folder already exists.
-        if not skip:
-            solver = ngsolve_mevp
-            #  run model using SLANS or CST
-            # # create folders for all keys
-            solver.createFolder(fid, projectDir, subdir=sub_dir)
-
-            solver.cavity_multicell(n_cells, n_modules, par_mid, par_end_l, par_end_r,
-                                    n_modes=n_modes, fid=fid, f_shift=f_shift, bc=bc, pol=pol,
-                                    beampipes=shape['BP'],
-                                    parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-
-        filename = uq_path / f'{fid}/monopole/qois.json'
-        if os.path.exists(filename):
-            qois_result_dict = dict()
-
-            with open(filename) as json_file:
-                qois_result_dict.update(json.load(json_file))
-
-            qois_result = get_qoi_value(qois_result_dict, eigen_obj_list)
-            # sometimes some degenerate shapes are still generated and the solver returns zero
-            # for the objective functions, such shapes are considered invalid
-            # for objr in qois_result:
-            #     if objr == 0:
-            #         # skip key
-            #         err = True
-            #         break
-
-            tab_val_f = qois_result
-            Ttab_val_f.append(tab_val_f)
-        else:
-            err = True
-
-    # save table
-    data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
-    data_table.to_csv(uq_path / fr'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')
-
-
-def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
-    k_loss_array_transverse = []
-    k_loss_array_longitudinal = []
-    k_loss_M0 = []
-    key_list = []
-
-    # create list to hold Z
-    Zmax_mon_list = []
-    Zmax_dip_list = []
-    xmax_mon_list = []
-    xmax_dip_list = []
-    processed_keys_mon = []
-    processed_keys_dip = []
-
-    def calc_k_loss():
-        for key, value in d.items():
-            abci_data_long = ABCIData(abci_data_dir, key, 0)
-            abci_data_trans = ABCIData(abci_data_dir, key, 1)
-
-            # trans
-            x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-            k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-            if math.isnan(k_loss_trans):
-                error(f"Encountered an exception: Check shape {key}")
-                continue
-
-            # long
-            x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-            abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
-
-            k_M0 = abci_data_long.y_peaks[0]
-            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-            k_loss_HOM = k_loss_long - k_M0
-
-            # append only after successful run
-            k_loss_M0.append(k_M0)
-            k_loss_array_longitudinal.append(k_loss_HOM)
-            k_loss_array_transverse.append(k_loss_trans)
-
-        return [k_loss_M0, k_loss_array_longitudinal, k_loss_array_transverse]
-
-    def get_Zmax_L(mon_interval=None):
-        if mon_interval is None:
-            mon_interval = [0.0, 2e10]
-
-        for key, value in d.items():
-            try:
-                abci_data_mon = ABCIData(abci_data_dir, f"{key}", 0)
-
-                # get longitudinal and transverse impedance plot data
-                xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
-                xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
-
-                # Zmax
-                if mon_interval is None:
-                    mon_interval = [[0.0, 10]]
-
-                # calculate magnitude
-                ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-
-                # get peaks
-                peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-                xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-
-                for i, z_bound in enumerate(mon_interval):
-                    # get mask
-                    msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                    if len(yp_mon[msk_mon]) != 0:
-                        Zmax_mon = max(yp_mon[msk_mon])
-
-                        Zmax_mon_list[i].append(Zmax_mon)
-                    elif len(yp_mon) != 0:
-                        Zmax_mon_list[i].append(0)
-                    else:
-                        error("skipped, yp_mon = [], raise exception")
-                        raise Exception()
-
-                processed_keys_mon.append(key)
-            except:
-                info("skipped, yp_mon = []")
-                # for i, z_bound in enumerate(mon_interval):
-                #     Zmax_mon_list[i].append(-1)
-
-        return Zmax_mon_list
-
-    def get_Zmax_T(dip_interval=None):
-        if dip_interval is None:
-            dip_interval = [0.0, 2e10]
-
-        for key, value in d.items():
-            try:
-                abci_data_dip = ABCIData(abci_data_dir, f"{key}", 1)
-
-                xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
-                xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
-
-                # Zmax
-                if dip_interval is None:
-                    dip_interval = [[0.0, 10]]
-
-                # calculate magnitude
-                ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-
-                # get peaks
-                peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-                xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-
-                for i, z_bound in enumerate(dip_interval):
-                    # get mask
-                    msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                    if len(yp_dip[msk_dip]) != 0:
-                        Zmax_dip = max(yp_dip[msk_dip])
-
-                        Zmax_dip_list[i].append(Zmax_dip)
-                    elif len(yp_dip) != 0:
-                        Zmax_dip_list[i].append(0)
-                    else:
-                        error("skipped, yp_dip = [], raise exception")
-                        raise Exception()
-
-                processed_keys_dip.append(key)
-            except:
-                error("skipped, yp_dip = []")
-                # for i, z_bound in enumerate(dip_interval):
-                #     Zmax_dip_list[i].append(-1)
-
-        return Zmax_dip_list
-
-    def all(mon_interval, dip_interval):
-        for key, value in d.items():
-            abci_data_long = ABCIData(abci_data_dir, f"{key}_", 0)
-            abci_data_trans = ABCIData(abci_data_dir, f"{key}_", 1)
-
-            # get longitudinal and transverse impedance plot data
-            xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-            xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
-
-            xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-            xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
-
-            # loss factors
-            # trans
-            k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-            if math.isnan(k_loss_trans):
-                error(f"Encountered an exception: Check shape {key}")
-                continue
-
-            # long
-            abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
-
-            k_M0 = abci_data_long.y_peaks[0]
-            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-            k_loss_HOM = k_loss_long - k_M0
-
-            # calculate magnitude
-            ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-            ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-
-            # get peaks
-            peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-            xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-
-            peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-            xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-
-            for i, z_bound in enumerate(mon_interval):
-                # get mask
-                msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                if len(yp_mon[msk_mon]) != 0:
-                    Zmax_mon = max(yp_mon[msk_mon])
-                    xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
-
-                    Zmax_mon_list[i].append(Zmax_mon)
-                    xmax_mon_list[i].append(xmax_mon)
-                elif len(yp_mon) != 0:
-                    Zmax_mon_list[i].append(0.0)
-                    xmax_mon_list[i].append(0.0)
-                else:
-                    continue
-
-            for i, z_bound in enumerate(dip_interval):
-                # get mask
-                msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                if len(yp_dip[msk_dip]) != 0:
-                    Zmax_dip = max(yp_dip[msk_dip])
-                    xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
-
-                    Zmax_dip_list[i].append(Zmax_dip)
-                    xmax_dip_list[i].append(xmax_dip)
-                elif len(yp_dip) != 0:
-                    Zmax_dip_list[i].append(0.0)
-                    xmax_dip_list[i].append(0.0)
-                else:
-                    continue
-
-            # append only after successful run
-
-            k_loss_M0.append(k_M0)
-            k_loss_array_longitudinal.append(k_loss_HOM)
-            k_loss_array_transverse.append(k_loss_trans)
-
-    ZL, ZT = [], []
-    df_ZL, df_ZT = pd.DataFrame(), pd.DataFrame()
-    for obj in objectives_unprocessed:
-        if "ZL" in obj[1]:
-            freq_range = process_interval(obj[2])
-            for i in range(len(freq_range)):
-                Zmax_mon_list.append([])
-                xmax_mon_list.append([])
-                df_ZL[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
-
-            ZL = get_Zmax_L(freq_range)
-
-        elif "ZT" in obj[1]:
-            freq_range = process_interval(obj[2])
-
-            for i in range(len(freq_range)):
-                Zmax_dip_list.append([])
-                xmax_dip_list.append([])
-                # df_ZT[obj[1]] = 0
-                df_ZT[f"{obj[1]} [max({freq_range[i][0]}<f<{freq_range[i][1]})]"] = 0
-
-            ZT = get_Zmax_T(freq_range)
-
-        elif obj[1] == "k_loss":
-            pass
-        elif obj[1] == "k_kick":
-            pass
-
-    # create dataframes from list
-    df_ZL.loc[:, :] = np.array(ZL).T
-    df_ZT.loc[:, :] = np.array(ZT).T
-    df_ZL['key'] = processed_keys_mon
-    df_ZT['key'] = processed_keys_dip
-
-    processed_keys = list(set(processed_keys_mon) & set(processed_keys_dip))
-
-    # ZL, ZT = np.array(ZL).T, np.array(ZT).T
-
-    if len(ZL) != 0 and len(ZT) != 0:
-        df_wake = df_ZL.merge(df_ZT, on='key', how='inner')
-        # obj_result = np.hstack((ZL, ZT))
-    elif len(ZL) != 0:
-        df_wake = df_ZL
-        # obj_result = ZL
-    else:
-        df_wake = df_ZT
-        # obj_result = ZT
-
-    return df_wake, processed_keys
-
-
-def process_interval(interval_list):
-    interval = []
-    for i in range(len(interval_list) - 1):
-        interval.append([interval_list[i], interval_list[i + 1]])
-
-    return interval
-
-
-def get_qois_value(f_fm, R_Q, k_loss, k_kick, sigma_z, I0, Nb, n_cell):
-    c = 299792458
-    w_fm = 2 * np.pi * f_fm * 1e6
-    e = 1.602e-19
-
-    k_fm = (w_fm / 4) * R_Q * np.exp(-(w_fm * sigma_z * 1e-3 / c) ** 2) * 1e-12
-    k_hom = k_loss - k_fm
-    p_hom = (k_hom * 1e12) * (I0 * 1e-3) * e * (Nb * 1e11)
-
-    d = {
-        "n cell": n_cell,
-        # "freq [MHz]": f_fm,
-        "R/Q [Ohm]": R_Q,
-        "k_FM [V/pC]": k_fm,
-        "I0 [mA]": I0,
-        "sigma_z [mm]": sigma_z,
-        "Nb [1e11]": Nb,
-        "|k_loss| [V/pC]": k_loss,
-        "|k_kick| [V/pC/m]": k_kick,
-        "P_HOM [kW]": p_hom * 1e-3
-    }
-    return d
-
-
-def process_objectives(objectives):
-    processed_objectives = []
-    weights = []
-    for i, obj in enumerate(objectives):
-        if obj[1] == "ZL" or obj[1] == "ZT":
-            goal = obj[0]
-            freq_ranges = process_interval(obj[2])
-            for f in freq_ranges:
-                processed_objectives.append([goal, f"{obj[1]} [max({f[0]}<f<{f[1]})]", f])
-                weights.append(1)
-        else:
-            goal = obj[0]
-            if goal == 'equal':
-                processed_objectives.append(obj)
-            else:
-                processed_objectives.append(obj)
-            weights.append(1)
-
-    return processed_objectives, weights
-
-
-def show_valid_operating_point_structure():
-    dd = {
-        '<wp1>': {
-            'I0 [mA]': '<value>',
-            'Nb [1e11]': '<value>',
-            'sigma_z (SR/BS) [mm]': '<value>'
-        },
-        '<wp2>': {
-            'I0 [mA]': '<value>',
-            'Nb [1e11]': '<value>',
-            'sigma_z (SR/BS) [mm]': '<value>'
-        }
-    }
-
-    info(dd)
-
-
-def get_surface_resistance(Eacc, b, m, freq, T):
-    Rs_dict = {
-        "Rs_NbCu_2K_400.79Mhz": 0.57 * (Eacc * 1e-6 * b) + 28.4,  # nOhm
-        "Rs_NbCu_4.5K_400.79Mhz": 39.5 * np.exp(0.014 * (Eacc * 1e-6 * b)) + 27,  # nOhm
-        "Rs_bulkNb_2K_400.79Mhz": (2.33 / 1000) * (Eacc * 1e-6 * b) ** 2 + 26.24,  # nOhm
-        "Rs_bulkNb_4.5K_400.79Mhz": 0.0123 * (Eacc * 1e-6 * b) ** 2 + 62.53,  # nOhm
-
-        "Rs_NbCu_2K_801.58Mhz": 1.45 * (Eacc * 1e-6 * b) + 92,  # nOhm
-        "Rs_NbCu_4.5K_801.58Mhz": 50 * np.exp(0.033 * (Eacc * 1e-6 * b)) + 154,  # nOhm
-        "Rs_bulkNb_2K_801.58Mhz": (16.4 + Eacc * 1e-6 * b * 0.092) * (800 / 704) ** 2,  # nOhm
-        "Rs_bulkNb_4.5K_801.58Mhz": 4 * (62.7 + (Eacc * 1e-6 * b) ** 2 * 0.012)  # nOhm
-    }
-    if freq < 600:
-        freq = 400.79
-
-    if freq >= 600:
-        freq = 801.58
-
-    rs = Rs_dict[fr"Rs_{m}_{T}K_{freq}Mhz"]
-
-    return rs
-
-
-def axis_data_coords_sys_transform(axis_obj_in, xin, yin, inverse=False):
-    """ inverse = False : Axis => Data
-                    = True  : Data => Axis
-        """
-    if axis_obj_in.get_yscale() == 'log':
-        xlim = axis_obj_in.get_xlim()
-        ylim = axis_obj_in.get_ylim()
-
-        x_delta = xlim[1] - xlim[0]
-
-        if not inverse:
-            x_out = xlim[0] + xin * x_delta
-            y_out = ylim[0] ** (1 - yin) * ylim[1] ** yin
-        else:
-            x_delta2 = xin - xlim[0]
-            x_out = x_delta2 / x_delta
-            y_out = np.log(yin / ylim[0]) / np.log(ylim[1] / ylim[0])
-
-    else:
-        xlim = axis_obj_in.get_xlim()
-        ylim = axis_obj_in.get_ylim()
-
-        x_delta = xlim[1] - xlim[0]
-        y_delta = ylim[1] - ylim[0]
-
-        if not inverse:
-            x_out = xlim[0] + xin * x_delta
-            y_out = ylim[0] + yin * y_delta
-        else:
-            x_delta2 = xin - xlim[0]
-            y_delta2 = yin - ylim[0]
-            x_out = x_delta2 / x_delta
-            y_out = y_delta2 / y_delta
-
-    return x_out, y_out
-
-
-def _get_nodes_and_weights(uq_config, rdim, degree):
-    method = uq_config['method']
-    uq_vars = uq_config['variables']
-
-    if method[1].lower() == 'stroud3':
-        nodes, weights, bpoly = quad_stroud3(rdim, degree)
-        nodes = 2. * nodes - 1.
-        # nodes, weights = cn_leg_03_1(rdim)
-    elif method[1].lower() == 'stroud5':
-        nodes, weights = cn_leg_05_2(rdim)
-    elif method[1].lower() == 'gaussian':
-        nodes, weights = cn_gauss(rdim, 2)
-    elif method[1].lower() == 'lhs':
-        sampler = qmc.LatinHypercube(d=rdim)
-        _ = sampler.reset()
-        nsamp = uq_config['integration'][2]
-        sample = sampler.random(n=nsamp)
-
-        l_bounds = [-1 for _ in range(len(uq_vars))]
-        u_bounds = [1 for _ in range(len(uq_vars))]
-        sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-        nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
-    elif method[0].lower() == 'from file':
-        if len(method) == 2:
-            nodes = pd.read_csv(method[1], sep='\\s+').iloc[:, method[1]]
-        else:
-            nodes = pd.read_csv(method[1], sep='\\s+')
-
-        nodes = nodes.to_numpy().T
-        weights = np.ones((nodes.shape[1], 1))
-    else:
-        # issue warning
-        warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-        nodes, weights, bpoly = quad_stroud3(rdim, degree)
-        nodes = 2. * nodes - 1.
-
-    return nodes, weights
-
-
-def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoords='data',
-             size=14, rotation=0, arrowprops=None):
-    """
-
-    Parameters
-    ----------
-    text: str
-        Matplotlib annotation text
-    box
-    xy: tuple
-        Coordinates of annotation text
-    xycoords: str {data, axis}
-        Coordinate system reference
-    xytext
-    textcoords
-    size
-    rotation: float
-        Annotation text rotation
-    arrowprops
-
-    Returns
-    -------
-
-    """
-    if text.strip("") == "":
-        return
-
-    # add text
-    if xytext:
-        bbox_props = dict(boxstyle='{}'.format(box), fc='w', ec='k')
-        annotext = ax.annotate(text, xy=xy, xycoords=xycoords,
-                               xytext=xytext, textcoords=textcoords, bbox=bbox_props, fontsize=size,
-                               rotation=rotation, arrowprops=arrowprops, zorder=500)
-    else:
-        if box == "None":
-            annotext = ax.annotate(text, xy=xy, xycoords=xycoords, fontsize=size,
-                                   rotation=rotation, arrowprops=arrowprops, zorder=500)
-        else:
-            bbox_props = dict(boxstyle='{}'.format(box), fc='w', ec='k')
-            annotext = ax.annotate(text, xy=xy, xycoords=xycoords, bbox=bbox_props, fontsize=size,
-                                   rotation=rotation, arrowprops=arrowprops, zorder=500)
-
-    ax.get_figure().canvas.draw_idle()
-    ax.get_figure().canvas.flush_events()
-    return annotext
-
-
-def _data_uq_op(d_uq_op):
-    # Initialize an empty list to store the rows
-    rows = []
-
-    # Iterate over the dictionary
-    for main_key, sub_dict in d_uq_op.items():
-        row = {'key': main_key}
-        for sub_key, metrics in sub_dict.items():
-            for metric, value in metrics.items():
-                # Check if the metric is one of the desired ones
-                if metric in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-                    # Create a new key combining the metric and the sub_key
-                    new_key = f"{metric}_{sub_key}"
-                    # Add the value to the row
-                    row[new_key] = value
-        # Add the row to the list
-        rows.append(row)
-
-    # Convert the list of rows into a DataFrame
-    df = pd.DataFrame(rows)
-
-    return df
 
 
 def show_welcome():

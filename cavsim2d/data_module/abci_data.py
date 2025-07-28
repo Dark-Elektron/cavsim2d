@@ -29,11 +29,11 @@ class ABCIData:
         self.checks(fid, MROT)
 
     def checks(self, fid, MROT):
-        dirc = self.dir / fr'{fid}\Cavity_MROT_{MROT}.top'
-        if os.path.exists(dirc):
+        dirc = os.path.join(self.dir, fid, 'cavity.top')
+        try:
             self._get_plot_data(dirc)
-        else:
-            info("Hey chief, there seems to be a problem with the ABCI file directory. Please check.")
+        except Exception as e:
+            error(f"Hey chief, there seems to be a problem with the ABCI file directory. Please check:: {e}")
 
     def _get_plot_data(self, dirc):
         frame_objects = {}

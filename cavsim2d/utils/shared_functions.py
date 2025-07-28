@@ -9,6 +9,7 @@ from matplotlib.patches import Ellipse
 from scipy.optimize import fsolve
 import numpy as np
 from cavsim2d.utils.printing import *
+from cavsim2d.utils.shared_classes import Sobol, PCE, Data
 
 
 def update_alpha(cell, cell_parameterisation='simplecell'):
@@ -29,7 +30,7 @@ def update_alpha(cell, cell_parameterisation='simplecell'):
     alpha = calculate_alpha(A, B, a, b, Ri, L, Req, 0)
     if cell_parameterisation == 'simplecell':
         cell = [A, B, a, b, Ri, L, Req, alpha[0]]
-    else:
+    elif cell_parameterisation == 'flattop':
         cell = [A, B, a, b, Ri, L, Req, cell[7], alpha[0]]
 
     return np.array(cell)
@@ -777,8 +778,8 @@ def cn_gauss(rdim, degree):
 
 
 def weighted_mean_obj(tab_var, weights):
-    print(weights, weights.shape)
-    print(tab_var, tab_var.shape)
+    # print(weights, weights.shape)
+    # print(tab_var, tab_var.shape)
     rows_sims_no, cols = np.shape(tab_var)
     no_weights, dummy = np.shape(weights)
     if rows_sims_no == no_weights:
@@ -794,8 +795,6 @@ def weighted_mean_obj(tab_var, weights):
         std = np.sqrt(weighted_variance(tab_var, weights.T[0], mean))
         skew = weighted_skew(tab_var, weights.T[0], mean, std)
         kurtosis = weighted_kurtosis(tab_var, weights.T[0], mean, std)
-        print('statistical moments')
-        print(mean.reshape(-1, 1), std.reshape(-1, 1), skew, kurtosis)
     else:
         mean = 0
         std = 0
@@ -812,19 +811,27 @@ def weighted_mean(var, wts):
 
 def weighted_variance(var, wts, mean):
     """Calculates the weighted variance"""
-    return np.average((var - mean)**2, weights=wts, axis=0)
+    return np.average((var - mean) ** 2, weights=wts, axis=0)
 
 
 def weighted_skew(var, wts, mean, std):
-    """Calculates the weighted skewness"""
-    return (np.average((var - mean)**3, weights=wts, axis=0) /
-            std**3)
+    """Calculates the weighted skewness, returning NaN where std==0."""
+    num = np.average((var - mean) ** 3, weights=wts, axis=0)
+    denom = std**3
+    # allocate output, fill with NaN
+    skew = np.full_like(num, np.nan, dtype=float)
+    # divide only where denom != 0
+    np.divide(num, denom, out=skew, where=(denom != 0))
+    return skew
 
 
 def weighted_kurtosis(var, wts, mean, std):
-    """Calculates the weighted skewness"""
-    return (np.average((var - mean)**4, weights=wts, axis=0) /
-            std**4)
+    """Calculates the weighted kurtosis, returning NaN where std==0."""
+    num = np.average((var - mean) ** 4, weights=wts, axis=0)
+    denom = std**4
+    kurt = np.full_like(num, np.nan, dtype=float)
+    np.divide(num, denom, out=kurt, where=(denom != 0))
+    return kurt
 
 
 def normal_dist(x, mean, sd):
@@ -916,7 +923,7 @@ def arcTo(h, k, a, b, step, start, end, plot=False):
 
     """
 
-    r_eff = (3*(a + b) - math.sqrt((3*a + b) * (a + 3*b)))/2  # <- Ramanujan approximate perimeter of ellipse
+    r_eff = (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b))) / 2  # <- Ramanujan approximate perimeter of ellipse
     # r_eff = max(a, b)
     x1, y1 = start
     x2, y2 = end
@@ -975,7 +982,8 @@ def arcToTheta(h, k, a, b, start, end, t1, t2, step, plot=False):
     x2, y2 = end
 
     # plot center point
-    plt.scatter(h, k, c='r')
+    if plot:
+        plt.scatter(h, k, c='r')
     direction, shortest_distance = shortest_direction(t1, t2)
     if direction == 'clockwise':
         if t2 > t1:
@@ -1030,9 +1038,1395 @@ def shortest_direction(start_angle, end_angle):
         return "clockwise", -delta_theta
 
 
+def add_point(cav, pt, pt_indx):
+    cav.write(f"\nPoint({pt_indx}) = {{{pt[0]}, {pt[1]}, 0, {0.005}}};")
+    pt_indx += 1
+
+    return pt_indx
+
+
+def add_line(cav, pt_indx, curve_indx):
+    cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 2}, {pt_indx - 1}}};\n")
+    curve_indx += 1
+    return curve_indx
+
+def add_bspline(cav, pt_indx, curve_indx, pts, n_cells=1):
+    pts_indx_str = f'{pt_indx - 1}'
+
+    for i in range(n_cells):
+        for ii, pt in enumerate(pts):
+            pts_indx_str += f', {pt_indx}'
+            pt_indx = add_point(cav, pt, pt_indx)
+
+        if i < n_cells-1:
+            pts[:, 0] += pts[-1][0]
+
+    cav.write(f"\nBSpline({curve_indx}) = {{{pts_indx_str}}};\n")
+
+    curve_indx += 1
+    return pt_indx, curve_indx
+
+def add_bezierspline(cav, pt_indx, curve_indx, pts):
+    pts_indx_str = f'{pt_indx - 1}'
+    for ii, pt in enumerate(pts):
+        pts_indx_str += f', {pt_indx}'
+        pt_indx = add_point(cav, pt, pt_indx)
+
+    cav.write(f"\nBezier({curve_indx}) = {{{pts_indx_str}}};\n")
+
+    curve_indx += 1
+    return pt_indx, curve_indx
+
+def add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt):
+    start_pt_tag = pt_indx - 1
+
+    # write center point
+    cav.write(f"\nPoint({pt_indx}) = {{{center_pt[0]}, {center_pt[1]}, 0, {0.005}}};")
+    center_pt_tag = pt_indx
+    pt_indx += 1
+
+    # write major axis point
+    cav.write(f"\nPoint({pt_indx}) = {{{majax_pt[0]}, {majax_pt[1]}, 0, {0.005}}};")
+    majax_pt_tag = pt_indx
+    pt_indx += 1
+
+    # write end point
+    cav.write(f"\nPoint({pt_indx}) = {{{end_pt[0]}, {end_pt[1]}, 0, {0.005}}};")
+    end_pt_tag = pt_indx
+    pt_indx += 1
+
+    cav.write(
+        f"\nEllipse({curve_indx}) = {{{start_pt_tag}, {center_pt_tag}, {majax_pt_tag}, {end_pt_tag}}};\n")  # Ellipse(tag) = {start_point_tag, center_point_tag, major_axis_point_tag, end_point_tag};
+    curve_indx += 1
+
+    return pt_indx, curve_indx
+
+
 def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
                               ignore_degenerate=False, plot=False, write=None, dimension=False,
                               contour=False, **kwargs):
+    """
+    Plot cavity geometry
+
+    Parameters
+    ----------
+    tangent_check
+    bc
+    ax
+    ignore_degenerate
+    IC: list, ndarray
+        Inner Cell geometric parameters list
+    OC: list, ndarray
+        Left outer Cell geometric parameters list
+    OC_R: list, ndarray
+        Right outer Cell geometric parameters list
+    BP: str {"left", "right", "both", "none"}
+        Specify if beam pipe is on one or both ends or at no end at all
+    n_cell: int
+        Number of cavity cells
+    scale: float
+        Scale of the cavity geometry
+
+    Returns
+    -------
+
+    """
+
+    GEO = """
+    """
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.set_aspect('equal')
+
+    A_m, B_m, a_m, b_m, Ri_m, L_m, Req = np.array(IC)[:7] * scale * 1e-3
+    A_el, B_el, a_el, b_el, Ri_el, L_el, Req = np.array(OC)[:7] * scale * 1e-3
+    A_er, B_er, a_er, b_er, Ri_er, L_er, Req = np.array(OC_R)[:7] * scale * 1e-3
+
+    L_bp = 4 * L_m
+    if dimension or contour:
+        L_bp = 1 * L_m
+
+    if BP.lower() == 'both':
+        L_bp_l = L_bp
+        L_bp_r = L_bp
+    elif BP.lower() == 'left':
+        L_bp_l = L_bp
+        L_bp_r = 0.000
+    elif BP.lower() == 'right':
+        L_bp_l = 0.000
+        L_bp_r = L_bp
+    else:
+        L_bp_l = 0.000
+        L_bp_r = 0.000
+
+    step = 0.0005
+
+    # calculate shift
+    shift = (L_bp_r + L_bp_l + L_el + (n_cell - 1) * 2 * L_m + L_er) / 2
+
+    # calculate angles outside loop
+    # CALCULATE x1_el, y1_el, x2_el, y2_el
+
+    df = tangent_coords(A_el, B_el, a_el, b_el, Ri_el, L_el, Req, L_bp_l, tangent_check=tangent_check)
+    x1el, y1el, x2el, y2el = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    # CALCULATE x1, y1, x2, y2
+    df = tangent_coords(A_m, B_m, a_m, b_m, Ri_m, L_m, Req, L_bp_l, tangent_check=tangent_check)
+    x1, y1, x2, y2 = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    df = tangent_coords(A_er, B_er, a_er, b_er, Ri_er, L_er, Req, L_bp_r, tangent_check=tangent_check)
+    x1er, y1er, x2er, y2er = df[0]
+    if not ignore_degenerate:
+        msg = df[-2]
+        if msg != 1:
+            error('Parameter set leads to degenerate geometry.')
+            # save figure of error
+            return
+
+    geo = []
+    curve = []
+    pt_indx = 1
+    curve_indx = 1
+    curve.append(curve_indx)
+    with open(write.replace('.n', '.geo'), 'w') as cav:
+        cav.write(f'\nSetFactory("OpenCASCADE");\n')
+        # SHIFT POINT TO START POINT
+        start_point = [-shift, 0]
+        pt_indx = add_point(cav, start_point, pt_indx)
+        geo.append([start_point[1], start_point[0], 1])
+        pts = lineTo(start_point, [-shift, Ri_el], step)
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0]])
+        pt = [-shift, Ri_el]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        geo.append([pt[1], pt[0], 0])
+
+        if bc:
+            # draw left boundary condition
+            ax.plot([-shift, -shift], [-Ri_el, Ri_el],
+                    [-shift - 0.2 * L_m, -shift - 0.2 * L_m], [-0.5 * Ri_el, 0.5 * Ri_el],
+                    [-shift - 0.4 * L_m, -shift - 0.4 * L_m], [-0.1 * Ri_el, 0.1 * Ri_el], c='b', lw=4, zorder=100)
+
+        # ADD BEAM PIPE LENGTH
+        if L_bp_l != 0:
+            pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
+            pt = [L_bp_l - shift, Ri_el]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+        for n in range(1, n_cell + 1):
+            if n == 1:
+                # DRAW ARC:
+                if plot and dimension:
+                    ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
+                    ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                             height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                             facecolor='none')
+                    ax.add_patch(ellipse)
+                    ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
+                                xytext=(L_bp_l - shift, Ri_el + b_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+                    ax.annotate('', xy=(L_bp_l - shift, Ri_el),
+                                xytext=(L_bp_l - shift, Ri_el + b_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+
+                    ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', ha='center', va='center')
+                    ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                            va='center', ha='center', rotation=90)
+
+                start_pt = pt
+                center_pt = [L_bp_l - shift, Ri_el + b_el]
+                majax_pt = [L_bp_l - shift + a_el, Ri_el + b_el]
+                end_pt = [-shift + x1el, y1el]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
+                pt = [-shift + x1el, y1el]
+
+                for pp in pts:
+                    geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2el, y2el], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0], 0])
+                pt = [-shift + x2el, y2el]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+                if plot and dimension:
+                    ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                    ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
+                                                             height=2 * B_el, angle=0, edgecolor='gray', ls='--',
+                                                             facecolor='none')
+                    ax.add_patch(ellipse)
+                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
+                                xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
+                                arrowprops=dict(arrowstyle='<-', color='black'))
+                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                xytext=(L_el + L_bp_l - shift, Req - B_el),
+                                arrowprops=dict(arrowstyle='->', color='black'))
+
+                    ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', ha='center',
+                            va='center')
+                    ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                            va='center', ha='center', rotation=90)
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+                start_pt = pt
+                center_pt = [L_el + L_bp_l - shift, Req - B_el]
+                majax_pt = [L_el + L_bp_l - shift - A_el, Req - B_el]
+                end_pt = [L_bp_l + L_el - shift, Req]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
+                pt = [L_bp_l + L_el - shift, Req]
+
+                for pp in pts:
+                    geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                if n_cell == 1:
+                    if L_bp_r > 0:
+                        # EQUATOR ARC TO NEXT POINT
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+
+                        start_pt = pt
+                        center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                        majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                        end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                    [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                        pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+                        geo.append([pt[1], pt[0], 0])
+
+                        if plot and dimension:
+                            ax.scatter(L_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_er),
+                                                                     width=2 * A_er,
+                                                                     height=2 * B_er, angle=0, edgecolor='gray',
+                                                                     ls='--',
+                                                                     facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_er),
+                                        xytext=(L_el + L_bp_l - shift + A_er, Req - B_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                        xytext=(L_el + L_bp_l - shift, Req - B_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center',
+                                    va='center')
+                            ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
+                                    va='center', ha='left', rotation=90)
+
+                        # STRAIGHT LINE TO NEXT POINT
+                        pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                        # for pp in pts:
+                        #     geo.append([pp[1], pp[0], 0])
+                        pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                        pt_indx = add_point(cav, pt, pt_indx)
+                        curve_indx = add_line(cav, pt_indx, curve_indx)
+                        curve.append(curve_indx)
+
+                        geo.append([pt[1], pt[0], 0])
+
+                        # ARC
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        start_pt = pt
+                        center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                        majax_pt = [L_el + L_er + L_bp_l - shift + a_er, Ri_er + b_er]
+                        end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                    [L_bp_l + L_el + L_er - shift, Ri_er])
+
+                        if plot and dimension:
+                            ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                     width=2 * a_er,
+                                                                     height=2 * b_er, angle=0, edgecolor='gray',
+                                                                     ls='--',
+                                                                     facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                        xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                    ha='center', va='center')
+                            ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                    va='center', ha='center', rotation=90)
+
+                        pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+
+                        geo.append([pt[1], pt[0], 0])
+
+                        # calculate new shift
+                        shift = shift - (L_el + L_er)
+                    else:
+                        # EQUATOR ARC TO NEXT POINT
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        start_pt = pt
+                        center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                        majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                        end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                    [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                        pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+                        geo.append([pt[1], pt[0], 0])
+
+                        # STRAIGHT LINE TO NEXT POINT
+                        pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                        # for pp in pts:
+                        #     geo.append([pp[1], pp[0], 0])
+                        pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                        pt_indx = add_point(cav, pt, pt_indx)
+                        curve_indx = add_line(cav, pt_indx, curve_indx)
+                        curve.append(curve_indx)
+
+                        geo.append([pt[1], pt[0], 0])
+
+                        # ARC
+                        # half of bounding box is required,
+                        # start is the lower coordinate of the bounding box and end is the upper
+                        if plot and dimension:
+                            ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                     width=2 * a_er,
+                                                                     height=2 * b_er, angle=0, edgecolor='gray',
+                                                                     ls='--',
+                                                                     facecolor='none')
+                            ax.add_patch(ellipse)
+                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='<-', color='black'))
+                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                        xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                        arrowprops=dict(arrowstyle='->', color='black'))
+
+                            ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                    ha='center', va='center')
+                            ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                    va='center', ha='center', rotation=90)
+
+                        start_pt = pt
+                        center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                        majax_pt = [L_el + L_er + L_bp_l - shift + a_er - shift, Ri_er + b_er]
+                        end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                          end_pt)
+                        curve.append(curve_indx)
+
+                        pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                    [L_bp_l + L_el + L_er - shift, Ri_er])
+                        pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                        cav.write(f"\nPoint({pt_indx}) = {{{pt[0]}, {pt[1]}, 0, {0.1}}};")
+                        pt_indx += 1
+
+                        for pp in pts:
+                            if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                geo.append([pp[1], pp[0], 0])
+                        geo.append([pt[1], pt[0], 0])
+
+                else:
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+
+                    start_pt = pt
+                    center_pt = [L_el + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_el + L_bp_l - shift + a_m, Req - B_m]
+                    end_pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_el + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                                [L_el + L_m - x2 + 2 * L_bp_l - shift, y2])
+                    pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_el + L_m + L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_el + L_m + L_bp_l - shift - A_m, Ri_m + b_m]
+                    end_pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                [L_bp_l + L_el + L_m - shift, Ri_m])
+                    pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # calculate new shift
+                    shift = shift - (L_el + L_m)
+                    # ic(shift)
+
+            elif n > 1 and n != n_cell:
+                # DRAW ARC:
+                start_pt = pt
+                center_pt = [L_bp_l - shift, Ri_m + b_m]
+                majax_pt = [L_bp_l - shift + a_m, Ri_m + b_m]
+                end_pt = [-shift + x1, y1]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                pt = [-shift + x1, y1]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2, y2], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0], 0])
+                pt = [-shift + x2, y2]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                start_pt = pt
+                center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                majax_pt = [L_m + L_bp_l - shift - A_m, Req - B_m]
+                end_pt = [L_bp_l + L_m - shift, Req]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                pt = [L_bp_l + L_m - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+
+                geo.append([pt[1], pt[0], 0])
+
+                # EQUATOR ARC TO NEXT POINT
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                start_pt = pt
+                center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                majax_pt = [L_m + L_bp_l - shift + A_m, Req - B_m]
+                end_pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                            [L_m + L_m - x2 + 2 * L_bp_l - shift, y2])
+                pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+
+                geo.append([pt[1], pt[0], 0])
+
+                # STRAIGHT LINE TO NEXT POINT
+                pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0]])
+                pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+                # ARC
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                start_pt = pt
+                center_pt = [L_m + L_m + L_bp_l - shift, Ri_m + b_m]
+                majax_pt = [L_m + L_m + L_bp_l - shift - a_m, Ri_m + b_m]
+                end_pt = [L_bp_l + L_m + L_m - shift, Ri_m]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                            [L_bp_l + L_m + L_m - shift, Ri_m])
+                pt = [L_bp_l + L_m + L_m - shift, Ri_m]
+
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # calculate new shift
+                shift = shift - 2 * L_m
+            else:
+                # DRAW ARC:
+                start_pt = pt
+                center_pt = [L_bp_l - shift, Ri_m + b_m]
+                majax_pt = [L_bp_l - shift + a_er, Ri_m + b_m]
+                end_pt = [-shift + x1, y1]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                pt = [-shift + x1, y1]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # DRAW LINE CONNECTING ARCS
+                pts = lineTo(pt, [-shift + x2, y2], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0], 0])
+                pt = [-shift + x2, y2]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                start_pt = pt
+                center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                majax_pt = [L_m + L_bp_l - shift - A_er, Req - B_m]
+                end_pt = [L_bp_l + L_m - shift, Req]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                pt = [L_bp_l + L_m - shift, Req]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # EQUATOR ARC TO NEXT POINT
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                start_pt = pt
+                center_pt = [L_m + L_bp_l - shift, Req - B_er]
+                majax_pt = [L_m + L_bp_l - shift + A_er, Req - B_er]
+                end_pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                            [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                geo.append([pt[1], pt[0], 0])
+
+                # STRAIGHT LINE TO NEXT POINT
+                pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0]])
+                pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 0])
+
+                # ARC
+                # half of bounding box is required,
+                # start is the lower coordinate of the bounding box and end is the upper
+                start_pt = pt
+                center_pt = [L_m + L_er + L_bp_l - shift, Ri_er + b_er]
+                majax_pt = [L_m + L_er + L_bp_l - shift - a_er, Ri_er + b_er]
+                end_pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                curve.append(curve_indx)
+
+                pts = arcTo(L_m + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                            [L_bp_l + L_m + L_er - shift, Ri_er])
+                pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                for pp in pts:
+                    if (np.around(pp, 12) != np.around(pt, 12)).all():
+                        geo.append([pp[1], pp[0], 0])
+                if L_bp_r > 0:
+                    geo.append([pt[1], pt[0], 0])
+                else:
+                    geo.append([pt[1], pt[0], 1])
+
+        # BEAM PIPE
+        # reset shift
+        shift = (L_bp_r + L_bp_l + (n_cell - 1) * 2 * L_m + L_el + L_er) / 2
+
+        if L_bp_r > 0:  # if there's a problem, check here.
+            pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 1])
+
+        # END PATH
+        pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
+                     step)  # to add beam pipe to right
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0], 0])
+        pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        # closing line
+        cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+        # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
+        # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
+        geo.append([pt[1], pt[0], 2])
+
+        pmcs = [1, curve[-2]]
+        axis = [curve[-1]]
+        pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+        cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+        cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+        cav.write(f"\nPlane Surface(1) = {{{1}}};")
+        cav.write(f"\nReverse Surface {1};")
+        cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    # write geometry
+    if write:
+        try:
+            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            # change point data precision
+            df['r'] = df['r'].round(8)
+            df['z'] = df['z'].round(8)
+            # drop duplicates
+            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
+            df.to_csv(write, sep='\t', index=False)
+        except FileNotFoundError as e:
+            error('Check file path:: ', e)
+
+    # append start point
+    # geo.append([start_point[1], start_point[0], 0])
+
+    if bc:
+        # draw right boundary condition
+        ax.plot([shift, shift], [-Ri_er, Ri_er],
+                [shift + 0.2 * L_m, shift + 0.2 * L_m], [-0.5 * Ri_er, 0.5 * Ri_er],
+                [shift + 0.4 * L_m, shift + 0.4 * L_m], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+    # CLOSE PATH
+    # lineTo(pt, start_point, step)
+    # geo.append([start_point[1], start_point[0], 0])
+    geo = np.array(geo)
+
+    if plot:
+
+        if dimension:
+            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+        else:
+            # recenter asymmetric cavity to center
+            shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
+            if n_cell == 1:
+                shift_to_center = L_er + L_bp_r
+            else:
+                shift_to_center = n_cell * L_m + L_bp_r
+
+            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
+
+        # plot legend without duplicates
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        ax.legend(by_label.values(), by_label.keys())
+
+    return ax
+
+
+def write_cavity_geometry_cli_multicell(n_cell, multicell, BP, scale=1, ax=None, bc=None, tangent_check=False,
+                                        ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                        contour=False, **kwargs):
+    """
+    Plot cavity geometry
+
+    Parameters
+    ----------
+    tangent_check
+    bc
+    ax
+    ignore_degenerate
+    IC: list, ndarray
+        Inner Cell geometric parameters list
+    OC: list, ndarray
+        Left outer Cell geometric parameters list
+    OC_R: list, ndarray
+        Right outer Cell geometric parameters list
+    BP: str {"left", "right", "both", "none"}
+        Specify if beam pipe is on one or both ends or at no end at all
+    n_cell: int
+        Number of cavity cells
+    scale: float
+        Scale of the cavity geometry
+
+    Returns
+    -------
+
+    """
+
+    GEO = """
+    """
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.set_aspect('equal')
+
+    multicell_m = multicell * scale * 1e-3
+
+    n_cell = len(multicell_m) // 16
+
+    Ri_el = multicell_m[4]
+    L_el = multicell_m[5]
+    Ri_er = multicell_m[4 + 8 * (2 * n_cell - 1)]
+    L_er = multicell_m[5 + 8 * (2 * n_cell - 1)]
+
+    L_bp = 4 * L_el
+    if dimension or contour:
+        L_bp = 1 * L_el
+
+    if BP.lower() == 'both':
+        L_bp_l = L_bp
+        L_bp_r = L_bp
+    elif BP.lower() == 'left':
+        L_bp_l = L_bp
+        L_bp_r = 0.000
+    elif BP.lower() == 'right':
+        L_bp_l = 0.000
+        L_bp_r = L_bp
+    else:
+        L_bp_l = 0.000
+        L_bp_r = 0.000
+
+    step = 0.0005
+
+    # calculate shift
+    shift = (L_bp_r + L_bp_l + sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)])) / 2
+
+    geo = []
+    curve = []
+    pt_indx = 1
+    curve_indx = 1
+    curve.append(curve_indx)
+    with open(write.replace('.n', '.geo'), 'w') as cav:
+        cav.write(f'\nSetFactory("OpenCASCADE");\n')
+        # SHIFT POINT TO START POINT
+        start_point = [-shift, 0]
+        pt_indx = add_point(cav, start_point, pt_indx)
+        geo.append([start_point[1], start_point[0], 1])
+        pts = lineTo(start_point, [-shift, Ri_el], step)
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0]])
+        pt = [-shift, Ri_el]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        geo.append([pt[1], pt[0], 0])
+
+        if bc:
+            # draw left boundary condition
+            ax.plot([-shift, -shift], [-Ri_el, Ri_el],
+                    [-shift - 0.2 * multicell_m[4 + 8], -shift - 0.2 * multicell_m[4 + 8]], [-0.5 * Ri_el, 0.5 * Ri_el],
+                    [-shift - 0.4 * multicell_m[4 + 8], -shift - 0.4 * multicell_m[4 + 8]], [-0.1 * Ri_el, 0.1 * Ri_el],
+                    c='b', lw=4, zorder=100)
+
+        # ADD BEAM PIPE LENGTH
+        if L_bp_l != 0:
+            pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0]])
+            pt = [L_bp_l - shift, Ri_el]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+        # calculate ncell
+        # ncell = int(len(multicell_m)/8)
+
+        for n in range(0, 2 * n_cell - 1, 2):
+            A, B, a, b, Ri, L, Req, alpha = multicell_m[8 * n:8 * (n + 1)]
+
+            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp, tangent_check=tangent_check)
+            x1, y1, x2, y2 = df[0]
+            if not ignore_degenerate:
+                msg = df[-2]
+                if msg != 1:
+                    error('Parameter set leads to degenerate geometry.')
+                    # save figure of error
+                    return
+
+            # DRAW ARC:
+            if plot and dimension:
+                ax.scatter(L_bp_l - shift, Ri + b, c='r', ec='k', s=20)
+                ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri + b), width=2 * a,
+                                                         height=2 * b, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
+                ax.add_patch(ellipse)
+                ax.annotate('', xy=(L_bp_l - shift + a, Ri + b),
+                            xytext=(L_bp_l - shift, Ri + b),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+                ax.annotate('', xy=(L_bp_l - shift, Ri),
+                            xytext=(L_bp_l - shift, Ri + b),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                ax.text(L_bp_l - shift + a / 2, (Ri + b), f'{round(a, 2)}\n', ha='center', va='center')
+                ax.text(L_bp_l - shift, (Ri + b / 2), f'{round(b, 2)}\n',
+                        va='center', ha='center', rotation=90)
+
+            start_pt = pt
+            center_pt = [L_bp_l - shift, Ri + b]
+            majax_pt = [L_bp_l - shift + a, Ri + b]
+            end_pt = [-shift + x1, y1]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            pts = arcTo(L_bp_l - shift, Ri + b, a, b, step, pt, [-shift + x1, y1])
+            pt = [-shift + x1, y1]
+
+            for pp in pts:
+                geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # DRAW LINE CONNECTING ARCS
+            pts = lineTo(pt, [-shift + x2, y2], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [-shift + x2, y2]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            if plot and dimension:
+                ax.scatter(L + L_bp_l - shift, Req - B, c='r', ec='k', s=20)
+                ellipse = plt.matplotlib.patches.Ellipse((L + L_bp_l - shift, Req - B), width=2 * A,
+                                                         height=2 * B, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
+                ax.add_patch(ellipse)
+                ax.annotate('', xy=(L + L_bp_l - shift, Req - B),
+                            xytext=(L + L_bp_l - shift - A, Req - B),
+                            arrowprops=dict(arrowstyle='<-', color='black'))
+                ax.annotate('', xy=(L + L_bp_l - shift, Req),
+                            xytext=(L + L_bp_l - shift, Req - B),
+                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                ax.text(L + L_bp_l - shift - A / 2, (Req - B), f'{round(A, 2)}\n', ha='center', va='center')
+                ax.text(L + L_bp_l - shift, (Req - B / 2), f'{round(B, 2)}\n',
+                        va='center', ha='center', rotation=90)
+
+            # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+            start_pt = pt
+            center_pt = [L + L_bp_l - shift, Req - B]
+            majax_pt = [L + L_bp_l - shift - A, Req - B]
+            end_pt = [L_bp_l + L - shift, Req]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            pts = arcTo(L + L_bp_l - shift, Req - B, A, B, step, pt, [L_bp_l + L - shift, Req])
+            pt = [L_bp_l + L - shift, Req]
+
+            for pp in pts:
+                geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            A_left, B_left, a_left, b_left, Ri_left, L_left, Req_left, alpha_left = A, B, a, b, Ri, L, Req, alpha
+            ###################################################
+            A, B, a, b, Ri, L, Req, alpha = multicell_m[8 * (n + 1):8 * (n + 2)]
+            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp, tangent_check=tangent_check)
+            x1, y1, x2, y2 = df[0]
+            if not ignore_degenerate:
+                msg = df[-2]
+                if msg != 1:
+                    error('Parameter set leads to degenerate geometry.')
+                    # save figure of error
+                    return
+
+            # EQUATOR ARC TO NEXT POINT
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+
+            start_pt = pt
+            center_pt = [L_left + L_bp_l - shift, Req - B]
+            majax_pt = [L_left + L_bp_l - shift + A, Req - B]
+            end_pt = [L_left + L - x2 + 2 * L_bp_l - shift, y2]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            pts = arcTo(L_left + L_bp_l - shift, Req - B, A, B, step, pt,
+                        [L_left + L - x2 + 2 * L_bp_l - shift, y2])
+            pt = [L_left + L - x2 + 2 * L_bp_l - shift, y2]
+            for pp in pts:
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # STRAIGHT LINE TO NEXT POINT
+            pts = lineTo(pt, [L_left + L - x1 + 2 * L_bp_l - shift, y1], step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [L_left + L - x1 + 2 * L_bp_l - shift, y1]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+            # ARC
+            # half of bounding box is required,
+            # start is the lower coordinate of the bounding box and end is the upper
+            start_pt = pt
+            center_pt = [L_left + L + L_bp_l - shift, Ri + b]
+            majax_pt = [L_left + L + L_bp_l - shift - a, Ri + b]
+            end_pt = [L_bp_l + L_left + L - shift, Ri]
+            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+            curve.append(curve_indx)
+
+            pts = arcTo(L_left + L + L_bp_l - shift, Ri + b, a, b, step, pt,
+                        [L_bp_l + L_left + L - shift, Ri])
+            pt = [L_bp_l + L_left + L - shift, Ri]
+            for pp in pts:
+                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                    geo.append([pp[1], pp[0], 0])
+            geo.append([pt[1], pt[0], 0])
+
+            # calculate new shift
+            shift = shift - (L_left + L)
+            # ic(shift)
+
+        # BEAM PIPE
+        # reset shift
+        shift = (L_bp_r + L_bp_l + sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)])) / 2
+
+        if L_bp_r > 0:  # if there's a problem, check here.
+            pts = lineTo(pt, [L_bp_r + L_bp_l + sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)]) - shift, Ri_er],
+                         step)
+            # for pp in pts:
+            #     geo.append([pp[1], pp[0], 0])
+            pt = [sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)]) + L_bp_l + L_bp_r - shift, Ri_er]
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 1])
+
+        # END PATH
+        pts = lineTo(pt, [sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)]) + L_bp_l + L_bp_r - shift, 0],
+                     step)  # to add beam pipe to right
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0], 0])
+        pt = [sum([multicell_m[5 + 8 * n] for n in range(2 * n_cell)]) + L_bp_l + L_bp_r - shift, 0]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        # closing line
+        cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+        geo.append([pt[1], pt[0], 2])
+
+        pmcs = [1, curve[-2]]
+        axis = [curve[-1]]
+        pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+        cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+        cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+        cav.write(f"\nPlane Surface(1) = {{{1}}};")
+        cav.write(f"\nReverse Surface {1};")
+        cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    # write geometry
+    if write:
+        try:
+            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            # change point data precision
+            df['r'] = df['r'].round(8)
+            df['z'] = df['z'].round(8)
+            # drop duplicates
+            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
+            df.to_csv(write, sep='\t', index=False)
+        except FileNotFoundError as e:
+            error('Check file path:: ', e)
+
+    # append start point
+    # geo.append([start_point[1], start_point[0], 0])
+
+    if bc:
+        # draw right boundary condition
+        ax.plot([shift, shift], [-Ri_er, Ri_er],
+                [shift + 0.2 * L, shift + 0.2 * L], [-0.5 * Ri_er, 0.5 * Ri_er],
+                [shift + 0.4 * L, shift + 0.4 * L], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+    # CLOSE PATH
+    # lineTo(pt, start_point, step)
+    # geo.append([start_point[1], start_point[0], 0])
+    geo = np.array(geo)
+
+    if plot:
+
+        if dimension:
+            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+        else:
+            # recenter asymmetric cavity to center
+            shift_left = (L_bp_l + L_bp_r + L + L_er + 2 * (n - 1) * L) / 2
+            if n_cell == 1:
+                shift_to_center = L_er + L_bp_r
+            else:
+                shift_to_center = n_cell * L + L_bp_r
+
+            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
+
+        # plot legend without duplicates
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        ax.legend(by_label.values(), by_label.keys())
+
+    return ax
+def write_cavity_geometry_cli_quarter(cell, bp=False, scale=1, ax=None, bc=None, tangent_check=False,
+                                        ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                        contour=False, **kwargs):
+    """
+    Plot cavity geometry
+
+    Parameters
+    ----------
+    tangent_check
+    bc
+    ax
+    ignore_degenerate
+    IC: list, ndarray
+        Inner Cell geometric parameters list
+    OC: list, ndarray
+        Left outer Cell geometric parameters list
+    OC_R: list, ndarray
+        Right outer Cell geometric parameters list
+    BP: str {"left", "right", "both", "none"}
+        Specify if beam pipe is on one or both ends or at no end at all
+    n_cell: int
+        Number of cavity cells
+    scale: float
+        Scale of the cavity geometry
+
+    Returns
+    -------
+
+    """
+
+    GEO = """
+    """
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.set_aspect('equal')
+
+    cell_m = np.array(cell) * scale * 1e-3
+    A, B, a, b, Ri, L, Req = cell_m[:7]
+
+
+    L_bp = 4 * L
+    if dimension or contour:
+        L_bp = 1 * L
+
+    if bp:
+        L_bp_l = L_bp
+    else:
+        L_bp_l = 0
+
+    step = 0.0005
+
+    # calculate shift
+    shift = (L_bp_l + cell_m[5]) / 2
+
+    geo = []
+    curve = []
+    pt_indx = 1
+    curve_indx = 1
+    curve.append(curve_indx)
+    with open(write.replace('.n', '.geo'), 'w') as cav:
+        cav.write(f'\nSetFactory("OpenCASCADE");\n')
+
+        # define parameters
+        cav.write(f'\nA = DefineNumber[{A}, Name "Parameters/Equator ellipse major axis"];')
+        cav.write(f'\nB = DefineNumber[{B}, Name "Parameters/Equator ellipse minor axis"];')
+        cav.write(f'\na = DefineNumber[{a}, Name "Parameters/Iris ellipse major axis"];')
+        cav.write(f'\nb = DefineNumber[{b}, Name "Parameters/Iris ellipse minor axis"];')
+        cav.write(f'\nRi = DefineNumber[{Ri}, Name "Parameters/Iris radius"];')
+        cav.write(f'\nL = DefineNumber[{L}, Name "Parameters/Half cell length"];')
+        cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Equator radius"];\n')
+
+        # SHIFT POINT TO START POINT
+        start_point = [-shift, 0]
+        pt_indx = add_point(cav, start_point, pt_indx)
+        geo.append([start_point[1], start_point[0], 1])
+
+        pt = [-shift, 'Ri']
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        geo.append([pt[1], pt[0], 0])
+
+        # ADD BEAM PIPE LENGTH
+        if L_bp_l != 0:
+            pt = [L_bp_l - shift, 'Ri']
+
+            pt_indx = add_point(cav, pt, pt_indx)
+            curve_indx = add_line(cav, pt_indx, curve_indx)
+            curve.append(curve_indx)
+
+            geo.append([pt[1], pt[0], 0])
+
+        df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp_l, tangent_check=tangent_check)
+        x1, y1, x2, y2 = df[0]
+        if not ignore_degenerate:
+            msg = df[-2]
+            if msg != 1:
+                error('Parameter set leads to degenerate geometry.')
+                # save figure of error
+                return
+
+        start_pt = pt
+        center_pt = [L_bp_l - shift, 'Ri + b']
+        majax_pt = [f'{L_bp_l - shift} + a', 'Ri + b']
+        end_pt = [-shift + x1, y1]
+        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+        curve.append(curve_indx)
+
+        # pts = arcTo(L_bp_l - shift, Ri + b, a, b, step, pt, [-shift + x1, y1])
+        pt = [-shift + x1, y1]
+
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0], 0])
+        # geo.append([pt[1], pt[0], 0])
+
+        # DRAW LINE CONNECTING ARCS
+        pt = [-shift + x2, y2]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        geo.append([pt[1], pt[0], 0])
+
+        # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+
+        start_pt = pt
+        center_pt = [f'L + {L_bp_l - shift}', 'Req - B']
+        majax_pt = [f'L + {L_bp_l - shift} - A', 'Req - B']
+        end_pt = [f'{L_bp_l - shift} + L', 'Req']
+        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+        curve.append(curve_indx)
+
+        # pts = arcTo(L + L_bp_l - shift, Req - B, A, B, step, pt, [L_bp_l + L - shift, Req])
+        pt = [f'{L_bp_l - shift} + L', 'Req']
+
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0], 0])
+        geo.append([pt[1], pt[0], 0])
+
+        # BEAM PIPE
+        # reset shift
+        shift = (L_bp_l +cell_m[5]) / 2
+
+        # END PATH
+        # pts = lineTo(pt, [cell_m[5]+ L_bp_l + - shift, 0],
+        #              step)  # to add beam pipe to right
+
+        # for pp in pts:
+        #     geo.append([pp[1], pp[0], 0])
+        pt = [cell_m[5] + L_bp_l - shift, 0]
+
+        pt_indx = add_point(cav, pt, pt_indx)
+        curve_indx = add_line(cav, pt_indx, curve_indx)
+        curve.append(curve_indx)
+
+        # closing line
+        cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+
+        geo.append([pt[1], pt[0], 2])
+
+        pmcs = [1]
+        axis = [curve[-1]]
+        pecs = [x for x in curve if (x not in pmcs and x not in axis)]
+
+        cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+        cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
+
+        cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+        cav.write(f"\nPlane Surface(1) = {{{1}}};")
+        cav.write(f"\nReverse Surface {1};")
+        cav.write(f'\nPhysical Surface("Domain") = {1};')
+
+    # write geometry
+    if write:
+        try:
+            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
+            # change point data precision
+            df['r'] = df['r'].round(8)
+            df['z'] = df['z'].round(8)
+            # drop duplicates
+            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
+            df.to_csv(write, sep='\t', index=False)
+        except FileNotFoundError as e:
+            error('Check file path:: ', e)
+
+    # append start point
+    # geo.append([start_point[1], start_point[0], 0])
+
+    if bc:
+        # draw right boundary condition
+        ax.plot([shift, shift], [-Ri_er, Ri_er],
+                [shift + 0.2 * L, shift + 0.2 * L], [-0.5 * Ri_er, 0.5 * Ri_er],
+                [shift + 0.4 * L, shift + 0.4 * L], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+
+    # CLOSE PATH
+    # lineTo(pt, start_point, step)
+    # geo.append([start_point[1], start_point[0], 0])
+    geo = np.array(geo)
+
+    if plot:
+
+        if dimension:
+            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+        else:
+            # recenter asymmetric cavity to center
+            shift_left = (L_bp_l + L_bp_r + L + L_er + 2 * (n - 1) * L) / 2
+            if n_cell == 1:
+                shift_to_center = L_er + L_bp_r
+            else:
+                shift_to_center = n_cell * L + L_bp_r
+
+            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
+
+        # plot legend without duplicates
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        ax.legend(by_label.values(), by_label.keys())
+
+    return ax
+
+
+def write_cavity_geometry_cli_wo_gmsh(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
+                                      ignore_degenerate=False, plot=False, write=None, dimension=False,
+                                      contour=False, **kwargs):
     """
     Plot cavity geometry
 
@@ -1069,9 +2463,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     A_el, B_el, a_el, b_el, Ri_el, L_el, Req = np.array(OC)[:7] * scale * 1e-3
     A_er, B_er, a_er, b_er, Ri_er, L_er, Req = np.array(OC_R)[:7] * scale * 1e-3
 
-    L_bp = 4*L_m
+    L_bp = 4 * L_m
     if dimension or contour:
-        L_bp = 1*L_m
+        L_bp = 1 * L_m
 
     if BP.lower() == 'both':
         L_bp_l = L_bp
@@ -1158,7 +2552,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                                          height=2 * b_el, angle=0, edgecolor='gray', ls='--',
                                                          facecolor='none')
                 ax.add_patch(ellipse)
-                ax.annotate('', xy=(L_bp_l - shift+a_el, Ri_el + b_el),
+                ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
                             xytext=(L_bp_l - shift, Ri_el + b_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
                 ax.annotate('', xy=(L_bp_l - shift, Ri_el),
@@ -1232,7 +2626,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_bp_l - shift, Req - B_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center', va='center')
+                        ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center',
+                                va='center')
                         ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
                                 va='center', ha='left', rotation=90)
 
@@ -1251,8 +2646,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                     if plot and dimension:
                         ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
-                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                 width=2 * a_er,
+                                                                 height=2 * b_er, angle=0, edgecolor='gray', ls='--',
                                                                  facecolor='none')
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
@@ -1262,9 +2658,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
                                 ha='center', va='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
                                 va='center', ha='center', rotation=90)
 
                     pt = [L_bp_l + L_el + L_er - shift, Ri_er]
@@ -1300,8 +2696,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     # start is the lower coordinate of the bounding box and end is the upper
                     if plot and dimension:
                         ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
-                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                 width=2 * a_er,
+                                                                 height=2 * b_er, angle=0, edgecolor='gray', ls='--',
                                                                  facecolor='none')
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
@@ -1311,9 +2708,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                                     xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                        ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
                                 ha='center', va='center')
-                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                        ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
                                 va='center', ha='center', rotation=90)
 
                     pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
@@ -1484,7 +2881,8 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
         geo.append([pt[1], pt[0], 1])
 
     # END PATH
-    pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0], step)  # to add beam pipe to right
+    pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
+                 step)  # to add beam pipe to right
     # for pp in pts:
     #     geo.append([pp[1], pp[0], 0])
     pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
@@ -1522,7 +2920,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     if plot:
 
         if dimension:
-            top = ax.plot(geo[:, 1]*1e3, geo[:, 0]*1e3, **kwargs)
+            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
         else:
             # recenter asymmetric cavity to center
             shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
@@ -1531,8 +2929,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
             else:
                 shift_to_center = n_cell * L_m + L_bp_r
 
-            top = ax.plot((geo[:, 1] - shift_left + shift_to_center)*1e3, geo[:, 0]*1e3, **kwargs)
-            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center)*1e3, -geo[:, 0]*1e3, c=top[0].get_color(), **kwargs)
+            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
 
         # plot legend without duplicates
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -1542,7 +2941,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     return ax
 
 
-def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=None, bc=None, tangent_check=False,
+def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
                                       ignore_degenerate=False, plot=False, write=None, dimension=False,
                                       contour=False, **kwargs):
     """
@@ -1594,9 +2993,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
     step = 0.005
 
-    L_bp = 4*L_m
+    L_bp = 4 * L_m
     if dimension or contour:
-        L_bp = 1*L_m
+        L_bp = 1 * L_m
 
     if BP.lower() == 'both':
         L_bp_l = L_bp
@@ -1671,7 +3070,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                                          height=2 * b_el, angle=0, edgecolor='gray', ls='--',
                                                          facecolor='none')
                 ax.add_patch(ellipse)
-                ax.annotate('', xy=(L_bp_l - shift+a_el, Ri_el + b_el),
+                ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
                             xytext=(L_bp_l - shift, Ri_el + b_el),
                             arrowprops=dict(arrowstyle='->', color='black'))
                 ax.annotate('', xy=(L_bp_l - shift, Ri_el),
@@ -1757,7 +3156,8 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
                     if plot and dimension:
                         ax.scatter(L_el + lft_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
-                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_bp_l - shift, Req - B_er), width=2 * A_er,
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_bp_l - shift, Req - B_er),
+                                                                 width=2 * A_er,
                                                                  height=2 * B_er, angle=0, edgecolor='gray', ls='--',
                                                                  facecolor='none')
                         ax.add_patch(ellipse)
@@ -1780,8 +3180,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
 
                     if plot and dimension:
                         ax.scatter(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
-                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                 width=2 * a_er,
+                                                                 height=2 * b_er, angle=0, edgecolor='gray', ls='--',
                                                                  facecolor='none')
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
@@ -1791,9 +3192,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                     xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
                                 va='center', ha='center')
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
                                 va='center', ha='center', rotation=90)
 
                     # ARC
@@ -1832,8 +3233,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                     # start is the lower coordinate of the bounding box and end is the upper
                     if plot and dimension:
                         ax.scatter(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er), width=2*a_er,
-                                                                 height=2*b_er, angle=0, edgecolor='gray', ls='--',
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                 width=2 * a_er,
+                                                                 height=2 * b_er, angle=0, edgecolor='gray', ls='--',
                                                                  facecolor='none')
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
@@ -1843,9 +3245,9 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale= 1, ax=Non
                                     xytext=(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                     arrowprops=dict(arrowstyle='->', color='black'))
 
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er/2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
                                 va='center', ha='center')
-                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er/2), f'{round(b_er, 2)}\n',
+                        ax.text(L_el + lft_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
                                 va='center', ha='center', rotation=90)
 
                     pts = arcTo(L_el + lft_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
@@ -2997,181 +4399,6 @@ def plot_pillbox_geometry(n_cell, L, Req, Ri, S, L_bp, beampipe='none', plot=Fal
     return plt.gca()
 
 
-def write_gun_geometry(shape_geom, write=None):
-    y1 = shape_geom['y1']
-    R2 = shape_geom['R2']
-    T2 = shape_geom['T2']
-    L3 = shape_geom['L3']
-    R4 = shape_geom['R4']
-    L5 = shape_geom['L5']
-    R6 = shape_geom['R6']
-    L7 = shape_geom['L7']
-    R8 = shape_geom['R8']
-    T9 = shape_geom['T9']
-    R10 = shape_geom['R10']
-    T10 = shape_geom['T10']
-    L11 = shape_geom['L11']
-    R12 = shape_geom['R12']
-    L13 = shape_geom['L13']
-    R14 = shape_geom['R14']
-    x = shape_geom['x']
-
-    # calcualte R9
-    R9 = (((y1+R2*np.sin(T2) + L3*np.cos(T2) + R4*np.sin(T2) + L5 + R6) -
-         (R14 + L13 + R12*np.sin(T10) + L11*np.cos(T10) + R10*np.sin(T10) + x + R8*(1-np.sin(T9)))))/np.sin(T9)
-
-    step = 5*1e-2
-    geo = []
-
-    start_pt = [0, 0]
-    geo.append([start_pt[1], start_pt[0], 1])
-    # DRAW LINE CONNECTING ARCS
-    lineTo(start_pt, [0, y1], step)
-    pt = [0, y1]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(-R2, y1, R2, R2, pt, [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)], 0, T2, step)
-    pt = [R2*np.cos(T2)-R2, y1+R2*np.sin(T2)]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)], step)
-    pt = [R2*np.cos(T2)-R2-L3*np.cos(T2), y1+R2*np.sin(T2)+L3*np.sin(T2)]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]+R4*np.cos(T2), pt[1] + R4*np.sin(T2), R4, R4,
-                     pt, [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)], -(np.pi-T2), np.pi, step)
-    pt = [pt[0]-(R4-R4*np.cos(T2)), pt[1] + R4*np.sin(T2)]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [pt[0], pt[1]+L5], step)
-    pt = [pt[0], pt[1]+L5]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]+R6, pt[1], R6, R6, pt, [pt[0]+R6, pt[1] + R6], np.pi, np.pi/2, step)
-    pt = [pt[0]+R6, pt[1] + R6]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [pt[0]+L7, pt[1]], step)
-    pt = [pt[0]+L7, pt[1]]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0], pt[1]-R8, R8, R8, pt, [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))], np.pi/2, T9, step)
-    pt = [pt[0]+R8*np.cos(T9), pt[1] - (R8-R8*np.sin(T9))]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]-R9*np.cos(T9), pt[1] -R9*np.sin(T9), R9, R9,
-                     pt, [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)], T9, 0, step)
-    pt = [pt[0]+(R9-R9*np.cos(T9)), pt[1] - R9*np.sin(T9)]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]-R10, pt[1], R10, R10,
-                     pt, [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)], 0, -T10, step)
-    pt = [pt[0]-(R10-R10*np.cos(T10)), pt[1] - R10*np.sin(T10)]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)], step)
-    pt = [pt[0]-L11*np.sin(T10), pt[1]-L11*np.cos(T10)]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]+R12*np.cos(T10), pt[1] - R12*np.sin(T10), R12, R12,
-                     pt, [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)], (np.pi-T10), np.pi, step)
-    pt = [pt[0]-(R12-R12*np.cos(T10)), pt[1] - R12*np.sin(T10)]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [pt[0], pt[1]-L13], step)
-    pt = [pt[0], pt[1]-L13]
-    geo.append([pt[1], pt[0], 0])
-
-    # DRAW ARC:
-    pts = arcToTheta(pt[0]+R14, pt[1], R14, R14, pt, [pt[0]+R14, pt[1] - R14], np.pi, -np.pi/2, step)
-    pt = [pt[0]+R14, pt[1] - R14]
-    for pp in pts:
-        if (np.around(pp, 12) != np.around(pt, 12)).all():
-            geo.append([pp[1], pp[0], 0])
-    geo.append([pt[1], pt[0], 0])
-
-    # line
-    lineTo(pt, [pt[0]+10*y1, pt[1]], step)
-    pt = [pt[0]+10*y1, pt[1]]
-    geo.append([pt[1], pt[0], 1])
-
-    # line
-    lineTo(pt, [pt[0], pt[1]-y1], step)
-    pt = [pt[0], pt[1]-x]
-    geo.append([pt[1], pt[0], 2])
-
-    # start_pt = [0, 0]
-    # geo.append([start_pt[1], start_pt[0], 1])
-
-    # pandss
-    df = pd.DataFrame(geo)
-    # print(df[df.duplicated(keep=False)])
-
-    geo = np.array(geo)
-    # _, idx = np.unique(geo[:, 0:2], axis=0, return_index=True)
-    # geo = geo[np.sort(idx)]
-
-    # print('length of geometry:: ', len(geo))
-
-    top = plt.plot(geo[:, 1], geo[:, 0])
-    bottom = plt.plot(geo[:, 1], -geo[:, 0], c=top[0].get_color())
-
-    # plot legend wthout duplicates
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys())
-    plt.gca().set_aspect('equal')
-    plt.xlim(left=-30*1e-2)
-
-    # write geometry
-    if write:
-        try:
-            df = pd.DataFrame(geo, columns=['r', 'z', 'bc'])
-            # change point data precision
-            df['r'] = df['r'].round(8)
-            df['z'] = df['z'].round(8)
-            # drop duplicates
-            df.drop_duplicates(subset=['r', 'z'], inplace=True, keep='last')
-            df.to_csv(write, sep='\t', index=False)
-        except FileNotFoundError as e:
-            error('Check file path:: ', e)
-
-    return plt.gca()
-
-
 def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=False, **kwargs):
     """
 
@@ -3394,14 +4621,14 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type=None):
             par_mid[6] = par_end_r[6]
             par_end_l[6] = par_end_r[6]
     else:
-        Req_avg = (par_mid[6] + par_end_l[6] + par_end_r[6])/3
+        Req_avg = (par_mid[6] + par_end_l[6] + par_end_r[6]) / 3
         par_mid[6] = Req_avg
         par_end_l[6] = Req_avg
         par_end_r[6] = Req_avg
 
 
-def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
-    with open(fr"{projectDir}\SimulationData\{sim_folder}\{key}\{filename}", 'w') as file:
+def save_tune_result(d, folder, filename):
+    with open(os.path.join(folder, 'eigenmode', filename), 'w') as file:
         file.write(json.dumps(d, indent=4, separators=(',', ': ')))
 
 
@@ -3556,42 +4783,453 @@ def reorder_legend(h, l, ncols):
 
 
 def get_wakefield_data(file_path):
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
 
-        data = {}
-        current_points = []
-        current_type = None
-        in_electric_field_frame = False  # Flag to track "Electric Field Lines" frames
-        frame_count = 0  # Counter for Electric Field Lines frames
+    data = {}
+    current_points = []
+    current_type = None
+    in_electric_field_frame = False  # Flag to track "Electric Field Lines" frames
+    frame_count = 0  # Counter for Electric Field Lines frames
 
-        for line in lines:
-            if "NEW FRAME" in line:
-                if in_electric_field_frame:
-                    # Store the data for the current frame before moving to the next
-                    if current_type and current_points:
-                        data[f"Frame_{frame_count}"].append(
-                            (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
-                in_electric_field_frame = False  # Reset the flag when a new frame starts
-                current_points = []
-                current_type = None
-            elif "Electric Field Lines" in line:
-                in_electric_field_frame = True  # Set the flag for "Electric Field Lines"
-                frame_count += 1
-                data[f"Frame_{frame_count}"] = []  # Initialize a new entry for the frame
-            elif "JOIN 1" in line and in_electric_field_frame:
+    for line in lines:
+        if "NEW FRAME" in line:
+            if in_electric_field_frame:
+                # Store the data for the current frame before moving to the next
                 if current_type and current_points:
                     data[f"Frame_{frame_count}"].append(
                         (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
-                current_type = "DOTS" if "DOTS" in line else "SOLID"
-                current_points = []
-            elif in_electric_field_frame and (re.match(r'\s*\d\.\d+E[+-]\d+\s+\d\.\d+E[+-]\d+', line) or re.match(
-                    r'\s*\d\.\d+\s+\d\.\d+E[+-]\d+', line)):
-                point = [float(x) for x in re.findall(r'[-+]?\d*\.\d+E[-+]?\d+|\d+\.\d+', line)]
-                current_points.append(point)
+            in_electric_field_frame = False  # Reset the flag when a new frame starts
+            current_points = []
+            current_type = None
+        elif "Electric Field Lines" in line:
+            in_electric_field_frame = True  # Set the flag for "Electric Field Lines"
+            frame_count += 1
+            data[f"Frame_{frame_count}"] = []  # Initialize a new entry for the frame
+        elif "JOIN 1" in line and in_electric_field_frame:
+            if current_type and current_points:
+                data[f"Frame_{frame_count}"].append(
+                    (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+            current_type = "DOTS" if "DOTS" in line else "SOLID"
+            current_points = []
+        elif in_electric_field_frame and (re.match(r'\s*\d\.\d+E[+-]\d+\s+\d\.\d+E[+-]\d+', line) or re.match(
+                r'\s*\d\.\d+\s+\d\.\d+E[+-]\d+', line)):
+            point = [float(x) for x in re.findall(r'[-+]?\d*\.\d+E[-+]?\d+|\d+\.\d+', line)]
+            current_points.append(point)
 
-        # Add the last set of points if any
-        if in_electric_field_frame and current_type and current_points:
-            data[f"Frame_{frame_count}"].append((current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+    # Add the last set of points if any
+    if in_electric_field_frame and current_type and current_points:
+        data[f"Frame_{frame_count}"].append((current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
 
-        return data
+    return data
+
+
+import numpy as np
+import copy
+import re
+from numpy.polynomial.legendre import leggauss
+
+# Ordered parameter names
+VAR_NAMES = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'alpha']
+
+
+def stroud3_nodes_and_weights(p: int):
+    """Stroud’s 3rd-degree rule nodes & weights in [0,1]^p."""
+    coeff = np.pi / p
+    fac = np.sqrt(2 / 3)
+    raw = np.zeros((p, 2 * p))
+    for i in range(2 * p):
+        for r in range(p // 2):
+            k = 2 * r
+            raw[k, i] = fac * np.cos((k + 1) * (i + 1) * coeff)
+            raw[k + 1, i] = fac * np.sin((k + 1) * (i + 1) * coeff)
+        if p % 2:
+            raw[-1, i] = ((-1) ** (i + 1)) / np.sqrt(3)
+    nodes = (0.5 * raw + 0.5).T  # (2p, p)
+    weights = np.full(2 * p, 1.0 / (2 * p))
+    return nodes, weights
+
+
+def generate_uniform_nodes(k: int, bound: float, n: int):
+    """Uniform random delta-vectors in [-bound,+bound] with equal weights."""
+    deltas = [np.random.uniform(-bound, bound, size=k) for _ in range(n)]
+    weights = [1.0 / n] * n
+    return deltas, weights
+
+def generate_normal_nodes(k: int, bound: float, n: int, seed=None):
+    """
+    n independent multivariate normal samples in k dims,
+    each component ~ N(0,bound^2).
+    """
+    rng     = np.random.default_rng(seed)
+    sample  = rng.standard_normal(size=(n, k)) * bound
+    deltas  = list(sample)
+    weights = [1.0/n]*n
+    return deltas, weights
+
+def generate_gauss_legendre_nodes(k: int, bound: float, n: int):
+    """Tensor-product Gauss–Legendre nodes & weights on [-bound,bound]."""
+    x1d, w1d = leggauss(n)
+    x1d *= bound
+    w1d *= bound
+    grids = np.meshgrid(*([x1d] * k), indexing='ij')
+    wgrids = np.meshgrid(*([w1d] * k), indexing='ij')
+    flat_x = np.stack([g.ravel() for g in grids], axis=1)  # (n**k, k)
+    flat_w = np.prod([wg.ravel() for wg in wgrids], axis=0)  # (n**k,)
+    return list(flat_x), list(flat_w)
+
+
+def generate_stroud3_nodes(k: int, bound: float):
+    """Stroud-III delta-vectors mapped to [-bound,bound] and equal weights."""
+    nodes, w = stroud3_nodes_and_weights(k)
+    deltas = [(vec - 0.5) * 2 * bound for vec in nodes]
+    return deltas, list(w)
+
+
+def generate_nodes(k: int, bound: float, node_type: list):
+    """Dispatch to the appropriate node generator."""
+    if node_type[0] == 'uniform':
+        return generate_uniform_nodes(k, bound, node_type[1])
+    elif node_type[0] == 'normal':
+        return generate_normal_nodes(k, bound, node_type[1], seed=3799)
+    if node_type[0] == 'gauss_legendre':
+        return generate_gauss_legendre_nodes(k, bound, node_type[1])
+    if node_type[0] == 'stroud3':
+        return generate_stroud3_nodes(k, bound)
+    raise ValueError(f"Unknown node_type {node_type[0]!r}")
+
+
+def expand_cells(cav: dict, cells):
+    """
+    Given shape['n_cells'], expand 'all' to every half-cell:
+      ['cell1_l','cell1_r',...,'cellN_l','cellN_r']
+    Or accept a single string or list.
+    """
+    N = cav.n_cells
+    if isinstance(cells, str) and cells == 'all':
+        return [f'cell{i}_{side}' for i in range(1, N + 1) for side in ('l', 'r')]
+    if isinstance(cells, str):
+        return [cells]
+    return list(cells)
+
+def apply_perturbation(base,
+                       deltas: list,
+                       perturbed_vars: list,
+                       mode: str):
+    """
+    mode='add': x_new = x + δ
+    mode='mul': x_new = x * (1 + δ)
+    """
+    P     = len(VAR_NAMES)
+    N     = base.n_cells
+    out   = {}
+    for ii, delta in enumerate(deltas):
+        cav    = copy.deepcopy(base)
+        # one slot for the very left half-cell
+
+        # choose apply function
+        for pvar, d in zip(perturbed_vars, delta):
+            if mode == 'add':
+                cav.parameters[pvar] += d
+            else:
+                cav.parameters[pvar] *= (1 + d)
+
+        # rename
+        new_name = f'{cav.name}_Q{ii}'
+        cav.name = new_name
+        cav.projectDir = cav.uq_dir
+        out[new_name] = cav
+    return out
+
+
+def generate_perturbed_shapes(shape: dict,
+                              cells,
+                              variables: list,
+                              mode: list,
+                              node_type: list):
+    """
+    High-level API: returns (shapes, weights).
+
+    - cells: 'all' or list of 'cellX_l'/'cellX_r'
+    - variables: subset of VAR_NAMES
+    - bound: absolute delta bound
+    - mode: 'add' or 'mul'
+    - n: nodes per dimension (ignored by stroud3)
+    - node_type: 'uniform','gauss_legendre','stroud3'
+    """
+    cell_list = expand_cells(shape, cells)
+    cell_vars = [(c, v) for c in cell_list for v in variables]
+    k = len(cell_vars)
+
+    deltas, weights = generate_nodes(k, mode[1], node_type)
+
+    shapes = apply_perturbation(shape, deltas, cell_vars, mode[0])
+
+    return shapes, np.atleast_2d(weights).T
+
+
+def perturb_geometry(cav, eigenmode_config):
+
+    uq_config = eigenmode_config['uq_config']
+    uq_vars = uq_config['variables']
+    which_cell = uq_config['cell']
+
+    method = uq_config['method']
+    perturbation_mode = uq_config['perturbation_mode']
+    if not isinstance(perturbation_mode[1], list):
+        perturbation_mode[1] = [perturbation_mode[1]] * len(uq_vars)
+
+    cells = which_cell
+    variables = uq_vars
+    mode = perturbation_mode
+    node_type = method
+
+    # get perturbed variables
+    uq_parameters = uq_config['variables']
+    if isinstance(uq_parameters, str):
+        uq_parameters = [uq_parameters]
+
+    if uq_config['cell'] == 'all':
+        perturbed_vars = [par for par in cav.parameters if any(k in par for k in uq_parameters)]
+    else:
+        perturbed_vars = uq_parameters
+
+    k = len(perturbed_vars)
+
+    deltas, weights = generate_nodes(k, mode[1], node_type)
+    perturbed_cavs_dict = apply_perturbation(cav, deltas, perturbed_vars, mode[0])
+
+    return perturbed_cavs_dict, np.atleast_2d(weights).T
+
+def enforce_continuity_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Enforce:
+      Req1==Req2, Req3==Req4, Req5==Req6, ...
+      Ri2==Ri3, Ri4==Ri5, Ri6==Ri7, ...
+    in a DataFrame with columns 'Req1'...'ReqN' and 'Ri1'...'RiN'.
+    """
+    df2 = df.copy()
+    pat = re.compile(r'^(Req|Ri)(\d+|_[a-zA-Z0-9]+)$')
+
+    # collect column names by var and index
+    req = {}  # idx -> col
+    ri  = {}
+    for col in df2.columns:
+        m = pat.match(col)
+        print(m)
+        if not m: continue
+        var, idx = m.group(1), int(m.group(2))
+        (req if 'Req' in var else ri)[idx] = col
+
+    max_idx = max(req.keys() | ri.keys())
+
+    # Equator: Req at odd indices paired with next
+    for i in range(1, max_idx+1, 2):
+        c1 = req.get(i)
+        c2 = req.get(i+1)
+        if c1 and c2:
+            avg = 0.5*(df2[c1] + df2[c2])
+            df2[c1] = avg
+            df2[c2] = avg
+
+    # Iris: Ri at even indices paired with next
+    for i in range(2, max_idx+1, 2):
+        c1 = ri.get(i)
+        c2 = ri.get(i+1)
+        if c1 and c2:
+            avg = 0.5*(df2[c1] + df2[c2])
+            df2[c1] = avg
+            df2[c2] = avg
+
+    return df2
+
+
+def shapes_to_dataframe(cavs_dict):
+    """
+    Convert a list of perturbed-shape dicts into a DataFrame.
+
+    Columns are named A1, B1, a1, ..., A2, B2, a2, ... etc.,
+    where each half-cell (left then right) across all cells
+    is assigned an increasing index.
+    """
+    if not cavs_dict:
+        return pd.DataFrame()
+
+    # Build a list of rows from each object's `.parameter` dict
+    data = []
+    for name, cav in cavs_dict.items():
+        row = cav.parameters.copy()  # extract the parameter dictionary
+        row['name'] = name  # optionally include the cavity name as a column
+        data.append(row)
+
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+
+    # Optionally set the name as index
+    df.set_index('name', inplace=True)
+
+    return df
+
+
+
+def merge_runs_within_variable(df: pd.DataFrame, var: str,
+                               rtol=1e-6, atol=1e-8):
+    """
+    For a given variable prefix (e.g. 'Ri' or 'Req'), find all columns
+    like 'Ri1','Ri2',… sorted by index; then group any consecutive indices
+    i, i+1 where df[Ri_i] ≈ df[Ri_{i+1}], producing merged names ['Ri2Ri3'], etc.
+    Returns an ordered list of (merged_name, series).
+    """
+    # 1) find all columns for this var, extract indices
+    pat = re.compile(rf'^{re.escape(var)}(\d+)$')
+    cols = []
+    for c in df.columns:
+        m = pat.match(c)
+        if m:
+            idx = int(m.group(1))
+            cols.append((idx, c))
+    cols.sort(key=lambda x: x[0])
+    merged = []
+    i = 0
+    while i < len(cols):
+        idx, name = cols[i]
+        # look ahead
+        if i+1 < len(cols):
+            idx2, name2 = cols[i+1]
+            # must be consecutive indices
+            if idx2 == idx+1:
+                # compare the arrays
+                a = df[name].to_numpy()
+                b = df[name2].to_numpy()
+                if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
+                    # merge them
+                    new_name = f"{name}{name2}"
+                    merged.append((new_name, df[name]))
+                    i += 2
+                    continue
+        # else no merge
+        merged.append((name, df[name]))
+        i += 1
+    return merged
+
+def merge_equal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Collapse runs of equal columns **within** each variable (Ri, Req),
+    then reassemble all merged columns in the original half‐cell order.
+    """
+    # 1) Determine half‐cell column order from df.columns via regex pairs
+    #    We assume columns alternate Ri#, Req#, Ri#, Req#, …
+    order = []
+    pat = re.compile(r'^(Ri|Req)(\d+)$')
+    for c in df.columns:
+        if pat.match(c):
+            order.append(c)
+
+    # 2) Build merged lists
+    ri_merged  = merge_runs_within_variable(df, 'Ri')
+    req_merged = merge_runs_within_variable(df, 'Req')
+
+    # 3) Map original col → merged_name
+    col_to_merged = {}
+    for new_name, series in ri_merged + req_merged:
+        # the group names are concatenations, so split back
+        # e.g. 'Ri2Ri3' → ['Ri2','Ri3']
+        parts = re.findall(r'(Ri\d+|Req\d+)', new_name)
+        for p in parts:
+            col_to_merged[p] = new_name
+
+    # 4) Reassemble in original order, but only add each merged_name once
+    final = []
+    seen = set()
+    for c in order:
+        m = col_to_merged.get(c)
+        if m and m not in seen:
+            seen.add(m)
+            # pick the series from df via the first part
+            first_part = re.match(r'(Ri\d+|Req\d+)', m).group(1)
+            final.append((m, df[first_part]))
+
+    # 5) Build DataFrame
+    return pd.DataFrame({name: ser for name, ser in final})
+
+def run_sa():
+    folder = r'C:\Users\sosoho\Documents'
+    # read nodes
+    nodes = pd.read_csv(fr'{folder}/nodes.csv', sep='\t')
+    nodes = nodes.loc[:, nodes.columns.str.contains('Ri|Req')]
+    # merge welded dimensions at seam
+    nodes = merge_equal_columns(nodes)
+
+    results = pd.read_excel(fr'{folder}/table.xlsx', 'Sheet1')
+    print(results.columns)
+    print()
+    data = pd.concat([nodes, results], axis=1)
+    data.to_excel(fr'{folder}/data.xlsx', index=False)
+    # print(data)
+
+    names = list(nodes.columns)
+
+    midcell = [42, 42, 12, 19, 35, 57.652, 103.3536]  # <- A, B, a, b, Ri, L, Req
+    endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.7251, 103.3536]
+    endcell_r = [42, 42, 9, 12.8, 39, 56.8407, 103.3536]
+
+    print(names)
+    problem = {
+        'names': names,
+        'num_vars': len(names),
+        'bounds': [[38.7, 39.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [38.7, 39.3]]
+    }
+    #
+    for obj in ['ff [%]']:
+        # obj = 'kcc [%]'
+        pce_order, pce_truncation = 2, 2
+
+        pce_data = Data(fr'{folder}', problem)
+
+        X_train, Y_train = pce_data.train_data(obj)
+        X_test, Y_test = pce_data.test_data()
+
+        pce_reg = PCE(pce_data, Y_train)
+
+        pce_reg.pce_regression(pce_order, pce_truncation)
+
+        Y_reg = pce_reg.evaluate_reg(X_test)
+
+        # plot
+        fig, axs = plt.subplot_mosaic([[0], [1]], figsize=(13, 7))
+        ax = axs[0]
+        ax_err = axs[1]
+
+        ax.plot(Y_test[:50], label='actual', mec='k', lw=0, marker='o', mfc='none', ms=10)
+        ax.plot(Y_reg[:50], label=f'pce reg. ({pce_order},{pce_truncation})]',
+            zorder=23, lw=1, marker='^', mfc='none', ms=8)
+        ax_err.plot(np.abs(Y_reg - Y_test), label='error pce reg')
+
+        # calculate sobol
+        # resample for sobol
+        sobol_indices = {}
+        sobol = Sobol(problem, folder)
+        sobol_indices[obj] = sobol.analyse(pce_reg.evaluate_reg, 'pce reg')
+        sobol.plot(obj, figsize=(10, 3))
+
+        # # save sobol indices
+        # with open(f"{folder}/{obj.replace('/', '_')}.pkl", 'wb') as f:
+        #     pickle.dump(sobol.sobol_indices, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+def make_dirs_from_dict(d, current_dir):
+    for key, val in d.items():
+        if not os.path.exists(os.path.join(current_dir, key)):
+            os.mkdir(os.path.join(current_dir, key))
+            if type(val) == dict:
+                make_dirs_from_dict(val, os.path.join(current_dir, key))
+        elif val:
+            make_dirs_from_dict(val, os.path.join(current_dir, key))
