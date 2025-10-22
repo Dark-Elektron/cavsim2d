@@ -5232,4 +5232,4 @@ def make_dirs_from_dict(d, current_dir):
             if type(val) == dict:
                 make_dirs_from_dict(val, os.path.join(current_dir, key))
         elif val:
-            make_dirs_from_dict(val, os.path.join(current_dir, key))
+  jjjj          make_dirs_from_dict(val, os.path.join(current_dir, key))

@@ -151,14 +151,20 @@ class QuickTools:
     @staticmethod
     def parallel_plate_capacitor(l, b, d, epsr=1):
         l, b = l * 1e-3, b * 1e-3
-        C = epsr * l * b / d
-        return {"C' [pF]": C}
+        C = eps0*epsr * l * b / d
+        return {"C' [pF]": C*1e12}
 
     @staticmethod
-    def parallel_disc_capacitor(D, d, epsr=1):
-        D, d = D * 1e-3, d * 1e-3
-        C = epsr * np.pi * D ** 2 / (4 * d)
-        return {"C' [pF]": C}
+    def parallel_disc_capacitor(D, s, epsr=1):
+        D, s = D * 1e-3, s * 1e-3
+        C = eps0*epsr * np.pi*D**2/(4*s)*(1 + s/(np.pi*D/2))
+        return {"C' [pF]": C*1e12}
+
+    @staticmethod
+    def coaxial_capacitor(D, d, h, epsr=1):
+        D, d, h = D * 1e-3, d * 1e-3, h*1e-3
+        C = 2*np.pi*eps0*epsr*h/ (np.log(D/d))
+        return {"C' [pF]": C*1e12}
 
     @staticmethod
     def cwg_analytical(m, n, kind='te', R=None, pol=None, component='abs'):

@@ -357,6 +357,7 @@ class Cavities(Optimisation):
         if project_name != '':
             # check if folder already exist
             e = self._check_if_path_exists(project_dir, project_name, overwrite)
+            print('result', e, project_dir, project_name)
 
             if not e:
                 # create project structure in folders
@@ -4286,7 +4287,7 @@ class Cavity(ABC):
         qois = 'qois.json'
         assert os.path.exists(
             os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)), (
-            error('Eigenmode result does not exist, please run eigenmode simulation.'))
+            error(f"Eigenmode result does not exist {os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)}, please run eigenmode simulation."))
         with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)) as json_file:
             self.eigenmode_qois = json.load(json_file)
 
@@ -4294,8 +4295,8 @@ class Cavity(ABC):
                                'qois_all_modes.json')) as json_file:
             self.eigenmode_qois_all_modes = json.load(json_file)
 
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
-            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+        # with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
+        #     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
 
         self.freq = self.eigenmode_qois['freq [MHz]']
         self.k_cc = self.eigenmode_qois['kcc [%]']
