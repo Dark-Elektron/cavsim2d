@@ -1201,35 +1201,17 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     pt_indx = 1
     curve_indx = 1
     curve.append(curve_indx)
-    with open(write.replace('.n', '.geo'), 'w') as cav:
-        cav.write(f'\nSetFactory("OpenCASCADE");\n')
-        # SHIFT POINT TO START POINT
-        start_point = [-shift, 0]
-        pt_indx = add_point(cav, start_point, pt_indx)
-        geo.append([start_point[1], start_point[0], 1])
-        pts = lineTo(start_point, [-shift, Ri_el], step)
-        # for pp in pts:
-        #     geo.append([pp[1], pp[0]])
-        pt = [-shift, Ri_el]
-
-        pt_indx = add_point(cav, pt, pt_indx)
-        curve_indx = add_line(cav, pt_indx, curve_indx)
-        curve.append(curve_indx)
-
-        geo.append([pt[1], pt[0], 0])
-
-        if bc:
-            # draw left boundary condition
-            ax.plot([-shift, -shift], [-Ri_el, Ri_el],
-                    [-shift - 0.2 * L_m, -shift - 0.2 * L_m], [-0.5 * Ri_el, 0.5 * Ri_el],
-                    [-shift - 0.4 * L_m, -shift - 0.4 * L_m], [-0.1 * Ri_el, 0.1 * Ri_el], c='b', lw=4, zorder=100)
-
-        # ADD BEAM PIPE LENGTH
-        if L_bp_l != 0:
-            pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
+    if write:
+        with open(write.replace('.n', '.geo'), 'w') as cav:
+            cav.write(f'\nSetFactory("OpenCASCADE");\n')
+            # SHIFT POINT TO START POINT
+            start_point = [-shift, 0]
+            pt_indx = add_point(cav, start_point, pt_indx)
+            geo.append([start_point[1], start_point[0], 1])
+            pts = lineTo(start_point, [-shift, Ri_el], step)
             # for pp in pts:
             #     geo.append([pp[1], pp[0]])
-            pt = [L_bp_l - shift, Ri_el]
+            pt = [-shift, Ri_el]
 
             pt_indx = add_point(cav, pt, pt_indx)
             curve_indx = add_line(cav, pt_indx, curve_indx)
@@ -1237,45 +1219,18 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
             geo.append([pt[1], pt[0], 0])
 
-        for n in range(1, n_cell + 1):
-            if n == 1:
-                # DRAW ARC:
-                if plot and dimension:
-                    ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
-                    ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
-                                                             height=2 * b_el, angle=0, edgecolor='gray', ls='--',
-                                                             facecolor='none')
-                    ax.add_patch(ellipse)
-                    ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
-                                xytext=(L_bp_l - shift, Ri_el + b_el),
-                                arrowprops=dict(arrowstyle='->', color='black'))
-                    ax.annotate('', xy=(L_bp_l - shift, Ri_el),
-                                xytext=(L_bp_l - shift, Ri_el + b_el),
-                                arrowprops=dict(arrowstyle='->', color='black'))
+            if bc:
+                # draw left boundary condition
+                ax.plot([-shift, -shift], [-Ri_el, Ri_el],
+                        [-shift - 0.2 * L_m, -shift - 0.2 * L_m], [-0.5 * Ri_el, 0.5 * Ri_el],
+                        [-shift - 0.4 * L_m, -shift - 0.4 * L_m], [-0.1 * Ri_el, 0.1 * Ri_el], c='b', lw=4, zorder=100)
 
-                    ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', ha='center', va='center')
-                    ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
-                            va='center', ha='center', rotation=90)
-
-                start_pt = pt
-                center_pt = [L_bp_l - shift, Ri_el + b_el]
-                majax_pt = [L_bp_l - shift + a_el, Ri_el + b_el]
-                end_pt = [-shift + x1el, y1el]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
-                pt = [-shift + x1el, y1el]
-
-                for pp in pts:
-                    geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # DRAW LINE CONNECTING ARCS
-                pts = lineTo(pt, [-shift + x2el, y2el], step)
+            # ADD BEAM PIPE LENGTH
+            if L_bp_l != 0:
+                pts = lineTo(pt, [L_bp_l - shift, Ri_el], step)
                 # for pp in pts:
-                #     geo.append([pp[1], pp[0], 0])
-                pt = [-shift + x2el, y2el]
+                #     geo.append([pp[1], pp[0]])
+                pt = [L_bp_l - shift, Ri_el]
 
                 pt_indx = add_point(cav, pt, pt_indx)
                 curve_indx = add_line(cav, pt_indx, curve_indx)
@@ -1283,165 +1238,286 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                 geo.append([pt[1], pt[0], 0])
 
-                if plot and dimension:
-                    ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
-                    ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
-                                                             height=2 * B_el, angle=0, edgecolor='gray', ls='--',
-                                                             facecolor='none')
-                    ax.add_patch(ellipse)
-                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
-                                xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
-                                arrowprops=dict(arrowstyle='<-', color='black'))
-                    ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
-                                xytext=(L_el + L_bp_l - shift, Req - B_el),
-                                arrowprops=dict(arrowstyle='->', color='black'))
+            for n in range(1, n_cell + 1):
+                if n == 1:
+                    # DRAW ARC:
+                    if plot and dimension:
+                        ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                                 height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
+                                    xytext=(L_bp_l - shift, Ri_el + b_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
+                        ax.annotate('', xy=(L_bp_l - shift, Ri_el),
+                                    xytext=(L_bp_l - shift, Ri_el + b_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
 
-                    ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', ha='center',
-                            va='center')
-                    ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
-                            va='center', ha='center', rotation=90)
+                        ax.text(L_bp_l - shift + a_el / 2, (Ri_el + b_el), f'{round(a_el, 2)}\n', ha='center', va='center')
+                        ax.text(L_bp_l - shift, (Ri_el + b_el / 2), f'{round(b_el, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
-                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                    start_pt = pt
+                    center_pt = [L_bp_l - shift, Ri_el + b_el]
+                    majax_pt = [L_bp_l - shift + a_el, Ri_el + b_el]
+                    end_pt = [-shift + x1el, y1el]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
 
-                start_pt = pt
-                center_pt = [L_el + L_bp_l - shift, Req - B_el]
-                majax_pt = [L_el + L_bp_l - shift - A_el, Req - B_el]
-                end_pt = [L_bp_l + L_el - shift, Req]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
+                    pts = arcTo(L_bp_l - shift, Ri_el + b_el, a_el, b_el, step, pt, [-shift + x1el, y1el])
+                    pt = [-shift + x1el, y1el]
 
-                pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
-                pt = [L_bp_l + L_el - shift, Req]
+                    for pp in pts:
+                        geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
-                for pp in pts:
-                    geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2el, y2el], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [-shift + x2el, y2el]
 
-                if n_cell == 1:
-                    if L_bp_r > 0:
-                        # EQUATOR ARC TO NEXT POINT
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
 
-                        start_pt = pt
-                        center_pt = [L_el + L_bp_l - shift, Req - B_er]
-                        majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
-                        end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
-                                                          end_pt)
-                        curve.append(curve_indx)
+                    geo.append([pt[1], pt[0], 0])
 
-                        pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
-                                    [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
-                        pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    if plot and dimension:
+                        ax.scatter(L_el + L_bp_l - shift, Req - B_el, c='r', ec='k', s=20)
+                        ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_el), width=2 * A_el,
+                                                                 height=2 * B_el, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
+                        ax.add_patch(ellipse)
+                        ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_el),
+                                    xytext=(L_el + L_bp_l - shift - A_el, Req - B_el),
+                                    arrowprops=dict(arrowstyle='<-', color='black'))
+                        ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                    xytext=(L_el + L_bp_l - shift, Req - B_el),
+                                    arrowprops=dict(arrowstyle='->', color='black'))
 
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                geo.append([pp[1], pp[0], 0])
-                        geo.append([pt[1], pt[0], 0])
+                        ax.text(L_el + L_bp_l - shift - A_el / 2, (Req - B_el), f'{round(A_el, 2)}\n', ha='center',
+                                va='center')
+                        ax.text(L_el + L_bp_l - shift, (Req - B_el / 2), f'{round(B_el, 2)}\n',
+                                va='center', ha='center', rotation=90)
 
-                        if plot and dimension:
-                            ax.scatter(L_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
-                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_er),
-                                                                     width=2 * A_er,
-                                                                     height=2 * B_er, angle=0, edgecolor='gray',
-                                                                     ls='--',
-                                                                     facecolor='none')
-                            ax.add_patch(ellipse)
-                            ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_er),
-                                        xytext=(L_el + L_bp_l - shift + A_er, Req - B_er),
-                                        arrowprops=dict(arrowstyle='<-', color='black'))
-                            ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
-                                        xytext=(L_el + L_bp_l - shift, Req - B_er),
-                                        arrowprops=dict(arrowstyle='->', color='black'))
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
 
-                            ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center',
-                                    va='center')
-                            ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
-                                    va='center', ha='left', rotation=90)
+                    start_pt = pt
+                    center_pt = [L_el + L_bp_l - shift, Req - B_el]
+                    majax_pt = [L_el + L_bp_l - shift - A_el, Req - B_el]
+                    end_pt = [L_bp_l + L_el - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
 
-                        # STRAIGHT LINE TO NEXT POINT
-                        pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                        # for pp in pts:
-                        #     geo.append([pp[1], pp[0], 0])
-                        pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                    pts = arcTo(L_el + L_bp_l - shift, Req - B_el, A_el, B_el, step, pt, [L_bp_l + L_el - shift, Req])
+                    pt = [L_bp_l + L_el - shift, Req]
 
-                        pt_indx = add_point(cav, pt, pt_indx)
-                        curve_indx = add_line(cav, pt_indx, curve_indx)
-                        curve.append(curve_indx)
+                    for pp in pts:
+                        geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
-                        geo.append([pt[1], pt[0], 0])
+                    if n_cell == 1:
+                        if L_bp_r > 0:
+                            # EQUATOR ARC TO NEXT POINT
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
 
-                        # ARC
-                        # half of bounding box is required,
-                        # start is the lower coordinate of the bounding box and end is the upper
-                        start_pt = pt
-                        center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
-                        majax_pt = [L_el + L_er + L_bp_l - shift + a_er, Ri_er + b_er]
-                        end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
-                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
-                                                          end_pt)
-                        curve.append(curve_indx)
+                            start_pt = pt
+                            center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                            majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                            end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
 
-                        pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
-                                    [L_bp_l + L_el + L_er - shift, Ri_er])
+                            pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                        [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                            pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
 
-                        if plot and dimension:
-                            ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                                                     width=2 * a_er,
-                                                                     height=2 * b_er, angle=0, edgecolor='gray',
-                                                                     ls='--',
-                                                                     facecolor='none')
-                            ax.add_patch(ellipse)
-                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                        xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
-                                        arrowprops=dict(arrowstyle='<-', color='black'))
-                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
-                                        xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                        arrowprops=dict(arrowstyle='->', color='black'))
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
 
-                            ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
-                                    ha='center', va='center')
-                            ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
-                                    va='center', ha='center', rotation=90)
+                            if plot and dimension:
+                                ax.scatter(L_el + L_bp_l - shift, Req - B_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_bp_l - shift, Req - B_er),
+                                                                         width=2 * A_er,
+                                                                         height=2 * B_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_bp_l - shift, Req - B_er),
+                                            xytext=(L_el + L_bp_l - shift + A_er, Req - B_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_bp_l - shift, Req),
+                                            xytext=(L_el + L_bp_l - shift, Req - B_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
 
-                        pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                                ax.text(L_el + L_bp_l - shift + A_er / 2, (Req - B_er), f'{round(A_er, 2)}\n', ha='center',
+                                        va='center')
+                                ax.text(L_el + L_bp_l - shift, (Req - B_er / 2), f'{round(B_er, 2)}\n',
+                                        va='center', ha='left', rotation=90)
 
-                        for pp in pts:
-                            if (np.around(pp, 12) != np.around(pt, 12)).all():
-                                geo.append([pp[1], pp[0], 0])
+                            # STRAIGHT LINE TO NEXT POINT
+                            pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                            # for pp in pts:
+                            #     geo.append([pp[1], pp[0], 0])
+                            pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
 
-                        geo.append([pt[1], pt[0], 0])
+                            pt_indx = add_point(cav, pt, pt_indx)
+                            curve_indx = add_line(cav, pt_indx, curve_indx)
+                            curve.append(curve_indx)
 
-                        # calculate new shift
-                        shift = shift - (L_el + L_er)
+                            geo.append([pt[1], pt[0], 0])
+
+                            # ARC
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            start_pt = pt
+                            center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                            majax_pt = [L_el + L_er + L_bp_l - shift + a_er, Ri_er + b_er]
+                            end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                        [L_bp_l + L_el + L_er - shift, Ri_er])
+
+                            if plot and dimension:
+                                ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                         width=2 * a_er,
+                                                                         height=2 * b_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                                ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                        ha='center', va='center')
+                                ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                        va='center', ha='center', rotation=90)
+
+                            pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+
+                            geo.append([pt[1], pt[0], 0])
+
+                            # calculate new shift
+                            shift = shift - (L_el + L_er)
+                        else:
+                            # EQUATOR ARC TO NEXT POINT
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            start_pt = pt
+                            center_pt = [L_el + L_bp_l - shift, Req - B_er]
+                            majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
+                            end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                        [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                            pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
+
+                            # STRAIGHT LINE TO NEXT POINT
+                            pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                            # for pp in pts:
+                            #     geo.append([pp[1], pp[0], 0])
+                            pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                            pt_indx = add_point(cav, pt, pt_indx)
+                            curve_indx = add_line(cav, pt_indx, curve_indx)
+                            curve.append(curve_indx)
+
+                            geo.append([pt[1], pt[0], 0])
+
+                            # ARC
+                            # half of bounding box is required,
+                            # start is the lower coordinate of the bounding box and end is the upper
+                            if plot and dimension:
+                                ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                         width=2 * a_er,
+                                                                         height=2 * b_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
+                                ax.add_patch(ellipse)
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='<-', color='black'))
+                                ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
+                                            xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                            arrowprops=dict(arrowstyle='->', color='black'))
+
+                                ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
+                                        ha='center', va='center')
+                                ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
+                                        va='center', ha='center', rotation=90)
+
+                            start_pt = pt
+                            center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
+                            majax_pt = [L_el + L_er + L_bp_l - shift + a_er - shift, Ri_er + b_er]
+                            end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+                            pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
+                                                              end_pt)
+                            curve.append(curve_indx)
+
+                            pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                        [L_bp_l + L_el + L_er - shift, Ri_er])
+                            pt = [L_bp_l + L_el + L_er - shift, Ri_er]
+
+                            cav.write(f"\nPoint({pt_indx}) = {{{pt[0]}, {pt[1]}, 0, {0.1}}};")
+                            pt_indx += 1
+
+                            for pp in pts:
+                                if (np.around(pp, 12) != np.around(pt, 12)).all():
+                                    geo.append([pp[1], pp[0], 0])
+                            geo.append([pt[1], pt[0], 0])
+
                     else:
                         # EQUATOR ARC TO NEXT POINT
                         # half of bounding box is required,
                         # start is the lower coordinate of the bounding box and end is the upper
+
                         start_pt = pt
-                        center_pt = [L_el + L_bp_l - shift, Req - B_er]
-                        majax_pt = [L_el + L_bp_l - shift + A_er, Req - B_er]
-                        end_pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
-                                                          end_pt)
+                        center_pt = [L_el + L_bp_l - shift, Req - B_m]
+                        majax_pt = [L_el + L_bp_l - shift + a_m, Req - B_m]
+                        end_pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
                         curve.append(curve_indx)
 
-                        pts = arcTo(L_el + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
-                                    [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
-                        pt = [L_el + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-
+                        pts = arcTo(L_el + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                                    [L_el + L_m - x2 + 2 * L_bp_l - shift, y2])
+                        pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
                         for pp in pts:
                             if (np.around(pp, 12) != np.around(pt, 12)).all():
                                 geo.append([pp[1], pp[0], 0])
                         geo.append([pt[1], pt[0], 0])
 
                         # STRAIGHT LINE TO NEXT POINT
-                        pts = lineTo(pt, [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                        pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
                         # for pp in pts:
                         #     geo.append([pp[1], pp[0], 0])
-                        pt = [L_el + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+                        pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
 
                         pt_indx = add_point(cav, pt, pt_indx)
                         curve_indx = add_line(cav, pt_indx, curve_indx)
@@ -1452,71 +1528,93 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                         # ARC
                         # half of bounding box is required,
                         # start is the lower coordinate of the bounding box and end is the upper
-                        if plot and dimension:
-                            ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                            ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                                                     width=2 * a_er,
-                                                                     height=2 * b_er, angle=0, edgecolor='gray',
-                                                                     ls='--',
-                                                                     facecolor='none')
-                            ax.add_patch(ellipse)
-                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                        xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
-                                        arrowprops=dict(arrowstyle='<-', color='black'))
-                            ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er),
-                                        xytext=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                        arrowprops=dict(arrowstyle='->', color='black'))
-
-                            ax.text(L_el + L_er + L_bp_l - shift - a_er / 2, (Ri_er + b_er), f'{round(a_er, 2)}\n',
-                                    ha='center', va='center')
-                            ax.text(L_el + L_er + L_bp_l - shift, (Ri_er + b_er / 2), f'{round(b_er, 2)}\n',
-                                    va='center', ha='center', rotation=90)
-
                         start_pt = pt
-                        center_pt = [L_el + L_er + L_bp_l - shift, Ri_er + b_er]
-                        majax_pt = [L_el + L_er + L_bp_l - shift + a_er - shift, Ri_er + b_er]
-                        end_pt = [L_bp_l + L_el + L_er - shift, Ri_er]
-                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt,
-                                                          end_pt)
+                        center_pt = [L_el + L_m + L_bp_l - shift, Ri_m + b_m]
+                        majax_pt = [L_el + L_m + L_bp_l - shift - A_m, Ri_m + b_m]
+                        end_pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                        pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
                         curve.append(curve_indx)
 
-                        pts = arcTo(L_el + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
-                                    [L_bp_l + L_el + L_er - shift, Ri_er])
-                        pt = [L_bp_l + L_el + L_er - shift, Ri_er]
-
-                        cav.write(f"\nPoint({pt_indx}) = {{{pt[0]}, {pt[1]}, 0, {0.1}}};")
-                        pt_indx += 1
-
+                        pts = arcTo(L_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                    [L_bp_l + L_el + L_m - shift, Ri_m])
+                        pt = [L_bp_l + L_el + L_m - shift, Ri_m]
                         for pp in pts:
                             if (np.around(pp, 12) != np.around(pt, 12)).all():
                                 geo.append([pp[1], pp[0], 0])
                         geo.append([pt[1], pt[0], 0])
 
-                else:
-                    # EQUATOR ARC TO NEXT POINT
-                    # half of bounding box is required,
-                    # start is the lower coordinate of the bounding box and end is the upper
+                        # calculate new shift
+                        shift = shift - (L_el + L_m)
+                        # ic(shift)
 
+                elif n > 1 and n != n_cell:
+                    # DRAW ARC:
                     start_pt = pt
-                    center_pt = [L_el + L_bp_l - shift, Req - B_m]
-                    majax_pt = [L_el + L_bp_l - shift + a_m, Req - B_m]
-                    end_pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    center_pt = [L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_bp_l - shift + a_m, Ri_m + b_m]
+                    end_pt = [-shift + x1, y1]
                     pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
                     curve.append(curve_indx)
 
-                    pts = arcTo(L_el + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
-                                [L_el + L_m - x2 + 2 * L_bp_l - shift, y2])
-                    pt = [L_el + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                    pt = [-shift + x1, y1]
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 0])
                     geo.append([pt[1], pt[0], 0])
 
-                    # STRAIGHT LINE TO NEXT POINT
-                    pts = lineTo(pt, [L_el + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2, y2], step)
                     # for pp in pts:
                     #     geo.append([pp[1], pp[0], 0])
-                    pt = [L_el + L_m - x1 + 2 * L_bp_l - shift, y1]
+                    pt = [-shift + x2, y2]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift - A_m, Req - B_m]
+                    end_pt = [L_bp_l + L_m - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                    pt = [L_bp_l + L_m - shift, Req]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift + A_m, Req - B_m]
+                    end_pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
+                                [L_m + L_m - x2 + 2 * L_bp_l - shift, y2])
+                    pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
+                    pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
 
                     pt_indx = add_point(cav, pt, pt_indx)
                     curve_indx = add_line(cav, pt_indx, curve_indx)
@@ -1528,260 +1626,163 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     # half of bounding box is required,
                     # start is the lower coordinate of the bounding box and end is the upper
                     start_pt = pt
-                    center_pt = [L_el + L_m + L_bp_l - shift, Ri_m + b_m]
-                    majax_pt = [L_el + L_m + L_bp_l - shift - A_m, Ri_m + b_m]
-                    end_pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                    center_pt = [L_m + L_m + L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_m + L_m + L_bp_l - shift - a_m, Ri_m + b_m]
+                    end_pt = [L_bp_l + L_m + L_m - shift, Ri_m]
                     pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
                     curve.append(curve_indx)
 
-                    pts = arcTo(L_el + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
-                                [L_bp_l + L_el + L_m - shift, Ri_m])
-                    pt = [L_bp_l + L_el + L_m - shift, Ri_m]
+                    pts = arcTo(L_m + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
+                                [L_bp_l + L_m + L_m - shift, Ri_m])
+                    pt = [L_bp_l + L_m + L_m - shift, Ri_m]
+
                     for pp in pts:
                         if (np.around(pp, 12) != np.around(pt, 12)).all():
                             geo.append([pp[1], pp[0], 0])
                     geo.append([pt[1], pt[0], 0])
 
                     # calculate new shift
-                    shift = shift - (L_el + L_m)
-                    # ic(shift)
-
-            elif n > 1 and n != n_cell:
-                # DRAW ARC:
-                start_pt = pt
-                center_pt = [L_bp_l - shift, Ri_m + b_m]
-                majax_pt = [L_bp_l - shift + a_m, Ri_m + b_m]
-                end_pt = [-shift + x1, y1]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
-                pt = [-shift + x1, y1]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # DRAW LINE CONNECTING ARCS
-                pts = lineTo(pt, [-shift + x2, y2], step)
-                # for pp in pts:
-                #     geo.append([pp[1], pp[0], 0])
-                pt = [-shift + x2, y2]
-
-                pt_indx = add_point(cav, pt, pt_indx)
-                curve_indx = add_line(cav, pt_indx, curve_indx)
-                curve.append(curve_indx)
-
-                geo.append([pt[1], pt[0], 0])
-
-                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
-                start_pt = pt
-                center_pt = [L_m + L_bp_l - shift, Req - B_m]
-                majax_pt = [L_m + L_bp_l - shift - A_m, Req - B_m]
-                end_pt = [L_bp_l + L_m - shift, Req]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
-                pt = [L_bp_l + L_m - shift, Req]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-
-                geo.append([pt[1], pt[0], 0])
-
-                # EQUATOR ARC TO NEXT POINT
-                # half of bounding box is required,
-                # start is the lower coordinate of the bounding box and end is the upper
-                start_pt = pt
-                center_pt = [L_m + L_bp_l - shift, Req - B_m]
-                majax_pt = [L_m + L_bp_l - shift + A_m, Req - B_m]
-                end_pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt,
-                            [L_m + L_m - x2 + 2 * L_bp_l - shift, y2])
-                pt = [L_m + L_m - x2 + 2 * L_bp_l - shift, y2]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-
-                geo.append([pt[1], pt[0], 0])
-
-                # STRAIGHT LINE TO NEXT POINT
-                pts = lineTo(pt, [L_m + L_m - x1 + 2 * L_bp_l - shift, y1], step)
-                # for pp in pts:
-                #     geo.append([pp[1], pp[0]])
-                pt = [L_m + L_m - x1 + 2 * L_bp_l - shift, y1]
-
-                pt_indx = add_point(cav, pt, pt_indx)
-                curve_indx = add_line(cav, pt_indx, curve_indx)
-                curve.append(curve_indx)
-
-                geo.append([pt[1], pt[0], 0])
-
-                # ARC
-                # half of bounding box is required,
-                # start is the lower coordinate of the bounding box and end is the upper
-                start_pt = pt
-                center_pt = [L_m + L_m + L_bp_l - shift, Ri_m + b_m]
-                majax_pt = [L_m + L_m + L_bp_l - shift - a_m, Ri_m + b_m]
-                end_pt = [L_bp_l + L_m + L_m - shift, Ri_m]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_m + L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt,
-                            [L_bp_l + L_m + L_m - shift, Ri_m])
-                pt = [L_bp_l + L_m + L_m - shift, Ri_m]
-
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # calculate new shift
-                shift = shift - 2 * L_m
-            else:
-                # DRAW ARC:
-                start_pt = pt
-                center_pt = [L_bp_l - shift, Ri_m + b_m]
-                majax_pt = [L_bp_l - shift + a_er, Ri_m + b_m]
-                end_pt = [-shift + x1, y1]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
-                pt = [-shift + x1, y1]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # DRAW LINE CONNECTING ARCS
-                pts = lineTo(pt, [-shift + x2, y2], step)
-                # for pp in pts:
-                #     geo.append([pp[1], pp[0], 0])
-                pt = [-shift + x2, y2]
-
-                pt_indx = add_point(cav, pt, pt_indx)
-                curve_indx = add_line(cav, pt_indx, curve_indx)
-                curve.append(curve_indx)
-
-                geo.append([pt[1], pt[0], 0])
-
-                # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
-                start_pt = pt
-                center_pt = [L_m + L_bp_l - shift, Req - B_m]
-                majax_pt = [L_m + L_bp_l - shift - A_er, Req - B_m]
-                end_pt = [L_bp_l + L_m - shift, Req]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
-                pt = [L_bp_l + L_m - shift, Req]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # EQUATOR ARC TO NEXT POINT
-                # half of bounding box is required,
-                # start is the lower coordinate of the bounding box and end is the upper
-                start_pt = pt
-                center_pt = [L_m + L_bp_l - shift, Req - B_er]
-                majax_pt = [L_m + L_bp_l - shift + A_er, Req - B_er]
-                end_pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
-                            [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
-                pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                geo.append([pt[1], pt[0], 0])
-
-                # STRAIGHT LINE TO NEXT POINT
-                pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
-                # for pp in pts:
-                #     geo.append([pp[1], pp[0]])
-                pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
-
-                pt_indx = add_point(cav, pt, pt_indx)
-                curve_indx = add_line(cav, pt_indx, curve_indx)
-                curve.append(curve_indx)
-
-                geo.append([pt[1], pt[0], 0])
-
-                # ARC
-                # half of bounding box is required,
-                # start is the lower coordinate of the bounding box and end is the upper
-                start_pt = pt
-                center_pt = [L_m + L_er + L_bp_l - shift, Ri_er + b_er]
-                majax_pt = [L_m + L_er + L_bp_l - shift - a_er, Ri_er + b_er]
-                end_pt = [L_bp_l + L_m + L_er - shift, Ri_er]
-                pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
-                curve.append(curve_indx)
-
-                pts = arcTo(L_m + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
-                            [L_bp_l + L_m + L_er - shift, Ri_er])
-                pt = [L_bp_l + L_m + L_er - shift, Ri_er]
-                for pp in pts:
-                    if (np.around(pp, 12) != np.around(pt, 12)).all():
-                        geo.append([pp[1], pp[0], 0])
-                if L_bp_r > 0:
-                    geo.append([pt[1], pt[0], 0])
+                    shift = shift - 2 * L_m
                 else:
-                    geo.append([pt[1], pt[0], 1])
+                    # DRAW ARC:
+                    start_pt = pt
+                    center_pt = [L_bp_l - shift, Ri_m + b_m]
+                    majax_pt = [L_bp_l - shift + a_er, Ri_m + b_m]
+                    end_pt = [-shift + x1, y1]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
 
-        # BEAM PIPE
-        # reset shift
-        shift = (L_bp_r + L_bp_l + (n_cell - 1) * 2 * L_m + L_el + L_er) / 2
+                    pts = arcTo(L_bp_l - shift, Ri_m + b_m, a_m, b_m, step, pt, [-shift + x1, y1])
+                    pt = [-shift + x1, y1]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
 
-        if L_bp_r > 0:  # if there's a problem, check here.
-            pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+                    # DRAW LINE CONNECTING ARCS
+                    pts = lineTo(pt, [-shift + x2, y2], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0], 0])
+                    pt = [-shift + x2, y2]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # DRAW ARC, FIRST EQUATOR ARC TO NEXT POINT
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_m]
+                    majax_pt = [L_m + L_bp_l - shift - A_er, Req - B_m]
+                    end_pt = [L_bp_l + L_m - shift, Req]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_m, A_m, B_m, step, pt, [L_bp_l + L_m - shift, Req])
+                    pt = [L_bp_l + L_m - shift, Req]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # EQUATOR ARC TO NEXT POINT
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_bp_l - shift, Req - B_er]
+                    majax_pt = [L_m + L_bp_l - shift + A_er, Req - B_er]
+                    end_pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_bp_l - shift, Req - B_er, A_er, B_er, step, pt,
+                                [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er])
+                    pt = [L_m + L_er - x2er + L_bp_l + L_bp_r - shift, y2er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    geo.append([pt[1], pt[0], 0])
+
+                    # STRAIGHT LINE TO NEXT POINT
+                    pts = lineTo(pt, [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er], step)
+                    # for pp in pts:
+                    #     geo.append([pp[1], pp[0]])
+                    pt = [L_m + L_er - x1er + L_bp_l + L_bp_r - shift, y1er]
+
+                    pt_indx = add_point(cav, pt, pt_indx)
+                    curve_indx = add_line(cav, pt_indx, curve_indx)
+                    curve.append(curve_indx)
+
+                    geo.append([pt[1], pt[0], 0])
+
+                    # ARC
+                    # half of bounding box is required,
+                    # start is the lower coordinate of the bounding box and end is the upper
+                    start_pt = pt
+                    center_pt = [L_m + L_er + L_bp_l - shift, Ri_er + b_er]
+                    majax_pt = [L_m + L_er + L_bp_l - shift - a_er, Ri_er + b_er]
+                    end_pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                    pt_indx, curve_indx = add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
+                    curve.append(curve_indx)
+
+                    pts = arcTo(L_m + L_er + L_bp_l - shift, Ri_er + b_er, a_er, b_er, step, pt,
+                                [L_bp_l + L_m + L_er - shift, Ri_er])
+                    pt = [L_bp_l + L_m + L_er - shift, Ri_er]
+                    for pp in pts:
+                        if (np.around(pp, 12) != np.around(pt, 12)).all():
+                            geo.append([pp[1], pp[0], 0])
+                    if L_bp_r > 0:
+                        geo.append([pt[1], pt[0], 0])
+                    else:
+                        geo.append([pt[1], pt[0], 1])
+
+            # BEAM PIPE
+            # reset shift
+            shift = (L_bp_r + L_bp_l + (n_cell - 1) * 2 * L_m + L_el + L_er) / 2
+
+            if L_bp_r > 0:  # if there's a problem, check here.
+                pts = lineTo(pt, [L_bp_r + L_bp_l + 2 * (n_cell - 1) * L_m + L_el + L_er - shift, Ri_er], step)
+                # for pp in pts:
+                #     geo.append([pp[1], pp[0], 0])
+                pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
+
+                pt_indx = add_point(cav, pt, pt_indx)
+                curve_indx = add_line(cav, pt_indx, curve_indx)
+                curve.append(curve_indx)
+
+                geo.append([pt[1], pt[0], 1])
+
+            # END PATH
+            pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
+                         step)  # to add beam pipe to right
             # for pp in pts:
             #     geo.append([pp[1], pp[0], 0])
-            pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, Ri_er]
+            pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
 
             pt_indx = add_point(cav, pt, pt_indx)
             curve_indx = add_line(cav, pt_indx, curve_indx)
             curve.append(curve_indx)
 
-            geo.append([pt[1], pt[0], 1])
+            # closing line
+            cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
 
-        # END PATH
-        pts = lineTo(pt, [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0],
-                     step)  # to add beam pipe to right
-        # for pp in pts:
-        #     geo.append([pp[1], pp[0], 0])
-        pt = [2 * (n_cell - 1) * L_m + L_el + L_er + L_bp_l + L_bp_r - shift, 0]
+            # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
+            # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
+            geo.append([pt[1], pt[0], 2])
 
-        pt_indx = add_point(cav, pt, pt_indx)
-        curve_indx = add_line(cav, pt_indx, curve_indx)
-        curve.append(curve_indx)
+            pmcs = [1, curve[-2]]
+            axis = [curve[-1]]
+            pecs = [x for x in curve if (x not in pmcs and x not in axis)]
 
-        # closing line
-        cav.write(f"\nLine({curve_indx}) = {{{pt_indx - 1}, {1}}};\n")
+            cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
+            cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
 
-        # lineTo(pt, [2 * n_cell * L_er + L_bp_l - shift, 0], step)
-        # pt = [2 * n_cell * L_er + L_bp_l - shift, 0]
-        geo.append([pt[1], pt[0], 2])
-
-        pmcs = [1, curve[-2]]
-        axis = [curve[-1]]
-        pecs = [x for x in curve if (x not in pmcs and x not in axis)]
-
-        cav.write(f'\nPhysical Line("PEC") = {pecs};'.replace('[', '{').replace(']', '}'))
-        cav.write(f'\nPhysical Line("PMC") = {pmcs};'.replace('[', '{').replace(']', '}'))
-        cav.write(f'\nPhysical Line("AXI") = {axis};'.replace('[', '{').replace(']', '}'))
-
-        cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
-        cav.write(f"\nPlane Surface(1) = {{{1}}};")
-        cav.write(f"\nReverse Surface {1};")
-        cav.write(f'\nPhysical Surface("Domain") = {1};')
+            cav.write(f"\n\nCurve Loop(1) = {curve};".replace('[', '{').replace(']', '}'))
+            cav.write(f"\nPlane Surface(1) = {{{1}}};")
+            cav.write(f"\nReverse Surface {1};")
+            cav.write(f'\nPhysical Surface("Domain") = {1};')
 
     # write geometry
     if write:
@@ -1810,26 +1811,26 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     # geo.append([start_point[1], start_point[0], 0])
     geo = np.array(geo)
 
-    if plot:
-
-        if dimension:
-            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
-        else:
-            # recenter asymmetric cavity to center
-            shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n - 1) * L_m) / 2
-            if n_cell == 1:
-                shift_to_center = L_er + L_bp_r
-            else:
-                shift_to_center = n_cell * L_m + L_bp_r
-
-            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
-            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
-                             **kwargs)
-
-        # plot legend without duplicates
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys())
+    # if plot:
+    #
+    #     if dimension:
+    #         top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #     else:
+    #         # recenter asymmetric cavity to center
+    #         shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n_cell - 1) * L_m) / 2
+    #         if n_cell == 1:
+    #             shift_to_center = L_er + L_bp_r
+    #         else:
+    #             shift_to_center = n_cell * L_m + L_bp_r
+    #
+    #         top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #         bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+    #                          **kwargs)
+    #
+    #     # plot legend without duplicates
+    #     handles, labels = plt.gca().get_legend_handles_labels()
+    #     by_label = dict(zip(labels, handles))
+    #     ax.legend(by_label.values(), by_label.keys())
 
     return ax
 

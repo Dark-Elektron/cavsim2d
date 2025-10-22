@@ -70,13 +70,14 @@ The core components of `cavsim2d` are `Cavities` and `Cavity` objects. `Cavities
 instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:
 
 ```python
-
+import sys
+sys.path.append("..")
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-from cavsim2d.cavity import Cavity, Cavities
 
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+from cavsim2d.cavity import *
+
+cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 ```
 The default name for `Cavities` object is `cavities`. Enter `name` keyword to enter custom name i.e.
 `cavs = Cavities('custom_name')`.
@@ -108,14 +109,13 @@ endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
 endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 
 # create cavity
-tesla = Cavity(n_cells, midcell, endcell_l, endcell_r, beampipe='both')
+tesla = EllipticalCavity(n_cells, midcell, endcell_l, endcell_r, beampipe='both')
 ```
 The cavity geometry can be viewed using `plot('geometry')` or `cav.inspect()`. All `plot()` functions return a 
 `matplotlib.axes` object.
 
 ```python
-tesla.plot('geometry')
-# tesla.inspect()
+tesla.inspect()
 ```
 > [!TIP]
 > If running from a terminal, take the following extra steps
@@ -158,7 +158,7 @@ shape_space = {'reentrant':
 
 # create cavity
 shape = shape_space['reentrant']
-reentrant = Cavity(n_cells, shape['IC'], shape['OC'], shape['OC_R'], beampipe='both')
+reentrant = EllipticalCavity(n_cells, shape['IC'], shape['OC'], shape['OC_R'], beampipe='both')
 cavs.add_cavity(reentrant, 'reentrant', 'reentrant')
 cavs.plot('geometry')
 ```
@@ -179,11 +179,10 @@ cavs.plot_compare_fm_bar()
 Let's do that again but this time with a single cell without beampipes to compare with [this](https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf).
 ```python
 
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
-tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
 
 shape_space = {'reentrant': 
                    {'IC': [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27],
@@ -194,7 +193,7 @@ shape_space = {'reentrant':
 
 # create cavity
 shape = shape_space['reentrant']
-reentrant_mid_cell = Cavity(1, shape['IC'], shape['IC'], shape['IC'], beampipe='none')
+reentrant_mid_cell = EllipticalCavity(1, shape['IC'], shape['IC'], shape['IC'], beampipe='none')
 
 cavs.add_cavity([tesla_mid_cell, reentrant_mid_cell], 
                 names=['TESLA', 'reentrant'], 
@@ -232,16 +231,16 @@ within a `Cavities` object, these arguments can be provided as lists matching th
 Optional parameters can further refine the tuning process. 
 
 ```python
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 100]
-tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
 
 cavs.add_cavity(tesla_mid_cell, 'TESLA')
+# print(tesla_mid_cell.parameters) # uncomment to see valid tune parameters
 tune_config = {
     'freqs': 1300,
-    'parameters': 'Req',
+    'parameters': 'Req_m',
     'cell_types': 'mid-cell',
     'rerun': True
 }
@@ -288,16 +287,15 @@ Confirm from the output that the correct frequency and `Req` is achieved.
 Repeat the same calculation. This time retain the correct `Req` and input a wrong `A`.
 
 ```python
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
 midcell = [20, 42, 12, 19, 35, 57.7, 103.353]
-tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
+tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
 
 cavs.add_cavity(tesla_mid_cell, 'TESLA')
 tune_config = {
     'freqs': 1300,
-    'parameters': 'A',
+    'parameters': 'A_m',
     'cell_types': 'mid-cell',
     'processes': 1,
     'rerun': True
@@ -314,12 +312,13 @@ Confirm from the output that the correct frequency and `A` is achieved.
 Running wakefield simulations is as easy as running eigenmode simulations described above. 
 
 ```python
+import sys
+sys.path.append("..")
 from cavsim2d.cavity import Cavity, Cavities
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
 
 # define geometry parameters
 n_cells = 9
@@ -328,7 +327,7 @@ endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
 endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
 
 # create cavity
-tesla = Cavity(n_cells, midcell, endcell_l,endcell_r, beampipe='none')
+tesla = EllipticalCavity(n_cells, midcell, endcell_l,endcell_r, beampipe='none')
 cavs.add_cavity([tesla], names=['TESLA'], plot_labels=['TESLA'])
 
 cavs.run_wakefield()
