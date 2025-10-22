@@ -1,4 +1,23 @@
+import datetime
+import json
+import os
+import random
+import shutil
+from distutils import dir_util
 
+import matplotlib
+import pandas as pd
+from matplotlib import pyplot as plt
+from paretoset import paretoset
+from scipy.interpolate import griddata
+from scipy.spatial import ConvexHull
+from scipy.stats import qmc
+from tqdm import tqdm
+
+from cavsim2d.constants import *
+from cavsim2d.processes import *
+from cavsim2d.utils.printing import *
+from cavsim2d.utils.shared_functions import *
 
 
 class Optimisation:
@@ -1036,8 +1055,8 @@ class Optimisation:
         for key, shape in shape_space.items():
             shape_space_multicell[key] = to_multicell(1, shape)
 
-        run_wakefield_parallel(shape_space, shape_space_multicell, wakefield_config,
-                               self.projectDir, marker='', rerun=rerun)
+        # run_wakefield_parallel(shape_space, shape_space_multicell, wakefield_config,
+        #                        self.projectDir, marker='', rerun=rerun)
 
         return shape_space
 

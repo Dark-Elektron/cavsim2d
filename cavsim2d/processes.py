@@ -3,8 +3,11 @@ import os.path
 import shutil
 import time
 
+from scipy.stats import qmc
+import scipy.signal as sps
 from cavsim2d.analysis.tune.tuner import Tuner
 from cavsim2d.analysis.wakefield.abci_geometry import ABCIGeometry
+from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.solvers.ABCI.abci import ABCI
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.constants import *

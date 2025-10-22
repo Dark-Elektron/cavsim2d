@@ -1,10 +1,12 @@
 import ast
+import fnmatch
 import operator as op
 import os.path
 import subprocess
 from abc import ABC, abstractmethod
 from distutils import dir_util
 import ipywidgets as widgets
+import matplotlib
 from IPython.core.display import HTML, display_html
 from IPython.core.display_functions import display
 from ipywidgets import HBox, VBox, Label
@@ -16,6 +18,8 @@ from cavsim2d.optimisation import Optimisation
 from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.constants import *
+import scipy.interpolate as sci
+import scipy.io as spio
 
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
