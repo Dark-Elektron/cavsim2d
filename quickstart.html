@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation &mdash; cavsim2d 13.08.2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/plot_directive.css?v=7f9a90b1" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=fd3f3429" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f5513fb5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="cavsim2d" href="modules.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            cavsim2d
+              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#third-party-code">Third party code</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#eigenmode-analysis">Eigenmode analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visualising-the-mesh-and-field-profiles">Visualising the mesh and field profiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cavity-tuning">Cavity Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wakefield">Wakefield</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optimisation">Optimisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uncertainty-quantification">Uncertainty Quantification</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#understanding-the-geometry-types">Understanding the geometry types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#advanced">Advanced</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id5">Uncertainty Quantification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-dictionaries">Configuration dictionaries</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#parallelisation">Parallelisation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">cavsim2d</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">cavsim2d</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/quickstart.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
+<p>This repository contains Python codes for designing and analysing 2D axisymmetric RF structures.
+The current capabilities include eigenmode analysis, elliptical cavity tuning and optimisation, wakefield analysis,
+uncertainty quantification, and quick visualisations and comparisons of results.</p>
+<p>To install cadsim2d, clone it into a local directory</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Dark</span><span class="o">-</span><span class="n">Elektron</span><span class="o">/</span><span class="n">cavsim2d</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">cd</span></code> into this directory and run</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>for system-wide installation, or</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">user</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>for local installation.</p>
+<section id="third-party-code">
+<h2>Third party code<a class="headerlink" href="#third-party-code" title="Link to this heading"></a></h2>
+<p>Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
+equations directly in the time domain when a bunched beam goes through an axisymmetric
+structure on or off axis. It is free and can be downloaded from <code class="docutils literal notranslate"><span class="pre">ABCI</span> <span class="pre">&lt;https://abci.kek.jp/abci.htm&gt;``_.</span> <span class="pre">Download</span> <span class="pre">the</span> <span class="pre">latest</span> <span class="pre">64</span> <span class="pre">bit</span>
+<span class="pre">version</span> <span class="pre">(currently</span> <span class="pre">ABCI_MP64_12_5.zip).</span> <span class="pre">Copy</span> <span class="pre">version</span> <span class="pre">``ABCI_MP64+.exe</span></code> from
+<code class="docutils literal notranslate"><span class="pre">&lt;root</span> <span class="pre">folder&gt;\ABCI_MP_12_5\ABCI_MP64_12_5\ABCI_MP</span> <span class="pre">application</span> <span class="pre">for</span> <span class="pre">Windows</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;root</span> <span class="pre">folder&gt;/cavsim2d/solver/ABCI</span></code> or
+through the command line with</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>For some reason, at the time of writing this, the link on the ABCI page to download the 64 bit version is broken.
+However, it can be downloaded using <cite>wget</cite> from Windows PowerShell using</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wget</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">abci</span><span class="o">.</span><span class="n">kek</span><span class="o">.</span><span class="n">jp</span><span class="o">/</span><span class="n">ABCI_MP64_12_5</span><span class="o">.</span><span class="n">zip</span> <span class="o">-</span><span class="n">O</span> <span class="n">ABCI_MP64_12_5</span><span class="o">.</span><span class="n">zip</span>
+</pre></div>
+</div>
+</div>
+<p>Create <code class="docutils literal notranslate"><span class="pre">ABCI</span></code> folder in <code class="docutils literal notranslate"><span class="pre">cavsim2d/solver</span></code> folder. Copy and rename version <cite>ABCI_MP64_12_5.exe</cite> from
+<code class="docutils literal notranslate"><span class="pre">&lt;root</span> <span class="pre">folder&gt;\ABCI_MP_12_5\ABCI_MP4_12_5\ABCI_MP</span> <span class="pre">application</span> <span class="pre">for</span> <span class="pre">Windows</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;root</span> <span class="pre">folder&gt;/cavsim2d/solver/ABCI</span></code> and rename to <code class="docutils literal notranslate"><span class="pre">ABCI.exe</span></code>.</p>
+<p>Or through the command line with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">&lt;</span><span class="n">root</span> <span class="n">folder</span><span class="o">&gt;/</span><span class="n">cavsim2d</span><span class="o">/</span><span class="n">solver</span><span class="o">/</span><span class="n">ABCI</span>
+<span class="n">copy</span> <span class="o">&lt;</span><span class="n">root</span> <span class="n">folder</span><span class="o">&gt;/</span><span class="n">ABCI_MP_12_5</span><span class="o">/</span><span class="n">ABCI_MP_12_5</span><span class="o">/</span><span class="n">ABCI_MP</span> <span class="n">application</span> <span class="k">for</span> <span class="n">Windows</span><span class="o">/</span><span class="n">ABCI_MP64_12_5</span><span class="o">.</span><span class="n">exe</span> <span class="o">&lt;</span><span class="n">root</span> <span class="n">folder</span><span class="o">&gt;/</span><span class="n">cavsim2d</span><span class="o">/</span><span class="n">solver</span><span class="o">/</span><span class="n">ABCI</span>
+<span class="n">cd</span> <span class="o">&lt;</span><span class="n">root</span> <span class="n">folder</span><span class="o">&gt;/</span><span class="n">cavsim2d</span><span class="o">/</span><span class="n">solver</span><span class="o">/</span><span class="n">ABCI</span>
+<span class="n">ren</span> <span class="n">ABCI_MP64_12_5</span><span class="o">.</span><span class="n">exe</span> <span class="n">ABCI</span><span class="o">.</span><span class="n">exe</span>
+</pre></div>
+</div>
+<p>Before diving in, I would install <code class="docutils literal notranslate"><span class="pre">pprintpp</span></code>. It is not necessay but it sure does makes the print readable.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pprint</span>
+<span class="n">pp</span> <span class="o">=</span> <span class="n">pprint</span><span class="o">.</span><span class="n">PrettyPrinter</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<p>The core components of <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> are <code class="docutils literal notranslate"><span class="pre">Cavities</span></code> and <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> objects. <code class="docutils literal notranslate"><span class="pre">Cavities</span></code> is a container for multiple <code class="docutils literal notranslate"><span class="pre">Cavity</span></code>
+instances, each representing a single RF cavity and its associated data. These objects are instantiated as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cavsim2d.cavity</span> <span class="kn">import</span> <span class="n">Cavity</span><span class="p">,</span> <span class="n">Cavities</span>
+
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The default name for <code class="docutils literal notranslate"><span class="pre">Cavities</span></code> object is <code class="docutils literal notranslate"><span class="pre">cavities</span></code>. Enter <code class="docutils literal notranslate"><span class="pre">name</span></code> keyword to enter custom name i.e.
+<code class="docutils literal notranslate"><span class="pre">cavs</span> <span class="pre">=</span> <span class="pre">Cavities('custom_name')</span></code>.
+This is recommended if you want to run different sets of analysis.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The location from which you run the program might require adding its directory to the system path using
+<code class="docutils literal notranslate"><span class="pre">sys.path.append(&lt;cavsim2d_path&gt;)</span></code>. For instance, when working from a “notebooks” folder, I typically use:</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;..&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Cavities().save(&lt;files_path&gt;)</span></code> function initialises or specifies a project folder.
+An optional <code class="docutils literal notranslate"><span class="pre">overwrite=True</span></code> argument can be included to replace an existing folder.
+By default, overwriting is disabled.</p>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> object holds information about elliptical cavities. Therefore, a cavity object requires the number of cells,
+mid cell, left end cell and right end cell dimensions for its initialisation. We use the
+<a href="#id1"><span class="problematic" id="id2">``</span></a>TESLA &lt;<a class="reference external" href="https://cds.cern.ch/record/429906/files/0003011.pdf">https://cds.cern.ch/record/429906/files/0003011.pdf</a>&gt;``_ cavity geometry dimensions in this example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">n_cells</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>  <span class="c1"># &lt;- A, B, a, b, Ri, L, Req</span>
+<span class="n">endcell_l</span> <span class="o">=</span> <span class="p">[</span><span class="mf">40.34</span><span class="p">,</span> <span class="mf">40.34</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">55.716</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.815</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+</pre></div>
+</div>
+<p># create cavity
+tesla = Cavity(n_cells, midcell, endcell_l, endcell_r, beampipe=’both’)</p>
+<p>The cavity geometry can be viewed using <code class="docutils literal notranslate"><span class="pre">plot('geometry')</span></code> or <code class="docutils literal notranslate"><span class="pre">cav.inspect()</span></code>. All <code class="docutils literal notranslate"><span class="pre">plot()</span></code> functions return a
+<code class="docutils literal notranslate"><span class="pre">matplotlib.axes</span></code> object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tesla</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="c1"># tesla.inspect()</span>
+</pre></div>
+</div>
+<p>Now the cavity can be added to the cavities object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">],</span> <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">names</span></code> parameter is a list of custom names for each <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> object. These names are used to label
+corresponding simulation results. The optional <code class="docutils literal notranslate"><span class="pre">plot_labels</span></code> parameter specifies legend labels for visualizations.
+If not provided, default labels will be generated.</p>
+<p>Now we are ready to run our first analysis and print the quantities of interest (qois) for the fundamental mode (FM).</p>
+<section id="eigenmode-analysis">
+<h2>Eigenmode analysis<a class="headerlink" href="#eigenmode-analysis" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">()</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let uss try that again but this time using adding a cavity to <code class="docutils literal notranslate"><span class="pre">cavs</span></code>. We will use the a re-entrant cavity geometry. The
+dimensions can be found <code class="docutils literal notranslate"><span class="pre">here</span> <span class="pre">&lt;https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&amp;pid=1-s2.0-S0168900202016200-main.pdf&gt;``_</span>
+<span class="pre">in</span> <span class="pre">Table</span> <span class="pre">2.</span> <span class="pre">We</span> <span class="pre">will</span> <span class="pre">use</span> <span class="pre">the</span> <span class="pre">parameters</span> <span class="pre">corresponding</span> <span class="pre">to</span> <span class="pre">``$\delta</span> <span class="pre">e=+30$</span></code>. This time we will enter the geometry by defining first a <code class="docutils literal notranslate"><span class="pre">shape_space</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shape_space</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reentrant&#39;</span><span class="p">:</span>
+                   <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">],</span>
+                    <span class="s1">&#39;OC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">],</span>
+                    <span class="s1">&#39;OC_R&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">]</span>
+                    <span class="p">}</span>
+               <span class="p">}</span>
+
+<span class="c1"># create cavity</span>
+<span class="n">shape</span> <span class="o">=</span> <span class="n">shape_space</span><span class="p">[</span><span class="s1">&#39;reentrant&#39;</span><span class="p">]</span>
+<span class="n">reentrant</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;OC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;OC_R&#39;</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">(</span><span class="n">reentrant</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">)</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we can run the eigenmode simulation once again and print the quantities of interest for the FM.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">()</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now do is make a comparative bar plot of some FM qois of the two geometries.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">plot_compare_fm_bar</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Let’s do that again but this time with a single cell without beampipes to compare with <a href="#id3"><span class="problematic" id="id4">``</span></a>this &lt;<a class="reference external" href="https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&amp;pid=1-s2.0-S0168900202016200-main.pdf">https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&amp;pid=1-s2.0-S0168900202016200-main.pdf</a>&gt;``_.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">tesla_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">shape_space</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reentrant&#39;</span><span class="p">:</span>
+                   <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">],</span>
+                    <span class="s1">&#39;OC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">],</span>
+                    <span class="s1">&#39;OC_R&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">98.27</span><span class="p">]</span>
+                    <span class="p">}</span>
+               <span class="p">}</span>
+
+<span class="c1"># create cavity</span>
+<span class="n">shape</span> <span class="o">=</span> <span class="n">shape_space</span><span class="p">[</span><span class="s1">&#39;reentrant&#39;</span><span class="p">]</span>
+<span class="n">reentrant_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla_mid_cell</span><span class="p">,</span> <span class="n">reentrant_mid_cell</span><span class="p">],</span>
+                <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">],</span>
+                <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">])</span>
+
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">()</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">plot_compare_fm_bar</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="visualising-the-mesh-and-field-profiles">
+<h2>Visualising the mesh and field profiles<a class="headerlink" href="#visualising-the-mesh-and-field-profiles" title="Link to this heading"></a></h2>
+<p>To visualise the mesh and field profiles use</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot_mesh</span><span class="p">()</span>
+<span class="n">cavs</span><span class="p">[</span><span class="s1">&#39;reentrant&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>
+<span class="n">cavs</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Meshes and fields are properties of a <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> object and not a <code class="docutils literal notranslate"><span class="pre">Cavities</span></code> object. Therefore, to visualise the mesh
+and field profiles, use the <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> object <code class="docutils literal notranslate"><span class="pre">name</span></code> or corresponding index.</p>
+</div>
+</section>
+<section id="cavity-tuning">
+<h2>Cavity Tuning<a class="headerlink" href="#cavity-tuning" title="Link to this heading"></a></h2>
+<p>Cavity tuning is straightforward using <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code>. We’ll demonstrate this with a TESLA cavity’s mid-cell,
+initially using an arbitrary equator radius (Req) before converging to the correct value of 103.3 mm.
+The tuning function requires at least a tuning parameter and target frequency. For multiple cavities
+within a <code class="docutils literal notranslate"><span class="pre">Cavities</span></code> object, these arguments can be provided as lists matching the number of cavities.
+Optional parameters can further refine the tuning process.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>
+<span class="n">tesla_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">(</span><span class="n">tesla_mid_cell</span><span class="p">,</span> <span class="s1">&#39;TESLA&#39;</span><span class="p">)</span>
+<span class="n">tune_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+    <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cell_types&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">}</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_tune</span><span class="p">(</span><span class="n">tune_config</span><span class="p">)</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_tune_res</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">TESLA</span>
+<span class="p">{</span>   <span class="s1">&#39;TESLA&#39;</span><span class="p">:</span> <span class="p">{</span>   <span class="s1">&#39;CELL TYPE&#39;</span><span class="p">:</span> <span class="s1">&#39;mid cell&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;FREQ&#39;</span><span class="p">:</span> <span class="mf">1300.0007857768796</span><span class="p">,</span>
+                 <span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span>   <span class="mf">42.0</span><span class="p">,</span>
+                           <span class="mf">42.0</span><span class="p">,</span>
+                           <span class="mf">12.0</span><span class="p">,</span>
+                           <span class="mf">19.0</span><span class="p">,</span>
+                           <span class="mf">35.0</span><span class="p">,</span>
+                           <span class="mf">57.7</span><span class="p">,</span>
+                           <span class="mf">103.3702896505612</span><span class="p">,</span> <span class="c1"># &lt;- Req</span>
+                           <span class="mf">103.27068613930538</span><span class="p">],</span>
+                 <span class="s1">&#39;OC&#39;</span><span class="p">:</span> <span class="p">[</span>   <span class="mf">42.0</span><span class="p">,</span>
+                           <span class="mf">42.0</span><span class="p">,</span>
+                           <span class="mf">12.0</span><span class="p">,</span>
+                           <span class="mf">19.0</span><span class="p">,</span>
+                           <span class="mf">35.0</span><span class="p">,</span>
+                           <span class="mf">57.7</span><span class="p">,</span>
+                           <span class="mf">103.3702896505612</span><span class="p">,</span>
+                           <span class="mf">103.27068613930538</span><span class="p">],</span>
+                 <span class="s1">&#39;OC_R&#39;</span><span class="p">:</span> <span class="p">[</span>   <span class="mf">42.0</span><span class="p">,</span>
+                             <span class="mf">42.0</span><span class="p">,</span>
+                             <span class="mf">12.0</span><span class="p">,</span>
+                             <span class="mf">19.0</span><span class="p">,</span>
+                             <span class="mf">35.0</span><span class="p">,</span>
+                             <span class="mf">57.7</span><span class="p">,</span>
+                             <span class="mf">103.3702896505612</span><span class="p">,</span>
+                             <span class="mf">103.27068613930538</span><span class="p">],</span>
+                 <span class="s1">&#39;TUNED VARIABLE&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">}}</span>
+</pre></div>
+</div>
+<p>Confirm from the output that the correct frequency and <code class="docutils literal notranslate"><span class="pre">Req</span></code> is achieved.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You notice a slight deviation from the 103.353. This is due to the approximation of the mid cell length to 57.7 mm.</p>
+</div>
+<p>Repeat the same calculation. This time retain the correct <code class="docutils literal notranslate"><span class="pre">Req</span></code> and input a wrong <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">tesla_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">(</span><span class="n">tesla_mid_cell</span><span class="p">,</span> <span class="s1">&#39;TESLA&#39;</span><span class="p">)</span>
+<span class="n">tune_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+    <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cell_types&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">}</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_tune</span><span class="p">(</span><span class="n">tune_config</span><span class="p">)</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_tune_res</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Confirm from the output that the correct frequency and <code class="docutils literal notranslate"><span class="pre">A</span></code> is achieved.</p>
+</section>
+<section id="wakefield">
+<h2>Wakefield<a class="headerlink" href="#wakefield" title="Link to this heading"></a></h2>
+<p>Running wakefield simulations is as easy as running eigenmode simulations described above.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cavsim2d.cavity</span> <span class="kn">import</span> <span class="n">Cavity</span><span class="p">,</span> <span class="n">Cavities</span>
+<span class="kn">import</span> <span class="nn">pprint</span>
+<span class="n">pp</span> <span class="o">=</span> <span class="n">pprint</span><span class="o">.</span><span class="n">PrettyPrinter</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="c1"># define geometry parameters</span>
+<span class="n">n_cells</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>  <span class="c1"># &lt;- A, B, a, b, Ri, L, Req</span>
+<span class="n">endcell_l</span> <span class="o">=</span> <span class="p">[</span><span class="mf">40.34</span><span class="p">,</span> <span class="mf">40.34</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">55.716</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.815</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+
+<span class="c1"># create cavity</span>
+<span class="n">tesla</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span><span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">],</span> <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_wakefield</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To make plots of the longitudinal and transverse impedance plots on the same axis, we use the following code</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ax</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;ZL&#39;</span><span class="p">)</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;ZT&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Oftentimes, we want to analyse the loss and kick factors, and higher-order mode power for particular or several
+operating points for a cavity geometry. This can easily be done by passing an operating points dictionary to the
+<code class="docutils literal notranslate"><span class="pre">run_wakefield()</span></code> function.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">op_points</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Z&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;freq [MHz]&quot;</span><span class="p">:</span> <span class="mf">400.79</span><span class="p">,</span>  <span class="c1"># Operating frequency</span>
+                <span class="s2">&quot;E [GeV]&quot;</span><span class="p">:</span> <span class="mf">45.6</span><span class="p">,</span>  <span class="c1"># &lt;- Beam energy</span>
+                <span class="s2">&quot;I0 [mA]&quot;</span><span class="p">:</span> <span class="mi">1280</span><span class="p">,</span>  <span class="c1"># &lt;- Beam current</span>
+                <span class="s2">&quot;V [GV]&quot;</span><span class="p">:</span> <span class="mf">0.12</span><span class="p">,</span>  <span class="c1"># &lt;- Total voltage</span>
+                <span class="s2">&quot;Eacc [MV/m]&quot;</span><span class="p">:</span> <span class="mf">5.72</span><span class="p">,</span>  <span class="c1"># &lt;- Accelerating field</span>
+                <span class="s2">&quot;nu_s []&quot;</span><span class="p">:</span> <span class="mf">0.0370</span><span class="p">,</span>  <span class="c1"># &lt;- Synchrotron oscillation tune</span>
+                <span class="s2">&quot;alpha_p [1e-5]&quot;</span><span class="p">:</span> <span class="mf">2.85</span><span class="p">,</span>  <span class="c1"># &lt;- Momentum compaction factor</span>
+                <span class="s2">&quot;tau_z [ms]&quot;</span><span class="p">:</span> <span class="mf">354.91</span><span class="p">,</span>  <span class="c1"># &lt;- Longitudinal damping time</span>
+                <span class="s2">&quot;tau_xy [ms]&quot;</span><span class="p">:</span> <span class="mf">709.82</span><span class="p">,</span>  <span class="c1"># &lt;- Transverse damping time</span>
+                <span class="s2">&quot;f_rev [kHz]&quot;</span><span class="p">:</span> <span class="mf">3.07</span><span class="p">,</span>  <span class="c1"># &lt;- Revolution frequency</span>
+                <span class="s2">&quot;beta_xy [m]&quot;</span><span class="p">:</span> <span class="mi">56</span><span class="p">,</span>  <span class="c1"># &lt;- Beta function</span>
+                <span class="s2">&quot;N_c []&quot;</span><span class="p">:</span> <span class="mi">56</span><span class="p">,</span>  <span class="c1"># &lt;- Number of cavities</span>
+                <span class="s2">&quot;T [K]&quot;</span><span class="p">:</span> <span class="mf">4.5</span><span class="p">,</span>  <span class="c1"># &lt;- Operating tempereature</span>
+                <span class="s2">&quot;sigma_SR [mm]&quot;</span><span class="p">:</span> <span class="mf">4.32</span><span class="p">,</span>  <span class="c1"># &lt;- Bunch length</span>
+                <span class="s2">&quot;sigma_BS [mm]&quot;</span><span class="p">:</span> <span class="mf">15.2</span><span class="p">,</span>  <span class="c1"># &lt;- Bunch length</span>
+                <span class="s2">&quot;Nb [1e11]&quot;</span><span class="p">:</span> <span class="mf">2.76</span>  <span class="c1"># &lt;- Bunch population</span>
+            <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">wakefield_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;bunch_length&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="s1">&#39;wakelength&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;operating_points&#39;</span><span class="p">:</span> <span class="n">op_points</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_wakefield</span><span class="p">(</span><span class="n">wakefield_config</span><span class="p">)</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">wakefield_qois</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And to view the results</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">plot_compare_hom_bar</span><span class="p">(</span><span class="s1">&#39;Z_SR_4.32mm&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Simulation results are saved in a folder named using the operating point, a specified suffix,
+and the sigma value (format: &lt;operating point name&gt;_&lt;suffix&gt;_&lt;sigma value&gt;mm). To compute higher-order mode
+power, R/Q values are necessary, requiring a prior eigenmode analysis if results are unavailable.</p>
+</div>
+</section>
+<section id="optimisation">
+<h2>Optimisation<a class="headerlink" href="#optimisation" title="Link to this heading"></a></h2>
+<p>Optimisation of cavity geometry can be carried out using cavsim2d. Objective functions that are currently supported
+are the fundamental <code class="docutils literal notranslate"><span class="pre">freq</span> <span class="pre">[MHz]</span></code>, <code class="docutils literal notranslate"><span class="pre">Epk/Eacc</span> <span class="pre">[]</span></code>, <code class="docutils literal notranslate"><span class="pre">Bpk/Eacc</span> <span class="pre">[mT/MV/m]</span></code>, <code class="docutils literal notranslate"><span class="pre">R/Q</span> <span class="pre">[Ohm]</span></code>, <code class="docutils literal notranslate"><span class="pre">G</span> <span class="pre">[Ohm]</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code>, <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZT</span></code>.
+<code class="docutils literal notranslate"><span class="pre">ZL</span></code> and <code class="docutils literal notranslate"><span class="pre">ZT</span></code> are longitudinal and transverse impedance peaks in specified frequency intervals obtained from wakefield
+analysis The algorithm currently implemented is genetic algorithm. The optimisation settings are controlled
+using a configuration dictionary. The most important parameters for the algorithm are</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">cell_type</span></code>: The options are <code class="docutils literal notranslate"><span class="pre">mid-cell</span></code>, <code class="docutils literal notranslate"><span class="pre">end-cell</span></code> and <code class="docutils literal notranslate"><span class="pre">end-end-cell</span></code> depending on the parameterisation of the cavity</dt><dd><p>geometry. See Fig []. Default is <code class="docutils literal notranslate"><span class="pre">mid-cell</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;cell_type&quot;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">freqs</span></code>: Target operating frequency of the cavity.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>‘tune freq.’: Target operating frequency of the cavity.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;freqs&quot;</span><span class="p">:</span> <span class="mi">1300</span>
+</pre></div>
+</div>
+<p>The preceeding parameters belong to the tune_config dictionary and so are entered this way in the optimisation_config</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">801.58</span><span class="p">,</span>
+    <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cell_types&#39;</span><span class="p">:</span> <span class="n">cell_type</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">bounds</span></code>: This defines the optimisation search space. All geometric variables must be entered.</dt><dd><p>Note that variables excluded from optimisation should have identical upper and lower bounds..</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">85.0</span><span class="p">],</span>
+               <span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">93.5</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">],</span>
+               <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">170.0</span><span class="p">,</span> <span class="mf">170.0</span><span class="p">]}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">objectives</span></code>: This defines the objective functions. Objectives could be the minimisation, maximisation of optimisation</dt><dd><p>of an objective function to a particular value. They are defined as:</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">[</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="mi">1300</span><span class="p">],</span>
+                <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZL&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+                <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZT&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]</span>
+                <span class="p">]</span>
+</pre></div>
+</div>
+<p>The third parameter for the impedances <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZT</span></code> define the frequency interval for which to evaluate the peak impedance.
+The algorithm specific entries include
+- <code class="docutils literal notranslate"><span class="pre">initial_points</span></code>: The number of initial points to be genereated.
+- <code class="docutils literal notranslate"><span class="pre">method</span></code>: Method of generating the initial points. Defaults to latin hypercube sampling (LHS).
+- <code class="docutils literal notranslate"><span class="pre">no_of_generations</span></code>: The number of generations to be analysed. Defaults to 20.
+- <code class="docutils literal notranslate"><span class="pre">crossover_factor</span></code>: The number of crossovers to create offsprings.
+- <code class="docutils literal notranslate"><span class="pre">elites_for_crossover</span></code>: The number of elites allowed to produce offsprings.
+- <code class="docutils literal notranslate"><span class="pre">mutation_factor</span></code>: The number of mutations to create offsprings.
+- <code class="docutils literal notranslate"><span class="pre">chaos_factor</span></code>: The number of new random geometries included to improve diversity.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+    <span class="p">},</span>
+<span class="s1">&#39;no_of_generations&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>Putting it all together, we get</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">optimisation_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+        <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;cell_types&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">85.0</span><span class="p">],</span>
+               <span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">93.5</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">],</span>
+               <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">170.0</span><span class="p">,</span> <span class="mf">170.0</span><span class="p">]},</span>
+    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="c1"># [&#39;equal&#39;, &#39;freq [MHz]&#39;, 801.58],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">],</span>
+                      <span class="c1"># [&#39;min&#39;, &#39;ZL&#39;, [1, 2, 5]],</span>
+                  <span class="p">],</span>
+    <span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+        <span class="p">},</span>
+    <span class="s1">&#39;no_of_generation&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Several other parameters like <code class="docutils literal notranslate"><span class="pre">method</span></code>, can be controlled. The full configuration file can be found in the <code class="docutils literal notranslate"><span class="pre">config_files</span></code> folder.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="c1"># must first save cavities</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_optimisation</span><span class="p">(</span><span class="n">optimisation_config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="uncertainty-quantification">
+<h2>Uncertainty Quantification<a class="headerlink" href="#uncertainty-quantification" title="Link to this heading"></a></h2>
+<p>Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
+<code class="docutils literal notranslate"><span class="pre">uq_config</span></code> dictionary. For example, eigenmode F
+analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
+For example, let’s revisit our eigenvalue example.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">tesla_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">shape_space</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reentrant&#39;</span><span class="p">:</span>
+                   <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+                    <span class="s1">&#39;OC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+                    <span class="s1">&#39;OC_R&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">]</span>
+                    <span class="p">}</span>
+               <span class="p">}</span>
+
+<span class="c1"># create cavity</span>
+<span class="n">shape</span> <span class="o">=</span> <span class="n">shape_space</span><span class="p">[</span><span class="s1">&#39;reentrant&#39;</span><span class="p">]</span>
+<span class="n">reentrant_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla_mid_cell</span><span class="p">,</span> <span class="n">reentrant_mid_cell</span><span class="p">],</span>
+                <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">],</span>
+                <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">])</span>
+
+<span class="n">uq_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;option&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;freq [MHz]&quot;</span><span class="p">,</span> <span class="s2">&quot;R/Q [Ohm]&quot;</span><span class="p">,</span> <span class="s2">&quot;Epk/Eacc []&quot;</span><span class="p">,</span> <span class="s2">&quot;Bpk/Eacc [mT/MV/m]&quot;</span><span class="p">,</span> <span class="s2">&quot;G [Ohm]&quot;</span><span class="p">,</span> <span class="s2">&quot;kcc [%]&quot;</span><span class="p">,</span> <span class="s2">&quot;ff [%]&quot;</span><span class="p">],</span>
+    <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
+    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span>
+<span class="p">}</span>
+<span class="n">eigenmode_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="n">uq_config</span>
+<span class="p">}</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">(</span><span class="n">eigenmode_config</span><span class="p">)</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And to plot the results</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">plot_compare_fm_bar</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
+degenerate geometries in its vicinity. Therefore, the <code class="docutils literal notranslate"><span class="pre">Req</span></code> was changed to 110 mm.
+These degeneracies can be identified by using the
+<code class="docutils literal notranslate"><span class="pre">reentrant_mid_cell.inspect()</span></code> to examine and manipulate the cavity’s parameters.
+This tool proves invaluable in diagnosing such issues.</p>
+</div>
+</section>
+</section>
+<section id="understanding-the-geometry-types">
+<h1>Understanding the geometry types<a class="headerlink" href="#understanding-the-geometry-types" title="Link to this heading"></a></h1>
+</section>
+<section id="advanced">
+<h1>Advanced<a class="headerlink" href="#advanced" title="Link to this heading"></a></h1>
+<section id="id5">
+<h2>Uncertainty Quantification<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p>Each simulation described until now can be equiped with uncertainty quantification (UQ) capabilites by passing in a
+<code class="docutils literal notranslate"><span class="pre">uq_config</span></code> dictionary. For example, eigenmode F
+analysis for a cavity could be carried out including UQ. the same goes for wakefield analysis, tuning, and optimisation.
+For example, let’s revisit our eigenvalue example.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project_folder</span><span class="o">=</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+
+<span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">tesla_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">shape_space</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reentrant&#39;</span><span class="p">:</span>
+                   <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+                    <span class="s1">&#39;OC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+                    <span class="s1">&#39;OC_R&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">53.58</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">8.08</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mi">110</span><span class="p">]</span>
+                    <span class="p">}</span>
+               <span class="p">}</span>
+
+<span class="c1"># create cavity</span>
+<span class="n">shape</span> <span class="o">=</span> <span class="n">shape_space</span><span class="p">[</span><span class="s1">&#39;reentrant&#39;</span><span class="p">]</span>
+<span class="n">reentrant_mid_cell</span> <span class="o">=</span> <span class="n">Cavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="s1">&#39;IC&#39;</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla_mid_cell</span><span class="p">,</span> <span class="n">reentrant_mid_cell</span><span class="p">],</span>
+                <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">],</span>
+                <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">,</span> <span class="s1">&#39;reentrant&#39;</span><span class="p">])</span>
+
+<span class="n">uq_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;option&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;freq [MHz]&quot;</span><span class="p">,</span> <span class="s2">&quot;R/Q [Ohm]&quot;</span><span class="p">,</span> <span class="s2">&quot;Epk/Eacc []&quot;</span><span class="p">,</span> <span class="s2">&quot;Bpk/Eacc [mT/MV/m]&quot;</span><span class="p">,</span> <span class="s2">&quot;G [Ohm]&quot;</span><span class="p">,</span> <span class="s2">&quot;kcc [%]&quot;</span><span class="p">,</span> <span class="s2">&quot;ff [%]&quot;</span><span class="p">],</span>
+    <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
+    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span>
+<span class="p">}</span>
+<span class="n">eigenmode_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="n">uq_config</span>
+<span class="p">}</span>
+
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">(</span><span class="n">eigenmode_config</span><span class="p">)</span>
+<span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And to plot the results</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span><span class="o">.</span><span class="n">plot_compare_fm_bar</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>&gt; [!IMPORTANT]
+&gt; Enabling uncertainty quantification (UQ) for the original reentrant_mid_cell cavity results in errors due to
+&gt; degenerate geometries in its vicinity. Therefore, the <code class="docutils literal notranslate"><span class="pre">Req</span></code> was changed to 110 mm.
+&gt; These degeneracies can be identified by using the
+&gt; <code class="docutils literal notranslate"><span class="pre">reentrant_mid_cell.inspect()</span></code> to examine and manipulate the cavity’s parameters.
+&gt; This tool proves invaluable in diagnosing such issues.</p>
+</section>
+<section id="configuration-dictionaries">
+<h2>Configuration dictionaries<a class="headerlink" href="#configuration-dictionaries" title="Link to this heading"></a></h2>
+<p>Simulation inputs are defined through configuration dictionaries, with specific formats for different simulation types.
+These dictionaries are structured logically. For instance, a simple eigenmode simulation uses a straightforward
+configuration. Uncertainty quantification (UQ) can be integrated by adding a <code class="docutils literal notranslate"><span class="pre">uq_config</span></code> dictionary within the
+eigenmode configuration. Wakefield analysis and tuning configurations follow a similar pattern.</p>
+<p>Optimisation configurations include a <code class="docutils literal notranslate"><span class="pre">tune_config</span></code> section to ensure frequency optimisation prior to other parameters.
+Depending on the optimisation goals, <code class="docutils literal notranslate"><span class="pre">eigenmode_config</span></code> and <code class="docutils literal notranslate"><span class="pre">wakefield_config</span></code> sections can be nested
+within the optimisation configuration, potentially also incorporating UQ through <code class="docutils literal notranslate"><span class="pre">uq_config</span></code> sub-dictionaries.</p>
+<p>To view the complete configuration dictionaries for each analysis, use the <code class="docutils literal notranslate"><span class="pre">help()</span></code> function,
+e.g. <code class="docutils literal notranslate"><span class="pre">help(cavs.run_eigenmode)</span></code>.</p>
+<p>The tree structure below shows how configuration dictionaries can be stacked.</p>
+<pre>
+    <b>cavsim2d</b>
+    ├── tune
+    │   ├── eigen
+    │   │   └── uq
+    │   └── uq
+    ├── eigen
+    │   └── uq
+    ├── wakefield
+    │   └── uq
+    └── optimisation
+        ├── tune
+        │   ├── eigen
+        │   │   └── uq
+        │   └── uq
+        └── wakefield
+            └── uq
+</pre><p>See optimisation example below</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cavs</span> <span class="o">=</span> <span class="n">Cavities</span><span class="p">()</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;/user/home/...&#39;</span><span class="p">)</span>
+<span class="n">cell_type</span> <span class="o">=</span> <span class="s1">&#39;end-end-cell&#39;</span>
+
+<span class="n">optimisation_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+        <span class="c1"># &#39;Sobol Sequence&#39;: {&#39;index&#39;: 2},</span>
+        <span class="c1"># &#39;Random&#39;: {},</span>
+        <span class="c1"># &#39;Uniform&#39;: {},</span>
+        <span class="p">},</span>
+    <span class="c1"># &#39;mid-cell&#39;: [1, 2, 3, 3, 6, 5, 2],  # must enter if mid-end cell selected</span>
+    <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">801.58</span><span class="p">,</span>
+        <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;cell_types&#39;</span><span class="p">:</span> <span class="n">cell_type</span><span class="p">,</span>
+        <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                             <span class="s1">&#39;n_modules&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                             <span class="s1">&#39;f_shift&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                             <span class="s1">&#39;bc&#39;</span><span class="p">:</span> <span class="mi">33</span><span class="p">,</span>
+                             <span class="s1">&#39;beampipes&#39;</span><span class="p">:</span> <span class="s1">&#39;both&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+                                 <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">],</span>
+                                 <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Epk/Eacc []&quot;</span><span class="p">,</span> <span class="s2">&quot;Bpk/Eacc [mT/MV/m]&quot;</span><span class="p">,</span> <span class="s2">&quot;R/Q [Ohm]&quot;</span><span class="p">,</span> <span class="s2">&quot;G [Ohm]&quot;</span><span class="p">],</span>
+                                 <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">],</span>
+                                 <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+                                 <span class="s1">&#39;distribution&#39;</span><span class="p">:</span> <span class="s1">&#39;gaussian&#39;</span><span class="p">,</span>
+                                 <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>
+                                 <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+                                 <span class="s1">&#39;cell complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span>
+                                <span class="p">}</span>
+                            <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="s1">&#39;wakefield_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;n_modules&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                         <span class="s1">&#39;MROT&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;MT&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;NFS&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span> <span class="s1">&#39;UBT&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s1">&#39;bunch_length&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+                         <span class="s1">&#39;DDR_SIG&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;DDZ_SIG&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+                         <span class="s1">&#39;WG_M&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">],</span>
+                            <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="s2">&quot;ZL&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span> <span class="p">[</span><span class="s2">&quot;ZT&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]]],</span>
+                            <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">],</span>
+                            <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+                            <span class="s1">&#39;distribution&#39;</span><span class="p">:</span> <span class="s1">&#39;gaussian&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>
+                            <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;cell complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span>
+                            <span class="p">}</span>
+                        <span class="p">},</span>
+    <span class="s1">&#39;optimisation by&#39;</span><span class="p">:</span> <span class="s1">&#39;pareto&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">&#39;no_of_generation&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+               <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+               <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">85.0</span><span class="p">],</span>
+               <span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">93.5</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">],</span>
+               <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">170.0</span><span class="p">,</span> <span class="mf">170.0</span><span class="p">]},</span>
+    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="c1"># [&#39;equal&#39;, &#39;freq [MHz]&#39;, 801.58],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZL&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+                      <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZT&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+                  <span class="p">],</span>
+    <span class="s1">&#39;weights&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">}</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">run_optimisation</span><span class="p">(</span><span class="n">optimisation_config</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Default configuration settings are applied for eigenmode and wakefield analyses when no custom
+configuration dictionary is provided.</p>
+</div>
+</section>
+</section>
+<section id="parallelisation">
+<h1>Parallelisation<a class="headerlink" href="#parallelisation" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> simulations can be parallelised easily by setting the <code class="docutils literal notranslate"><span class="pre">processes</span></code> parameter within relevant
+configuration dictionaries. This controls the number of processes used for the analysis.
+For simulations with uncertainty quantification (UQ) enabled, an additional level of parallelisation can
+be achieved by specifying <code class="docutils literal notranslate"><span class="pre">processes</span></code> within the UQ configuration. The default number of processes is one.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="modules.html" class="btn btn-neutral float-right" title="cavsim2d" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sosoho-Abasi Udongwo.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
