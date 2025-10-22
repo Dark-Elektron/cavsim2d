@@ -20,7 +20,7 @@ from cavsim2d.utils.shared_functions import *
 from cavsim2d.constants import *
 import scipy.interpolate as sci
 import scipy.io as spio
-
+import matplotlib as mpl
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
         ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg}
