@@ -826,3 +826,8 @@ For simulations with uncertainty quantification (UQ) enabled, an additional leve
 be achieved by specifying ``processes`` within the UQ configuration. The default number of processes is one.
 
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Documentation:
+
+   ../notebooks/eigenmode
