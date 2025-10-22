@@ -24,6 +24,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.neural_network import MLPRegressor
 
+from cavsim2d.utils.printing import *
+
 
 class SampleGenerator:
     def __init__(self):
