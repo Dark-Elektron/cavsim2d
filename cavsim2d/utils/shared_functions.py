@@ -2389,37 +2389,37 @@ def write_cavity_geometry_cli_quarter(cell, bp=False, scale=1, ax=None, bc=None,
     # append start point
     # geo.append([start_point[1], start_point[0], 0])
 
-    if bc:
-        # draw right boundary condition
-        ax.plot([shift, shift], [-Ri_er, Ri_er],
-                [shift + 0.2 * L, shift + 0.2 * L], [-0.5 * Ri_er, 0.5 * Ri_er],
-                [shift + 0.4 * L, shift + 0.4 * L], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
+    # if bc:
+    #     # draw right boundary condition
+    #     ax.plot([shift, shift], [-Ri_er, Ri_er],
+    #             [shift + 0.2 * L, shift + 0.2 * L], [-0.5 * Ri_er, 0.5 * Ri_er],
+    #             [shift + 0.4 * L, shift + 0.4 * L], [-0.1 * Ri_er, 0.1 * Ri_er], c='b', lw=4, zorder=100)
 
     # CLOSE PATH
     # lineTo(pt, start_point, step)
     # geo.append([start_point[1], start_point[0], 0])
     geo = np.array(geo)
 
-    if plot:
-
-        if dimension:
-            top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
-        else:
-            # recenter asymmetric cavity to center
-            shift_left = (L_bp_l + L_bp_r + L + L_er + 2 * (n - 1) * L) / 2
-            if n_cell == 1:
-                shift_to_center = L_er + L_bp_r
-            else:
-                shift_to_center = n_cell * L + L_bp_r
-
-            top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
-            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
-                             **kwargs)
-
-        # plot legend without duplicates
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys())
+    # if plot:
+    #
+    #     if dimension:
+    #         top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #     else:
+    #         # recenter asymmetric cavity to center
+    #         shift_left = (L_bp_l + L_bp_r + L + L_er + 2 * (n - 1) * L) / 2
+    #         if n_cell == 1:
+    #             shift_to_center = L_er + L_bp_r
+    #         else:
+    #             shift_to_center = n_cell * L + L_bp_r
+    #
+    #         top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #         bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+    #                          **kwargs)
+    #
+    #     # plot legend without duplicates
+    #     handles, labels = plt.gca().get_legend_handles_labels()
+    #     by_label = dict(zip(labels, handles))
+    #     ax.legend(by_label.values(), by_label.keys())
 
     return ax
 
@@ -5232,4 +5232,4 @@ def make_dirs_from_dict(d, current_dir):
             if type(val) == dict:
                 make_dirs_from_dict(val, os.path.join(current_dir, key))
         elif val:
-  jjjj          make_dirs_from_dict(val, os.path.join(current_dir, key))
+            make_dirs_from_dict(val, os.path.join(current_dir, key))
