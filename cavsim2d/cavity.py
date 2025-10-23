@@ -537,11 +537,11 @@ class Cavities(Optimisation):
 
     def get_tune_res(self):
         for key, cav in self.cavities_dict.items():
-            try:
-                cav.get_ngsolve_tune_res()
-                self.tune_results[cav.name] = cav.tune_results
-            except FileNotFoundError:
-                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+            # try:
+            cav.get_ngsolve_tune_res()
+            self.tune_results[cav.name] = cav.tune_results
+            # except FileNotFoundError:
+            #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     def run_eigenmode(self, eigenmode_config=None):
         """
@@ -626,18 +626,18 @@ class Cavities(Optimisation):
     def get_eigenmode_qois(self, uq_config):
         # get results
         for key, cav in self.cavities_dict.items():
-            try:
-                cav.get_eigenmode_qois()
-                self.eigenmode_qois[cav.name] = cav.eigenmode_qois
-                self.eigenmode_qois_all_modes[cav.name] = cav.eigenmode_qois_all_modes
-                if uq_config:
-                    cav.get_uq_fm_results(cav.uq_dir)
-                    self.uq_fm_results[cav.name] = cav.uq_fm_results
-                    self.uq_nodes[cav.name] = cav.uq_nodes
-                    self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
-            except FileNotFoundError as e:
-                error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
-                return False
+            # try:
+            cav.get_eigenmode_qois()
+            self.eigenmode_qois[cav.name] = cav.eigenmode_qois
+            self.eigenmode_qois_all_modes[cav.name] = cav.eigenmode_qois_all_modes
+            if uq_config:
+                cav.get_uq_fm_results(cav.uq_dir)
+                self.uq_fm_results[cav.name] = cav.uq_fm_results
+                self.uq_nodes[cav.name] = cav.uq_nodes
+                self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
+            # except FileNotFoundError as e:
+            #     error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
+            #     return False
 
     def run_wakefield(self, wakefield_config=None):
         """
@@ -805,31 +805,31 @@ class Cavities(Optimisation):
 
     def get_wakefield_qois(self, uq_config):
         for key, cav in self.cavities_dict.items():
-            try:
-                cav.get_abci_data()
-                cav.get_wakefield_qois(self.wakefield_config)
-                self.wakefield_qois[cav.name] = cav.wakefield_qois
-                if uq_config:
-                    cav.get_uq_hom_results(os.path.join(self.projectDir, "SimulationData", "ABCI", cav.name, "uq.json"))
-                    cav_uq_hom_results = cav.uq_hom_results
-                    if 'operating_points' in uq_config:
-                        # separate into opearating points
-                        op_points = uq_config['operating_points']
-                        uq_hom_results_op = {}
-                        for op, val in op_points.items():
-                            uq_hom_results_op[op] = {}
-                            for k, v in val.items():
-                                if 'sigma' in k:
-                                    sig_id = k.split('_')[-1].split(' ')[0]
-                                    ident = fr'_{op}_{sig_id}_{v}mm'
-                                    uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
-                                                                     cav_uq_hom_results.items() if ident in kk}
-                    else:
-                        uq_hom_results_op = cav.uq_hom_results
+            # try:
+            cav.get_abci_data()
+            cav.get_wakefield_qois(self.wakefield_config)
+            self.wakefield_qois[cav.name] = cav.wakefield_qois
+            if uq_config:
+                cav.get_uq_hom_results(os.path.join(self.projectDir, "wakefield", "ABCI", cav.name, "uq.json"))
+                cav_uq_hom_results = cav.uq_hom_results
+                if 'operating_points' in uq_config:
+                    # separate into opearating points
+                    op_points = uq_config['operating_points']
+                    uq_hom_results_op = {}
+                    for op, val in op_points.items():
+                        uq_hom_results_op[op] = {}
+                        for k, v in val.items():
+                            if 'sigma' in k:
+                                sig_id = k.split('_')[-1].split(' ')[0]
+                                ident = fr'_{op}_{sig_id}_{v}mm'
+                                uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
+                                                                 cav_uq_hom_results.items() if ident in kk}
+                else:
+                    uq_hom_results_op = cav.uq_hom_results
 
-                    self.uq_hom_results[cav.name] = uq_hom_results_op
-            except FileNotFoundError:
-                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+                self.uq_hom_results[cav.name] = uq_hom_results_op
+            # except FileNotFoundError:
+            #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
     def plot(self, what, ax=None, scale_x=None, **kwargs):
         for ii, cav in enumerate(self.cavities_list):
@@ -4464,10 +4464,9 @@ class Cavity(ABC):
         -------
 
         """
-        qois = 'qois.json'
 
-        if os.path.exists(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')):
-            with open(os.path.join(self.projectDir, 'SimulationData', 'ABCI', self.name, 'qois.json')) as json_file:
+        if os.path.exists(os.path.join(self.self_dir, 'wakefield', 'qois.json')):
+            with open(os.path.join(self.self_dir, 'wakefield', 'qois.json')) as json_file:
                 all_wakefield_qois = json.load(json_file)
 
         # get only keys in op_points
@@ -4485,8 +4484,8 @@ class Cavity(ABC):
                 self.I0[key] = val['I0 [mA]']
 
     def get_abci_data(self):
-        self.abci_data = {'Long': ABCIData(self.wakefield_dir, 'longitudinal', 0),
-                          'Trans': ABCIData(self.wakefield_dir, 'transversal', 1)}
+        self.abci_data = {'Long': ABCIData(self.wakefield_dir, '', 0),
+                          'Trans': ABCIData(self.wakefield_dir, '', 1)}
 
     def plot_animate_wakefield(self, save=False):
         def plot_contour_for_frame(data, frame_key, ax):
@@ -8354,10 +8353,8 @@ class Pillbox(Cavity):
                                   SOFTWARE_DIRECTORY, self.projectDir, self.name,
                                   tune_variable, iter_set, cell_type,
                                   progress_list=[], convergence_list=self.convergence_list, n_cells=n_cells)
-            try:
-                self.get_ngsolve_tune_res(tune_variable, cell_type)
-            except FileNotFoundError:
-                error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+            # try:
+            self.get_ngsolve_tune_res(tune_variable, cell_type)
 
     @staticmethod
     def run_tune_ngsolve(shape, resume, p, bc, parentDir, projectDir, filename,

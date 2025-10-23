@@ -77,7 +77,7 @@ pp = pprint.PrettyPrinter(indent=4)
 
 from cavsim2d.cavity import *
 
-cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 ```
 The default name for `Cavities` object is `cavities`. Enter `name` keyword to enter custom name i.e.
 `cavs = Cavities('custom_name')`.
@@ -179,7 +179,7 @@ cavs.plot_compare_fm_bar()
 Let's do that again but this time with a single cell without beampipes to compare with [this](https://www.sciencedirect.com/science/article/pii/S0168900202016200/pdfft?md5=cb52709f91cc07cfd6e0517e0e6fe49d&pid=1-s2.0-S0168900202016200-main.pdf).
 ```python
 
-cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
@@ -231,7 +231,7 @@ within a `Cavities` object, these arguments can be provided as lists matching th
 Optional parameters can further refine the tuning process. 
 
 ```python
-cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 100]
 tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
@@ -287,7 +287,7 @@ Confirm from the output that the correct frequency and `Req` is achieved.
 Repeat the same calculation. This time retain the correct `Req` and input a wrong `A`.
 
 ```python
-cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 
 midcell = [20, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
@@ -318,7 +318,7 @@ from cavsim2d.cavity import *
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-cavs = Cavities(folder='D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 
 # define geometry parameters
 n_cells = 9
@@ -346,6 +346,13 @@ operating points for a cavity geometry. This can easily be done by passing an op
 `run_wakefield()` function.
 
 ```python
+import sys
+sys.path.append("..")
+from cavsim2d.cavity import *
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
+cavs = Cavities(folder='\user\home\...\dirname')
 op_points = {
             "Z": {
                 "freq [MHz]": 400.79,  # Operating frequency
@@ -521,7 +528,7 @@ For example, let's revisit our eigenvalue example.
 
 ```python
 cavs = Cavities()
-cavs.save(project_folder='/user/home/...')
+cavs.save(project_folder='\user\home\...\dirname')
 
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
 tesla_mid_cell = Cavity(1, midcell, midcell, midcell, beampipe='none')
@@ -638,9 +645,7 @@ cavsim2d
 See optimisation example below
 
 ```python
-cavs = Cavities()
-# must first save cavities
-cavs.save('D:\Dropbox\CavityDesignHub\MuCol_Study\SimulationData\ConsoleTest')
+cavs = Cavities(folder='\user\home\...\dirname')
 cell_type = 'end-end-cell'
 
 optimisation_config = {

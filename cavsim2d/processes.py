@@ -495,16 +495,16 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                             # OC_R = 'OC'
                             # if 'OC_R' in cav.shape.keys():
                             #     OC_R = 'OC_R'
-                            for m in range(2):
+                            # for m in range(2):
                                 # abci_geom.cavity(cav, wakefield_config,
                                 #                  fid=fid, MROT=m,
                                 #                  WG_M='', marker='', )
                                 # create subdir
-                                wakefield_folder_structure = {fid: {'wakefield': {'longitudinal': None, 'transversal': None}}}
-                                make_dirs_from_dict(wakefield_folder_structure, os.path.join(cav.self_dir, 'wakefield'))
+                            wakefield_folder_structure = {fid: {'wakefield': {'longitudinal': None, 'transversal': None}}}
+                            make_dirs_from_dict(wakefield_folder_structure, os.path.join(cav.self_dir, 'wakefield'))
 
-                                cav.geo_to_abc(wakefield_config, os.path.join(cav.self_dir, 'wakefield', fid))
-                                abci.solve(cav, wakefield_config, os.path.join(fid, 'wakefield'))
+                            cav.geo_to_abc(wakefield_config, os.path.join(cav.self_dir, 'wakefield', fid))
+                            abci.solve(cav, wakefield_config, os.path.join(fid, 'wakefield'))
 
                             dirc = os.path.join(cav.self_dir, "wakefield")
                             # try:
@@ -514,6 +514,8 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                             #     k_loss = 0
                             #     k_kick = 0
 
+                            d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, cav.n_cells)
+                    print(d)
                     # save qoi dictionary
                     run_save_directory = os.path.join(cav.wakefield_dir)
                     with open(os.path.join(run_save_directory, "qois.json"), "w") as f:
