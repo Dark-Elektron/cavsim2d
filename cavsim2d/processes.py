@@ -491,28 +491,23 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
 
                         # info("Running wakefield analysis for given operating points.")
                         for i, s in enumerate(sigma_z):
-                            for ii in WG_M:
-                                fid = f"{WP}_{bl_diff[i]}_{s}mm{ii}"
-                                OC_R = 'OC'
-                                if 'OC_R' in shape.keys():
-                                    OC_R = 'OC_R'
-                                for m in range(2):
-                                    abci_geom.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                                     fid=fid, MROT=m, MT=MT, NFS=NFS, UBT=10 * s * 1e-3,
-                                                     bunch_length=s,
-                                                     DDR_SIG=DDR_SIG, DDZ_SIG=DDZ_SIG, parentDir=SOFTWARE_DIRECTORY,
-                                                     projectDir=projectDir,
-                                                     WG_M=ii, marker=ii, sub_dir=f"{name}")
+                            fid = f"{WP}_{bl_diff[i]}_{s}mm"
+                            # OC_R = 'OC'
+                            # if 'OC_R' in cav.shape.keys():
+                            #     OC_R = 'OC_R'
+                            for m in range(2):
+                                abci_geom.cavity(cav, wakefield_config,
+                                                 fid=fid, MROT=m,
+                                                 WG_M='', marker='', )
 
-                                dirc = os.path.join(projectDir, "SimulationData", "ABCI", name, marker)
-                                # try:
-                                k_loss = abs(ABCIData(dirc, f'{fid}', 0).loss_factor['Longitudinal'])
-                                k_kick = abs(ABCIData(dirc, f'{fid}', 1).loss_factor['Transverse'])
-                                # except:
-                                #     k_loss = 0
-                                #     k_kick = 0
+                            dirc = os.path.join(cav.self_dir, "wakefield")
+                            # try:
+                            k_loss = abs(ABCIData(dirc, f'{fid}', 0).loss_factor['Longitudinal'])
+                            k_kick = abs(ABCIData(dirc, f'{fid}', 1).loss_factor['Transverse'])
+                            # except:
+                            #     k_loss = 0
+                            #     k_kick = 0
 
-                                d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, n_cells)
 
                     # save qoi dictionary
                     run_save_directory = os.path.join(cav.wakefield_dir)
@@ -524,7 +519,7 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                     info("To run analysis for working points, eigenmode simulation has to be run first"
                          "to obtain the cavity operating frequency and R/Q")
             except KeyError:
-                error('The working point entered is not valid. See below for the proper input structure.')
+                error('The operating point entered is not valid. See below for the proper input structure.')
                 show_valid_operating_point_structure()
 
     for i, (key, cav) in enumerate(cavs_dict.items()):

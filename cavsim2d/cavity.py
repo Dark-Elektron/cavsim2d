@@ -5253,7 +5253,7 @@ class Cavity(ABC):
 
         with open(os.path.join(self.self_dir, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
             # Header
-            out.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
+            out.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
             out.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
             out.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
             out.write(f' &MESH DDR = {mesh_DDR}, DDZ = {mesh_DDZ} &END \n')
@@ -5280,7 +5280,7 @@ class Cavity(ABC):
             # out.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, 0.005))
             out.write(f' &TIME  MT = {int(MT)} &END \n')
             out.write(
-                f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK}, LCRBW = {LCRBW}, ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
             # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
             # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
             out.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '

@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from cavsim2d.analysis.wakefield.geometry import Geometry
 from cavsim2d.analysis.wakefield.abci_code import ABCI, ABCI_flattop
+from cavsim2d.constants import SOFTWARE_DIRECTORY
 from cavsim2d.utils.printing import info, error, done
 
 
@@ -17,12 +18,27 @@ class ABCIGeometry(Geometry):
         self.fid = 0
         # initiate codes
 
-    def cavity(self, no_of_cells, no_of_modules,
-               mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
-               fid="_0", MROT=0, beampipes=None,
-               bunch_length=50, MT=4, NFS=5000, UBT=0,
-               DDZ_SIG=0.1, DDR_SIG=0.1,
-               parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
+    def cavity(self, cav, wakefield_config, MROT = 0,
+               fid="_0", WG_M=None, marker='', **kwargs):
+        no_of_cells = cav.n_cells
+        no_of_modules = 1
+        mid_cells_par = cav.shape['IC']
+        l_end_cell_par = cav.shape['OC']
+        r_end_cell_par = cav.shape['OC_R']
+        beampipes = None
+
+        # wakefield parameters
+        bunch_length = wakefield_config['beam_config']['bunch_length']
+        UBT = 10 * bunch_length * 1e-3 # wakelength
+        MT = wakefield_config['MT']
+        NFS = wakefield_config['NFS']
+        UBT = 0
+        DDZ_SIG = wakefield_config['mesh_config']['DDZ_SIG']
+        DDR_SIG = wakefield_config['mesh_config']['DDR_SIG']
+
+        parentDir = SOFTWARE_DIRECTORY
+        projectDir = cav.projectDir
+        sub_dir = f"{cav.name}"
 
         # defaults
         RDRIVE, ISIG = 5e-3, 5

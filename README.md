@@ -314,7 +314,7 @@ Running wakefield simulations is as easy as running eigenmode simulations descri
 ```python
 import sys
 sys.path.append("..")
-from cavsim2d.cavity import Cavity, Cavities
+from cavsim2d.cavity import *
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 

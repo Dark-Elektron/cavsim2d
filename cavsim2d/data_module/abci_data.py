@@ -33,7 +33,7 @@ class ABCIData:
         try:
             self._get_plot_data(dirc)
         except Exception as e:
-            error(f"Hey chief, there seems to be a problem with the ABCI file directory. Please check:: {e}")
+            error(f"There seems to be a problem with the ABCI file directory. Please check:: {e}")
 
     def _get_plot_data(self, dirc):
         frame_objects = {}
