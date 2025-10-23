@@ -9357,7 +9357,7 @@ class OperationPoints:
 def show_welcome():
     import base64
     filename = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    image_path = os.path.join(filename, 'docs/images/cavsim2d_logo_1x.png')
+    image_path = os.path.join(filename, 'docs/images/cavsim2d_logo.svg')
 
     # Convert the image to base64
     with open(image_path, "rb") as img_file:
