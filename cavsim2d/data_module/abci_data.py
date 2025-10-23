@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import scipy.signal as sps
 import numpy as np
+
+from cavsim2d.constants import MROT_DICT
 from cavsim2d.utils.printing import info, error, done
 
 
@@ -29,11 +31,11 @@ class ABCIData:
         self.checks(fid, MROT)
 
     def checks(self, fid, MROT):
-        dirc = os.path.join(self.dir, fid, 'cavity.top')
-        try:
-            self._get_plot_data(dirc)
-        except Exception as e:
-            error(f"There seems to be a problem with the ABCI file directory. Please check:: {e}")
+        dirc = os.path.join(self.dir, fid, MROT_DICT[MROT], 'cavity.top')
+        # try:
+        self._get_plot_data(dirc)
+        # except Exception as e:
+        #     error(f"There seems to be a problem with the ABCI file directory. {e}")
 
     def _get_plot_data(self, dirc):
         frame_objects = {}

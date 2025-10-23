@@ -507,7 +507,6 @@ class NGSolveMEVP:
         if mesh_args is None:
             mesh_args = [20, 20]
 
-
         if opt:  # consider making better. This was just an adhoc fix
             run_save_directory = projectDir / fr'SimulationData/Optimisation/{fid}'
         else:

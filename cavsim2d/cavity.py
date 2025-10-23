@@ -5092,7 +5092,7 @@ class Cavity(ABC):
         return _eval(node)
 
     # Main converter
-    def geo_to_abc(self, wakefield_config=None, **kwargs):
+    def geo_to_abc(self, wakefield_config=None, folder=None, **kwargs):
         # Read input
         with open(self.geo_filepath) as f:
             lines = [l.split('%', 1)[0].strip() for l in f]
@@ -5168,16 +5168,20 @@ class Cavity(ABC):
                 'transversal': None
             }
         }
-        make_dirs_from_dict(wakefield_folder_structure, self.self_dir)
+        if folder:
+            make_dirs_from_dict(wakefield_folder_structure, folder)
+        else:
+            make_dirs_from_dict(wakefield_folder_structure, self.self_dir)
+            folder = self.self_dir
 
         MROT = wakefield_config['polarisation']
         if  MROT == 2:
             for m in range(2):
-                self._write_abc(points, segments, zmin, symbols, m, wakefield_config, **kwargs)
+                self._write_abc(points, segments, zmin, symbols, m, wakefield_config, folder, **kwargs)
         else:
-            self._write_abc(points, segments, zmin, symbols, MROT, wakefield_config, **kwargs)
+            self._write_abc(points, segments, zmin, symbols, MROT, wakefield_config, folder, **kwargs)
 
-    def _write_abc(self, points, segments, zmin, symbols, MROT, wakefield_config, **kwargs):
+    def _write_abc(self, points, segments, zmin, symbols, MROT, wakefield_config, folder, **kwargs):
         # defaults
         RDRIVE, ISIG = 5e-3, 5
         LCRBW = 'F'  # counter-rotating beam
@@ -5251,7 +5255,7 @@ class Cavity(ABC):
             if 'separation' in wakefield_config['beam_config'].keys():
                 BSEP = wakefield_config['beam_config']['separation']
 
-        with open(os.path.join(self.self_dir, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
+        with open(os.path.join(folder, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
             # Header
             out.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
             out.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')

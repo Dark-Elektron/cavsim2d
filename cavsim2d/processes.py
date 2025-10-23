@@ -496,18 +496,23 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                             # if 'OC_R' in cav.shape.keys():
                             #     OC_R = 'OC_R'
                             for m in range(2):
-                                abci_geom.cavity(cav, wakefield_config,
-                                                 fid=fid, MROT=m,
-                                                 WG_M='', marker='', )
+                                # abci_geom.cavity(cav, wakefield_config,
+                                #                  fid=fid, MROT=m,
+                                #                  WG_M='', marker='', )
+                                # create subdir
+                                wakefield_folder_structure = {fid: {'wakefield': {'longitudinal': None, 'transversal': None}}}
+                                make_dirs_from_dict(wakefield_folder_structure, os.path.join(cav.self_dir, 'wakefield'))
+
+                                cav.geo_to_abc(wakefield_config, os.path.join(cav.self_dir, 'wakefield', fid))
+                                abci.solve(cav, wakefield_config, os.path.join(fid, 'wakefield'))
 
                             dirc = os.path.join(cav.self_dir, "wakefield")
                             # try:
-                            k_loss = abs(ABCIData(dirc, f'{fid}', 0).loss_factor['Longitudinal'])
-                            k_kick = abs(ABCIData(dirc, f'{fid}', 1).loss_factor['Transverse'])
+                            k_loss = abs(ABCIData(dirc, os.path.join(fid, 'wakefield'), 0).loss_factor['Longitudinal'])
+                            k_kick = abs(ABCIData(dirc, os.path.join(fid, 'wakefield'), 1).loss_factor['Transverse'])
                             # except:
                             #     k_loss = 0
                             #     k_kick = 0
-
 
                     # save qoi dictionary
                     run_save_directory = os.path.join(cav.wakefield_dir)
@@ -2189,18 +2194,18 @@ def process_objectives(objectives):
 
 
 def show_valid_operating_point_structure():
-    dd = {
+    dd = """{
         '<wp1>': {
-            'I0 [mA]': '<value>',
-            'Nb [1e11]': '<value>',
-            'sigma_z (SR/BS) [mm]': '<value>'
+            'I0 [mA]': <value>,
+            'Nb [1e11]': <value>,
+            'sigma_z (SR/BS) [mm]': <value>
         },
         '<wp2>': {
-            'I0 [mA]': '<value>',
-            'Nb [1e11]': '<value>',
-            'sigma_z (SR/BS) [mm]': '<value>'
+            'I0 [mA]': <value>,
+            'Nb [1e11]': <value>,
+            'sigma_z (SR/BS) [mm]': <value>
         }
-    }
+    }"""
 
     info(dd)
 
