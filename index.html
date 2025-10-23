@@ -20,7 +20,6 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -37,7 +36,7 @@
           
           <a href="#" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -118,9 +117,7 @@
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#configuration-dictionaries">Configuration dictionaries</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html#parallelisation">Parallelisation</a><ul class="simple">
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html#parallelisation">Parallelisation</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -159,14 +156,263 @@
 </li>
 <li class="toctree-l4"><a class="reference internal" href="cavsim2d.utils.html">cavsim2d.utils package</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="cavsim2d.utils.html#submodules">Submodules</a></li>
-<li class="toctree-l5"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d-utils-shared-functions-module">cavsim2d.utils.shared_functions module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.utils.html#module-cavsim2d.utils.shared_functions">cavsim2d.utils.shared_functions module</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.add_bezierspline"><code class="docutils literal notranslate"><span class="pre">add_bezierspline()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.add_bspline"><code class="docutils literal notranslate"><span class="pre">add_bspline()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.add_ellipse"><code class="docutils literal notranslate"><span class="pre">add_ellipse()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.add_line"><code class="docutils literal notranslate"><span class="pre">add_line()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.add_point"><code class="docutils literal notranslate"><span class="pre">add_point()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.apply_perturbation"><code class="docutils literal notranslate"><span class="pre">apply_perturbation()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.arcTo"><code class="docutils literal notranslate"><span class="pre">arcTo()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.arcToTheta"><code class="docutils literal notranslate"><span class="pre">arcToTheta()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.area_pareto_fronts"><code class="docutils literal notranslate"><span class="pre">area_pareto_fronts()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.c1_leg_monomial_integral"><code class="docutils literal notranslate"><span class="pre">c1_leg_monomial_integral()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.calculate_alpha"><code class="docutils literal notranslate"><span class="pre">calculate_alpha()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.calculate_bounded_area"><code class="docutils literal notranslate"><span class="pre">calculate_bounded_area()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.cn_gauss"><code class="docutils literal notranslate"><span class="pre">cn_gauss()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.cn_leg_03_1"><code class="docutils literal notranslate"><span class="pre">cn_leg_03_1()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.cn_leg_03_xiu"><code class="docutils literal notranslate"><span class="pre">cn_leg_03_xiu()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.cn_leg_05_1"><code class="docutils literal notranslate"><span class="pre">cn_leg_05_1()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.cn_leg_05_2"><code class="docutils literal notranslate"><span class="pre">cn_leg_05_2()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.ellipse_tangent"><code class="docutils literal notranslate"><span class="pre">ellipse_tangent()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.enforce_Req_continuity"><code class="docutils literal notranslate"><span class="pre">enforce_Req_continuity()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.enforce_continuity_df"><code class="docutils literal notranslate"><span class="pre">enforce_continuity_df()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.expand_cells"><code class="docutils literal notranslate"><span class="pre">expand_cells()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.extend_pareto"><code class="docutils literal notranslate"><span class="pre">extend_pareto()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.f2b_slashes"><code class="docutils literal notranslate"><span class="pre">f2b_slashes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.find_all_intersections"><code class="docutils literal notranslate"><span class="pre">find_all_intersections()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_gauss_legendre_nodes"><code class="docutils literal notranslate"><span class="pre">generate_gauss_legendre_nodes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_nodes"><code class="docutils literal notranslate"><span class="pre">generate_nodes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_normal_nodes"><code class="docutils literal notranslate"><span class="pre">generate_normal_nodes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_perturbed_shapes"><code class="docutils literal notranslate"><span class="pre">generate_perturbed_shapes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_stroud3_nodes"><code class="docutils literal notranslate"><span class="pre">generate_stroud3_nodes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.generate_uniform_nodes"><code class="docutils literal notranslate"><span class="pre">generate_uniform_nodes()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.get_qoi_value"><code class="docutils literal notranslate"><span class="pre">get_qoi_value()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.get_wakefield_data"><code class="docutils literal notranslate"><span class="pre">get_wakefield_data()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.interpolate_pareto"><code class="docutils literal notranslate"><span class="pre">interpolate_pareto()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.jac"><code class="docutils literal notranslate"><span class="pre">jac()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.lineTo"><code class="docutils literal notranslate"><span class="pre">lineTo()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.line_intersection"><code class="docutils literal notranslate"><span class="pre">line_intersection()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.linspace"><code class="docutils literal notranslate"><span class="pre">linspace()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.make_dirs_from_dict"><code class="docutils literal notranslate"><span class="pre">make_dirs_from_dict()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.merge_equal_columns"><code class="docutils literal notranslate"><span class="pre">merge_equal_columns()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.merge_runs_within_variable"><code class="docutils literal notranslate"><span class="pre">merge_runs_within_variable()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.normal_dist"><code class="docutils literal notranslate"><span class="pre">normal_dist()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.perturb_geometry"><code class="docutils literal notranslate"><span class="pre">perturb_geometry()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.plot_pillbox_geometry"><code class="docutils literal notranslate"><span class="pre">plot_pillbox_geometry()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.quad_stroud3"><code class="docutils literal notranslate"><span class="pre">quad_stroud3()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.r8_mop"><code class="docutils literal notranslate"><span class="pre">r8_mop()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.reorder_legend"><code class="docutils literal notranslate"><span class="pre">reorder_legend()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.run_sa"><code class="docutils literal notranslate"><span class="pre">run_sa()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.save_tune_result"><code class="docutils literal notranslate"><span class="pre">save_tune_result()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.shapes_to_dataframe"><code class="docutils literal notranslate"><span class="pre">shapes_to_dataframe()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.shortest_direction"><code class="docutils literal notranslate"><span class="pre">shortest_direction()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.stroud"><code class="docutils literal notranslate"><span class="pre">stroud()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.stroud3_nodes_and_weights"><code class="docutils literal notranslate"><span class="pre">stroud3_nodes_and_weights()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.tangent_coords"><code class="docutils literal notranslate"><span class="pre">tangent_coords()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.to_multicell"><code class="docutils literal notranslate"><span class="pre">to_multicell()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.update_alpha"><code class="docutils literal notranslate"><span class="pre">update_alpha()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.weighted_kurtosis"><code class="docutils literal notranslate"><span class="pre">weighted_kurtosis()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.weighted_mean"><code class="docutils literal notranslate"><span class="pre">weighted_mean()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.weighted_mean_obj"><code class="docutils literal notranslate"><span class="pre">weighted_mean_obj()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.weighted_skew"><code class="docutils literal notranslate"><span class="pre">weighted_skew()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.weighted_variance"><code class="docutils literal notranslate"><span class="pre">weighted_variance()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.writeCavityForMultipac"><code class="docutils literal notranslate"><span class="pre">writeCavityForMultipac()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.writeCavityForMultipac_multicell"><code class="docutils literal notranslate"><span class="pre">writeCavityForMultipac_multicell()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cavity_geometry_cli"><code class="docutils literal notranslate"><span class="pre">write_cavity_geometry_cli()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_flattop"><code class="docutils literal notranslate"><span class="pre">write_cavity_geometry_cli_flattop()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_multicell"><code class="docutils literal notranslate"><span class="pre">write_cavity_geometry_cli_multicell()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_quarter"><code class="docutils literal notranslate"><span class="pre">write_cavity_geometry_cli_quarter()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_wo_gmsh"><code class="docutils literal notranslate"><span class="pre">write_cavity_geometry_cli_wo_gmsh()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_cst_paramters"><code class="docutils literal notranslate"><span class="pre">write_cst_paramters()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.utils.html#cavsim2d.utils.shared_functions.write_pillbox_geometry"><code class="docutils literal notranslate"><span class="pre">write_pillbox_geometry()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l5"><a class="reference internal" href="cavsim2d.utils.html#module-cavsim2d.utils">Module contents</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities"><code class="docutils literal notranslate"><span class="pre">Cavities</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.add_cavity"><code class="docutils literal notranslate"><span class="pre">Cavities.add_cavity()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.arcTo"><code class="docutils literal notranslate"><span class="pre">Cavities.arcTo()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.arcTo2"><code class="docutils literal notranslate"><span class="pre">Cavities.arcTo2()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calc_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.calc_cutoff()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calc_limits"><code class="docutils literal notranslate"><span class="pre">Cavities.calc_limits()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calculate_beampipe_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.calculate_beampipe_cutoff()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.check_uq_config"><code class="docutils literal notranslate"><span class="pre">Cavities.check_uq_config()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.compare_power"><code class="docutils literal notranslate"><span class="pre">Cavities.compare_power()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.config_sample"><code class="docutils literal notranslate"><span class="pre">Cavities.config_sample()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.define_operating_points"><code class="docutils literal notranslate"><span class="pre">Cavities.define_operating_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.find_folders_with_tag"><code class="docutils literal notranslate"><span class="pre">Cavities.find_folders_with_tag()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_eigenmode_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_power_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_power_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_tune_res"><code class="docutils literal notranslate"><span class="pre">Cavities.get_tune_res()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_wakefield_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_wakefield_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.lineTo"><code class="docutils literal notranslate"><span class="pre">Cavities.lineTo()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.linspace"><code class="docutils literal notranslate"><span class="pre">Cavities.linspace()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.load_plot_from_json"><code class="docutils literal notranslate"><span class="pre">Cavities.load_plot_from_json()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.make_excel_summary"><code class="docutils literal notranslate"><span class="pre">Cavities.make_excel_summary()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.make_latex_summary_tables"><code class="docutils literal notranslate"><span class="pre">Cavities.make_latex_summary_tables()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot"><code class="docutils literal notranslate"><span class="pre">Cavities.plot()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_axis_fields"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_axis_fields()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cavities_contour"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cavities_contour()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cavities_contour_dimension"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cavities_contour_dimension()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_all_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_all_bar()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_all_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_all_scatter()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_bar()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_eigenmode()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_fm_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_fm_bar()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_fm_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_fm_scatter()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_hom_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_hom_bar()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_hom_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_hom_scatter()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_power_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_power_scatter()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_wakefield()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cutoff()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_dispersion"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_dispersion()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_from_json"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_from_json()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_multipac_triplot"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_multipac_triplot()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_power_comparison"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_power_comparison()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_surface_fields"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_surface_fields()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_thresholds"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_thresholds()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_uq_geometries"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_uq_geometries()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_all"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_all()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_fm"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_fm()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_hom"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_hom()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.remove_cavity"><code class="docutils literal notranslate"><span class="pre">Cavities.remove_cavity()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_abci"><code class="docutils literal notranslate"><span class="pre">Cavities.run_abci()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavities.run_eigenmode()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_multipacting"><code class="docutils literal notranslate"><span class="pre">Cavities.run_multipacting()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_optimisation"><code class="docutils literal notranslate"><span class="pre">Cavities.run_optimisation()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_tune"><code class="docutils literal notranslate"><span class="pre">Cavities.run_tune()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavities.run_wakefield()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save"><code class="docutils literal notranslate"><span class="pre">Cavities.save()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save_all_plots"><code class="docutils literal notranslate"><span class="pre">Cavities.save_all_plots()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save_plot_as_json"><code class="docutils literal notranslate"><span class="pre">Cavities.save_plot_as_json()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.set_cavities_field"><code class="docutils literal notranslate"><span class="pre">Cavities.set_cavities_field()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.set_name"><code class="docutils literal notranslate"><span class="pre">Cavities.set_name()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.sweep"><code class="docutils literal notranslate"><span class="pre">Cavities.sweep()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity"><code class="docutils literal notranslate"><span class="pre">Cavity</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.calc_op_freq"><code class="docutils literal notranslate"><span class="pre">Cavity.calc_op_freq()</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.cav.run_tune"><code class="docutils literal notranslate"><span class="pre">Cavity.cav.run_tune()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.calculate_rel_errors"><code class="docutils literal notranslate"><span class="pre">Cavity.calculate_rel_errors()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.config_sample"><code class="docutils literal notranslate"><span class="pre">Cavity.config_sample()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.create"><code class="docutils literal notranslate"><span class="pre">Cavity.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.define_operating_points"><code class="docutils literal notranslate"><span class="pre">Cavity.define_operating_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.eval_expr"><code class="docutils literal notranslate"><span class="pre">Cavity.eval_expr()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.geo_to_abc"><code class="docutils literal notranslate"><span class="pre">Cavity.geo_to_abc()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_abci_data"><code class="docutils literal notranslate"><span class="pre">Cavity.get_abci_data()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">Cavity.get_eigenmode_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_fields"><code class="docutils literal notranslate"><span class="pre">Cavity.get_fields()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">Cavity.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_ngsolve_tune_res"><code class="docutils literal notranslate"><span class="pre">Cavity.get_ngsolve_tune_res()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_power"><code class="docutils literal notranslate"><span class="pre">Cavity.get_power()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_power_uq"><code class="docutils literal notranslate"><span class="pre">Cavity.get_power_uq()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_fm_results"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_fm_results()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_hom_results"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_hom_results()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_post"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_post()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_wakefield_qois"><code class="docutils literal notranslate"><span class="pre">Cavity.get_wakefield_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.inspect"><code class="docutils literal notranslate"><span class="pre">Cavity.inspect()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.load"><code class="docutils literal notranslate"><span class="pre">Cavity.load()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.load_shape_space"><code class="docutils literal notranslate"><span class="pre">Cavity.load_shape_space()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot"><code class="docutils literal notranslate"><span class="pre">Cavity.plot()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_animate_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_animate_wakefield()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_axis_field"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_axis_field()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_dispersion"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_dispersion()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_fields"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_fields()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_mesh"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_mesh()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_spectra"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_spectra()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavity.run_eigenmode()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavity.run_wakefield()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.save_shape_space"><code class="docutils literal notranslate"><span class="pre">Cavity.save_shape_space()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_beampipe"><code class="docutils literal notranslate"><span class="pre">Cavity.set_beampipe()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">Cavity.set_boundary_conditions()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_color"><code class="docutils literal notranslate"><span class="pre">Cavity.set_color()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_end_cell_left"><code class="docutils literal notranslate"><span class="pre">Cavity.set_end_cell_left()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_end_cell_right"><code class="docutils literal notranslate"><span class="pre">Cavity.set_end_cell_right()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_mid_cell"><code class="docutils literal notranslate"><span class="pre">Cavity.set_mid_cell()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_n_cells"><code class="docutils literal notranslate"><span class="pre">Cavity.set_n_cells()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_name"><code class="docutils literal notranslate"><span class="pre">Cavity.set_name()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_parameterisation"><code class="docutils literal notranslate"><span class="pre">Cavity.set_parameterisation()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_plot_label"><code class="docutils literal notranslate"><span class="pre">Cavity.set_plot_label()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_wall_material"><code class="docutils literal notranslate"><span class="pre">Cavity.set_wall_material()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.study_mesh_convergence"><code class="docutils literal notranslate"><span class="pre">Cavity.study_mesh_convergence()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.sweep"><code class="docutils literal notranslate"><span class="pre">Cavity.sweep()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.to_multicell"><code class="docutils literal notranslate"><span class="pre">Cavity.to_multicell()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota"><code class="docutils literal notranslate"><span class="pre">Dakota</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.combine_params_output"><code class="docutils literal notranslate"><span class="pre">Dakota.combine_params_output()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.environment"><code class="docutils literal notranslate"><span class="pre">Dakota.environment()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.get_pce"><code class="docutils literal notranslate"><span class="pre">Dakota.get_pce()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.get_sobol_indices"><code class="docutils literal notranslate"><span class="pre">Dakota.get_sobol_indices()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.interface"><code class="docutils literal notranslate"><span class="pre">Dakota.interface()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.method"><code class="docutils literal notranslate"><span class="pre">Dakota.method()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.nodes_to_cst_sweep_input"><code class="docutils literal notranslate"><span class="pre">Dakota.nodes_to_cst_sweep_input()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.plot_sobol"><code class="docutils literal notranslate"><span class="pre">Dakota.plot_sobol()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.plot_sobol_indices"><code class="docutils literal notranslate"><span class="pre">Dakota.plot_sobol_indices()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.quadrature_nodes_to_cst_par_input"><code class="docutils literal notranslate"><span class="pre">Dakota.quadrature_nodes_to_cst_par_input()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.quote_to_float"><code class="docutils literal notranslate"><span class="pre">Dakota.quote_to_float()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.responses"><code class="docutils literal notranslate"><span class="pre">Dakota.responses()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.run_analysis"><code class="docutils literal notranslate"><span class="pre">Dakota.run_analysis()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.variables"><code class="docutils literal notranslate"><span class="pre">Dakota.variables()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.write_input_file"><code class="docutils literal notranslate"><span class="pre">Dakota.write_input_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.create"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.write_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.write_geometry()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.write_quarter_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.write_quarter_geometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.create"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.write_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.write_geometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints"><code class="docutils literal notranslate"><span class="pre">OperationPoints</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints.get_default_operating_points"><code class="docutils literal notranslate"><span class="pre">OperationPoints.get_default_operating_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints.load_operating_point"><code class="docutils literal notranslate"><span class="pre">OperationPoints.load_operating_point()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox"><code class="docutils literal notranslate"><span class="pre">Pillbox</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.create"><code class="docutils literal notranslate"><span class="pre">Pillbox.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">Pillbox.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.plot"><code class="docutils literal notranslate"><span class="pre">Pillbox.plot()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_eigenmode()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_tune"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_tune()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_tune_ngsolve"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_tune_ngsolve()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_wakefield()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.write_geometry"><code class="docutils literal notranslate"><span class="pre">Pillbox.write_geometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun"><code class="docutils literal notranslate"><span class="pre">RFGun</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.create"><code class="docutils literal notranslate"><span class="pre">RFGun.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">RFGun.get_eigenmode_qois()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">RFGun.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.plot"><code class="docutils literal notranslate"><span class="pre">RFGun.plot()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.plot_axis_field"><code class="docutils literal notranslate"><span class="pre">RFGun.plot_axis_field()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.write_geometry"><code class="docutils literal notranslate"><span class="pre">RFGun.write_geometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity"><code class="docutils literal notranslate"><span class="pre">SplineCavity</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.create"><code class="docutils literal notranslate"><span class="pre">SplineCavity.create()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">SplineCavity.get_geometric_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.write_geometry"><code class="docutils literal notranslate"><span class="pre">SplineCavity.write_geometry()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.write_quarter_geometry"><code class="docutils literal notranslate"><span class="pre">SplineCavity.write_quarter_geometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.show_welcome"><code class="docutils literal notranslate"><span class="pre">show_welcome()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>

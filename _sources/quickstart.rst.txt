@@ -825,11 +825,4 @@ configuration dictionaries. This controls the number of processes used for the a
 For simulations with uncertainty quantification (UQ) enabled, an additional level of parallelisation can
 be achieved by specifying ``processes`` within the UQ configuration. The default number of processes is one.
 
-Testing to see if this is reflected
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Documentation:
-
-   ../notebooks/eigenmode

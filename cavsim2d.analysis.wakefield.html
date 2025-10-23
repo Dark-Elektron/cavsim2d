@@ -20,7 +20,6 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -38,7 +37,7 @@
           
           <a href="index.html" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -69,7 +68,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>
@@ -110,11 +109,376 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="cavsim2d-analysis-wakefield-abci-code-module">
-<h2>cavsim2d.analysis.wakefield.abci_code module<a class="headerlink" href="#cavsim2d-analysis-wakefield-abci-code-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.analysis.wakefield.abci_code">
+<span id="cavsim2d-analysis-wakefield-abci-code-module"></span><h2>cavsim2d.analysis.wakefield.abci_code module<a class="headerlink" href="#module-cavsim2d.analysis.wakefield.abci_code" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.wakefield.abci_code.</span></span><span class="sig-name descname"><span class="pre">ABCI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_beam_pipe</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_end_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mid_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_end_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_beam_pipe</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class contains functions for writing the cavity geometry in a format readable by ABCI
+The type of cavity geometry it writes is regular elliptical cavity geometry with mid-cup dimensions equal
+and end cups different. Geometry type shown in the figure below:</p>
+<a class="reference internal image-reference" href="../images/Cavity_parametrised.png"><img alt="Cavity parametrised model" src="../images/Cavity_parametrised.png" style="width: 800px;" />
+</a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Considering renaming to better reflect this purpose.</p>
+</div>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_M" title="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_M"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_M</span></code></a>(n, zr12_M, WG_L, f, i, end_type)</p></td>
+<td><p>Writes the mid cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_L" title="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_L"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_bp_L</span></code></a>(n, zr12_BPL, WG_L, f)</p></td>
+<td><p>Writes the left beam pipe dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_R" title="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_R"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_bp_R</span></code></a>(n, zr12_BPR, WG_L, f)</p></td>
+<td><p>Writes the right beam pipe dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_L" title="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_L"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_n1_L</span></code></a>(n, zr12_L, WG_L, f)</p></td>
+<td><p>Writes the left end cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_R" title="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_R"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_n1_R</span></code></a>(n, zr12_R, WG_L, f)</p></td>
+<td><p>Writes the right end cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.rz_conjug" title="cavsim2d.analysis.wakefield.abci_code.ABCI.rz_conjug"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rz_conjug</span></code></a>(cell)</p></td>
+<td><p>Calculate shift in geoemetric values</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_M">
+<span class="sig-name descname"><span class="pre">abci_M</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_M</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.abci_M"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_M" title="Link to this definition"></a></dt>
+<dd><p>Writes the mid cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_M</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+<li><p><strong>i</strong> (<em>int</em>) – Cell index</p></li>
+<li><p><strong>end_type</strong> (<em>int</em>) – if end_type = 1 the end HALF cell is changed for tuning.
+I don’t know what this means. Never had need for it.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_L">
+<span class="sig-name descname"><span class="pre">abci_bp_L</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_BPL</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.abci_bp_L"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_L" title="Link to this definition"></a></dt>
+<dd><p>Writes the left beam pipe dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>zr12_BPL</strong> (<em>list</em><em>, </em><em>array like</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_BPL to reflect what the variable is.
+Variable n is unused by the function. Consider removing</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_R">
+<span class="sig-name descname"><span class="pre">abci_bp_R</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_BPR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.abci_bp_R"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_bp_R" title="Link to this definition"></a></dt>
+<dd><p>Writes the right beam pipe dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_BPR</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_BPR to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_L">
+<span class="sig-name descname"><span class="pre">abci_n1_L</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.abci_n1_L"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_L" title="Link to this definition"></a></dt>
+<dd><p>Writes the left end cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_L</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.
+Variable n is unused by the function. Consider removing</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_R">
+<span class="sig-name descname"><span class="pre">abci_n1_R</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.abci_n1_R"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.abci_n1_R" title="Link to this definition"></a></dt>
+<dd><p>Writes the right end cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_R</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI.rz_conjug">
+<span class="sig-name descname"><span class="pre">rz_conjug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI.rz_conjug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI.rz_conjug" title="Link to this definition"></a></dt>
+<dd><p>Calculate shift in geoemetric values</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cell</strong> (<em>{&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;mid&quot;}</em>) – Specifies the cell cup type.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>zr12</strong> (<em>list</em>) – Maybe it’s a shift of some sort calculated from the coordinates of the tangent of the ellipses
+comprising the cavity</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Angle of the line tangent to the iris and equator ellipses.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.wakefield.abci_code.</span></span><span class="sig-name descname"><span class="pre">ABCI_flattop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_beam_pipe</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_end_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mid_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_end_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_beam_pipe</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class contains functions for writing the cavity geometry in a format readable by ABCI
+The type of cavity geometry it writes is regular elliptical cavity geometry with mid-cup dimensions equal
+and end cups different. Geometry type shown in the figure below:</p>
+<a class="reference internal image-reference" href="../images/Cavity_parametrised.png"><img alt="Cavity parametrised model" src="../images/Cavity_parametrised.png" style="width: 800px;" />
+</a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Considering renaming to better reflect this purpose.</p>
+</div>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_M" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_M"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_M</span></code></a>(n, zr12_M, WG_L, f, i, end_type)</p></td>
+<td><p>Writes the mid cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_L" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_L"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_bp_L</span></code></a>(n, zr12_BPL, WG_L, f)</p></td>
+<td><p>Writes the left beam pipe dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_R" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_R"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_bp_R</span></code></a>(n, zr12_BPR, WG_L, f)</p></td>
+<td><p>Writes the right beam pipe dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_L" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_L"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_n1_L</span></code></a>(n, zr12_L, WG_L, f)</p></td>
+<td><p>Writes the left end cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_R" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_R"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abci_n1_R</span></code></a>(n, zr12_R, WG_L, f)</p></td>
+<td><p>Writes the right end cup dimensions to a geometry file</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.rz_conjug" title="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.rz_conjug"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rz_conjug</span></code></a>(cell)</p></td>
+<td><p>Calculate shift in geoemetric values</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_M">
+<span class="sig-name descname"><span class="pre">abci_M</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_M</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.abci_M"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_M" title="Link to this definition"></a></dt>
+<dd><p>Writes the mid cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_M</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+<li><p><strong>i</strong> (<em>int</em>) – Cell index</p></li>
+<li><p><strong>end_type</strong> (<em>int</em>) – if end_type = 1 the end HALF cell is changed for tuning.
+I don’t know what this means. Never had need for it.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_L">
+<span class="sig-name descname"><span class="pre">abci_bp_L</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_BPL</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.abci_bp_L"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_L" title="Link to this definition"></a></dt>
+<dd><p>Writes the left beam pipe dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>zr12_BPL</strong> (<em>list</em><em>, </em><em>array like</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_BPL to reflect what the variable is.
+Variable n is unused by the function. Consider removing</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_R">
+<span class="sig-name descname"><span class="pre">abci_bp_R</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_BPR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.abci_bp_R"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_bp_R" title="Link to this definition"></a></dt>
+<dd><p>Writes the right beam pipe dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_BPR</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_BPR to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_L">
+<span class="sig-name descname"><span class="pre">abci_n1_L</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.abci_n1_L"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_L" title="Link to this definition"></a></dt>
+<dd><p>Writes the left end cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_L</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.
+Variable n is unused by the function. Consider removing</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_R">
+<span class="sig-name descname"><span class="pre">abci_n1_R</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zr12_R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.abci_n1_R"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.abci_n1_R" title="Link to this definition"></a></dt>
+<dd><p>Writes the right end cup dimensions to a geometry file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of cavity cells.</p></li>
+<li><p><strong>zr12_R</strong> (<em>float</em>)</p></li>
+<li><p><strong>WG_L</strong> (<em>float</em>) – Length of left beam pipe</p></li>
+<li><p><strong>f</strong> (<em>file</em>) – Geometry &lt;filename&gt;.geo file to be written to</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Consider renaming zr12_R to reflect what the variable is.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.rz_conjug">
+<span class="sig-name descname"><span class="pre">rz_conjug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_code.html#ABCI_flattop.rz_conjug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_code.ABCI_flattop.rz_conjug" title="Link to this definition"></a></dt>
+<dd><p>Calculate shift in geoemetric values</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cell</strong> (<em>{&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;mid&quot;}</em>) – Specifies the cell cup type.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>zr12</strong> (<em>list</em>) – Maybe it’s a shift of some sort calculated from the coordinates of the tangent of the ellipses
+comprising the cavity</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Angle of the line tangent to the iris and equator ellipses.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="cavsim2d-analysis-wakefield-abci-geometry-module">
-<h2>cavsim2d.analysis.wakefield.abci_geometry module<a class="headerlink" href="#cavsim2d-analysis-wakefield-abci-geometry-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.analysis.wakefield.abci_geometry">
+<span id="cavsim2d-analysis-wakefield-abci-geometry-module"></span><h2>cavsim2d.analysis.wakefield.abci_geometry module<a class="headerlink" href="#module-cavsim2d.analysis.wakefield.abci_geometry" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.wakefield.abci_geometry.</span></span><span class="sig-name descname"><span class="pre">ABCIGeometry</span></span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_geometry.html#ABCIGeometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cavsim2d.analysis.wakefield.geometry.Geometry" title="cavsim2d.analysis.wakefield.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>cavity</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>cavity_flattop</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>createFolder</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>set_geom_parameters</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>set_geom_parameters_flattop</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.cavity">
+<span class="sig-name descname"><span class="pre">cavity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wakefield_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MROT</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_0'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marker</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_geometry.html#ABCIGeometry.cavity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.cavity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.cavity_flattop">
+<span class="sig-name descname"><span class="pre">cavity_flattop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">no_of_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_of_modules</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mid_cells_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l_end_cell_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_end_cell_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_0'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MROT</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beampipes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bunch_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MT</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">NFS</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">UBT</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">DDZ_SIG</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">DDR_SIG</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parentDir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WG_M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marker</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_geometry.html#ABCIGeometry.cavity_flattop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.cavity_flattop" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.createFolder">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">createFolder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marker</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/wakefield/abci_geometry.html#ABCIGeometry.createFolder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.wakefield.abci_geometry.ABCIGeometry.createFolder" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="module-cavsim2d.analysis.wakefield.geometry">
 <span id="cavsim2d-analysis-wakefield-geometry-module"></span><h2>cavsim2d.analysis.wakefield.geometry module<a class="headerlink" href="#module-cavsim2d.analysis.wakefield.geometry" title="Link to this heading"></a></h2>

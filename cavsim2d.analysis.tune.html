@@ -20,7 +20,6 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -38,7 +37,7 @@
           
           <a href="index.html" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -69,7 +68,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>
@@ -110,11 +109,144 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="cavsim2d-analysis-tune-pytuner-module">
-<h2>cavsim2d.analysis.tune.pyTuner module<a class="headerlink" href="#cavsim2d-analysis-tune-pytuner-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.analysis.tune.pyTuner">
+<span id="cavsim2d-analysis-tune-pytuner-module"></span><h2>cavsim2d.analysis.tune.pyTuner module<a class="headerlink" href="#module-cavsim2d.analysis.tune.pyTuner" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.pyTuner.</span></span><span class="sig-name descname"><span class="pre">PyTuneNGSolve</span></span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p class="rubric">Methods</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>all_equal</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>tune</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>tune_function</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>tune_multicell</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>write_output</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.all_equal">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">all_equal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve.all_equal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.all_equal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune">
+<span class="sig-name descname"><span class="pre">tune</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve.tune"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune_function">
+<span class="sig-name descname"><span class="pre">tune_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve.tune_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune_function" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune_multicell">
+<span class="sig-name descname"><span class="pre">tune_multicell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">multicell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sim_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parentDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve.tune_multicell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.tune_multicell" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.write_output">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tv_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#PyTuneNGSolve.write_output"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.PyTuneNGSolve.write_output" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.print_">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.pyTuner.</span></span><span class="sig-name descname"><span class="pre">print_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">arg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#print_"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.print_" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.run_tune_uq">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.pyTuner.</span></span><span class="sig-name descname"><span class="pre">run_tune_uq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#run_tune_uq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.run_tune_uq" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.uq_parallel_tuner">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.pyTuner.</span></span><span class="sig-name descname"><span class="pre">uq_parallel_tuner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objectives</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_args_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#uq_parallel_tuner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.uq_parallel_tuner" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em><em> | </em><em>int</em>) – Cavity geomery identifier</p></li>
+<li><p><strong>shape</strong> (<em>dict</em>) – Dictionary containing geometric dimensions of cavity geometry</p></li>
+<li><p><strong>qois</strong> (<em>list</em>) – Quantities of interest considered in uncertainty quantification</p></li>
+<li><p><strong>n_cells</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>n_modules</strong> (<em>int</em>) – Number of modules</p></li>
+<li><p><strong>n_modes</strong> (<em>int</em>) – Number of eigenmodes to be calculated</p></li>
+<li><p><strong>f_shift</strong> (<em>float</em>) – Since the eigenmode solver uses the power method, a shift can be provided</p></li>
+<li><p><strong>bc</strong> (<em>int</em>) – Boundary conditions {1:inner contour, 2:Electric wall Et = 0, 3:Magnetic Wall En = 0, 4:Axis, 5:metal}
+bc=33 means <cite>Magnetic Wall En = 0</cite> boundary condition at both ends</p></li>
+<li><p><strong>pol</strong> (<em>int {Monopole</em><em>, </em><em>Dipole}</em>) – Defines whether to calculate for monopole or dipole modes</p></li>
+<li><p><strong>parentDir</strong> (<em>str</em><em> | </em><em>path</em>) – Parent directory</p></li>
+<li><p><strong>projectDir</strong> (<em>str</em><em>|</em><em>path</em>) – Project directory</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>param select_solver:</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.pyTuner.uq_tuner">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.pyTuner.</span></span><span class="sig-name descname"><span class="pre">uq_tuner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objectives</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uq_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uq_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_args_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_keys_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">processor_nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/pyTuner.html#uq_tuner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.pyTuner.uq_tuner" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shape_space</strong> (<em>dict</em>) – Cavity geometry parameter space</p></li>
+<li><p><strong>objectives</strong> (<em>list</em><em> | </em><em>ndarray</em>) – Array of objective functions</p></li>
+<li><p><strong>solver_dict</strong> (<em>dict</em>) – Python dictionary of solver settings</p></li>
+<li><p><strong>solver_args_dict</strong> (<em>dict</em>) – Python dictionary of solver arguments</p></li>
+<li><p><strong>uq_config</strong> – Python dictionary of uncertainty quantification settings</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>param n_cells:</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
-<section id="cavsim2d-analysis-tune-tuner-module">
-<h2>cavsim2d.analysis.tune.tuner module<a class="headerlink" href="#cavsim2d-analysis-tune-tuner-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.analysis.tune.tuner">
+<span id="cavsim2d-analysis-tune-tuner-module"></span><h2>cavsim2d.analysis.tune.tuner module<a class="headerlink" href="#module-cavsim2d.analysis.tune.tuner" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.tuner.Tuner">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.tune.tuner.</span></span><span class="sig-name descname"><span class="pre">Tuner</span></span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/tuner.html#Tuner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.tuner.Tuner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p class="rubric">Methods</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>tune_ngsolve</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>tune_ngsolve_multicell</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve">
+<span class="sig-name descname"><span class="pre">tune_ngsolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pseudo_cavs_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'No'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_variable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Req'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/tuner.html#Tuner.tune_ngsolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve_multicell">
+<span class="sig-name descname"><span class="pre">tune_ngsolve_multicell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pseudo_shape_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parentDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'No'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sim_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NGSolveMEVP'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_variable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Req'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Mid</span> <span class="pre">Cell'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tune_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/tune/tuner.html#Tuner.tune_ngsolve_multicell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve_multicell" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="module-cavsim2d.analysis.tune">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cavsim2d.analysis.tune" title="Link to this heading"></a></h2>

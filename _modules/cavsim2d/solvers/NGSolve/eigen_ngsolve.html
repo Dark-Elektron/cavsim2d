@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cavsim2d.solvers.NGSolve.eigen_ngsolve &mdash; cavsim2d 13.08.2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/plot_directive.css?v=7f9a90b1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=f5513fb5"></script>
+        <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            cavsim2d
+              <img src="../../../../_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#examples">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#understanding-the-geometry-types">Understanding the geometry types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#advanced">Advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#parallelisation">Parallelisation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../modules.html">cavsim2d</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">cavsim2d</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">cavsim2d.solvers.NGSolve.eigen_ngsolve</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cavsim2d.solvers.NGSolve.eigen_ngsolve</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">exit</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">tri</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.utils.shared_functions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">ngsolve</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">ngsolve.webgui</span> <span class="kn">import</span> <span class="n">Draw</span>
+<span class="kn">from</span> <span class="nn">ngsolve.comp</span> <span class="kn">import</span> <span class="n">VorB</span>
+<span class="kn">from</span> <span class="nn">netgen.occ</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">scipy.signal</span> <span class="kn">import</span> <span class="n">find_peaks</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.utils.printing</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">gmsh</span>
+
+<span class="n">mu0</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="mf">1e-7</span>
+<span class="n">eps0</span> <span class="o">=</span> <span class="mf">8.85418782e-12</span>
+<span class="n">c0</span> <span class="o">=</span> <span class="mi">299792458</span>
+
+
+<div class="viewcode-block" id="NGSolveMEVP">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP">[docs]</a>
+<span class="k">class</span> <span class="nc">NGSolveMEVP</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        MEVP for accelerating cavities with NGSolve</span>
+
+<span class="sd">        ..math:</span>
+
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">geo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="NGSolveMEVP.write_geometry_multicell">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.write_geometry_multicell">[docs]</a>
+    <span class="k">def</span> <span class="nf">write_geometry_multicell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">n_cells</span><span class="p">,</span> <span class="n">multicell</span><span class="p">,</span>
+                                 <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cell_parameterisation</span><span class="o">=</span><span class="s1">&#39;normal&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define geometry</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        folder</span>
+<span class="sd">        n_cells: int</span>
+<span class="sd">            Number of cavity cells</span>
+<span class="sd">        mid_cell: array like</span>
+<span class="sd">            Mid cell cell geometric parameters</span>
+<span class="sd">        end_cell_left: array like</span>
+<span class="sd">            Left end cell cell geometric parameters</span>
+<span class="sd">        end_cell_right: array like</span>
+<span class="sd">            Right end cell cell geometric parameters</span>
+<span class="sd">        beampipe: {&quot;none&quot;, &quot;both&quot;, &quot;left&quot;, &quot;right&quot;}</span>
+<span class="sd">            Which sides to include beampipes</span>
+<span class="sd">        plot: bool</span>
+<span class="sd">            Show geometry after definition or not</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">n_cells</span> <span class="o">=</span> <span class="n">n_cells</span>
+        <span class="n">beampipe</span> <span class="o">=</span> <span class="n">beampipe</span>
+
+        <span class="c1"># check if folder exists</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="n">error</span><span class="p">(</span><span class="s2">&quot;There was a problem creating the directory for the multicell simulation files. Please check folder.&quot;</span><span class="p">)</span>
+                <span class="n">exit</span><span class="p">()</span>
+
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;geodata.n&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cell_parameterisation</span> <span class="o">==</span> <span class="s1">&#39;normal&#39;</span><span class="p">:</span>
+            <span class="n">write_cavity_geometry_cli_multicell</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">multicell</span><span class="p">,</span> <span class="n">beampipe</span><span class="p">,</span> <span class="n">write</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">write_cavity_geometry_cli_flattop</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">n_cell</span><span class="o">=</span><span class="n">n_cells</span><span class="p">,</span>
+                                              <span class="n">write</span><span class="o">=</span><span class="n">file_path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.solve">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.solve">[docs]</a>
+    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cav</span><span class="p">,</span> <span class="n">eigenmode_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># create eigenmode directory if it does not exist</span>
+        <span class="n">eigenmode_folder_structure</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;eigenmode&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;monopole&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;dipole&#39;</span><span class="p">:</span> <span class="kc">None</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">make_dirs_from_dict</span><span class="p">(</span><span class="n">eigenmode_folder_structure</span><span class="p">,</span> <span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">)</span>
+
+        <span class="n">mesh_h</span> <span class="o">=</span> <span class="mi">20</span>
+        <span class="n">mesh_p</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">if</span> <span class="n">eigenmode_config</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;mesh_config&#39;</span> <span class="ow">in</span> <span class="n">eigenmode_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">mesh_config</span> <span class="o">=</span> <span class="n">eigenmode_config</span><span class="p">[</span><span class="s1">&#39;mesh_config&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="s1">&#39;h&#39;</span> <span class="ow">in</span> <span class="n">mesh_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">mesh_h</span> <span class="o">=</span> <span class="n">mesh_config</span><span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e-3</span>
+
+                <span class="k">if</span> <span class="s1">&#39;p&#39;</span> <span class="ow">in</span> <span class="n">mesh_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">mesh_p</span> <span class="o">=</span> <span class="n">mesh_config</span><span class="p">[</span><span class="s1">&#39;p&#39;</span><span class="p">]</span>
+
+        <span class="n">step_geo</span><span class="p">,</span> <span class="n">ngmesh</span><span class="p">,</span> <span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_geo</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">geo_filepath</span><span class="p">,</span> <span class="n">mesh_h</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">bcs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ngmesh</span><span class="o">.</span><span class="n">SetBCName</span><span class="p">(</span><span class="n">key</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">bc</span><span class="p">)</span>
+
+        <span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="n">ngmesh</span><span class="p">)</span>
+        <span class="n">mesh</span><span class="o">.</span><span class="n">Curve</span><span class="p">(</span><span class="n">mesh_p</span><span class="p">)</span>
+
+        <span class="c1"># save mesh</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_mesh</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
+
+        <span class="c1"># calculate fields</span>
+        <span class="n">freq_fes</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_mevp</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;eigenmode&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole&#39;</span><span class="p">),</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mesh_p</span><span class="p">)</span>
+
+        <span class="c1"># # alternative eigenvalue solver, but careful, mode numbering may change</span>
+        <span class="c1"># u = GridFunction(fes, multidim=15, name=&#39;resonances&#39;)</span>
+        <span class="c1"># lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),</span>
+        <span class="c1">#                         list(u.vecs), shift=1200)</span>
+        <span class="c1">#</span>
+        <span class="c1"># print(&#39;arnoldi&#39;, c0 * np.sqrt(np.abs(lamarnoldi)) / (2 * np.pi) * 1e-6)</span>
+
+        <span class="c1"># qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)</span>
+        <span class="n">qois</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_qois</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">,</span>
+                                  <span class="n">save_dir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;eigenmode&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole&#39;</span><span class="p">))</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;eigenmode&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole&#39;</span><span class="p">),</span> <span class="s1">&#39;qois.json&#39;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">qois</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+
+        <span class="n">qois_all_modes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">freq</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">freq_fes</span><span class="p">):</span>
+            <span class="n">qois_all_modes</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_qois</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">ii</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;eigenmode&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole&#39;</span><span class="p">),</span> <span class="s1">&#39;qois_all_modes.json&#39;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">qois_all_modes</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.solve_mevp">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.solve_mevp">[docs]</a>
+    <span class="k">def</span> <span class="nf">solve_mevp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_dir</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mesh_p</span><span class="p">):</span>
+        <span class="n">fes</span> <span class="o">=</span> <span class="n">HCurl</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">mesh_p</span><span class="p">,</span> <span class="n">dirichlet</span><span class="o">=</span><span class="s2">&quot;PEC&quot;</span><span class="p">)</span>
+
+        <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">fes</span><span class="o">.</span><span class="n">TnT</span><span class="p">()</span>
+
+        <span class="n">a</span> <span class="o">=</span> <span class="n">BilinearForm</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">curl</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">*</span> <span class="n">curl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">BilinearForm</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">u</span> <span class="o">*</span> <span class="n">v</span> <span class="o">*</span> <span class="n">dx</span><span class="p">)</span>
+
+        <span class="n">apre</span> <span class="o">=</span> <span class="n">BilinearForm</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">curl</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">*</span> <span class="n">curl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">y</span> <span class="o">*</span> <span class="n">u</span> <span class="o">*</span> <span class="n">v</span> <span class="o">*</span> <span class="n">dx</span><span class="p">)</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="n">Preconditioner</span><span class="p">(</span><span class="n">apre</span><span class="p">,</span> <span class="s2">&quot;direct&quot;</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="s2">&quot;sparsecholesky&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">TaskManager</span><span class="p">():</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">Assemble</span><span class="p">()</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">Assemble</span><span class="p">()</span>
+            <span class="n">apre</span><span class="o">.</span><span class="n">Assemble</span><span class="p">()</span>
+            <span class="c1"># freedof_matrix = a.mat.CreateSmoother(fes.FreeDofs())</span>
+
+            <span class="c1"># build gradient matrix as sparse matrix (and corresponding scalar FESpace)</span>
+            <span class="n">gradmat</span><span class="p">,</span> <span class="n">fesh1</span> <span class="o">=</span> <span class="n">fes</span><span class="o">.</span><span class="n">CreateGradient</span><span class="p">()</span>
+
+            <span class="n">gradmattrans</span> <span class="o">=</span> <span class="n">gradmat</span><span class="o">.</span><span class="n">CreateTranspose</span><span class="p">()</span>  <span class="c1"># transpose sparse matrix</span>
+            <span class="n">math1</span> <span class="o">=</span> <span class="n">gradmattrans</span> <span class="o">@</span> <span class="n">m</span><span class="o">.</span><span class="n">mat</span> <span class="o">@</span> <span class="n">gradmat</span>  <span class="c1"># multiply matrices</span>
+            <span class="n">math1</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c1"># fix the 1-dim kernel</span>
+            <span class="n">invh1</span> <span class="o">=</span> <span class="n">math1</span><span class="o">.</span><span class="n">Inverse</span><span class="p">(</span><span class="n">inverse</span><span class="o">=</span><span class="s2">&quot;sparsecholesky&quot;</span><span class="p">,</span> <span class="n">freedofs</span><span class="o">=</span><span class="n">fesh1</span><span class="o">.</span><span class="n">FreeDofs</span><span class="p">())</span>
+
+            <span class="c1"># build the Poisson projector with operator Algebra:</span>
+            <span class="n">proj</span> <span class="o">=</span> <span class="n">IdentityMatrix</span><span class="p">()</span> <span class="o">-</span> <span class="n">gradmat</span> <span class="o">@</span> <span class="n">invh1</span> <span class="o">@</span> <span class="n">gradmattrans</span> <span class="o">@</span> <span class="n">m</span><span class="o">.</span><span class="n">mat</span>
+
+            <span class="n">projpre</span> <span class="o">=</span> <span class="n">proj</span> <span class="o">@</span> <span class="n">pre</span><span class="o">.</span><span class="n">mat</span>
+            <span class="n">evals</span><span class="p">,</span> <span class="n">evecs</span> <span class="o">=</span> <span class="n">solvers</span><span class="o">.</span><span class="n">PINVIT</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">mat</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">mat</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="n">projpre</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="n">maxit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                                          <span class="n">printrates</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">freq_fes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="c1"># evals[0] = 1  # &lt;- replace nan with zero</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">lam</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">evals</span><span class="p">):</span>
+                <span class="n">freq_fes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lam</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">)</span>
+
+            <span class="c1"># plot results</span>
+            <span class="n">gfu_E</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">gfu_H</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">evecs</span><span class="p">)):</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e6</span>
+                <span class="n">gfu</span> <span class="o">=</span> <span class="n">GridFunction</span><span class="p">(</span><span class="n">fes</span><span class="p">)</span>
+                <span class="n">gfu</span><span class="o">.</span><span class="n">vec</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">evecs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="n">gfu_E</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gfu</span><span class="p">)</span>
+                <span class="n">gfu_H</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">/</span> <span class="p">(</span><span class="n">mu0</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">curl</span><span class="p">(</span><span class="n">gfu</span><span class="p">))</span>
+
+            <span class="c1"># save fields</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_fields</span><span class="p">(</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">freq_fes</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.get_boundaries_from_geo">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.get_boundaries_from_geo">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_boundaries_from_geo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line_bc_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">dim</span><span class="p">,</span> <span class="n">phys_tag</span> <span class="ow">in</span> <span class="n">gmsh</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">getPhysicalGroups</span><span class="p">():</span>
+            <span class="c1"># only 1D groups (lines)</span>
+            <span class="k">if</span> <span class="n">dim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">gmsh</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">getPhysicalName</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">phys_tag</span><span class="p">)</span>
+            <span class="c1"># returns all the entity IDs in that group</span>
+            <span class="k">for</span> <span class="n">line_id</span> <span class="ow">in</span> <span class="n">gmsh</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">getEntitiesForPhysicalGroup</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">phys_tag</span><span class="p">):</span>
+                <span class="c1"># if getEntitiesForPhysicalGroup returns tuples like (1, id), unpack it:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">line_id</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">_</span><span class="p">,</span> <span class="n">line_id</span> <span class="o">=</span> <span class="n">line_id</span>
+                <span class="n">line_bc_map</span><span class="p">[</span><span class="n">line_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="c1"># {2: &#39;PEC&#39;, 3: &#39;PEC&#39;, …, 1: &#39;PMC&#39;, 10: &#39;PMC&#39;, 11: &#39;AXI&#39;}</span>
+        <span class="k">return</span> <span class="n">line_bc_map</span></div>
+
+
+    <span class="c1"># def cavity_wo_gmsh(self, no_of_cells=1, no_of_modules=1, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,</span>
+    <span class="c1">#            fid=None, bc=33, pol=&#39;monopole&#39;, f_shift=&#39;default&#39;, beta=1, n_modes=None, beampipes=&#39;None&#39;,</span>
+    <span class="c1">#            sim_folder=&#39;NGSolveMEVP&#39;, parentDir=None, projectDir=None, subdir=&#39;&#39;,</span>
+    <span class="c1">#            expansion=None, expansion_r=None, mesh_args=None, opt=False, deformation_params=None,</span>
+    <span class="c1">#            eigenmode_config=None):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Write geometry file and run eigenmode analysis with NGSolveMEVP</span>
+    <span class="c1">#</span>
+    <span class="c1">#     Parameters</span>
+    <span class="c1">#     ----------</span>
+    <span class="c1">#     pol</span>
+    <span class="c1">#     expansion</span>
+    <span class="c1">#     no_of_cells: int</span>
+    <span class="c1">#         Number of cells</span>
+    <span class="c1">#     no_of_modules: int</span>
+    <span class="c1">#         Number of modules</span>
+    <span class="c1">#     mid_cells_par: list, array like</span>
+    <span class="c1">#         Mid cell geometric parameters -&gt; [A, B, a, b, Ri, L, Req, alpha]</span>
+    <span class="c1">#     l_end_cell_par: list, array like</span>
+    <span class="c1">#         Left end cell geometric parameters -&gt; [A_el, B_el, a_el, b_el, Ri_el, L_el, Req, alpha_el]</span>
+    <span class="c1">#     r_end_cell_par: list, array like</span>
+    <span class="c1">#         Right end cell geometric parameters -&gt; [A_er, B_er, a_er, b_er, Ri_er, L_er, Req, alpha_er]</span>
+    <span class="c1">#     fid: int, str</span>
+    <span class="c1">#         File id</span>
+    <span class="c1">#     bc: int</span>
+    <span class="c1">#         Boundary condition -&gt; 1:inner contour, 2:Electric wall Et = 0, 3:Magnetic Wall En = 0, 4:Axis, 5:metal</span>
+    <span class="c1">#     f_shift: float</span>
+    <span class="c1">#         Eigenvalue frequency shift</span>
+    <span class="c1">#     beta: int, float</span>
+    <span class="c1">#         Velocity ratio :math: `\\beta = \frac{v}{c}`</span>
+    <span class="c1">#     n_modes: int</span>
+    <span class="c1">#         Number of modes</span>
+    <span class="c1">#     beampipes: {&quot;left&quot;, &quot;right&quot;, &quot;both&quot;, &quot;none&quot;}</span>
+    <span class="c1">#         Specify if beam pipe is on one or both ends or at no end at all</span>
+    <span class="c1">#     parentDir: str</span>
+    <span class="c1">#         Parent directory</span>
+    <span class="c1">#     projectDir: str</span>
+    <span class="c1">#         Project directory</span>
+    <span class="c1">#     subdir: str</span>
+    <span class="c1">#         Sub directory to save simulation results to</span>
+    <span class="c1">#     mesh: list [Jxy, Jxy_bp, Jxy_bp_y]</span>
+    <span class="c1">#         Mesh definition for logical mesh:</span>
+    <span class="c1">#         Jxy -&gt; Number of elements of logical mesh along JX and JY</span>
+    <span class="c1">#         Jxy_bp -&gt; Number of elements of logical mesh along JX in beampipe</span>
+    <span class="c1">#         Jxy_bp_y -&gt; Number of elements of logical mesh along JY in beampipe</span>
+    <span class="c1">#</span>
+    <span class="c1">#     Returns</span>
+    <span class="c1">#     -------</span>
+    <span class="c1">#</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     if pol != &#39;monopole&#39;:</span>
+    <span class="c1">#         pol_subdir = &#39;dipole&#39;</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         pol_subdir = &#39;monopole&#39;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     mesh_h = 20</span>
+    <span class="c1">#     mesh_p = 3</span>
+    <span class="c1">#     if eigenmode_config:</span>
+    <span class="c1">#         if &#39;mesh_config&#39; in eigenmode_config.keys():</span>
+    <span class="c1">#             mesh_config = eigenmode_config[&#39;mesh_config&#39;]</span>
+    <span class="c1">#             if &#39;h&#39; in mesh_config.keys():</span>
+    <span class="c1">#                 mesh_h = mesh_config[&#39;h&#39;]</span>
+    <span class="c1">#</span>
+    <span class="c1">#             if &#39;p&#39; in mesh_config.keys():</span>
+    <span class="c1">#                 mesh_p = mesh_config[&#39;p&#39;]</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # change save directory</span>
+    <span class="c1">#     if opt:</span>
+    <span class="c1">#         # consider making better. This was just an adhoc fix</span>
+    <span class="c1">#         run_save_directory = os.path.join(projectDir, &#39;SimulationData&#39;, &#39;Optimisation&#39;, fid)</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         # change save directory</span>
+    <span class="c1">#         if subdir == &#39;&#39;:</span>
+    <span class="c1">#             run_save_directory = projectDir / fr&#39;SimulationData/{sim_folder}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#         else:</span>
+    <span class="c1">#             run_save_directory = projectDir / fr&#39;SimulationData/{sim_folder}/{subdir}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # write</span>
+    <span class="c1">#     self.write_geometry(run_save_directory, no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes,</span>
+    <span class="c1">#                         plot=False)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     if os.path.exists(os.path.join(run_save_directory, &#39;geodata.n&#39;)):</span>
+    <span class="c1">#         # read geometry</span>
+    <span class="c1">#         cav_geom = pd.read_csv(os.path.join(run_save_directory, &#39;geodata.n&#39;),</span>
+    <span class="c1">#                                header=None, skiprows=1, sep=&#39;\\s+&#39;, engine=&#39;python&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         if deformation_params is not None:</span>
+    <span class="c1">#             cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),</span>
+    <span class="c1">#                                             deformation_params)</span>
+    <span class="c1">#             # save deformed cavity profile</span>
+    <span class="c1">#             cav_geom.to_csv(os.path.join(run_save_directory, &#39;geodata_deformed.n&#39;), sep=&#39;\t&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         edge_bc = cav_geom[2]</span>
+    <span class="c1">#         cav_geom = cav_geom[[1, 0]]</span>
+    <span class="c1">#         # plt.plot(cav_geom[1], cav_geom[0], ls=&#39;--&#39;, lw=4)</span>
+    <span class="c1">#         # plt.show()</span>
+    <span class="c1">#</span>
+    <span class="c1">#         pnts = list(cav_geom.itertuples(index=False, name=None))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         wp = WorkPlane()</span>
+    <span class="c1">#         wp.MoveTo(*pnts[0])</span>
+    <span class="c1">#         for p in pnts[1:]:</span>
+    <span class="c1">#             wp.LineTo(*p)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         wp.Close().Reverse()</span>
+    <span class="c1">#         face = wp.Face()</span>
+    <span class="c1">#</span>
+    <span class="c1">#         bc_color_dict = {0: (1, 0, 0), 1: (0, 0, 1), 2: (0, 1, 0)}</span>
+    <span class="c1">#         bc_name_dict = {0: &#39;PEC&#39;, 1: &#39;PMC&#39;, 2: &#39;AXI&#39;}</span>
+    <span class="c1">#</span>
+    <span class="c1">#         for edge, bc in zip(face.edges, edge_bc):</span>
+    <span class="c1">#             edge.name = bc_name_dict[bc]</span>
+    <span class="c1">#             edge.col = bc_color_dict[bc]</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # # get face from ngsolve geom &lt;- coming later</span>
+    <span class="c1">#         # face = self.cavgeom_ngsolve(no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # # name the boundaries</span>
+    <span class="c1">#         # face.edges.Max(X).name = &quot;r&quot;</span>
+    <span class="c1">#         # face.edges.Max(X).col = (1, 0, 0)</span>
+    <span class="c1">#         # face.edges.Min(X).name = &quot;l&quot;</span>
+    <span class="c1">#         # face.edges.Min(X).col = (1, 0, 0)</span>
+    <span class="c1">#         # face.edges.Min(Y).name = &quot;b&quot;</span>
+    <span class="c1">#         # face.edges.Min(Y).col = (1, 0, 0)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         geo = OCCGeometry(face, dim=2)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # mesh</span>
+    <span class="c1">#         A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(mid_cells_par[:7])</span>
+    <span class="c1">#         maxh = L / mesh_h * 1e-3</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # try to generate mesh</span>
+    <span class="c1">#         try:</span>
+    <span class="c1">#             ngmesh = geo.GenerateMesh(maxh=maxh)</span>
+    <span class="c1">#         except Exception as e:</span>
+    <span class="c1">#             error(&#39;Unable to generate mesh:: &#39;, e)</span>
+    <span class="c1">#             plt.plot(cav_geom[1], cav_geom[0])</span>
+    <span class="c1">#             plt.show()</span>
+    <span class="c1">#             exit()</span>
+    <span class="c1">#</span>
+    <span class="c1">#         mesh = Mesh(ngmesh)</span>
+    <span class="c1">#         mesh.ngmesh.Save(os.path.join(run_save_directory, &quot;output.vol&quot;))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # mesh.RefineHP(levels=2, factor=0.2)</span>
+    <span class="c1">#         # if mesh_p &gt; 2:</span>
+    <span class="c1">#         # mesh.Curve(mesh_p)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # save mesh</span>
+    <span class="c1">#         self.save_mesh(run_save_directory, mesh)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # define finite element space</span>
+    <span class="c1">#         fes = HCurl(mesh, order=mesh_p, dirichlet=&#39;PEC&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         u, v = fes.TnT()</span>
+    <span class="c1">#</span>
+    <span class="c1">#         a = BilinearForm(y * curl(u) * curl(v) * dx)</span>
+    <span class="c1">#         m = BilinearForm(y * u * v * dx)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         apre = BilinearForm(y * curl(u) * curl(v) * dx + y * u * v * dx)</span>
+    <span class="c1">#         pre = Preconditioner(apre, &quot;direct&quot;, inverse=&quot;sparsecholesky&quot;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         with TaskManager():</span>
+    <span class="c1">#             a.Assemble()</span>
+    <span class="c1">#             m.Assemble()</span>
+    <span class="c1">#             apre.Assemble()</span>
+    <span class="c1">#             # freedof_matrix = a.mat.CreateSmoother(fes.FreeDofs())</span>
+    <span class="c1">#</span>
+    <span class="c1">#             # build gradient matrix as sparse matrix (and corresponding scalar FESpace)</span>
+    <span class="c1">#             gradmat, fesh1 = fes.CreateGradient()</span>
+    <span class="c1">#</span>
+    <span class="c1">#             gradmattrans = gradmat.CreateTranspose()  # transpose sparse matrix</span>
+    <span class="c1">#             math1 = gradmattrans @ m.mat @ gradmat  # multiply matrices</span>
+    <span class="c1">#             math1[0, 0] += 1  # fix the 1-dim kernel</span>
+    <span class="c1">#             invh1 = math1.Inverse(inverse=&quot;sparsecholesky&quot;, freedofs=fesh1.FreeDofs())</span>
+    <span class="c1">#</span>
+    <span class="c1">#             # build the Poisson projector with operator Algebra:</span>
+    <span class="c1">#             proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat</span>
+    <span class="c1">#</span>
+    <span class="c1">#             projpre = proj @ pre.mat</span>
+    <span class="c1">#             evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=no_of_cells + 2, maxit=20,</span>
+    <span class="c1">#                                           printrates=False)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         freq_fes = []</span>
+    <span class="c1">#         # evals[0] = 1  # &lt;- replace nan with zero</span>
+    <span class="c1">#         for i, lam in enumerate(evals):</span>
+    <span class="c1">#             freq_fes.append(c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # plot results</span>
+    <span class="c1">#         gfu_E = []</span>
+    <span class="c1">#         gfu_H = []</span>
+    <span class="c1">#         for i in range(len(evecs)):</span>
+    <span class="c1">#             w = 2 * pi * freq_fes[i] * 1e6</span>
+    <span class="c1">#             gfu = GridFunction(fes)</span>
+    <span class="c1">#             gfu.vec.data = evecs[i]</span>
+    <span class="c1">#</span>
+    <span class="c1">#             gfu_E.append(gfu)</span>
+    <span class="c1">#             gfu_H.append(1j / (mu0 * w) * curl(gfu))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # save fields</span>
+    <span class="c1">#         self.save_fields(run_save_directory, gfu_E, gfu_H)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # # alternative eigenvalue solver, but careful, mode numbering may change</span>
+    <span class="c1">#         # u = GridFunction(fes, multidim=15, name=&#39;resonances&#39;)</span>
+    <span class="c1">#         # lamarnoldi = ArnoldiSolver(a.mat, m.mat, fes.FreeDofs(),</span>
+    <span class="c1">#         #                         list(u.vecs), shift=1200)</span>
+    <span class="c1">#         #</span>
+    <span class="c1">#         # print(&#39;arnoldi&#39;, c0 * np.sqrt(np.abs(lamarnoldi)) / (2 * np.pi) * 1e-6)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # save json file</span>
+    <span class="c1">#         shape = {&#39;IC&#39;: update_alpha(mid_cells_par).tolist(),</span>
+    <span class="c1">#                  &#39;OC&#39;: update_alpha(l_end_cell_par).tolist(),</span>
+    <span class="c1">#                  &#39;OC_R&#39;: update_alpha(r_end_cell_par).tolist()}</span>
+    <span class="c1">#</span>
+    <span class="c1">#         with open(Path(fr&quot;{run_save_directory}/geometric_parameters.json&quot;), &#39;w&#39;) as f:</span>
+    <span class="c1">#             json.dump(shape, f, indent=4, separators=(&#39;,&#39;, &#39;: &#39;))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)</span>
+    <span class="c1">#         qois = self.evaluate_qois(cav_geom, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes,</span>
+    <span class="c1">#                                   save_dir=run_save_directory)</span>
+    <span class="c1">#         # error(qois)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         with open(os.path.join(run_save_directory, &#39;qois.json&#39;), &quot;w&quot;) as f:</span>
+    <span class="c1">#             json.dump(qois, f, indent=4, separators=(&#39;,&#39;, &#39;: &#39;))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         qois_all_modes = {}</span>
+    <span class="c1">#         for ii, freq in enumerate(freq_fes):</span>
+    <span class="c1">#             qois_all_modes[ii] = self.evaluate_qois(cav_geom, ii, Req, L, gfu_E, gfu_H, mesh, freq_fes)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         with open(os.path.join(run_save_directory, &#39;qois_all_modes.json&#39;), &quot;w&quot;) as f:</span>
+    <span class="c1">#             json.dump(qois_all_modes, f, indent=4, separators=(&#39;,&#39;, &#39;: &#39;))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         return True</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         error(&#39;Could not run eigenmode analysis due to error in geometry.&#39;)</span>
+    <span class="c1">#         return False</span>
+
+<div class="viewcode-block" id="NGSolveMEVP.cavity_multicell">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.cavity_multicell">[docs]</a>
+    <span class="k">def</span> <span class="nf">cavity_multicell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">no_of_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">no_of_modules</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">multicell</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">fid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bc</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="n">pol</span><span class="o">=</span><span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="n">f_shift</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_modes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">beampipes</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">,</span>
+                         <span class="n">sim_folder</span><span class="o">=</span><span class="s1">&#39;NGSolveMEVP&#39;</span><span class="p">,</span> <span class="n">parentDir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">projectDir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subdir</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+                         <span class="n">expansion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">expansion_r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mesh_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">opt</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">deformation_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eigenmode_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write geometry file and run eigenmode analysis with NGSolveMEVP</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pol</span>
+<span class="sd">        expansion</span>
+<span class="sd">        no_of_cells: int</span>
+<span class="sd">            Number of cells</span>
+<span class="sd">        no_of_modules: int</span>
+<span class="sd">            Number of modules</span>
+<span class="sd">        mid_cells_par: list, ndarray</span>
+<span class="sd">            Mid cell geometric parameters -&gt; [A, B, a, b, Ri, L, Req, alpha]</span>
+<span class="sd">        l_end_cell_par: list, ndarray</span>
+<span class="sd">            Left end cell geometric parameters -&gt; [A_el, B_el, a_el, b_el, Ri_el, L_el, Req, alpha_el]</span>
+<span class="sd">        r_end_cell_par: list, ndarray</span>
+<span class="sd">            Right end cell geometric parameters -&gt; [A_er, B_er, a_er, b_er, Ri_er, L_er, Req, alpha_er]</span>
+<span class="sd">        fid: int, str</span>
+<span class="sd">            File id</span>
+<span class="sd">        bc: int</span>
+<span class="sd">            Boundary condition -&gt; 1:inner contour, 2:Electric wall Et = 0, 3:Magnetic Wall En = 0, 4:Axis, 5:metal</span>
+<span class="sd">        f_shift: float</span>
+<span class="sd">            Eigenvalue frequency shift</span>
+<span class="sd">        beta: int, float</span>
+<span class="sd">            Velocity ratio :math: `\\beta = \frac{v}{c}`</span>
+<span class="sd">        n_modes: int</span>
+<span class="sd">            Number of modes</span>
+<span class="sd">        beampipes: {&quot;left&quot;, &quot;right&quot;, &quot;both&quot;, &quot;none&quot;}</span>
+<span class="sd">            Specify if beam pipe is on one or both ends or at no end at all</span>
+<span class="sd">        parentDir: str</span>
+<span class="sd">            Parent directory</span>
+<span class="sd">        projectDir: str</span>
+<span class="sd">            Project directory</span>
+<span class="sd">        subdir: str</span>
+<span class="sd">            Sub directory to save simulation results to</span>
+<span class="sd">        mesh: list [Jxy, Jxy_bp, Jxy_bp_y]</span>
+<span class="sd">            Mesh definition for logical mesh:</span>
+<span class="sd">            Jxy -&gt; Number of elements of logical mesh along JX and JY</span>
+<span class="sd">            Jxy_bp -&gt; Number of elements of logical mesh along JX in beampipe</span>
+<span class="sd">            Jxy_bp_y -&gt; Number of elements of logical mesh along JY in beampipe</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">pol</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s1">&#39;monopole&#39;</span><span class="p">:</span>
+            <span class="n">pol_subdir</span> <span class="o">=</span> <span class="s1">&#39;dipole&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pol_subdir</span> <span class="o">=</span> <span class="s1">&#39;monopole&#39;</span>
+
+        <span class="c1"># change save directory</span>
+        <span class="k">if</span> <span class="n">mesh_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mesh_args</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+
+
+        <span class="k">if</span> <span class="n">opt</span><span class="p">:</span>  <span class="c1"># consider making better. This was just an adhoc fix</span>
+            <span class="n">run_save_directory</span> <span class="o">=</span> <span class="n">projectDir</span> <span class="o">/</span> <span class="sa">fr</span><span class="s1">&#39;SimulationData/Optimisation/</span><span class="si">{</span><span class="n">fid</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># change save directory</span>
+            <span class="k">if</span> <span class="n">subdir</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">run_save_directory</span> <span class="o">=</span> <span class="n">projectDir</span> <span class="o">/</span> <span class="sa">fr</span><span class="s1">&#39;SimulationData/</span><span class="si">{</span><span class="n">sim_folder</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">fid</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">pol_subdir</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">run_save_directory</span> <span class="o">=</span> <span class="n">projectDir</span> <span class="o">/</span> <span class="sa">fr</span><span class="s1">&#39;SimulationData/</span><span class="si">{</span><span class="n">sim_folder</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">subdir</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">fid</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">pol_subdir</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="c1"># write</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_geometry_multicell</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="n">no_of_cells</span><span class="p">,</span> <span class="n">multicell</span><span class="p">,</span>
+                                      <span class="n">beampipes</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s1">&#39;geodata.geo&#39;</span><span class="p">)):</span>
+            <span class="c1"># # read geometry</span>
+            <span class="c1"># cav_geom = pd.read_csv(os.path.join(run_save_directory, &#39;geodata.n&#39;),</span>
+            <span class="c1">#                        header=None, skiprows=1, sep=&#39;\\s+&#39;, engine=&#39;python&#39;)</span>
+            <span class="c1">#</span>
+            <span class="c1"># if deformation_params is not None:</span>
+            <span class="c1">#     cav_geom = self.gaussian_deform(no_of_cells, cav_geom.drop_duplicates(subset=[0, 1]).to_numpy(),</span>
+            <span class="c1">#                                     deformation_params)</span>
+            <span class="c1">#     # save deformed cavity profile</span>
+            <span class="c1">#     cav_geom.to_csv(os.path.join(run_save_directory, &#39;geodata_deformed.n&#39;), sep=&#39;\t&#39;)</span>
+            <span class="c1">#</span>
+            <span class="c1"># edge_bc = cav_geom[2]</span>
+            <span class="c1"># cav_geom = cav_geom[[1, 0]]</span>
+            <span class="c1"># # plt.plot(cav_geom[1], cav_geom[0], ls=&#39;--&#39;, lw=4)</span>
+            <span class="c1"># # plt.show()</span>
+            <span class="c1">#</span>
+            <span class="c1"># pnts = list(cav_geom.itertuples(index=False, name=None))</span>
+            <span class="c1">#</span>
+            <span class="c1"># wp = WorkPlane()</span>
+            <span class="c1"># wp.MoveTo(*pnts[0])</span>
+            <span class="c1"># for p in pnts[1:]:</span>
+            <span class="c1">#     wp.LineTo(*p)</span>
+            <span class="c1">#</span>
+            <span class="c1"># wp.Close().Reverse()</span>
+            <span class="c1"># face = wp.Face()</span>
+            <span class="c1">#</span>
+            <span class="c1"># bc_color_dict = {0: (1, 0, 0), 1: (0, 0, 1), 2: (0, 1, 0)}</span>
+            <span class="c1"># bc_name_dict = {0: &#39;PEC&#39;, 1: &#39;PMC&#39;, 2: &#39;AXI&#39;}</span>
+            <span class="c1">#</span>
+            <span class="c1"># for edge, bc in zip(face.edges, edge_bc):</span>
+            <span class="c1">#     edge.name = bc_name_dict[bc]</span>
+            <span class="c1">#     edge.col = bc_color_dict[bc]</span>
+            <span class="c1">#</span>
+            <span class="c1"># # # get face from ngsolve geom &lt;- coming later</span>
+            <span class="c1"># # face = self.cavgeom_ngsolve(no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par, beampipes)</span>
+            <span class="c1">#</span>
+            <span class="c1"># # # name the boundaries</span>
+            <span class="c1"># # face.edges.Max(X).name = &quot;r&quot;</span>
+            <span class="c1"># # face.edges.Max(X).col = (1, 0, 0)</span>
+            <span class="c1"># # face.edges.Min(X).name = &quot;l&quot;</span>
+            <span class="c1"># # face.edges.Min(X).col = (1, 0, 0)</span>
+            <span class="c1"># # face.edges.Min(Y).name = &quot;b&quot;</span>
+            <span class="c1"># # face.edges.Min(Y).col = (1, 0, 0)</span>
+            <span class="c1">#</span>
+            <span class="c1"># geo = OCCGeometry(face, dim=2)</span>
+
+            <span class="c1"># mesh</span>
+
+            <span class="n">mesh_h</span> <span class="o">=</span> <span class="mi">20</span>
+            <span class="n">mesh_p</span> <span class="o">=</span> <span class="mi">3</span>
+            <span class="n">A_m</span><span class="p">,</span> <span class="n">B_m</span><span class="p">,</span> <span class="n">a_m</span><span class="p">,</span> <span class="n">b_m</span><span class="p">,</span> <span class="n">Ri_m</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">Req</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">multicell</span><span class="p">[:</span><span class="mi">7</span><span class="p">])</span>
+            <span class="c1"># print(&#39;multicell&#39;, multicell)</span>
+
+            <span class="n">maxh</span> <span class="o">=</span> <span class="n">L</span> <span class="o">/</span> <span class="n">mesh_h</span> <span class="o">*</span> <span class="mf">1e-3</span>
+            <span class="c1"># print(&#39;maxh&#39;, maxh)</span>
+
+            <span class="c1"># define finite element space</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="c1"># suppress all console output</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">setNumber</span><span class="p">(</span><span class="s2">&quot;General.Verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">setNumber</span><span class="p">(</span><span class="s2">&quot;General.Terminal&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s2">&quot;geodata.geo&quot;</span><span class="p">))</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="c1"># gmsh.option.setNumber(&quot;Mesh.MshFileVersion&quot;,2.2)</span>
+            <span class="k">with</span> <span class="n">suppress_c_stdout_stderr</span><span class="p">():</span>
+                <span class="n">gmsh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s2">&quot;mesh.step&quot;</span><span class="p">))</span>
+
+            <span class="n">step_geo</span> <span class="o">=</span> <span class="n">OCCGeometry</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s2">&quot;mesh.step&quot;</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">ngmesh</span> <span class="o">=</span> <span class="n">step_geo</span><span class="o">.</span><span class="n">GenerateMesh</span><span class="p">(</span><span class="n">maxh</span><span class="o">=</span><span class="n">maxh</span><span class="p">)</span>
+
+            <span class="c1"># set boundary conditions</span>
+            <span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_boundaries_from_geo</span><span class="p">()</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">bcs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">ngmesh</span><span class="o">.</span><span class="n">SetBCName</span><span class="p">(</span><span class="n">key</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bc</span><span class="p">)</span>
+
+            <span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="n">ngmesh</span><span class="p">)</span>
+            <span class="n">mesh</span><span class="o">.</span><span class="n">Curve</span><span class="p">(</span><span class="n">mesh_p</span><span class="p">)</span>
+
+            <span class="c1"># save mesh</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_mesh</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
+
+            <span class="c1"># calculate fields</span>
+            <span class="n">freq_fes</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_mevp</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mesh_p</span><span class="p">)</span>
+
+            <span class="c1"># qois = self.evaluate_qois(face, no_of_cells, Req, L, gfu_E, gfu_H, mesh, freq_fes)</span>
+            <span class="n">qois</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_qois</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">no_of_cells</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">,</span>
+                                      <span class="n">save_dir</span><span class="o">=</span><span class="n">run_save_directory</span><span class="p">)</span>
+            <span class="c1"># error(qois)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s1">&#39;qois.json&#39;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">qois</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+
+            <span class="n">qois_all_modes</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">freq</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">freq_fes</span><span class="p">):</span>
+                <span class="n">qois_all_modes</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_qois</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ii</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_save_directory</span><span class="p">,</span> <span class="s1">&#39;qois_all_modes.json&#39;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">qois_all_modes</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">error</span><span class="p">(</span><span class="s1">&#39;Could not run eigenmode analysis due to error in geometry.&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="NGSolveMEVP.load_geo">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_geo">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_geo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">maxh</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+        <span class="c1"># suppress all console output</span>
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">setNumber</span><span class="p">(</span><span class="s2">&quot;General.Verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">setNumber</span><span class="p">(</span><span class="s2">&quot;General.Terminal&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">suppress_c_stdout_stderr</span><span class="p">():</span>
+            <span class="n">gmsh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="s2">&quot;mesh.step&quot;</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_geo</span> <span class="o">=</span> <span class="n">OCCGeometry</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="s2">&quot;mesh.step&quot;</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ngmesh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_geo</span><span class="o">.</span><span class="n">GenerateMesh</span><span class="p">(</span><span class="n">maxh</span><span class="o">=</span><span class="n">maxh</span><span class="p">)</span>
+
+        <span class="c1"># get boundary conditions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_boundaries_from_geo</span><span class="p">()</span>
+
+        <span class="n">gmsh</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_geo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ngmesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bcs</span></div>
+
+
+
+<div class="viewcode-block" id="NGSolveMEVP.geometry_from_array">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.geometry_from_array">[docs]</a>
+    <span class="k">def</span> <span class="nf">geometry_from_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.evaluate_qois">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.evaluate_qois">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">evaluate_qois</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">save_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">w</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e6</span>
+
+        <span class="c1"># calculate Vacc and Eacc</span>
+        <span class="n">Vacc</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">Integrate</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">w</span> <span class="o">/</span> <span class="p">(</span><span class="n">beta</span> <span class="o">*</span> <span class="n">c0</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">),</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">definedon</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">Boundaries</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)))</span>
+        <span class="n">Eacc</span> <span class="o">=</span> <span class="n">Vacc</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># calculate U and R/Q</span>
+        <span class="n">U</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">eps0</span> <span class="o">*</span> <span class="n">Integrate</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">InnerProduct</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="n">Conj</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])),</span> <span class="n">mesh</span><span class="p">)</span>
+        <span class="c1"># Uh = 2 * pi * 0.5 * mu0 * Integrate(y * InnerProduct(gfu_H[n], gfu_H[n]), mesh)</span>
+        <span class="n">RoQ</span> <span class="o">=</span> <span class="n">Vacc</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">U</span><span class="p">)</span>
+
+        <span class="c1"># OLD GEOMETRY INPUT TYPE</span>
+        <span class="c1"># calculate peak surface fields</span>
+        <span class="c1"># xpnts_surf = cav_geom[(cav_geom[0] &gt; 0) &amp; (cav_geom[1] &gt; min(cav_geom[1])) &amp; (cav_geom[1] &lt; max(cav_geom[1]))]</span>
+        <span class="n">xpnts_surf</span> <span class="o">=</span> <span class="n">get_boundary_nodes</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s1">&#39;PEC&#39;</span><span class="p">)</span>
+
+        <span class="n">Esurf</span> <span class="o">=</span> <span class="p">[</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="ow">in</span> <span class="n">xpnts_surf</span><span class="p">]</span>
+        <span class="n">Epk</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">Esurf</span><span class="p">))</span>
+
+        <span class="c1"># calculate peak surface fields</span>
+        <span class="n">Hsurf</span> <span class="o">=</span> <span class="p">[</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_H</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="ow">in</span> <span class="n">xpnts_surf</span><span class="p">]</span>
+        <span class="n">Hpk</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">))</span>
+
+        <span class="c1"># # calculate peak surface fields</span>
+        <span class="c1"># pec_boundary = mesh.Boundaries(&quot;default&quot;)</span>
+        <span class="c1"># bel = [xx.vertices for xx in pec_boundary.Elements()]</span>
+        <span class="c1"># bel_unique = list(set(itertools.chain(*bel)))</span>
+        <span class="c1"># xpnts_surf = sorted([mesh.vertices[xy.nr].point for xy in bel_unique])</span>
+        <span class="c1"># Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]</span>
+        <span class="c1"># Epk = (max(Esurf))</span>
+        <span class="c1">#</span>
+        <span class="c1"># Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]</span>
+        <span class="c1"># Hpk = (max(Hsurf))</span>
+
+        <span class="c1"># calculate surface power loss</span>
+        <span class="n">sigma_cond</span> <span class="o">=</span> <span class="mf">5.96e7</span>  <span class="c1"># &lt;- conduction of copper</span>
+        <span class="n">Rs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mu0</span> <span class="o">*</span> <span class="n">w</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma_cond</span><span class="p">))</span>  <span class="c1"># Surface resistance</span>
+
+        <span class="n">Ploss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">Rs</span> <span class="o">*</span> <span class="n">Integrate</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">InnerProduct</span><span class="p">(</span><span class="n">CF</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">),</span> <span class="n">CF</span><span class="p">(</span><span class="n">Conj</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">))),</span> <span class="n">mesh</span><span class="p">,</span>
+                                              <span class="n">definedon</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">Boundaries</span><span class="p">(</span><span class="s1">&#39;PEC&#39;</span><span class="p">))</span>
+
+        <span class="c1"># calculate cell to cell coupling factor</span>
+        <span class="n">f_diff</span> <span class="o">=</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">freq_fes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">f_add</span> <span class="o">=</span> <span class="p">(</span><span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">+</span> <span class="n">freq_fes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">kcc</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f_diff</span> <span class="o">/</span> <span class="n">f_add</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="c1"># calculate Q</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">w</span> <span class="o">*</span> <span class="n">U</span> <span class="o">/</span> <span class="n">Ploss</span>
+
+        <span class="c1"># OLD</span>
+        <span class="c1"># Get axis field</span>
+        <span class="n">axis_nodes</span> <span class="o">=</span> <span class="n">get_boundary_nodes</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s1">&#39;AXI&#39;</span><span class="p">)</span>
+        <span class="n">axis_nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">axis_nodes</span><span class="p">))</span>
+        <span class="n">minz</span><span class="p">,</span> <span class="n">maxz</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">axis_nodes</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()),</span> <span class="nb">max</span><span class="p">(</span><span class="n">axis_nodes</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+
+        <span class="n">xpnts_ax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">minz</span><span class="p">,</span> <span class="n">maxz</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="mi">5000</span><span class="o">*</span><span class="p">(</span><span class="n">maxz</span><span class="o">-</span><span class="n">minz</span><span class="p">)))</span>
+        <span class="n">Ez_0_abs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span> <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">xpnts_ax</span><span class="p">])</span>
+
+        <span class="c1"># # Get axis field</span>
+        <span class="c1"># xmin = face.vertices.Min(X)</span>
+        <span class="c1"># xmax = face.vertices.Max(X)</span>
+        <span class="c1"># xpnts_ax = np.linspace(xmin.p[0], xmax.p[0], 100)</span>
+        <span class="c1"># Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])</span>
+
+        <span class="c1"># calculate field flatness</span>
+        <span class="n">peaks</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="n">Ez_0_abs</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="mi">5000</span><span class="o">*</span><span class="p">(</span><span class="n">maxz</span><span class="o">-</span><span class="n">minz</span><span class="p">))</span><span class="o">/</span><span class="mi">100</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">Ez_0_abs_peaks</span> <span class="o">=</span> <span class="n">Ez_0_abs</span><span class="p">[</span><span class="n">peaks</span><span class="p">]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ff</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">Ez_0_abs_peaks</span><span class="p">)</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="n">Ez_0_abs_peaks</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">ff</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># ff = (1 - ((max(Ez_0_abs_peaks) - min(Ez_0_abs_peaks)) / np.average(Ez_0_abs_peaks))) * 100</span>
+
+        <span class="c1"># calculate G</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">*</span> <span class="n">Rs</span>
+
+        <span class="n">qois</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Normalization Length [mm]&quot;</span><span class="p">:</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>
+            <span class="s2">&quot;N Cells&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+            <span class="s2">&quot;freq [MHz]&quot;</span><span class="p">:</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">],</span>
+            <span class="s2">&quot;Q []&quot;</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
+            <span class="s2">&quot;Vacc [MV]&quot;</span><span class="p">:</span> <span class="n">Vacc</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Eacc [MV/m]&quot;</span><span class="p">:</span> <span class="n">Eacc</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Epk [MV/m]&quot;</span><span class="p">:</span> <span class="n">Epk</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Hpk [A/m]&quot;</span><span class="p">:</span> <span class="n">Hpk</span><span class="p">,</span>
+            <span class="s2">&quot;Bpk [mT]&quot;</span><span class="p">:</span> <span class="n">mu0</span> <span class="o">*</span> <span class="n">Hpk</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span>
+            <span class="s2">&quot;kcc [%]&quot;</span><span class="p">:</span> <span class="n">kcc</span><span class="p">,</span>
+            <span class="s2">&quot;ff [%]&quot;</span><span class="p">:</span> <span class="n">ff</span><span class="p">,</span>
+            <span class="s2">&quot;Rsh [MOhm]&quot;</span><span class="p">:</span> <span class="n">RoQ</span> <span class="o">*</span> <span class="n">Q</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;R/Q [Ohm]&quot;</span><span class="p">:</span> <span class="n">RoQ</span><span class="p">,</span>
+            <span class="s2">&quot;Epk/Eacc []&quot;</span><span class="p">:</span> <span class="n">Epk</span> <span class="o">/</span> <span class="n">Eacc</span><span class="p">,</span>
+            <span class="s2">&quot;Bpk/Eacc [mT/MV/m]&quot;</span><span class="p">:</span> <span class="n">mu0</span> <span class="o">*</span> <span class="n">Hpk</span> <span class="o">*</span> <span class="mf">1e9</span> <span class="o">/</span> <span class="n">Eacc</span><span class="p">,</span>
+            <span class="s2">&quot;G [Ohm]&quot;</span><span class="p">:</span> <span class="n">G</span><span class="p">,</span>
+            <span class="s2">&quot;GR/Q [Ohm^2]&quot;</span><span class="p">:</span> <span class="n">G</span> <span class="o">*</span> <span class="n">RoQ</span><span class="p">,</span>
+            <span class="s2">&quot;No of Mesh Elements&quot;</span><span class="p">:</span> <span class="n">mesh</span><span class="o">.</span><span class="n">GetNE</span><span class="p">(</span><span class="n">VorB</span><span class="o">.</span><span class="n">VOL</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="n">Ez_0_abs_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span><span class="s1">&#39;z(0, 0)&#39;</span><span class="p">:</span> <span class="n">xpnts_ax</span><span class="p">,</span> <span class="s1">&#39;|Ez(0, 0)|&#39;</span><span class="p">:</span> <span class="n">Ez_0_abs</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">save_dir</span><span class="p">:</span>
+            <span class="c1"># save axis field</span>
+            <span class="n">Ez_0_abs_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_dir</span><span class="p">,</span> <span class="s1">&#39;Ez_0_abs.csv&#39;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">float_format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%.32f</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">qois</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.calculate_RQ">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calculate_RQ">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_RQ</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.calcualte_V">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calcualte_V">[docs]</a>
+    <span class="k">def</span> <span class="nf">calcualte_V</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.calculate_Vacc">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calculate_Vacc">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_Vacc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_fes</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e6</span>
+        <span class="n">Vacc</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">Integrate</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">mode</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">w</span> <span class="o">/</span> <span class="p">(</span><span class="n">beta</span> <span class="o">*</span> <span class="n">c0</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="n">definedon</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">Boundaries</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.evaluate_qois_gun">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.evaluate_qois_gun">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">evaluate_qois_gun</span><span class="p">(</span><span class="n">cav_geom</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">freq_fes</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">save_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e6</span>
+
+        <span class="c1"># calculate Vacc and Eacc</span>
+        <span class="n">Vacc</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">Integrate</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">w</span> <span class="o">/</span> <span class="p">(</span><span class="n">beta</span> <span class="o">*</span> <span class="n">c0</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">),</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">definedon</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">Boundaries</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)))</span>
+        <span class="n">Eacc</span> <span class="o">=</span> <span class="n">Vacc</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># calculate U and R/Q</span>
+        <span class="n">U</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">eps0</span> <span class="o">*</span> <span class="n">Integrate</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">InnerProduct</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="n">Conj</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])),</span> <span class="n">mesh</span><span class="p">)</span>
+        <span class="c1"># Uh = 2 * pi * 0.5 * mu0 * Integrate(y * InnerProduct(gfu_H[n], gfu_H[n]), mesh)</span>
+        <span class="n">RoQ</span> <span class="o">=</span> <span class="n">Vacc</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">U</span><span class="p">)</span>
+
+        <span class="c1"># OLD GEOMETRY INPUT TYPE</span>
+        <span class="c1"># calculate peak surface fields</span>
+        <span class="c1"># xpnts_surf = cav_geom[(cav_geom[0] &gt; 0) &amp; (cav_geom[1] &gt; min(cav_geom[1])) &amp; (cav_geom[1] &lt; max(cav_geom[1]))]</span>
+        <span class="n">xpnts_surf</span> <span class="o">=</span> <span class="n">get_boundary_nodes</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s1">&#39;PEC&#39;</span><span class="p">)</span>
+        <span class="n">Esurf</span> <span class="o">=</span> <span class="p">[</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="ow">in</span> <span class="n">xpnts_surf</span><span class="p">]</span>
+        <span class="n">Epk</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">Esurf</span><span class="p">))</span>
+
+        <span class="c1"># calculate peak surface fields</span>
+        <span class="c1"># xpnts = cav_geom[(cav_geom[0] &gt; 0) &amp; (cav_geom[1] &gt; min(cav_geom[1])) &amp; (cav_geom[1] &lt; max(cav_geom[1]))]</span>
+        <span class="n">Hsurf</span> <span class="o">=</span> <span class="p">[</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_H</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="ow">in</span> <span class="n">xpnts_surf</span><span class="p">]</span>
+        <span class="n">Hpk</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">))</span>
+
+        <span class="c1"># # calculate peak surface fields</span>
+        <span class="c1"># pec_boundary = mesh.Boundaries(&quot;default&quot;)</span>
+        <span class="c1"># bel = [xx.vertices for xx in pec_boundary.Elements()]</span>
+        <span class="c1"># bel_unique = list(set(itertools.chain(*bel)))</span>
+        <span class="c1"># xpnts_surf = sorted([mesh.vertices[xy.nr].point for xy in bel_unique])</span>
+        <span class="c1"># Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]</span>
+        <span class="c1"># Epk = (max(Esurf))</span>
+        <span class="c1">#</span>
+        <span class="c1"># Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for xi, yi in xpnts_surf]</span>
+        <span class="c1"># Hpk = (max(Hsurf))</span>
+
+        <span class="c1"># calculate surface power loss</span>
+        <span class="n">sigma_cond</span> <span class="o">=</span> <span class="mf">5.96e7</span>  <span class="c1"># &lt;- conduction of copper</span>
+        <span class="n">Rs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mu0</span> <span class="o">*</span> <span class="n">w</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma_cond</span><span class="p">))</span>  <span class="c1"># Surface resistance</span>
+        <span class="n">Ploss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">Rs</span> <span class="o">*</span> <span class="n">Integrate</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="n">InnerProduct</span><span class="p">(</span><span class="n">CF</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">),</span> <span class="n">CF</span><span class="p">(</span><span class="n">Conj</span><span class="p">(</span><span class="n">Hsurf</span><span class="p">))),</span> <span class="n">mesh</span><span class="p">,</span>
+                                              <span class="n">definedon</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">Boundaries</span><span class="p">(</span><span class="s1">&#39;PEC&#39;</span><span class="p">))</span>
+
+        <span class="c1"># calculate cell to cell coupling factor</span>
+        <span class="n">f_diff</span> <span class="o">=</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">freq_fes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">f_add</span> <span class="o">=</span> <span class="p">(</span><span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">+</span> <span class="n">freq_fes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">kcc</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f_diff</span> <span class="o">/</span> <span class="n">f_add</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="c1"># calculate Q</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">w</span> <span class="o">*</span> <span class="n">U</span> <span class="o">/</span> <span class="n">Ploss</span>
+
+        <span class="c1"># OLD</span>
+        <span class="c1"># Get axis field</span>
+        <span class="c1"># minz, maxz = min(cav_geom[1].tolist()), max(cav_geom[1].tolist())</span>
+        <span class="c1"># xpnts_ax = np.linspace(minz, maxz, int(5000*(maxz-minz)))</span>
+        <span class="n">axis_nodes</span> <span class="o">=</span> <span class="n">get_boundary_nodes</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s1">&#39;AXI&#39;</span><span class="p">)</span>
+        <span class="c1"># for e in mesh.Elements(BND):</span>
+        <span class="c1">#     if e.mat == &quot;AXI&quot;:</span>
+        <span class="c1">#         for v in e.vertices:</span>
+        <span class="c1">#             axis_nodes.append(mesh[v].point)</span>
+        <span class="n">Ez_0_abs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">n</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span> <span class="ow">in</span> <span class="n">axis_nodes</span><span class="p">])</span>
+
+        <span class="c1"># # Get axis field</span>
+        <span class="c1"># xmin = face.vertices.Min(X)</span>
+        <span class="c1"># xmax = face.vertices.Max(X)</span>
+        <span class="c1"># xpnts_ax = np.linspace(xmin.p[0], xmax.p[0], 100)</span>
+        <span class="c1"># Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])</span>
+
+        <span class="c1"># calculate G</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">*</span> <span class="n">Rs</span>
+
+        <span class="n">qois</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Normalization Length [mm]&quot;</span><span class="p">:</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>
+            <span class="s2">&quot;freq [MHz]&quot;</span><span class="p">:</span> <span class="n">freq_fes</span><span class="p">[</span><span class="n">n</span><span class="p">],</span>
+            <span class="s2">&quot;Q []&quot;</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
+            <span class="s2">&quot;Vacc [MV]&quot;</span><span class="p">:</span> <span class="n">Vacc</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Eacc [MV/m]&quot;</span><span class="p">:</span> <span class="n">Eacc</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Epk [MV/m]&quot;</span><span class="p">:</span> <span class="n">Epk</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;Hpk [A/m]&quot;</span><span class="p">:</span> <span class="n">Hpk</span><span class="p">,</span>
+            <span class="s2">&quot;Bpk [mT]&quot;</span><span class="p">:</span> <span class="n">mu0</span> <span class="o">*</span> <span class="n">Hpk</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span>
+            <span class="s2">&quot;Rsh [MOhm]&quot;</span><span class="p">:</span> <span class="n">RoQ</span> <span class="o">*</span> <span class="n">Q</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s2">&quot;R/Q [Ohm]&quot;</span><span class="p">:</span> <span class="n">RoQ</span><span class="p">,</span>
+            <span class="s2">&quot;Epk/Eacc []&quot;</span><span class="p">:</span> <span class="n">Epk</span> <span class="o">/</span> <span class="n">Eacc</span><span class="p">,</span>
+            <span class="s2">&quot;Bpk/Eacc [mT/MV/m]&quot;</span><span class="p">:</span> <span class="n">mu0</span> <span class="o">*</span> <span class="n">Hpk</span> <span class="o">*</span> <span class="mf">1e9</span> <span class="o">/</span> <span class="n">Eacc</span><span class="p">,</span>
+            <span class="s2">&quot;G [Ohm]&quot;</span><span class="p">:</span> <span class="n">G</span><span class="p">,</span>
+            <span class="s2">&quot;GR/Q [Ohm^2]&quot;</span><span class="p">:</span> <span class="n">G</span> <span class="o">*</span> <span class="n">RoQ</span>
+        <span class="p">}</span>
+
+        <span class="n">Ez_0_abs_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span><span class="s1">&#39;z(0, 0)&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">axis_nodes</span><span class="p">))[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;|Ez(0, 0)|&#39;</span><span class="p">:</span> <span class="n">Ez_0_abs</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">save_dir</span><span class="p">:</span>
+            <span class="c1"># save axis field</span>
+            <span class="n">Ez_0_abs_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_dir</span><span class="p">,</span> <span class="s1">&#39;Ez_0_abs.csv&#39;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">float_format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%.32f</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">qois</span></div>
+
+
+    <span class="c1"># def calculate_lorentz_pressure(self, gfu_E, gfu_H):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     p = {1\over 4}(\mu_0 H^2 - \epsilon_0 E^2)</span>
+    <span class="c1">#     Returns</span>
+    <span class="c1">#     -------</span>
+    <span class="c1">#</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Compute the magnitudes squared of H and E</span>
+    <span class="c1">#     H_squared = InnerProduct(gfu_H, Conj(gfu_H))  # H ⋅ H</span>
+    <span class="c1">#     E_squared = InnerProduct(gfu_E, Conj(gfu_E))  # E ⋅ E</span>
+    <span class="c1">#</span>
+    <span class="c1">#     p = 0.25 * (mu0 * H_squared - eps0 * E_squared)</span>
+    <span class="c1">#     fes = gfu_E.space  # Assuming same finite element space for simplicity</span>
+    <span class="c1">#     gfu_p = GridFunction(fes)</span>
+    <span class="c1">#     gfu_p.Set(p_cf)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Visualisation or further processi</span>
+
+<div class="viewcode-block" id="NGSolveMEVP.save_fields">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.save_fields">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">save_fields</span><span class="p">(</span><span class="n">project_folder</span><span class="p">,</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">):</span>
+        <span class="c1"># save mode fields</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">project_folder</span><span class="p">,</span> <span class="s1">&#39;gfu_EH.pkl&#39;</span><span class="p">),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">([</span><span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">],</span> <span class="n">f</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.save_mesh">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.save_mesh">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">save_mesh</span><span class="p">(</span><span class="n">cav_dir</span><span class="p">,</span> <span class="n">mesh</span><span class="p">):</span>
+        <span class="c1"># save mesh</span>
+        <span class="c1"># folder = os.path.dirname(project_folder)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav_dir</span><span class="p">,</span> <span class="s2">&quot;eigenmode&quot;</span><span class="p">,</span> <span class="s2">&quot;monopole&quot;</span><span class="p">,</span> <span class="s2">&quot;mesh.pkl&quot;</span><span class="p">),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.load_fields">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_fields">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">load_fields</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;gfu_EH.pkl&#39;</span><span class="p">),</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="p">[</span><span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span><span class="p">]</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.load_mesh">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_mesh">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">load_mesh</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+        <span class="c1"># folder = os.path.dirname(folder)</span>
+        <span class="c1"># pickle mesh and fields</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;mesh.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">mesh</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">mesh</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.plot_fields">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.plot_fields">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">,</span> <span class="n">plotter</span><span class="o">=</span><span class="s1">&#39;ngsolve&#39;</span><span class="p">):</span>
+        <span class="n">mesh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+        <span class="n">gfu_E</span><span class="p">,</span> <span class="n">gfu_H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_fields</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plotter</span> <span class="o">==</span> <span class="s1">&#39;matplotlib&#39;</span><span class="p">:</span>
+            <span class="n">mesh_points</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span>
+            <span class="n">E_values_mesh</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">mesh_points_grid</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">pp</span> <span class="ow">in</span> <span class="n">mesh_points</span><span class="p">:</span>
+                <span class="n">mesh_points_grid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pp</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+                <span class="n">E_values_mesh</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">mode</span><span class="p">])(</span><span class="n">mesh</span><span class="p">(</span><span class="o">*</span><span class="n">pp</span><span class="o">.</span><span class="n">point</span><span class="p">)))</span>
+
+            <span class="n">mesh_points_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh_points_grid</span><span class="p">)</span>
+            <span class="n">xxt</span><span class="p">,</span> <span class="n">yyt</span> <span class="o">=</span> <span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">triang</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">Triangulation</span><span class="p">(</span><span class="n">xxt</span><span class="p">,</span> <span class="n">yyt</span><span class="p">)</span>
+
+            <span class="c1"># plot only triangles with side length smaller some max_radius</span>
+            <span class="n">max_radius</span> <span class="o">=</span> <span class="mf">0.02</span>
+            <span class="n">triangles</span> <span class="o">=</span> <span class="n">triang</span><span class="o">.</span><span class="n">triangles</span>
+            <span class="c1"># Mask unwanted triangles.</span>
+            <span class="n">xtri</span> <span class="o">=</span> <span class="n">xxt</span><span class="p">[</span><span class="n">triangles</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">xxt</span><span class="p">[</span><span class="n">triangles</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ytri</span> <span class="o">=</span> <span class="n">yyt</span><span class="p">[</span><span class="n">triangles</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">yyt</span><span class="p">[</span><span class="n">triangles</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">maxi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">xtri</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">ytri</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">triang</span><span class="o">.</span><span class="n">set_mask</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">xtri</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_radius</span><span class="p">)</span>
+
+            <span class="n">plt</span><span class="o">.</span><span class="n">tricontourf</span><span class="p">(</span><span class="n">triang</span><span class="p">,</span> <span class="n">E_values_mesh</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="s1">&#39;box&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">which</span> <span class="o">==</span> <span class="s1">&#39;E&#39;</span><span class="p">:</span>
+                <span class="n">Draw</span><span class="p">(</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_E</span><span class="p">[</span><span class="n">mode</span><span class="p">]),</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Objects&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;Wireframe&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Draw</span><span class="p">(</span><span class="n">Norm</span><span class="p">(</span><span class="n">gfu_H</span><span class="p">[</span><span class="n">mode</span><span class="p">]),</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Objects&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;Wireframe&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}})</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.plot_mesh">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.plot_mesh">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">plotter</span><span class="o">=</span><span class="s1">&#39;ngsolve&#39;</span><span class="p">):</span>
+        <span class="n">mesh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plotter</span> <span class="o">==</span> <span class="s1">&#39;matplotlib&#39;</span><span class="p">:</span>
+
+            <span class="n">mesh_points</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span>
+            <span class="n">mesh_points_grid</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">pp</span> <span class="ow">in</span> <span class="n">mesh_points</span><span class="p">:</span>
+                <span class="n">mesh_points_grid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pp</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+
+            <span class="n">mesh_points_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh_points_grid</span><span class="p">)</span>
+            <span class="n">xxt</span><span class="p">,</span> <span class="n">yyt</span> <span class="o">=</span> <span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">triang</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">Triangulation</span><span class="p">(</span><span class="n">xxt</span><span class="p">,</span> <span class="n">yyt</span><span class="p">)</span>
+
+            <span class="c1"># plot only triangles with sidelength smaller some max_radius</span>
+            <span class="n">max_radius</span> <span class="o">=</span> <span class="mf">0.02</span>
+            <span class="n">triangles</span> <span class="o">=</span> <span class="n">triang</span><span class="o">.</span><span class="n">triangles</span>
+            <span class="c1"># Mask unwanted triangles.</span>
+            <span class="n">xtri</span> <span class="o">=</span> <span class="n">xxt</span><span class="p">[</span><span class="n">triangles</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">xxt</span><span class="p">[</span><span class="n">triangles</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ytri</span> <span class="o">=</span> <span class="n">yyt</span><span class="p">[</span><span class="n">triangles</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">yyt</span><span class="p">[</span><span class="n">triangles</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">maxi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">xtri</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">ytri</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">triang</span><span class="o">.</span><span class="n">set_mask</span><span class="p">(</span><span class="n">maxi</span> <span class="o">&gt;</span> <span class="n">max_radius</span><span class="p">)</span>
+
+            <span class="n">plt</span><span class="o">.</span><span class="n">triplot</span><span class="p">(</span><span class="n">triang</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">mesh_points_grid</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="s1">&#39;box&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Draw</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span></div>
+
+
+    <span class="c1"># @staticmethod</span>
+    <span class="c1"># def createFolder(fid, projectDir, subdir=&#39;&#39;, filename=None, opt=False, pol=&#39;monopole&#39;):</span>
+    <span class="c1">#     if opt:</span>
+    <span class="c1">#         ngsolvemevp_folder = &#39;Optimisation&#39;</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         ngsolvemevp_folder = &#39;NGSolveMEVP&#39;</span>
+    <span class="c1">#     # change save directory</span>
+    <span class="c1">#     path = projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{fid}&#39;</span>
+    <span class="c1">#     if pol.lower() == &#39;monopole&#39;:</span>
+    <span class="c1">#         pol_subdir = &#39;monopole&#39;</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         pol_subdir = &#39;dipole&#39;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     if subdir == &#39;&#39;:</span>
+    <span class="c1">#         new_path = projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#         if os.path.exists(new_path):</span>
+    <span class="c1">#             path = new_path</span>
+    <span class="c1">#         else:</span>
+    <span class="c1">#             if not os.path.exists(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{fid}&#39;):</span>
+    <span class="c1">#                 os.mkdir(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{fid}&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#             os.mkdir(new_path)</span>
+    <span class="c1">#             path = projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         new_path = projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#         if os.path.exists(new_path):</span>
+    <span class="c1">#             path = new_path</span>
+    <span class="c1">#         else:</span>
+    <span class="c1">#             if not os.path.exists(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}&#39;):</span>
+    <span class="c1">#                 os.mkdir(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}&#39;)</span>
+    <span class="c1">#                 os.mkdir(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}/{fid}&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#             if not os.path.exists(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}/{fid}&#39;):</span>
+    <span class="c1">#                 os.mkdir(projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}/{fid}&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#             os.mkdir(new_path)</span>
+    <span class="c1">#             path = projectDir / fr&#39;SimulationData/{ngsolvemevp_folder}/{subdir}/{fid}/{pol_subdir}&#39;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     if os.path.exists(path):</span>
+    <span class="c1">#         try:</span>
+    <span class="c1">#             shutil.rmtree(path)</span>
+    <span class="c1">#             os.mkdir(path)</span>
+    <span class="c1">#         except PermissionError:</span>
+    <span class="c1">#             pass</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         os.mkdir(path)</span>
+
+<div class="viewcode-block" id="NGSolveMEVP.gauss">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.gauss">[docs]</a>
+    <span class="k">def</span> <span class="nf">gauss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">shift</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">g</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">g</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NGSolveMEVP.gaussian_deform">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.gaussian_deform">[docs]</a>
+    <span class="k">def</span> <span class="nf">gaussian_deform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_cells</span><span class="p">,</span> <span class="n">surface</span><span class="p">,</span> <span class="n">deformation_params</span><span class="p">):</span>
+
+        <span class="c1"># plt.plot(surface[:, 0], surface[:, 1], label=&#39;undeformed&#39;)#, marker=&#39;o&#39;, mfc=&#39;none&#39;</span>
+
+        <span class="n">deform_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">surface</span><span class="p">))</span>
+        <span class="n">deform_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">surface</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">n_cell</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_cells</span><span class="p">):</span>
+            <span class="c1"># get index of ncell surface nodes</span>
+            <span class="n">n_cell_surf_indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">surface</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="n">n_cell</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">mn</span><span class="p">,</span> <span class="n">mx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">n_cell_surf_indx</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">n_cell_surf_indx</span><span class="p">)</span>
+
+            <span class="c1"># disp = deformation_params[n_cell*3] * 0.02</span>
+            <span class="n">disp</span> <span class="o">=</span> <span class="n">deformation_params</span><span class="p">[</span><span class="n">n_cell</span> <span class="o">*</span> <span class="mi">3</span><span class="p">]</span>
+            <span class="c1"># scale sigma to between 10 and 20% of length of cavity cell</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.1</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.2</span> <span class="o">-</span> <span class="mf">0.1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">deformation_params</span><span class="p">[</span><span class="n">n_cell</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">n_cell_surf_indx</span><span class="p">)</span>
+            <span class="n">shift</span> <span class="o">=</span> <span class="n">deformation_params</span><span class="p">[</span><span class="n">n_cell</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">mn</span> <span class="o">+</span> <span class="n">mx</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="c1"># n_cell_deform_matrix = np.identity(len(surface)) + disp * np.diag(self.gauss(len(surface), sigma, shift=shift))</span>
+            <span class="c1"># n_cell_deform_surface = n_cell_deform_matrix @ surface</span>
+            <span class="c1"># plt.plot(n_cell_deform_surface[:, 0], n_cell_deform_surface[:, 1], label=n_cell)#, marker=&#39;o&#39;, mfc=&#39;none&#39;</span>
+            <span class="c1"># n_cell_deform_vector = np.atleast_2d(disp*1e-3*self.gauss(len(surface), sigma, shift=shift)).T</span>
+            <span class="c1"># n_cell_deform_surface = n_cell_deform_vector + surface</span>
+            <span class="c1"># plt.plot(n_cell_deform_surface[:, 0], n_cell_deform_surface[:, 1], label=n_cell)#, marker=&#39;o&#39;, mfc=&#39;none&#39;</span>
+
+            <span class="c1"># deform_matrix += disp * np.diag(self.gauss(len(surface), sigma, shift=shift))</span>
+            <span class="n">deform_vector</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">disp</span> <span class="o">*</span> <span class="mf">2e-3</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">surface</span><span class="p">),</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="c1"># deform surface</span>
+        <span class="c1"># surface_def = deform_matrix @ surface</span>
+        <span class="n">surface_def</span> <span class="o">=</span> <span class="n">deform_vector</span> <span class="o">+</span> <span class="n">surface</span>
+        <span class="n">surface_def</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">surface</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># enforce end plane to be equal by checking that the first two and last two points are on same plane</span>
+        <span class="n">surface_def</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">surface_def</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">surface_def</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">surface_def</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">surface_def</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">surface_def</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># plt.plot(surface_def[:, 0], surface_def[:, 1], label=f&#39;gaussian: {disp:.4f}, {sigma:.4f}, {shift:.4f}&#39;)  # , marker=&#39;o&#39;, mfc=&#39;none&#39;</span>
+
+        <span class="c1"># plt.legend()</span>
+        <span class="c1"># # plt.gca().set_aspect(&#39;equal&#39;)</span>
+        <span class="c1"># plt.show()</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">surface_def</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="get_boundary_nodes">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.get_boundary_nodes">[docs]</a>
+<span class="k">def</span> <span class="nf">get_boundary_nodes</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">boundary_name</span><span class="p">):</span>
+    <span class="n">boundary_nodes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">Elements</span><span class="p">(</span><span class="n">BND</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">mat</span> <span class="o">==</span> <span class="n">boundary_name</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">vertices</span><span class="p">:</span>
+                <span class="n">boundary_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mesh</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">point</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">set</span><span class="p">(</span><span class="n">boundary_nodes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="suppress_c_stdout_stderr">
+<a class="viewcode-back" href="../../../../cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.suppress_c_stdout_stderr">[docs]</a>
+<span class="k">class</span> <span class="nc">suppress_c_stdout_stderr</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout_fd</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">__stdout__</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stderr_fd</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">__stderr__</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+
+        <span class="c1"># Save original fds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saved_stdout_fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">dup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdout_fd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saved_stderr_fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">dup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stderr_fd</span><span class="p">)</span>
+
+        <span class="c1"># Redirect stdout/stderr to /dev/null (or nul on Windows)</span>
+        <span class="n">devnull</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">devnull</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">null_fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">devnull</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">null_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdout_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">null_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_fd</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saved_stdout_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdout_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saved_stderr_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">null_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saved_stdout_fd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saved_stderr_fd</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">eig</span> <span class="o">=</span> <span class="n">NGSolveMEVP</span><span class="p">()</span>
+
+    <span class="n">mid_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mf">73.52</span><span class="p">,</span> <span class="mf">131.75</span><span class="p">,</span> <span class="mf">106.25</span><span class="p">,</span> <span class="mf">118.7</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">187</span><span class="p">,</span> <span class="mf">369.6321578127116</span><span class="p">]</span>
+    <span class="n">l_end_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mf">73.52</span><span class="p">,</span> <span class="mf">131.75</span><span class="p">,</span> <span class="mf">106.25</span><span class="p">,</span> <span class="mf">118.7</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">187</span><span class="p">,</span> <span class="mf">369.6321578127116</span><span class="p">]</span>
+    <span class="n">r_end_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mf">73.52</span><span class="p">,</span> <span class="mf">131.75</span><span class="p">,</span> <span class="mf">106.25</span><span class="p">,</span> <span class="mf">118.7</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">187</span><span class="p">,</span> <span class="mf">369.6321578127116</span><span class="p">]</span>
+    <span class="n">eig</span><span class="o">.</span><span class="n">cavity</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">mid_cell</span><span class="p">,</span> <span class="n">l_end_cell</span><span class="p">,</span> <span class="n">r_end_cell</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sosoho-Abasi Udongwo.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

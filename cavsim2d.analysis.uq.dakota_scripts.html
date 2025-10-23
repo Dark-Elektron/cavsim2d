@@ -20,7 +20,6 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -38,7 +37,7 @@
           
           <a href="index.html" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -69,7 +68,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>
@@ -120,8 +119,89 @@
 <section id="cavsim2d-analysis-uq-dakota-scripts-pycall-module">
 <h2>cavsim2d.analysis.uq.dakota_scripts.pycall module<a class="headerlink" href="#cavsim2d-analysis-uq-dakota-scripts-pycall-module" title="Link to this heading"></a></h2>
 </section>
-<section id="cavsim2d-analysis-uq-dakota-scripts-write-dakota-input-module">
-<h2>cavsim2d.analysis.uq.dakota_scripts.write_dakota_input module<a class="headerlink" href="#cavsim2d-analysis-uq-dakota-scripts-write-dakota-input-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.analysis.uq.dakota_scripts.write_dakota_input">
+<span id="cavsim2d-analysis-uq-dakota-scripts-write-dakota-input-module"></span><h2>cavsim2d.analysis.uq.dakota_scripts.write_dakota_input module<a class="headerlink" href="#module-cavsim2d.analysis.uq.dakota_scripts.write_dakota_input" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.</span></span><span class="sig-name descname"><span class="pre">Dakota</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.variables" title="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.variables"><code class="xref py py-obj docutils literal notranslate"><span class="pre">variables</span></code></a>(f, kind, descriptors, **kwargs)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>environment</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>interface</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>method</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>responses</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>run_analysis</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>write_input_file</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.environment">
+<span class="sig-name descname"><span class="pre">environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.environment" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.interface">
+<span class="sig-name descname"><span class="pre">interface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_procs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.interface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.interface" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.method">
+<span class="sig-name descname"><span class="pre">method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'polynomial_chaos'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.method"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.method" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.responses">
+<span class="sig-name descname"><span class="pre">responses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.responses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.responses" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.run_analysis">
+<span class="sig-name descname"><span class="pre">run_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.run_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.run_analysis" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.variables">
+<span class="sig-name descname"><span class="pre">variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descriptors</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.variables" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f</strong> (<em>File</em>) – File</p></li>
+<li><p><strong>kind</strong> (<em>{'uniform_uncertain'</em><em>, </em><em>'normal_uncertain'</em><em>, </em><em>'beta_uncertain'}</em>) – Type of distribution of the variables</p></li>
+<li><p><strong>descriptors</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Uncertain variable names</p></li>
+<li><p><strong>kwargs</strong> (<em>kwargs</em>) – Other relevant arguments eg. {means: [], ‘std_deviations’: [], ‘lower_bounds’: [], ‘upper_bounds’: []}</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.write_input_file">
+<span class="sig-name descname"><span class="pre">write_input_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descriptors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/analysis/uq/dakota_scripts/write_dakota_input.html#Dakota.write_input_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.analysis.uq.dakota_scripts.write_dakota_input.Dakota.write_input_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="module-cavsim2d.analysis.uq.dakota_scripts">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cavsim2d.analysis.uq.dakota_scripts" title="Link to this heading"></a></h2>

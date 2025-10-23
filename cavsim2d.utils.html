@@ -20,7 +20,7 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -38,7 +38,7 @@
           
           <a href="index.html" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -69,7 +69,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>
@@ -109,8 +109,789 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="cavsim2d-utils-shared-functions-module">
-<h2>cavsim2d.utils.shared_functions module<a class="headerlink" href="#cavsim2d-utils-shared-functions-module" title="Link to this heading"></a></h2>
+<section id="module-cavsim2d.utils.shared_functions">
+<span id="cavsim2d-utils-shared-functions-module"></span><h2>cavsim2d.utils.shared_functions module<a class="headerlink" href="#module-cavsim2d.utils.shared_functions" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.add_bezierspline">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">add_bezierspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curve_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#add_bezierspline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.add_bezierspline" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.add_bspline">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">add_bspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curve_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#add_bspline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.add_bspline" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.add_ellipse">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">add_ellipse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curve_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_pt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_pt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">majax_pt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_pt</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#add_ellipse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.add_ellipse" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.add_line">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">add_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_indx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curve_indx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#add_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.add_line" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.add_point">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">add_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_indx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#add_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.add_point" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.apply_perturbation">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">apply_perturbation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deltas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perturbed_vars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#apply_perturbation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.apply_perturbation" title="Link to this definition"></a></dt>
+<dd><p>mode=’add’: x_new = x + δ
+mode=’mul’: x_new = x * (1 + δ)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.arcTo">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">arcTo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#arcTo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.arcTo" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>h</strong> (<em>float</em><em>, </em><em>int</em>) – x-position of the center</p></li>
+<li><p><strong>k</strong> (<em>float</em><em>, </em><em>int</em>) – y-position of the center</p></li>
+<li><p><strong>float</strong> (<em>b</em>) – radius on the x-axis</p></li>
+<li><p><strong>int</strong> – radius on the x-axis</p></li>
+<li><p><strong>float</strong> – radius on the y-axis</p></li>
+<li><p><strong>int</strong> – radius on the y-axis</p></li>
+<li><p><strong>step</strong> (<em>int</em>)</p></li>
+<li><p><strong>start</strong> (<em>list</em><em>, </em><em>ndarray</em>)</p></li>
+<li><p><strong>end</strong> (<em>list</em><em>, </em><em>ndarray</em>)</p></li>
+<li><p><strong>plot</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.arcToTheta">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">arcToTheta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#arcToTheta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.arcToTheta" title="Link to this definition"></a></dt>
+<dd><p>Calculates the points on an arc from a start angle to an end angle</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>h</strong> (<em>float</em><em>, </em><em>int</em>) – x-position of the center</p></li>
+<li><p><strong>k</strong> (<em>float</em><em>, </em><em>int</em>) – y-position of the center</p></li>
+<li><p><strong>float</strong> (<em>b</em>) – radius on the x-axis</p></li>
+<li><p><strong>int</strong> – radius on the x-axis</p></li>
+<li><p><strong>float</strong> – radius on the y-axis</p></li>
+<li><p><strong>int</strong> – radius on the y-axis</p></li>
+<li><p><strong>step</strong> (<em>int</em><em>, </em><em>float</em>)</p></li>
+<li><p><strong>start</strong> (<em>list</em><em>, </em><em>ndarray</em>)</p></li>
+<li><p><strong>end</strong> (<em>list</em><em>, </em><em>ndarray</em>)</p></li>
+<li><p><strong>plot</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.area_pareto_fronts">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">area_pareto_fronts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pareto1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pareto2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#area_pareto_fronts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.area_pareto_fronts" title="Link to this definition"></a></dt>
+<dd><p>Plot the two Pareto fronts and correctly fill the area between them, handling edge cases.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.c1_leg_monomial_integral">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">c1_leg_monomial_integral</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expon</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#c1_leg_monomial_integral"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.c1_leg_monomial_integral" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.calculate_alpha">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">calculate_alpha</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ri</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_bp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#calculate_alpha"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.calculate_alpha" title="Link to this definition"></a></dt>
+<dd><p>Calculates the largest angle the tangent line of two ellipses makes with the horizontal axis</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<em>float</em>)</p></li>
+<li><p><strong>B</strong> (<em>float</em>)</p></li>
+<li><p><strong>a</strong> (<em>float</em>)</p></li>
+<li><p><strong>b</strong> (<em>float</em>)</p></li>
+<li><p><strong>Ri</strong> (<em>float</em>)</p></li>
+<li><p><strong>L</strong> (<em>float</em>)</p></li>
+<li><p><strong>Req</strong> (<em>float</em>)</p></li>
+<li><p><strong>L_bp</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>alpha</strong> (<em>float</em>) – Largest angle the tangent line of two ellipses makes with the horizontal axis</p></li>
+<li><p><strong>error_msg</strong> (<em>int</em>) – State of the iteration, failed or successful. Refer to</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.calculate_bounded_area">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">calculate_bounded_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_values1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_values2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#calculate_bounded_area"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.calculate_bounded_area" title="Link to this definition"></a></dt>
+<dd><p>Calculate the area between two Pareto fronts.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.cn_gauss">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">cn_gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rdim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#cn_gauss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.cn_gauss" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.cn_leg_03_1">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">cn_leg_03_1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#cn_leg_03_1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.cn_leg_03_1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.cn_leg_03_xiu">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">cn_leg_03_xiu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#cn_leg_03_xiu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.cn_leg_03_xiu" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.cn_leg_05_1">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">cn_leg_05_1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#cn_leg_05_1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.cn_leg_05_1" title="Link to this definition"></a></dt>
+<dd><p>The rule has order</p>
+<p>O = 2 N^2 + N + 2.</p>
+<p>The rule has precision P = 5.</p>
+<p>CN_LEG is the cube [-1,+1]^N with the Legendre weight function</p>
+<p>w(x) = 1.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Dimensional Threshold Limitation: In practice, the Stroud 3 quadrature rule may be effective in dimensions
+up to around 3 to 6, depending on the specific problem and the function being integrated. Beyond this,
+the accuracy of the rule typically degrades, and higher-order quadrature rules or
+Monte Carlo methods might be more appropriate.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong></p></li>
+<li><p><strong>option</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.cn_leg_05_2">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">cn_leg_05_2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#cn_leg_05_2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.cn_leg_05_2" title="Link to this definition"></a></dt>
+<dd><p>The rule has order</p>
+<p>O = 2 N^2 + 1.</p>
+<p>The rule has precision P = 5.</p>
+<p>CN_LEG is the cube [-1,+1]^N with the Legendre weight function</p>
+<p>w(x) = 1.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Dimensional Threshold Limitation: In practice, the Stroud 5 quadrature rule may be effective in dimensions
+up to around 5 to 10, depending on the specific problem and the function being integrated. Beyond this,
+the accuracy of the rule typically degrades, and higher-order quadrature rules or
+Monte Carlo methods might be more appropriate.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong></p></li>
+<li><p><strong>option</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.ellipse_tangent">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">ellipse_tangent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#ellipse_tangent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.ellipse_tangent" title="Link to this definition"></a></dt>
+<dd><p>Calculates the coordinates of the tangent line that connects two ellipses</p>
+<figure class="align-center" id="ellipse-tangent">
+<a class="reference internal image-reference" href="_images/ellipse_tangent.png"><img alt="ellipse tangent" src="_images/ellipse_tangent.png" style="width: 500px;" />
+</a>
+</figure>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>list</em><em>, </em><em>array like</em>) – Contains list of tangent points coordinate’s variables <code class="docutils literal notranslate"><span class="pre">[x1,</span> <span class="pre">y1,</span> <span class="pre">x2,</span> <span class="pre">y2]</span></code>.
+See <code class="xref std std-numref docutils literal notranslate"><span class="pre">ellipse</span> <span class="pre">tangent</span></code></p></li>
+<li><p><strong>data</strong> (<em>list</em><em>, </em><em>array like</em>) – Contains midpoint coordinates of the two ellipses and the dimensions of the ellipses
+data = <code class="docutils literal notranslate"><span class="pre">[coords,</span> <span class="pre">dim]</span></code>; <code class="docutils literal notranslate"><span class="pre">coords</span></code> = <code class="docutils literal notranslate"><span class="pre">[h,</span> <span class="pre">k,</span> <span class="pre">p,</span> <span class="pre">q]</span></code>, <code class="docutils literal notranslate"><span class="pre">dim</span></code> = <code class="docutils literal notranslate"><span class="pre">[a,</span> <span class="pre">b,</span> <span class="pre">A,</span> <span class="pre">B]</span></code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of four non-linear functions</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The four returned non-linear functions are</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}f_1 = \frac{A^2b^2(x_1 - h)(y_2-q)}{a^2B^2(x_2-p)(y_1-k)} - 1\\f_2 = \frac{(x_1 - h)^2}{a^2} + \frac{(y_1-k)^2}{b^2} - 1\\f_3 = \frac{(x_2 - p)^2}{A^2} + \frac{(y_2-q)^2}{B^2} - 1\\f_4 = \frac{-b^2(x_1-x_2)(x_1-h)}{a^2(y_1-y_2)(y_1-k)} - 1\end{aligned}\end{align} \]</div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.enforce_Req_continuity">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">enforce_Req_continuity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">par_mid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">par_end_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">par_end_r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#enforce_Req_continuity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.enforce_Req_continuity" title="Link to this definition"></a></dt>
+<dd><p>Enforce continuity at iris and equator of cavities</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>par_mid</strong></p></li>
+<li><p><strong>par_end_l</strong></p></li>
+<li><p><strong>par_end_r</strong></p></li>
+<li><p><strong>cell_type</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.enforce_continuity_df">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">enforce_continuity_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#enforce_continuity_df"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.enforce_continuity_df" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Enforce:</dt><dd><p>Req1==Req2, Req3==Req4, Req5==Req6, …
+Ri2==Ri3, Ri4==Ri5, Ri6==Ri7, …</p>
+</dd>
+</dl>
+<p>in a DataFrame with columns ‘Req1’…’ReqN’ and ‘Ri1’…’RiN’.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.expand_cells">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">expand_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#expand_cells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.expand_cells" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Given shape[‘n_cells’], expand ‘all’ to every half-cell:</dt><dd><p>[‘cell1_l’,’cell1_r’,…,’cellN_l’,’cellN_r’]</p>
+</dd>
+</dl>
+<p>Or accept a single string or list.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.extend_pareto">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">extend_pareto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pareto1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pareto2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#extend_pareto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.extend_pareto" title="Link to this definition"></a></dt>
+<dd><p>Extend Pareto fronts by adding boundary points to match their x-ranges.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.f2b_slashes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">f2b_slashes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#f2b_slashes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.f2b_slashes" title="Link to this definition"></a></dt>
+<dd><p>Replaces forward slashes with backward slashes for windows OS</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – Directory path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.find_all_intersections">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">find_all_intersections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pareto1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pareto2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#find_all_intersections"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.find_all_intersections" title="Link to this definition"></a></dt>
+<dd><p>Find all intersection points between the segments of two Pareto fronts.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_gauss_legendre_nodes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_gauss_legendre_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_gauss_legendre_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_gauss_legendre_nodes" title="Link to this definition"></a></dt>
+<dd><p>Tensor-product Gauss–Legendre nodes &amp; weights on [-bound,bound].</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_nodes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_nodes" title="Link to this definition"></a></dt>
+<dd><p>Dispatch to the appropriate node generator.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_normal_nodes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_normal_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_normal_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_normal_nodes" title="Link to this definition"></a></dt>
+<dd><p>n independent multivariate normal samples in k dims,
+each component ~ N(0,bound^2).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_perturbed_shapes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_perturbed_shapes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_perturbed_shapes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_perturbed_shapes" title="Link to this definition"></a></dt>
+<dd><p>High-level API: returns (shapes, weights).</p>
+<ul class="simple">
+<li><p>cells: ‘all’ or list of ‘cellX_l’/’cellX_r’</p></li>
+<li><p>variables: subset of VAR_NAMES</p></li>
+<li><p>bound: absolute delta bound</p></li>
+<li><p>mode: ‘add’ or ‘mul’</p></li>
+<li><p>n: nodes per dimension (ignored by stroud3)</p></li>
+<li><p>node_type: ‘uniform’,’gauss_legendre’,’stroud3’</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_stroud3_nodes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_stroud3_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_stroud3_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_stroud3_nodes" title="Link to this definition"></a></dt>
+<dd><p>Stroud-III delta-vectors mapped to [-bound,bound] and equal weights.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.generate_uniform_nodes">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">generate_uniform_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#generate_uniform_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.generate_uniform_nodes" title="Link to this definition"></a></dt>
+<dd><p>Uniform random delta-vectors in [-bound,+bound] with equal weights.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.get_qoi_value">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">get_qoi_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#get_qoi_value"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.get_qoi_value" title="Link to this definition"></a></dt>
+<dd><p>Gets the quantities of interest from simulation results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>d</strong> (<em>dict</em>) – Dictionary containing several figures of merits from eigenmode solver</p></li>
+<li><p><strong>obj</strong> (<em>list</em>) – List of objective functions</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.get_wakefield_data">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">get_wakefield_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#get_wakefield_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.get_wakefield_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.interpolate_pareto">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">interpolate_pareto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pareto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#interpolate_pareto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.interpolate_pareto" title="Link to this definition"></a></dt>
+<dd><p>Interpolate y-values for a given set of x-values based on a Pareto front.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.jac">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">jac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#jac"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.jac" title="Link to this definition"></a></dt>
+<dd><p>Computes the Jacobian of the non-linear system of ellipse tangent equations</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>list</em><em>, </em><em>array like</em>) – Contains list of tangent points coordinate’s variables <code class="docutils literal notranslate"><span class="pre">[x1,</span> <span class="pre">y1,</span> <span class="pre">x2,</span> <span class="pre">y2]</span></code>.
+See <code class="xref std std-numref docutils literal notranslate"><span class="pre">ellipse</span> <span class="pre">tangent</span></code></p></li>
+<li><p><strong>data</strong> (<em>list</em><em>, </em><em>array like</em>) – Contains midpoint coordinates of the two ellipses and the dimensions of the ellipses
+data = <code class="docutils literal notranslate"><span class="pre">[coords,</span> <span class="pre">dim]</span></code>; <code class="docutils literal notranslate"><span class="pre">coords</span></code> = <code class="docutils literal notranslate"><span class="pre">[h,</span> <span class="pre">k,</span> <span class="pre">p,</span> <span class="pre">q]</span></code>, <code class="docutils literal notranslate"><span class="pre">dim</span></code> = <code class="docutils literal notranslate"><span class="pre">[a,</span> <span class="pre">b,</span> <span class="pre">A,</span> <span class="pre">B]</span></code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>J</strong> – Array of the Jacobian</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.lineTo">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">lineTo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prevPt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nextPt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#lineTo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.lineTo" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.line_intersection">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">line_intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#line_intersection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.line_intersection" title="Link to this definition"></a></dt>
+<dd><p>Find the intersection point of two line segments (p1 and p2).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.linspace">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">linspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#linspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.linspace" title="Link to this definition"></a></dt>
+<dd><p>Like np.linspace but uses step instead of num
+This is inclusive to stop, so if start=1, stop=3, step=0.5
+Output is: array([1., 1.5, 2., 2.5, 3.])</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.make_dirs_from_dict">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">make_dirs_from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#make_dirs_from_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.make_dirs_from_dict" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.merge_equal_columns">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">merge_equal_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#merge_equal_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.merge_equal_columns" title="Link to this definition"></a></dt>
+<dd><p>Collapse runs of equal columns <strong>within</strong> each variable (Ri, Req),
+then reassemble all merged columns in the original half‐cell order.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.merge_runs_within_variable">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">merge_runs_within_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#merge_runs_within_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.merge_runs_within_variable" title="Link to this definition"></a></dt>
+<dd><p>For a given variable prefix (e.g. ‘Ri’ or ‘Req’), find all columns
+like ‘Ri1’,’Ri2’,… sorted by index; then group any consecutive indices
+i, i+1 where df[Ri_i] ≈ df[Ri_{i+1}], producing merged names [‘Ri2Ri3’], etc.
+Returns an ordered list of (merged_name, series).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.normal_dist">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">normal_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#normal_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.normal_dist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.perturb_geometry">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">perturb_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenmode_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#perturb_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.perturb_geometry" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.plot_pillbox_geometry">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">plot_pillbox_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ri</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">S</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_bp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beampipe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#plot_pillbox_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.plot_pillbox_geometry" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_cell</strong></p></li>
+<li><p><strong>L</strong></p></li>
+<li><p><strong>Req</strong></p></li>
+<li><p><strong>Ri</strong></p></li>
+<li><p><strong>S</strong></p></li>
+<li><p><strong>L_bp</strong></p></li>
+<li><p><strong>beampipe</strong></p></li>
+<li><p><strong>plot</strong></p></li>
+<li><p><strong>kwargs</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.quad_stroud3">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">quad_stroud3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rdim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#quad_stroud3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.quad_stroud3" title="Link to this definition"></a></dt>
+<dd><p>Stroud-3 quadrature in <span class="math notranslate nohighlight">\([0,1]^k\)</span></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Dimensional Threshold Limitation: In practice, the Stroud 3 quadrature rule may be effective in dimensions
+up to around 3 to 6, depending on the specific problem and the function being integrated. Beyond this,
+the accuracy of the rule typically degrades, and higher-order quadrature rules or
+Monte Carlo methods might be more appropriate.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rdim</strong> (<em>int</em>) – Dimension of variables</p></li>
+<li><p><strong>degree</strong> (<em>int</em>) – Degree</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Nodes and corresponding weights</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.r8_mop">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">r8_mop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#r8_mop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.r8_mop" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.reorder_legend">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">reorder_legend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#reorder_legend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.reorder_legend" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.run_sa">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">run_sa</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#run_sa"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.run_sa" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.save_tune_result">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">save_tune_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#save_tune_result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.save_tune_result" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.shapes_to_dataframe">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">shapes_to_dataframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cavs_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#shapes_to_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.shapes_to_dataframe" title="Link to this definition"></a></dt>
+<dd><p>Convert a list of perturbed-shape dicts into a DataFrame.</p>
+<p>Columns are named A1, B1, a1, …, A2, B2, a2, … etc.,
+where each half-cell (left then right) across all cells
+is assigned an increasing index.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.shortest_direction">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">shortest_direction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#shortest_direction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.shortest_direction" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_angle</strong> (<em>float</em><em>, </em><em>int</em>) – Start angle in radians</p></li>
+<li><p><strong>end_angle</strong> (<em>float</em><em>, </em><em>int</em>) – End angle in radians</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.stroud">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">stroud</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#stroud"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.stroud" title="Link to this definition"></a></dt>
+<dd><p>Stroud-3 method</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>p</strong> (<em>int</em>) – Dimension</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Nodes of quadrature rule in [0,1]**p (column-wise)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.stroud3_nodes_and_weights">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">stroud3_nodes_and_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#stroud3_nodes_and_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.stroud3_nodes_and_weights" title="Link to this definition"></a></dt>
+<dd><p>Stroud’s 3rd-degree rule nodes &amp; weights in [0,1]^p.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.tangent_coords">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">tangent_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ri</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_bp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lft</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#tangent_coords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.tangent_coords" title="Link to this definition"></a></dt>
+<dd><p>Calls to <code class="xref py py-func docutils literal notranslate"><span class="pre">utils.shared_function.ellipse_tangent()</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<em>float</em>) – Equator ellipse dimension</p></li>
+<li><p><strong>B</strong> (<em>float</em>) – Equator ellipse dimension</p></li>
+<li><p><strong>a</strong> (<em>float</em>) – Iris ellipse dimension</p></li>
+<li><p><strong>b</strong> (<em>float</em>) – Iris ellipse dimension</p></li>
+<li><p><strong>Ri</strong> (<em>float</em>) – Iris radius</p></li>
+<li><p><strong>L</strong> (<em>float</em>) – Cavity half cell length</p></li>
+<li><p><strong>Req</strong> (<em>float</em>) – Cavity equator radius</p></li>
+<li><p><strong>L_bp</strong> (<em>float</em>) – Cavity beampipe length</p></li>
+<li><p><strong>tangent_check</strong> (<em>bool</em>) – If set to True, the calculated tangent line as well as the ellipses are plotted and shown</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>df</strong> – Pandas dataframe containing information on the results from fsolve</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.Dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.to_multicell">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">to_multicell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#to_multicell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.to_multicell" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.update_alpha">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">update_alpha</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_parameterisation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'simplecell'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#update_alpha"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.update_alpha" title="Link to this definition"></a></dt>
+<dd><p>Update geometry json file variables to include the value of alpha</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cell</strong> – Cavity geometry parameters</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of cavity geometry parameters</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.weighted_kurtosis">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">weighted_kurtosis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#weighted_kurtosis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.weighted_kurtosis" title="Link to this definition"></a></dt>
+<dd><p>Calculates the weighted kurtosis, returning NaN where std==0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.weighted_mean">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">weighted_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wts</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#weighted_mean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.weighted_mean" title="Link to this definition"></a></dt>
+<dd><p>Calculates the weighted mean</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.weighted_mean_obj">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">weighted_mean_obj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tab_var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#weighted_mean_obj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.weighted_mean_obj" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.weighted_skew">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">weighted_skew</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#weighted_skew"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.weighted_skew" title="Link to this definition"></a></dt>
+<dd><p>Calculates the weighted skewness, returning NaN where std==0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.weighted_variance">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">weighted_variance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#weighted_variance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.weighted_variance" title="Link to this definition"></a></dt>
+<dd><p>Calculates the weighted variance</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.writeCavityForMultipac">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">writeCavityForMultipac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mid_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_cell_left</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_cell_right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beampipe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#writeCavityForMultipac"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.writeCavityForMultipac" title="Link to this definition"></a></dt>
+<dd><p>Write cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – File path to write geometry to</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>mid_cell</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity middle cells’ geometric parameters</p></li>
+<li><p><strong>end_cell_left</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>end_cell_right</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>beampipe</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>plot</strong> (<em>bool</em>) – If True, the cavity geometry is plotted for viewing</p></li>
+<li><p><strong>scale</strong></p></li>
+<li><p><strong>unit</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.writeCavityForMultipac_multicell">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">writeCavityForMultipac_multicell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mid_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_cell_left</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_cell_right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beampipe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#writeCavityForMultipac_multicell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.writeCavityForMultipac_multicell" title="Link to this definition"></a></dt>
+<dd><p>Write cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – File path to write geometry to</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>mid_cell</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity middle cells’ geometric parameters</p></li>
+<li><p><strong>end_cell_left</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>end_cell_right</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>beampipe</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>plot</strong> (<em>bool</em>) – If True, the cavity geometry is plotted for viewing</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cavity_geometry_cli">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cavity_geometry_cli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC_R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">BP</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_degenerate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cavity_geometry_cli"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cavity_geometry_cli" title="Link to this definition"></a></dt>
+<dd><p>Plot cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tangent_check</strong></p></li>
+<li><p><strong>bc</strong></p></li>
+<li><p><strong>ax</strong></p></li>
+<li><p><strong>ignore_degenerate</strong></p></li>
+<li><p><strong>IC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Inner Cell geometric parameters list</p></li>
+<li><p><strong>OC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Left outer Cell geometric parameters list</p></li>
+<li><p><strong>OC_R</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Right outer Cell geometric parameters list</p></li>
+<li><p><strong>BP</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>scale</strong> (<em>float</em>) – Scale of the cavity geometry</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cavity_geometry_cli_flattop">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cavity_geometry_cli_flattop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC_R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">BP</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_degenerate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cavity_geometry_cli_flattop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_flattop" title="Link to this definition"></a></dt>
+<dd><p>Write cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>BP</strong></p></li>
+<li><p><strong>OC_R</strong></p></li>
+<li><p><strong>OC</strong></p></li>
+<li><p><strong>ignore_degenerate</strong></p></li>
+<li><p><strong>file_path</strong> (<em>str</em>) – File path to write geometry to</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>mid_cell</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity middle cells’ geometric parameters</p></li>
+<li><p><strong>end_cell_left</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>end_cell_right</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Array of cavity left end cell’s geometric parameters</p></li>
+<li><p><strong>beampipe</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>plot</strong> (<em>bool</em>) – If True, the cavity geometry is plotted for viewing</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cavity_geometry_cli_multicell">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cavity_geometry_cli_multicell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multicell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">BP</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_degenerate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cavity_geometry_cli_multicell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_multicell" title="Link to this definition"></a></dt>
+<dd><p>Plot cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tangent_check</strong></p></li>
+<li><p><strong>bc</strong></p></li>
+<li><p><strong>ax</strong></p></li>
+<li><p><strong>ignore_degenerate</strong></p></li>
+<li><p><strong>IC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Inner Cell geometric parameters list</p></li>
+<li><p><strong>OC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Left outer Cell geometric parameters list</p></li>
+<li><p><strong>OC_R</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Right outer Cell geometric parameters list</p></li>
+<li><p><strong>BP</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>scale</strong> (<em>float</em>) – Scale of the cavity geometry</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cavity_geometry_cli_quarter">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cavity_geometry_cli_quarter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_degenerate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cavity_geometry_cli_quarter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_quarter" title="Link to this definition"></a></dt>
+<dd><p>Plot cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tangent_check</strong></p></li>
+<li><p><strong>bc</strong></p></li>
+<li><p><strong>ax</strong></p></li>
+<li><p><strong>ignore_degenerate</strong></p></li>
+<li><p><strong>IC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Inner Cell geometric parameters list</p></li>
+<li><p><strong>OC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Left outer Cell geometric parameters list</p></li>
+<li><p><strong>OC_R</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Right outer Cell geometric parameters list</p></li>
+<li><p><strong>BP</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>scale</strong> (<em>float</em>) – Scale of the cavity geometry</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cavity_geometry_cli_wo_gmsh">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cavity_geometry_cli_wo_gmsh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">OC_R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">BP</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangent_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_degenerate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contour</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cavity_geometry_cli_wo_gmsh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cavity_geometry_cli_wo_gmsh" title="Link to this definition"></a></dt>
+<dd><p>Plot cavity geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tangent_check</strong></p></li>
+<li><p><strong>bc</strong></p></li>
+<li><p><strong>ax</strong></p></li>
+<li><p><strong>ignore_degenerate</strong></p></li>
+<li><p><strong>IC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Inner Cell geometric parameters list</p></li>
+<li><p><strong>OC</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Left outer Cell geometric parameters list</p></li>
+<li><p><strong>OC_R</strong> (<em>list</em><em>, </em><em>ndarray</em>) – Right outer Cell geometric parameters list</p></li>
+<li><p><strong>BP</strong> (<em>str {&quot;left&quot;</em><em>, </em><em>&quot;right&quot;</em><em>, </em><em>&quot;both&quot;</em><em>, </em><em>&quot;none&quot;}</em>) – Specify if beam pipe is on one or both ends or at no end at all</p></li>
+<li><p><strong>n_cell</strong> (<em>int</em>) – Number of cavity cells</p></li>
+<li><p><strong>scale</strong> (<em>float</em>) – Scale of the cavity geometry</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_cst_paramters">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_cst_paramters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ic_</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oc_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oc_r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projectDir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NGSolveMEVP'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_cst_paramters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_cst_paramters" title="Link to this definition"></a></dt>
+<dd><p>Writes cavity geometric data that can be imported into CST Studio</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em><em>, </em><em>int</em>) – Cavity marker</p></li>
+<li><p><strong>ic</strong> (<em>list</em><em>, </em><em>array like</em>) – Inner cavity cell geometric variables</p></li>
+<li><p><strong>oc_l</strong> (<em>list</em><em>, </em><em>array like</em>) – Outer cavity cell geometric variables</p></li>
+<li><p><strong>projectDir</strong> (<em>str</em>) – Project directory</p></li>
+<li><p><strong>cell_type</strong> (<em>str</em>) – Single cell or multicell</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cavsim2d.utils.shared_functions.write_pillbox_geometry">
+<span class="sig-prename descclassname"><span class="pre">cavsim2d.utils.shared_functions.</span></span><span class="sig-name descname"><span class="pre">write_pillbox_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_par</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beampipe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cavsim2d/utils/shared_functions.html#write_pillbox_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cavsim2d.utils.shared_functions.write_pillbox_geometry" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong></p></li>
+<li><p><strong>n_cell</strong></p></li>
+<li><p><strong>cell_par</strong></p></li>
+<li><p><strong>beampipe</strong></p></li>
+<li><p><strong>plot</strong></p></li>
+<li><p><strong>kwargs</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 <section id="module-cavsim2d.utils">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cavsim2d.utils" title="Link to this heading"></a></h2>

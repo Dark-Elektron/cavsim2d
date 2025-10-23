@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cavsim2d.analysis.tune.tuner &mdash; cavsim2d 13.08.2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/plot_directive.css?v=7f9a90b1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=f5513fb5"></script>
+        <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            cavsim2d
+              <img src="../../../../_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#examples">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#understanding-the-geometry-types">Understanding the geometry types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#advanced">Advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html#parallelisation">Parallelisation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../modules.html">cavsim2d</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">cavsim2d</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">cavsim2d.analysis.tune.tuner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cavsim2d.analysis.tune.tuner</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.analysis.tune.pyTuner</span> <span class="kn">import</span> <span class="n">PyTuneNGSolve</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.utils.shared_functions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.solvers.NGSolve.eigen_ngsolve</span> <span class="kn">import</span> <span class="n">NGSolveMEVP</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">cavsim2d.constants</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">ngsolve_mevp</span> <span class="o">=</span> <span class="n">NGSolveMEVP</span><span class="p">()</span>
+
+<span class="n">VAR_TO_INDEX_DICT</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;l&#39;</span><span class="p">:</span> <span class="mi">7</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="Tuner">
+<a class="viewcode-back" href="../../../../cavsim2d.analysis.tune.html#cavsim2d.analysis.tune.tuner.Tuner">[docs]</a>
+<span class="k">class</span> <span class="nc">Tuner</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="Tuner.tune_ngsolve">
+<a class="viewcode-back" href="../../../../cavsim2d.analysis.tune.html#cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve">[docs]</a>
+    <span class="k">def</span> <span class="nf">tune_ngsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo_cavs_dict</span><span class="p">,</span> <span class="n">bc</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="s2">&quot;No&quot;</span><span class="p">,</span>
+                     <span class="n">proc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="n">tune_variable</span><span class="o">=</span><span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="n">tune_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">parentDir</span> <span class="o">=</span> <span class="n">SOFTWARE_DIRECTORY</span>
+        <span class="c1"># tuner</span>
+        <span class="k">if</span> <span class="n">tune_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tune_config</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">abs_err_list</span><span class="p">,</span> <span class="n">conv_dict</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">pytune_ngsolve</span> <span class="o">=</span> <span class="n">PyTuneNGSolve</span><span class="p">()</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">tuned_shape_space</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">total_no_of_shapes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pseudo_cavs_dict</span><span class="p">)</span>
+
+        <span class="c1"># check for already processed shapes</span>
+        <span class="n">existing_keys</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># if resume == &quot;Yes&quot;:</span>
+        <span class="c1">#     # check if value set is already written. This is to enable continuation in case of break in program</span>
+        <span class="c1">#     if os.path.exists(os.path.join(cav.self_dir, &#39;Cavities&#39;, filename)):</span>
+        <span class="c1">#         tuned_shape_space = json.load(open(os.path.join(cav.self_dir, &#39;Cavities&#39;, filename), &#39;r&#39;))</span>
+        <span class="c1">#</span>
+        <span class="c1">#         existing_keys = list(tuned_shape_space.keys())</span>
+
+        <span class="n">error_msg1</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">error_msg2</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">cav</span> <span class="ow">in</span> <span class="n">pseudo_cavs_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># A_i, B_i, a_i, b_i, Ri_i, L_i, Req = np.array(cav.shape[&#39;IC&#39;])[:7]</span>
+            <span class="c1"># A_o, B_o, a_o, b_o, Ri_o, L_o, Req_o = np.array(cav.shape[&#39;OC&#39;])[:7]  # Req here is none but required</span>
+
+            <span class="n">target_freq</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="s1">&#39;FREQ&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Check if simulation is already run</span>
+            <span class="n">freq</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">alpha_i</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">alpha_o</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">resume</span> <span class="o">==</span> <span class="s2">&quot;Yes&quot;</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">projectDir</span><span class="p">,</span> <span class="n">key</span><span class="p">)):</span>
+
+                <span class="c1"># alpha_i, error_msg1 = calculate_alpha(A_i, B_i, a_i, b_i, Ri_i, L_i, Req, 0)</span>
+                <span class="c1"># alpha_o, error_msg2 = calculate_alpha(A_o, B_o, a_o, b_o, Ri_o, L_o, Req, 0)</span>
+                <span class="c1">#</span>
+                <span class="c1"># inner_cell = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req, alpha_i]</span>
+                <span class="c1"># outer_cell = [A_o, B_o, a_o, b_o, Ri_o, L_o, Req, alpha_o]</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># remove any existing folder to avoid copying the wrong retults</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="sa">fr</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="si">}</span><span class="s2">/eigenmode/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="sa">fr</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cav</span><span class="o">.</span><span class="n">self_dir</span><span class="si">}</span><span class="s2">/eigenmode/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># inner_cell = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req, 0]</span>
+                <span class="c1"># outer_cell = [A_o, B_o, a_o, b_o, Ri_o, L_o, Req_o, 0]</span>
+
+                <span class="c1"># edit to check for key later</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_keys</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">tune_var</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">conv_dict</span><span class="p">,</span> <span class="n">abs_err_list</span> <span class="o">=</span> <span class="n">pytune_ngsolve</span><span class="o">.</span><span class="n">tune</span><span class="p">(</span><span class="n">cav</span><span class="p">,</span> <span class="n">tune_config</span><span class="o">=</span><span class="n">tune_config</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                        <span class="n">tune_var</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="c1"># tune_variable = tune_variable.split(&#39;_&#39;)[0]</span>
+                <span class="c1"># if tune_var != 0 and freq != 0:</span>
+                <span class="c1">#     if (cell_type.lower() == &#39;mid cell&#39; or cell_type.lower() == &#39;mid-cell&#39;</span>
+                <span class="c1">#             or cell_type.lower() == &#39;mid_cell&#39;):</span>
+                <span class="c1">#         tuned_mid_cell = cav.shape[&#39;IC&#39;][:7]</span>
+                <span class="c1">#         tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var</span>
+                <span class="c1">#         tuned_end_cell = cav.shape[&#39;OC&#39;][:7]</span>
+                <span class="c1">#         # enforce equator continuity</span>
+                <span class="c1">#         tuned_end_cell[6] = tuned_mid_cell[6]</span>
+                <span class="c1">#     elif (cell_type.lower() == &#39;mid-end cell&#39; or cell_type.lower() == &#39;mid-end-cell&#39;</span>
+                <span class="c1">#           or cell_type.lower() == &#39;mid_end_cell&#39;):</span>
+                <span class="c1">#         tuned_mid_cell = cav.shape[&#39;IC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell = cav.shape[&#39;OC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var</span>
+                <span class="c1">#     elif (cell_type.lower() == &#39;end-end cell&#39; or cell_type.lower() == &#39;end-end-cell&#39;</span>
+                <span class="c1">#           or cell_type.lower() == &#39;end_end_cell&#39;) or cell_type.lower() == &#39;end end cell&#39;:</span>
+                <span class="c1">#         tuned_mid_cell = cav.shape[&#39;IC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell = cav.shape[&#39;OC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var</span>
+                <span class="c1">#         tuned_mid_cell = copy.deepcopy(tuned_end_cell)</span>
+                <span class="c1">#     elif cell_type.lower() == &#39;single_cell&#39; or cell_type.lower() == &#39;single cell&#39;:</span>
+                <span class="c1">#         tuned_mid_cell = cav.shape[&#39;IC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell = cav.shape[&#39;OC&#39;][:7]</span>
+                <span class="c1">#         tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var</span>
+                <span class="c1">#         tuned_mid_cell = copy.deepcopy(tuned_end_cell)</span>
+                <span class="c1">#     else:</span>
+                <span class="c1">#         info(&#39;Valid cell_type not selected. Defaulting to end_cell&#39;)</span>
+                <span class="c1">#         tuned_mid_cell = cav.shape[&#39;IC&#39;][:7]</span>
+                <span class="c1">#         tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var</span>
+                <span class="c1">#         tuned_end_cell = cav.shape[&#39;OC&#39;][:7]</span>
+                <span class="c1">#         # enforce equator continuity</span>
+                <span class="c1">#         tuned_end_cell[6] = tuned_mid_cell[6]</span>
+                <span class="c1">#</span>
+                <span class="c1">#         # # enforce equator continuity</span>
+                <span class="c1">#         # tuned_mid_cell[6] = tuned_end_cell[6]</span>
+                <span class="c1">#</span>
+                <span class="c1">#     alpha_i, error_msg1 = calculate_alpha(*tuned_mid_cell, 0)</span>
+                <span class="c1">#     alpha_o, error_msg2 = calculate_alpha(*tuned_end_cell, 0)</span>
+                <span class="c1">#</span>
+                <span class="c1">#     # update cells with alpha</span>
+                <span class="c1">#     tuned_mid_cell = np.append(tuned_mid_cell, alpha_i)</span>
+                <span class="c1">#     tuned_end_cell = np.append(tuned_end_cell, alpha_o)</span>
+                <span class="c1">#</span>
+                <span class="c1">#     inner_cell = [*tuned_mid_cell, alpha_i]</span>
+                <span class="c1">#     outer_cell = [*tuned_end_cell, alpha_o]</span>
+
+            <span class="c1"># clear folder after every run. This is to avoid copying of wrong values to save folder</span>
+            <span class="c1"># processor folder</span>
+            <span class="c1"># print(tune_var, freq)</span>
+            <span class="c1"># proc_fold = os.path.join(cav.self_dir, &#39;eigenmode&#39;, f&#39;_process_{proc}&#39;)</span>
+            <span class="c1"># shutil.rmtree(proc_fold)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;Failed&quot;</span>
+            <span class="n">d_tune_res</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">abs_err_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-4</span>
+
+            <span class="k">if</span> <span class="s1">&#39;tol&#39;</span> <span class="ow">in</span> <span class="n">tune_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">tol</span> <span class="o">=</span> <span class="n">tune_config</span><span class="p">[</span><span class="s1">&#39;tol&#39;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">tune_var</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">freq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">accuracy</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">freq</span> <span class="o">-</span> <span class="n">target_freq</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">accuracy</span> <span class="o">&lt;=</span> <span class="n">tol</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Success: </span><span class="si">{</span><span class="n">target_freq</span><span class="p">,</span><span class="w"> </span><span class="n">freq</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed: Accuracy of </span><span class="si">{</span><span class="n">tol</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2"> could not reached. Accuracy of </span><span class="si">{</span><span class="n">accuracy</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2"> reached.&quot;</span>
+
+                <span class="n">tuned_shape_space</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="n">cav</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="s1">&#39;FREQ&#39;</span><span class="p">:</span> <span class="n">freq</span><span class="p">}</span>
+                <span class="c1"># write tune results</span>
+                <span class="n">d_tune_res</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">cav</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                              <span class="s1">&#39;TUNED VARIABLE&#39;</span><span class="p">:</span> <span class="n">tune_variable</span><span class="p">,</span> <span class="s1">&#39;FREQ&#39;</span><span class="p">:</span> <span class="n">freq</span><span class="p">}</span>
+
+                <span class="n">abs_err_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;abs_err&#39;</span><span class="p">:</span> <span class="n">abs_err_list</span><span class="p">}</span>
+
+            <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+                <span class="n">done</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Done Tuning Cavity </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Done Tuning Cavity </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">tuned_shape_space</span><span class="p">,</span> <span class="n">d_tune_res</span><span class="p">,</span> <span class="n">conv_dict</span><span class="p">,</span> <span class="n">abs_err_dict</span>
+
+        <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">runtime</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Processor </span><span class="si">{</span><span class="n">proc</span><span class="si">}</span><span class="s1"> runtime: </span><span class="si">{</span><span class="n">runtime</span><span class="si">}</span><span class="s1">s&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Tuner.tune_ngsolve_multicell">
+<a class="viewcode-back" href="../../../../cavsim2d.analysis.tune.html#cavsim2d.analysis.tune.tuner.Tuner.tune_ngsolve_multicell">[docs]</a>
+    <span class="k">def</span> <span class="nf">tune_ngsolve_multicell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo_shape_space</span><span class="p">,</span> <span class="n">bc</span><span class="p">,</span> <span class="n">parentDir</span><span class="p">,</span> <span class="n">projectDir</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="s2">&quot;No&quot;</span><span class="p">,</span>
+                     <span class="n">proc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">sim_folder</span><span class="o">=</span><span class="s1">&#39;NGSolveMEVP&#39;</span><span class="p">,</span> <span class="n">tune_variable</span><span class="o">=</span><span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="n">cell_type</span><span class="o">=</span><span class="s1">&#39;Mid Cell&#39;</span><span class="p">,</span> <span class="n">tune_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="c1"># tuner</span>
+        <span class="k">if</span> <span class="n">tune_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tune_config</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">target_freq</span> <span class="o">=</span> <span class="n">tune_config</span><span class="p">[</span><span class="s1">&#39;freq&#39;</span><span class="p">]</span>
+        <span class="n">abs_err_list</span><span class="p">,</span> <span class="n">conv_dict</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">pytune_ngsolve</span> <span class="o">=</span> <span class="n">PyTuneNGSolve</span><span class="p">()</span>
+
+        <span class="n">tuned_multicell_shape_space</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">multicell</span> <span class="ow">in</span> <span class="n">pseudo_shape_space</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="sa">fr</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">projectDir</span><span class="si">}</span><span class="s2">/SimulationData/</span><span class="si">{</span><span class="n">sim_folder</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="sa">fr</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">projectDir</span><span class="si">}</span><span class="s2">/SimulationData/</span><span class="si">{</span><span class="n">sim_folder</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># print(multicell)</span>
+            <span class="n">tune_var_dict</span><span class="p">,</span> <span class="n">freq_dict</span><span class="p">,</span> <span class="n">conv_dict</span><span class="p">,</span> <span class="n">abs_err_list</span> <span class="o">=</span> <span class="n">pytune_ngsolve</span><span class="o">.</span><span class="n">tune_multicell</span><span class="p">(</span><span class="n">multicell</span><span class="p">,</span>
+                                                                          <span class="n">tune_variable</span><span class="p">,</span>
+                                                                          <span class="n">target_freq</span><span class="p">,</span> <span class="n">bc</span><span class="p">,</span>
+                                                                          <span class="n">sim_folder</span><span class="p">,</span>
+                                                                          <span class="n">parentDir</span><span class="p">,</span> <span class="n">projectDir</span><span class="p">,</span>
+                                                                          <span class="n">proc</span><span class="o">=</span><span class="n">proc</span><span class="p">,</span> <span class="n">tune_config</span><span class="o">=</span><span class="n">tune_config</span><span class="p">)</span>
+            <span class="c1"># print(&#39;before tuning&#39;, multicell)</span>
+            <span class="c1"># tuned_multicell = pytune_ngsolve.tune_multicell(multicell,</span>
+            <span class="c1">#                                                 tune_variable,</span>
+            <span class="c1">#                                                 target_freq, bc,</span>
+            <span class="c1">#                                                 sim_folder,</span>
+            <span class="c1">#                                                 parentDir, projectDir,</span>
+            <span class="c1">#                                                 proc=proc, tune_config=tune_config)</span>
+            <span class="c1"># print(&#39;after tuning&#39;, multicell)</span>
+
+            <span class="n">tuned_multicell_shape_space</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">multicell</span>  <span class="c1"># tuning done in place</span>
+
+            <span class="c1"># clear folder after every run. This is to avoid copying of wrong values to save folder</span>
+            <span class="c1"># processor folder</span>
+            <span class="n">proc_fold</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">projectDir</span><span class="p">,</span> <span class="s1">&#39;SimulationData&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">sim_folder</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;_process_</span><span class="si">{</span><span class="n">proc</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">proc_fold</span><span class="p">)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;Passed&quot;</span>
+            <span class="n">d_tune_res</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">abs_err_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">end_freq_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">freq_list</span> <span class="ow">in</span> <span class="n">freq_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">end_freq_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">freq_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mf">0.001</span><span class="p">)</span> <span class="o">*</span> <span class="n">target_freq</span> <span class="o">&lt;</span> <span class="nb">round</span><span class="p">(</span><span class="n">freq_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.001</span><span class="p">)</span> <span class="o">*</span> <span class="n">target_freq</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="s1">&#39;Failed&#39;</span>
+
+            <span class="n">done</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Done Tuning Cavity </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s1">:: </span><span class="si">{</span><span class="n">end_freq_list</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tuned_multicell_shape_space</span><span class="p">,</span> <span class="n">d_tune_res</span><span class="p">,</span> <span class="n">conv_dict</span><span class="p">,</span> <span class="n">abs_err_dict</span></div>
+</div>
+
+
+
+    <span class="c1"># if __name__ == &#39;__main__&#39;:</span>
+<span class="c1">#     #</span>
+<span class="c1">#     tune = Tuner()</span>
+<span class="c1">#</span>
+<span class="c1">#     tune_var =</span>
+<span class="c1">#     par_mid =</span>
+<span class="c1">#     par_end =</span>
+<span class="c1">#     target_freq = 400  # MHz</span>
+<span class="c1">#     beampipes =</span>
+<span class="c1">#     bc =  # boundary conditions</span>
+<span class="c1">#     parentDir = &quot;&quot;  # location of slans code. See folder structure in the function above</span>
+<span class="c1">#     projectDir = &quot;&quot;  # location to write results to</span>
+<span class="c1">#     iter_set =</span>
+<span class="c1">#     proc = 0</span>
+<span class="c1">#     tune.tune(self, tune_var, par_mid, par_end, target_freq, beampipes, bc, parentDir, projectDir, iter_set, proc=0):</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sosoho-Abasi Udongwo.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

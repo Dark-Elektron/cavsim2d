@@ -20,7 +20,6 @@
         <script src="_static/documentation_options.js?v=f5513fb5"></script>
         <script src="_static/doctools.js?v=9bcbadda"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -38,7 +37,7 @@
           
           <a href="index.html" class="icon icon-home">
             cavsim2d
-              <img src="_static/cavsim2d_logo_2x.png" class="logo" alt="Logo"/>
+              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -69,7 +68,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d-cavity-module">cavsim2d.cavity module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
 </ul>
 </li>
@@ -112,7 +111,34 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html">cavsim2d.solvers.NGSolve package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d-solvers-ngsolve-eigen-ngsolve-module">cavsim2d.solvers.NGSolve.eigen_ngsolve module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#module-cavsim2d.solvers.NGSolve.eigen_ngsolve">cavsim2d.solvers.NGSolve.eigen_ngsolve module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calcualte_V"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.calcualte_V()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calculate_RQ"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.calculate_RQ()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.calculate_Vacc"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.calculate_Vacc()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.cavity_multicell"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.cavity_multicell()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.evaluate_qois"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.evaluate_qois()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.evaluate_qois_gun"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.evaluate_qois_gun()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.gauss"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.gauss()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.gaussian_deform"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.gaussian_deform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.geometry_from_array"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.geometry_from_array()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.get_boundaries_from_geo"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.get_boundaries_from_geo()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_fields"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.load_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_geo"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.load_geo()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.load_mesh"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.load_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.plot_fields"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.plot_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.plot_mesh"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.plot_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.save_fields"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.save_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.save_mesh"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.save_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.solve"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.solve()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.solve_mevp"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.solve_mevp()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.NGSolveMEVP.write_geometry_multicell"><code class="docutils literal notranslate"><span class="pre">NGSolveMEVP.write_geometry_multicell()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.get_boundary_nodes"><code class="docutils literal notranslate"><span class="pre">get_boundary_nodes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#cavsim2d.solvers.NGSolve.eigen_ngsolve.suppress_c_stdout_stderr"><code class="docutils literal notranslate"><span class="pre">suppress_c_stdout_stderr</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="cavsim2d.solvers.NGSolve.html#module-cavsim2d.solvers.NGSolve">Module contents</a></li>
 </ul>
 </li>
