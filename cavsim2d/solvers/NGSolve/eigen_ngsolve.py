@@ -629,7 +629,10 @@ class NGSolveMEVP:
             return False
 
 
-    def load_geo(self, filepath, maxh=1):
+    def load_geo(self, filepath, output_filepath=None, maxh=1):
+        if output_filepath is None:
+            output_filepath = filepath
+
         gmsh.initialize()
 
         # suppress all console output
@@ -639,9 +642,9 @@ class NGSolveMEVP:
         gmsh.open(filepath)
         gmsh.model.mesh.generate(2)
         with suppress_c_stdout_stderr():
-            gmsh.write(os.path.join(os.path.dirname(filepath), "mesh.step"))
+            gmsh.write(os.path.join(os.path.dirname(output_filepath), "mesh.step"))
 
-        self.step_geo = OCCGeometry(os.path.join(os.path.dirname(filepath), "mesh.step"), dim=2)
+        self.step_geo = OCCGeometry(os.path.join(os.path.dirname(output_filepath), "mesh.step"), dim=2)
         self.ngmesh = self.step_geo.GenerateMesh(maxh=maxh)
 
         # get boundary conditions

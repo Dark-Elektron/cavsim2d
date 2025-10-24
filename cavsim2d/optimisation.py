@@ -60,13 +60,14 @@ class Optimisation:
         self.optimisation_config = None
         self.err = None
 
-    def start_optimisation(self, projectDir, config):
+    def optimiser(self, cav, config):
+        self.cav = cav
         self.err = []
         self.pareto_history = []
         self.optimisation_config = config
         # apply optimisation settings
-        self.parentDir = os.getcwd()
-        self.projectDir = projectDir
+        self.parentDir = SOFTWARE_DIRECTORY
+        self.projectDir = cav.projectDir
         self.initial_points = config['initial_points']
         self.ng_max = config['no_of_generation']
         self.objectives_unprocessed = config['objectives']
@@ -161,85 +162,44 @@ class Optimisation:
         if n == 0:
             # update lists
             self.df = self.generate_first_men(self.initial_points, 0)
-
             self.f2_interp = [np.zeros(self.n_interp) for _ in range(len(self.objectives))]
 
-            folders = [os.path.join(self.projectDir, 'SimulationData', 'Optimisation'),
-                       os.path.join(self.projectDir, 'SimulationData', 'Optimisation')]
+            folder = os.path.join(self.cav.self_dir, 'optimisation')
 
             # clear folder to avoid reading from previous optimization attempt
-            for folder in folders:
-                if os.path.exists(folder):
-                    for filename in os.listdir(folder):
-                        try:
-                            shutil.rmtree(os.path.join(folder, filename))
-                        except NotADirectoryError:
-                            os.remove(os.path.join(folder, filename))
-                else:
-                    os.mkdir(folder)
+            if os.path.exists(folder):
+                for filename in os.listdir(folder):
+                    try:
+                        shutil.rmtree(os.path.join(folder, filename))
+                    except NotADirectoryError:
+                        os.remove(os.path.join(folder, filename))
+            else:
+                os.mkdir(folder)
 
         # optimize by page rank
         # remove the lowest ranking members
         df = self.df
 
         # compare with global dict and remove duplicates
-        compared_cols = ['A', 'B', 'a', 'b', 'Ri']
+        compared_cols = self.cav.parameters.keys()
         if not self.df_global.empty:
             df = df.loc[~df.set_index(compared_cols).index.isin(
                 self.df_global.set_index(compared_cols).index)]  # this line of code removes duplicates
 
-        pseudo_shape_space = {}
+        # pseudo_shape_space = {}
         for index, row in df.iterrows():
             rw = row.tolist()
 
-            if self.cell_type.lower() == 'mid cell' or self.cell_type.lower() == 'mid-cell' or self.cell_type.lower() == 'mid_cell':
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'none',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            elif self.cell_type.lower() == 'mid-end cell' or self.cell_type.lower() == 'mid-end-cell' or self.cell_type.lower() == 'mid_end_cell':
-
-                assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
-                     "be provided in the optimisation_config dictionary.")
-                assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
-                                                                       "At least 7 geometric parameters "
-                                                                       "[A, B, a, b, Ri, L, Req] required.")
-                IC = self.optimisation_config['mid cell']
-                # check if mid-cell is not a degenerate geometry
-                df = tangent_coords(*np.array(IC)[0:8], 0)
-                assert df[-2] == 1, ("The mid-cell geometry dimensions given result in a degenerate geometry. "
-                                     "Please check.")
-
-                pseudo_shape_space[rw[0]] = {'IC': IC, 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            elif (self.cell_type.lower() == 'end-end cell' or self.cell_type.lower() == 'end-end-cell'
-                  or self.cell_type.lower() == 'end_end_cell') or self.cell_type.lower() == 'end end cell':
-
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'right',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-            else:
-                pseudo_shape_space[rw[0]] = {'IC': rw[1:], 'OC': rw[1:], 'OC_R': rw[1:], 'BP': 'both',
-                                             'FREQ': self.tune_freq, 'n_cells': 1,
-                                             'CELL PARAMETERISATION': 'simplecell'}
-
-        pseudo_shape_space = self.remove_duplicate_values(pseudo_shape_space)
-
-        ############################
-        # run tune
         n_cells = 1
+        print(df)
+        cavs_object = self.cav.spawn(df, os.path.join(self.cav.self_dir, 'optimisation'))
+        self.run_tune_opt(cavs_object, self.tune_config)
 
-        # self.run_tune_parallel(pseudo_shape_space, n_cells)
-        self.run_tune_opt(pseudo_shape_space, self.tune_config)
         # get successfully tuned geometries and filter initial generation dictionary
         processed_keys = []
         tune_result = []
-        for key in pseudo_shape_space.keys():
-            filename = self.projectDir / fr'SimulationData\Optimisation\{key}\tune_res.json'
+        for key, scav in cavs_object.items():
+            filename = os.path.join(scav.self_dir, 'eigenmode', 'tune_res.json')
             try:
                 with open(filename, 'r') as file:
                     tune_res = json.load(file)
@@ -263,24 +223,26 @@ class Optimisation:
         # for o in self.objectives:
         intersection = set(self.objective_vars).intersection(
             ["freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"])
+
         if len(intersection) > 0:
             # process tune results
             obj_result = []
             processed_keys = []
-            for key in pseudo_shape_space.keys():
-                filename = self.projectDir / fr'SimulationData\Optimisation\{key}\monopole\qois.json'
-                try:
-                    with open(filename, 'r') as file:
-                        qois = json.load(file)
-                    # extract objectives from tune_res
-                    obj = list(
-                        {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
 
-                    obj_result.append(obj)
-                    # tune_result.append(list(qois.values()))
-                    processed_keys.append(key)
-                except FileNotFoundError as e:
-                    pass
+            filename = os.path.join(self.cav.eigenmode_dir, 'monopole', 'qois.json')
+            try:
+                with open(filename, 'r') as file:
+                    qois = json.load(file)
+
+                # extract objectives from tuned cavity
+                obj = list(
+                    {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
+
+                obj_result.append(obj)
+
+                processed_keys.append(key)
+            except FileNotFoundError as e:
+                pass
 
             # after removing duplicates, dataframe might change size
             if len(processed_keys) == 0:
@@ -922,7 +884,7 @@ class Optimisation:
 
         return list(expe.T[0]), list(stdDev.T[0])
 
-    def run_tune_opt(self, pseudo_shape_space, tune_config):
+    def run_tune_opt(self, cav_dict, tune_config):
         tune_config_keys = tune_config.keys()
         freqs = tune_config['freqs']
         tune_parameters = tune_config['parameters']
@@ -935,27 +897,27 @@ class Optimisation:
         else:
             processes = 1
 
-        if isinstance(freqs, float) or isinstance(freqs, int):
-            freqs = np.array([freqs for _ in range(len(pseudo_shape_space))])
-        else:
-            assert len(freqs) == len(pseudo_shape_space), error(
-                'Number of target frequencies must correspond to the number of cavities')
-            freqs = np.array(freqs)
-
-        if isinstance(tune_parameters, str):
-            assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
-                'Please enter a valid tune parameter')
-            tune_variables = np.array([tune_parameters for _ in range(len(pseudo_shape_space))])
-            cell_types = np.array([cell_types for _ in range(len(pseudo_shape_space))])
-        else:
-            assert len(tune_parameters) == len(pseudo_shape_space), error(
-                'Number of tune parameters must correspond to the number of cavities')
-            assert len(cell_types) == len(pseudo_shape_space), error(
-                'Number of cell types must correspond to the number of cavities')
+        # if isinstance(freqs, float) or isinstance(freqs, int):
+        #     freqs = np.array([freqs for _ in range(len(pseudo_shape_space))])
+        # else:
+        #     assert len(freqs) == len(pseudo_shape_space), error(
+        #         'Number of target frequencies must correspond to the number of cavities')
+        #     freqs = np.array(freqs)
+        #
+        # if isinstance(tune_parameters, str):
+        #     assert tune_config['parameters'] in ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req'], error(
+        #         'Please enter a valid tune parameter')
+        #     tune_variables = np.array([tune_parameters for _ in range(len(pseudo_shape_space))])
+        #     cell_types = np.array([cell_types for _ in range(len(pseudo_shape_space))])
+        # else:
+        #     assert len(tune_parameters) == len(pseudo_shape_space), error(
+        #         'Number of tune parameters must correspond to the number of cavities')
+        #     assert len(cell_types) == len(pseudo_shape_space), error(
+        #         'Number of cell types must correspond to the number of cavities')
             tune_variables = np.array(tune_parameters)
             cell_types = np.array(cell_types)
 
-        run_tune_parallel(pseudo_shape_space, tune_config, self.projectDir, solver='NGSolveMEVP')
+        run_tune_parallel(cav_dict, tune_config)
 
     def run_wakefield_opt(self, df, wakefield_config):
         # # get analysis parameters
@@ -1061,7 +1023,7 @@ class Optimisation:
         return shape_space
 
     def generate_first_men(self, initial_points, n):
-
+        print("these are the initial points", initial_points)
         if list(self.method.keys())[0] == "LHS":
             seed = self.method['LHS']['seed']
             if seed == '' or seed is None:
@@ -1095,10 +1057,8 @@ class Optimisation:
             for i in range(len(const_var) - 1, -1, -1):
                 df[const_var[i][0]] = np.ones(initial_points) * const_var[i][1]
 
-            df['alpha_i'] = np.zeros(initial_points)
-            df['alpha_o'] = np.zeros(initial_points)
 
-            return df
+            return df.set_index('key')
 
         elif list(self.method.keys())[0] == "Sobol Sequence":
             seed = self.method['LHS']['seed']
@@ -1183,6 +1143,7 @@ class Optimisation:
                                        initial_points),
                     'alpha_i': np.zeros(initial_points),
                     'alpha_o': np.zeros(initial_points)}
+
             return pd.DataFrame.from_dict(data)
 
     def process_constraints(self, constraints):

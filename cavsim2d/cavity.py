@@ -831,6 +831,11 @@ class Cavities(Optimisation):
             # except FileNotFoundError:
             #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
+    def run_optimisation(self, optimisation_config):
+        # create dummy cavity
+        for cav in self.cavities_list:
+            cav.optimise(optimisation_config, optimiser=self.optimiser)
+
     def plot(self, what, ax=None, scale_x=None, **kwargs):
         for ii, cav in enumerate(self.cavities_list):
             if what.lower() == 'geometry':
@@ -3571,9 +3576,6 @@ class Cavities(Optimisation):
 
         return f_list
 
-    def run_optimisation(self, optimisation_config):
-        self.start_optimisation(self.projectDir, optimisation_config)
-
     @staticmethod
     def calc_cutoff(Ri, mode):
         # calculate frequency from Ri
@@ -3685,6 +3687,8 @@ class Cavity(ABC):
         self.sweep_results_uq = {}
         self.uq_fm_results = None
         self.mesh = None
+        self.shape = None
+        self.shape_multicell = None
 
         # plot_label: default to `name` if not provided
         self.name = name
@@ -3732,16 +3736,33 @@ class Cavity(ABC):
         # ───────────────────────────────────────────────────────────────────────────────────────────
         self.parameters = {}
 
+    # @abstractmethod
+    def create(self):
         # If a geometry file is provided, skip dimension‐based setup:
-        if geo_filepath:
-            self._init_from_geo(geo_filepath)
+        if self.geo_filepath:
+            # make directory paths
+            cav_dir_structure = {
+                self.name: {
+                    'geometry': None,
+                }
+            }
+
+            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+            else:
+                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
+                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
+
+            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
+
+            self._init_from_geo(self.geo_filepath, self.self_dir)
             self.get_geometric_parameters()
 
-    def _init_from_geo(self, filepath, kind='geo'):
+    def _init_from_geo(self, filepath, output_filepath, kind='geo'):
         """
         Load geometry from a file (e.g. a .geo)
         """
-        self.step_geo, self.mesh, self.bcs = ngsolve_mevp.load_geo(filepath)
+        self.step_geo, self.mesh, self.bcs = ngsolve_mevp.load_geo(filepath, output_filepath)
 
     def get_geometric_parameters(self):
         with open(self.geo_filepath, "r") as file:
@@ -3751,9 +3772,6 @@ class Cavity(ABC):
                 if match:
                     var_name, var_value = match.groups()
                     self.parameters[var_name] = float(var_value)
-
-    def create(self):
-        pass
 
     def set_name(self, name):
         """
@@ -4250,6 +4268,9 @@ class Cavity(ABC):
 
     def set_wall_material(self, wm):
         self.wall_material = wm
+
+    def optimise(self, optimisation_config, optimiser):
+       optimiser(self, optimisation_config)
 
     def get_ngsolve_tune_res(self):
         """
@@ -5421,9 +5442,57 @@ class Cavity(ABC):
         }
         return fr"{json.dumps(p, indent=4)}"
 
-    @abstractmethod
-    def create(self):
-        pass
+    # @abstractmethod
+    def spawn(self, difference, folder):
+        spawn = Cavities(folder)
+        for key, params_diff in difference.iterrows():
+            # load base geometry
+            base_geo = self.geo_filepath
+
+            name = key
+            print(name, type(name))
+            scav = Cavity(name=name, geo_filepath=os.path.join(self.self_dir, 'geometry', 'geodata.geo'))
+            spawn.add_cavity(scav, names=name, plot_labels=name)
+
+            # modify base_geo parameters according to params_diff
+            output_folder = os.path.join(scav.self_dir, "geometry")
+            self.update_geo_parameters(base_geo, output_folder, params_diff.to_dict())
+
+        return spawn
+
+    def update_geo_parameters(self, input_geo, output_folder, update_params):
+        """
+        Reads a .geo file, updates specified parameters, and writes the result to output_folder.
+
+        Parameters:
+            input_geo (str): Path to input .geo file.
+            output_folder (str): Folder where the modified file will be written.
+            update_params (dict): Dictionary of parameters to update, e.g. {'R1': 5.0, 'L': 10}.
+        """
+
+        # Read the file
+        with open(input_geo, "r") as f:
+            content = f.read()
+
+        # Update each parameter
+        for name, new_value in update_params.items():
+            # Match patterns like: R1 = 2.5; or R1=2.5;
+            pattern = rf"\b{name}\s*=\s*[^;]+;"
+            replacement = f"{name} = {new_value};"
+            content, n = re.subn(pattern, replacement, content)
+            if n == 0:
+                error(f"Warning: parameter '{name}' not found in {os.path.basename(input_geo)}")
+
+        # Ensure output folder exists
+        os.makedirs(output_folder, exist_ok=True)
+
+        # Write modified file
+        output_path = os.path.join(output_folder, os.path.basename(input_geo))
+        with open(output_path, "w") as f:
+            f.write(content)
+
+        info(f"Updated .geo file written to: {output_path}")
+        return output_path
 
 
 class EllipticalCavity(Cavity):
@@ -5650,30 +5719,30 @@ class EllipticalCavity(Cavity):
         with open(write.replace('.n', '.geo'), 'w') as cav:
             cav.write(f'\nSetFactory("OpenCASCADE");\n')
 
-            # # define parameters
-            # cav.write(f'\nA_el = DefineNumber[{A_el}, Name "Parameters/End cell 1 Equator ellipse major axis"];')
-            # cav.write(f'\nB_el = DefineNumber[{B_el}, Name "Parameters/End cell 1 Equator ellipse minor axis"];')
-            # cav.write(f'\na_el = DefineNumber[{a_el}, Name "Parameters/End cell 1 Iris ellipse major axis"];')
-            # cav.write(f'\nb_el = DefineNumber[{b_el}, Name "Parameters/End cell 1 Iris ellipse minor axis"];')
-            # cav.write(f'\nRi_el = DefineNumber[{Ri_el}, Name "Parameters/End cell 1 Iris radius"];')
-            # cav.write(f'\nL_el = DefineNumber[{L_el}, Name "Parameters/End cell 1 Half cell length"];')
-            # # cav.write(f'\nReq_el = DefineNumber[{Req}, Name "Parameters/End cell 1 Equator radius"];\n')
-            #
-            # cav.write(f'\nA_m = DefineNumber[{A_el}, Name "Parameters/Mid cell Equator ellipse major axis"];')
-            # cav.write(f'\nB_m = DefineNumber[{B_el}, Name "Parameters/Mid cell Equator ellipse minor axis"];')
-            # cav.write(f'\na_m = DefineNumber[{a_el}, Name "Parameters/Mid cell Iris ellipse major axis"];')
-            # cav.write(f'\nb_m = DefineNumber[{b_el}, Name "Parameters/Mid cell Iris ellipse minor axis"];')
-            # cav.write(f'\nRi_m = DefineNumber[{Ri_el}, Name "Parameters/Mid cell Iris radius"];')
-            # cav.write(f'\nL_m = DefineNumber[{L_el}, Name "Parameters/Mid cell Half cell length"];')
-            # cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Mid cell Equator radius"];\n')
-            #
-            # cav.write(f'\nA_er = DefineNumber[{A_el}, Name "Parameters/End cell 2 Equator ellipse major axis"];')
-            # cav.write(f'\nB_er = DefineNumber[{B_el}, Name "Parameters/End cell 2 Equator ellipse minor axis"];')
-            # cav.write(f'\na_er = DefineNumber[{a_el}, Name "Parameters/End cell 2 Iris ellipse major axis"];')
-            # cav.write(f'\nb_er = DefineNumber[{b_el}, Name "Parameters/End cell 2 Iris ellipse minor axis"];')
-            # cav.write(f'\nRi_er = DefineNumber[{Ri_el}, Name "Parameters/End cell 2 Iris radius"];')
-            # cav.write(f'\nL_er = DefineNumber[{L_el}, Name "Parameters/End cell 2 Half cell length"];')
-            # # cav.write(f'\nReq_er = DefineNumber[{Req}, Name "Parameters/End cell 2 Equator radius"];\n')
+            # define parameters
+            cav.write(f'\nA_el = DefineNumber[{A_el}, Name "Parameters/End cell 1 Equator ellipse major axis"];')
+            cav.write(f'\nB_el = DefineNumber[{B_el}, Name "Parameters/End cell 1 Equator ellipse minor axis"];')
+            cav.write(f'\na_el = DefineNumber[{a_el}, Name "Parameters/End cell 1 Iris ellipse major axis"];')
+            cav.write(f'\nb_el = DefineNumber[{b_el}, Name "Parameters/End cell 1 Iris ellipse minor axis"];')
+            cav.write(f'\nRi_el = DefineNumber[{Ri_el}, Name "Parameters/End cell 1 Iris radius"];')
+            cav.write(f'\nL_el = DefineNumber[{L_el}, Name "Parameters/End cell 1 Half cell length"];')
+            # cav.write(f'\nReq_el = DefineNumber[{Req}, Name "Parameters/End cell 1 Equator radius"];\n')
+
+            cav.write(f'\nA_m = DefineNumber[{A_el}, Name "Parameters/Mid cell Equator ellipse major axis"];')
+            cav.write(f'\nB_m = DefineNumber[{B_el}, Name "Parameters/Mid cell Equator ellipse minor axis"];')
+            cav.write(f'\na_m = DefineNumber[{a_el}, Name "Parameters/Mid cell Iris ellipse major axis"];')
+            cav.write(f'\nb_m = DefineNumber[{b_el}, Name "Parameters/Mid cell Iris ellipse minor axis"];')
+            cav.write(f'\nRi_m = DefineNumber[{Ri_el}, Name "Parameters/Mid cell Iris radius"];')
+            cav.write(f'\nL_m = DefineNumber[{L_el}, Name "Parameters/Mid cell Half cell length"];')
+            cav.write(f'\nReq = DefineNumber[{Req}, Name "Parameters/Mid cell Equator radius"];\n')
+
+            cav.write(f'\nA_er = DefineNumber[{A_el}, Name "Parameters/End cell 2 Equator ellipse major axis"];')
+            cav.write(f'\nB_er = DefineNumber[{B_el}, Name "Parameters/End cell 2 Equator ellipse minor axis"];')
+            cav.write(f'\na_er = DefineNumber[{a_el}, Name "Parameters/End cell 2 Iris ellipse major axis"];')
+            cav.write(f'\nb_er = DefineNumber[{b_el}, Name "Parameters/End cell 2 Iris ellipse minor axis"];')
+            cav.write(f'\nRi_er = DefineNumber[{Ri_el}, Name "Parameters/End cell 2 Iris radius"];')
+            cav.write(f'\nL_er = DefineNumber[{L_el}, Name "Parameters/End cell 2 Half cell length"];')
+            # cav.write(f'\nReq_er = DefineNumber[{Req}, Name "Parameters/End cell 2 Equator radius"];\n')
 
             # SHIFT POINT TO START POINT
             start_point = [-shift, 0]
@@ -6496,6 +6565,9 @@ class EllipticalCavity(Cavity):
             values = self.shape[key]
             for name, value in zip(parameter_names, values):
                 self.parameters[f"{name}_{shape_keys[key]}"] = value
+
+    # def spawn(self, difference):
+    #     pass
 
 
 class SplineCavity(Cavity):

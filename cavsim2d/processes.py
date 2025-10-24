@@ -45,7 +45,7 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
     if isinstance(tune_parameters, str):
         for key, cav in cavs_dict.items():
             assert tune_config['parameters'] in cav.parameters.keys(), error(
-                'Please enter a valid tune parameter. \n\tUse `Cavity.parameters to see valid parameters' )
+                fr'Please enter a valid tune parameter from \n\t{cav.name}.parameters: {cav.parameters.keys()}' )
         tune_parameters = np.array([tune_parameters for _ in range(len(cavs_dict))])
     else:
         assert len(tune_parameters) == len(cavs_dict), error(
