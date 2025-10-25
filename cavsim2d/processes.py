@@ -20,7 +20,6 @@ tuner = Tuner()
 
 def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
                       resume=False):
-
     tune_config_keys = tune_config.keys()
     if 'processes' in tune_config_keys:
         processes = tune_config['processes']
@@ -123,7 +122,6 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         cav_tune_config = tune_config.copy()
         cav_tune_config['freqs'] = tune_config['freqs'][i]
         cav_tune_config['parameters'] = tune_config['parameters'][i]
-
         tuned_shape_space, d_tune_res, conv_dict, abs_err_dict = tuner.tune_ngsolve({key: cav}, 33,
                                                                                     proc=p,
                                                                                     tune_variable=proc_tune_variables[i],

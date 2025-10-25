@@ -181,7 +181,7 @@ class Optimisation:
         df = self.df
 
         # compare with global dict and remove duplicates
-        compared_cols = self.cav.parameters.keys()
+        compared_cols = list(self.bounds.keys())
         if not self.df_global.empty:
             df = df.loc[~df.set_index(compared_cols).index.isin(
                 self.df_global.set_index(compared_cols).index)]  # this line of code removes duplicates
@@ -191,14 +191,15 @@ class Optimisation:
             rw = row.tolist()
 
         n_cells = 1
-        print(df)
+        # print(df)
         cavs_object = self.cav.spawn(df, os.path.join(self.cav.self_dir, 'optimisation'))
-        self.run_tune_opt(cavs_object, self.tune_config)
+        cavs_dict = cavs_object.cavities_dict
+        self.run_tune_opt(cavs_dict, self.tune_config)
 
         # get successfully tuned geometries and filter initial generation dictionary
         processed_keys = []
         tune_result = []
-        for key, scav in cavs_object.items():
+        for key, scav in cavs_dict.items():
             filename = os.path.join(scav.self_dir, 'eigenmode', 'tune_res.json')
             try:
                 with open(filename, 'r') as file:
@@ -206,19 +207,17 @@ class Optimisation:
 
                 # get only tune_variable, alpha_i, and alpha_o and freq but why these quantities
                 freq = tune_res['FREQ']
-                tune_variable_value = tune_res['IC'][VAR_TO_INDEX_DICT[self.tune_parameter]]
-                alpha_i = tune_res['IC'][7]
-                alpha_o = tune_res['IC'][7]
+                tune_variable_value = tune_res['parameters'][tune_res['TUNED VARIABLE']]
 
-                tune_result.append([tune_variable_value, alpha_i, alpha_o, freq])
+                tune_result.append([tune_variable_value, freq])
                 processed_keys.append(key)
             except FileNotFoundError:
-                pass
+                info(f'Results not found for {scav.self_dir}, tuning probably failed.')
 
         # after removing duplicates, dataframe might change size
-        df = df.loc[df['key'].isin(processed_keys)]
-        df.loc[:, [self.tune_parameter, 'alpha_i', 'alpha_o', 'freq [MHz]']] = tune_result
-
+        df = df.loc[processed_keys]
+        df.loc[:, [self.tune_parameter, 'freq [MHz]']] = tune_result
+        # print(df)
         # eigen objective variables
         # for o in self.objectives:
         intersection = set(self.objective_vars).intersection(
@@ -228,21 +227,21 @@ class Optimisation:
             # process tune results
             obj_result = []
             processed_keys = []
+            for key, scav in cavs_dict.items():
+                filename = os.path.join(scav.eigenmode_dir, 'monopole', 'qois.json')
+                try:
+                    with open(filename, 'r') as file:
+                        qois = json.load(file)
 
-            filename = os.path.join(self.cav.eigenmode_dir, 'monopole', 'qois.json')
-            try:
-                with open(filename, 'r') as file:
-                    qois = json.load(file)
+                    # extract objectives from tuned cavity
+                    obj = list(
+                        {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
 
-                # extract objectives from tuned cavity
-                obj = list(
-                    {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
+                    obj_result.append(obj)
 
-                obj_result.append(obj)
-
-                processed_keys.append(key)
-            except FileNotFoundError as e:
-                pass
+                    processed_keys.append(key)
+                except FileNotFoundError as e:
+                    pass
 
             # after removing duplicates, dataframe might change size
             if len(processed_keys) == 0:
@@ -254,7 +253,7 @@ class Optimisation:
                       "Tune ended.")
                 return
 
-            df = df.loc[df['key'].isin(processed_keys)]
+            df = df.loc[processed_keys]
 
             obj_eigen = [o[1] for o in self.objectives if
                          o[1] in ["freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"]]
@@ -500,7 +499,7 @@ class Optimisation:
         done(self.df_global)
 
         # save dataframe
-        filename = os.path.join(self.projectDir, 'SimulationData', 'Optimisation', 'Generation{n}.xlsx')
+        filename = os.path.join(self.cav.self_dir, 'optimisation', f'g{n}.xlsx')
         self.recursive_save(self.df_global, filename, reorder_indx)
 
         # birth next generation
@@ -509,15 +508,18 @@ class Optimisation:
             df_cross = self.crossover(df, n, self.crossover_factor)
         else:
             df_cross = pd.DataFrame()
-
+        # print('cross', df_cross)
         # mutation
         df_mutation = self.mutation(df, n, self.mutation_factor)
+        # print('mutation', df_mutation)
 
         # chaos
         df_chaos = self.chaos(self.chaos_factor, n)
+        # print('chaos', df_chaos)
 
         # take elites from previous generation over to next generation
-        df_ng = pd.concat([df_cross, df_mutation, df_chaos], ignore_index=True)
+        df_ng = pd.concat([df_cross, df_mutation, df_chaos])
+        # print('combined dict', df_ng)
 
         # update dictionary
         self.df = df_ng
@@ -1023,7 +1025,6 @@ class Optimisation:
         return shape_space
 
     def generate_first_men(self, initial_points, n):
-        print("these are the initial points", initial_points)
         if list(self.method.keys())[0] == "LHS":
             seed = self.method['LHS']['seed']
             if seed == '' or seed is None:
@@ -1205,18 +1206,11 @@ class Optimisation:
 
         # naming convention G<generation number>_C<cavity number>_<type>
         # type refers to mutation M or crossover C
-        df_co = pd.DataFrame(columns=["key", 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"])
+        df_co = pd.DataFrame(columns=self.bounds.keys())
 
-        # select only best characteristics
-        A_inf = ['All']
-        B_inf = ['All']
-        a_inf = ['All']
-        b_inf = ['All']
-        Ri_inf = ['All']
-        L_inf = ['All']
-        Req_inf = ['All']
+        # influence dictionary: select only best characteristics # must be reviewed later.
+        inf_dict = {var: ['All'] for var in self.bounds.keys()}
 
-        inf_dict = {"A": A_inf, "B": B_inf, "a": a_inf, "b": b_inf, "Ri": Ri_inf, "L": L_inf, "Req": Req_inf}
         for key, influence in inf_dict.items():
             if influence == [''] or influence == ['All']:
                 if self.uq_config:
@@ -1237,32 +1231,19 @@ class Optimisation:
 
         for i in range(f):
             # (<obj>[<rank>][<variable>] -> (b[c[1]][0]
+            row_values = []
 
-            df_co.loc[i] = [f"G{generation}_C{i}_CO",
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["A"] for key
-                                 in inf_dict["A"]]) / len(inf_dict["A"]),  # A
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["B"] for key
-                                 in inf_dict["B"]]) / len(inf_dict["B"]),  # B
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["a"] for key
-                                 in inf_dict["a"]]) / len(inf_dict["a"]),  # a
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["b"] for key
-                                 in inf_dict["b"]]) / len(inf_dict["b"]),  # b
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["Ri"] for
-                                 key in inf_dict["Ri"]]) / len(inf_dict["Ri"]),  # Ri
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["L"] for key
-                                 in inf_dict["L"]]) / len(inf_dict["L"]),  # L
-                            sum([obj[key].loc[np.random.randint(
-                                n_elites_to_cross if n_elites_to_cross < df.shape[0] else df.shape[0] - 1)]["Req"] for
-                                 key in inf_dict["Req"]]) / len(inf_dict["Req"]),
-                            0,
-                            0
-                            ]
+            for var, keys in inf_dict.items():
+                vals = [
+                    obj[key].loc[
+                        np.random.randint(min(n_elites_to_cross, df.shape[0]))
+                    ][var]
+                    for key in keys
+                ]
+                row_values.append(sum(vals) / len(vals))
+
+            df_co.loc[f"G{generation}_C{i}_CO"] = row_values
+        df_co.index.name = 'key'
         return df_co
 
     def mutation(self, df, n, f):
@@ -1273,43 +1254,13 @@ class Optimisation:
         else:
             ml = np.arange(f)
 
-        df_ng_mut = pd.DataFrame(columns=['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"])
-        if list(self.bounds.values())[0][0] == list(self.bounds.values())[0][1]:
-            df_ng_mut.loc[:, 'A'] = df.loc[ml, "A"]
-        else:
-            df_ng_mut.loc[:, 'A'] = df.loc[ml, "A"] * random.uniform(0.85, 1.5)
+        df_ng_mut = pd.DataFrame(columns=self.bounds.keys())
 
-        if list(self.bounds.values())[1][0] == list(self.bounds.values())[1][1]:
-            df_ng_mut.loc[:, 'B'] = df.loc[ml, "B"]
-        else:
-            df_ng_mut.loc[:, 'B'] = df.loc[ml, "B"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[2][0] == list(self.bounds.values())[2][1]:
-            df_ng_mut.loc[:, 'a'] = df.loc[ml, "a"]
-        else:
-            df_ng_mut.loc[:, 'a'] = df.loc[ml, "a"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[3][0] == list(self.bounds.values())[3][1]:
-            df_ng_mut.loc[:, 'b'] = df.loc[ml, "b"]
-        else:
-            df_ng_mut.loc[:, 'b'] = df.loc[ml, "b"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[4][0] == list(self.bounds.values())[4][1]:
-            df_ng_mut.loc[:, 'Ri'] = df.loc[ml, "Ri"]
-        else:
-            df_ng_mut.loc[:, 'Ri'] = df.loc[ml, "Ri"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[5][0] == list(self.bounds.values())[5][1]:
-            df_ng_mut.loc[:, 'L'] = df.loc[ml, "L"]
-        else:
-            df_ng_mut.loc[:, 'L'] = df.loc[ml, "L"] * random.uniform(0.85, 1.5)
-
-        if list(self.bounds.values())[6][0] == list(self.bounds.values())[6][1]:
-            df_ng_mut.loc[:, 'Req'] = df.loc[ml, "Req"]
-        else:
-            df_ng_mut.loc[:, 'Req'] = df.loc[ml, "Req"] * random.uniform(0.85, 1.5)
-
-        df_ng_mut.loc[:, ["alpha_i", "alpha_o"]] = df.loc[ml, ["alpha_i", "alpha_o"]]
+        for var, bound in self.bounds.items():
+            if bound[0] == bound[1]:
+                df_ng_mut.loc[:, var] = df.loc[ml, var]
+            else:
+                df_ng_mut.loc[:, var] = df.loc[ml, var] * random.uniform(0.85, 1.5)
 
         key1, key2 = [], []
         for i in range(len(df_ng_mut)):
@@ -1317,7 +1268,7 @@ class Optimisation:
 
         df_ng_mut.loc[:, 'key'] = key1
 
-        return df_ng_mut
+        return df_ng_mut.set_index('key')
 
     def chaos(self, f, n):
         df = self.generate_first_men(f, n)
@@ -1463,7 +1414,7 @@ class Optimisation:
     def color_pareto(df, no_pareto_optimal):
         def color(row):
             # if row.isnull().values.any():
-            if row.iloc[0] in df['key'].tolist()[0:no_pareto_optimal]:
+            if row.iloc[0] in df.index.tolist()[0:no_pareto_optimal]:
                 return ['background-color: #6bbcd1'] * len(row)
             return [''] * len(row)
 

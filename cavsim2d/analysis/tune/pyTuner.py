@@ -67,19 +67,16 @@ class PyTuneNGSolve:
         self.convergence_list = []
 
         res = None
-        try:
-            res = root_scalar(
-                self.tune_function,
-                method=method,
-                x0 = cav.parameters[self.tune_var],
-                xtol=tol,
-                rtol=tol,
-                maxiter=maxiter
-            )
+        res = root_scalar(
+            self.tune_function,
+            method=method,
+            x0 = cav.parameters[self.tune_var],
+            xtol=tol,
+            rtol=tol,
+            maxiter=maxiter
+        )
 
-            self.tune_function(res.root)
-        except Exception as e:
-            error(f'An error occured while trying to tune the cavity:: {e}')
+        self.tune_function(res.root)
 
         # # tune_var = tune_var  # temporary until I figure out a way to combine al tunes
         # if tune_config is None:

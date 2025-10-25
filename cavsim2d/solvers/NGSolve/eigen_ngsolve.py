@@ -102,7 +102,7 @@ class NGSolveMEVP:
                 if 'p' in mesh_config.keys():
                     mesh_p = mesh_config['p']
 
-        step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, mesh_h)
+        step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=mesh_h)
 
         for key, bc in bcs.items():
             ngmesh.SetBCName(key-1, bc)
@@ -631,7 +631,7 @@ class NGSolveMEVP:
 
     def load_geo(self, filepath, output_filepath=None, maxh=1):
         if output_filepath is None:
-            output_filepath = filepath
+            output_filepath = os.path.dirname(filepath)
 
         gmsh.initialize()
 
@@ -642,9 +642,9 @@ class NGSolveMEVP:
         gmsh.open(filepath)
         gmsh.model.mesh.generate(2)
         with suppress_c_stdout_stderr():
-            gmsh.write(os.path.join(os.path.dirname(output_filepath), "mesh.step"))
+            gmsh.write(os.path.join(output_filepath, "mesh.step"))
 
-        self.step_geo = OCCGeometry(os.path.join(os.path.dirname(output_filepath), "mesh.step"), dim=2)
+        self.step_geo = OCCGeometry(os.path.join(output_filepath, "mesh.step"), dim=2)
         self.ngmesh = self.step_geo.GenerateMesh(maxh=maxh)
 
         # get boundary conditions
