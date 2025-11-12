@@ -194,7 +194,7 @@ class Optimisation:
         # print(df)
         cavs_object = self.cav.spawn(df, os.path.join(self.cav.self_dir, 'optimisation'))
         cavs_dict = cavs_object.cavities_dict
-        self.run_tune_opt(cavs_dict, self.tune_config)
+        cavs_dict.run_eigenmode(self.eigenmode_config)
 
         # get successfully tuned geometries and filter initial generation dictionary
         processed_keys = []
@@ -1057,7 +1057,6 @@ class Optimisation:
 
             for i in range(len(const_var) - 1, -1, -1):
                 df[const_var[i][0]] = np.ones(initial_points) * const_var[i][1]
-
 
             return df.set_index('key')
 

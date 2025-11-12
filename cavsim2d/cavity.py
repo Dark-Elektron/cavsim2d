@@ -534,6 +534,7 @@ class Cavities(Optimisation):
         self.tune_config = tune_config
         # get tune results
         self.get_tune_res()
+        self.get_eigenmode_qois(uq_config={})
 
     def get_tune_res(self):
         for key, cav in self.cavities_dict.items():
@@ -635,9 +636,6 @@ class Cavities(Optimisation):
                 self.uq_fm_results[cav.name] = cav.uq_fm_results
                 self.uq_nodes[cav.name] = cav.uq_nodes
                 self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
-            # except FileNotFoundError as e:
-            #     error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
-            #     return False
 
     def run_wakefield(self, wakefield_config=None):
         """

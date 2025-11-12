@@ -790,7 +790,6 @@ def weighted_mean_obj(tab_var, weights):
         #     outvar[i, 0] = np.dot(tab_var[:, i] ** 2, weights)[0]
         #
         # stdDev = np.sqrt(abs(outvar - expe ** 2))
-
         mean = weighted_mean(tab_var, weights.T[0])
         std = np.sqrt(weighted_variance(tab_var, weights.T[0], mean))
         skew = weighted_skew(tab_var, weights.T[0], mean, std)
@@ -4889,13 +4888,13 @@ def generate_stroud3_nodes(k: int, bound: float):
 
 def generate_nodes(k: int, bound: float, node_type: list):
     """Dispatch to the appropriate node generator."""
-    if node_type[0] == 'uniform':
+    if node_type[0].lower() == 'uniform':
         return generate_uniform_nodes(k, bound, node_type[1])
-    elif node_type[0] == 'normal':
+    elif node_type[0].lower() == 'normal':
         return generate_normal_nodes(k, bound, node_type[1], seed=3799)
-    if node_type[0] == 'gauss_legendre':
+    if node_type[0].lower() == 'gauss_legendre':
         return generate_gauss_legendre_nodes(k, bound, node_type[1])
-    if node_type[0] == 'stroud3':
+    if node_type[0].lower() == 'stroud3':
         return generate_stroud3_nodes(k, bound)
     raise ValueError(f"Unknown node_type {node_type[0]!r}")
 
@@ -4973,14 +4972,17 @@ def perturb_geometry(cav, eigenmode_config):
 
     uq_config = eigenmode_config['uq_config']
     uq_vars = uq_config['variables']
-    which_cell = uq_config['cell']
+    # which_cell = uq_config['cell']
 
     method = uq_config['method']
+    if 'perturbation_mode' not in uq_config:
+        uq_config['perturbation_mode'] = ['add']  # default: additive perturbation with bound 0.01
+
     perturbation_mode = uq_config['perturbation_mode']
     if not isinstance(perturbation_mode[1], list):
         perturbation_mode[1] = [perturbation_mode[1]] * len(uq_vars)
 
-    cells = which_cell
+    # cells = which_cell
     variables = uq_vars
     mode = perturbation_mode
     node_type = method
