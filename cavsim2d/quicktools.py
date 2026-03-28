@@ -32,112 +32,163 @@ class QuickTools:
         """Return a new dict with items sorted by ascending value."""
         return {k: v for k, v in sorted(d.items(), key=lambda item: item[1])}
 
-    def cwg_cutoff(self, r, l=0, mode=None):
-        """
+    def cwg_cutoff(self, r, l=0, mode=None, epsr=1, mu0r=1, p_max=3):
 
-        Parameters
-        ----------
-        r: float, list
-            radius or list of radii in nmm
-
-        Returns
-        -------
-        f_cutoff: float, list
-            cutoff frequency or list of cutoff frequencies in MHz
-        """
-
-        if isinstance(r, float) or isinstance(r, int):
+        if isinstance(r, (float, int)):
             r = [r]
-        if isinstance(l, float) or isinstance(l, int):
+        if isinstance(l, (float, int)):
             l = [l]
 
-        f_cutoff = {}
-        mode_dict = {'te11': 1.841, 'tm01': 2.405, 'te21': 3.054, 'te01': 3.832, 'tm11': 3.832, 'tm21': 5.135,
-                     'te12': 5.331, 'tm02': 5.520, 'te22': 6.706, 'te02': 7.016, 'tm12': 7.016, 'tm22': 8.417,
-                     'te13': 8.536, 'tm03': 8.654, 'te23': 9.970, 'te03': 10.174, 'tm13': 10.174, 'tm23': 11.620}
         mode_dict = self.make_bessel_mode_dict(5, 5)
-        print(mode_dict)
 
+        # --------------------------------------------------
+        # Mode selection
+        # --------------------------------------------------
         if mode is None:
-            for radius in r:
-                f_cutoff[f'{radius}'] = {}
-                for mode, j in mode_dict.items():
-                    f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                    f_cutoff[f'{radius}'][mode] = f * 1e-6
+            selected_modes = mode_dict
         else:
-            if isinstance(mode, list):
-                for mode_ in mode:
-                    for radius in r:
-                        f_cutoff[f'{radius}'] = {}
-                        try:
-                            j = mode_dict[mode_]
-                        except KeyError:
-                            error("One or more mode names is wrong. Please check mode names.")
-                            j = 0
-                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                        f_cutoff[f'{radius}'][mode_] = f * 1e-6
-            else:
-                if isinstance(mode, str):
-                    for radius in r:
-                        f_cutoff[f'{radius}'] = {}
-                        try:
-                            j = mode_dict[mode]
-                        except KeyError:
-                            error("One or more mode names is wrong. Please check mode names.")
-                            j = 0
-                        f = c0 / (2 * np.pi) * (j / (radius * 1e-3))
-                        f_cutoff[f'{radius}'][mode] = f * 1e-6
-                else:
-                    error("One or more mode names is wrong. Please check mode names.")
+            if isinstance(mode, str):
+                mode = [mode]
 
-        return f_cutoff
+            selected_modes = {}
+            for m in mode:
+                try:
+                    selected_modes[m.lower()] = mode_dict[m.lower()]
+                except KeyError:
+                    raise ValueError(f"Mode '{m}' not found in Bessel dictionary.")
+
+        # --------------------------------------------------
+        # Frequency computation
+        # --------------------------------------------------
+        f_dict = {}
+
+        for radius in r:
+            f_dict[f'{radius}'] = {}
+
+            for length in l:
+
+                # ------------------------
+                # Waveguide case
+                # ------------------------
+                if length == 0:
+
+                    for mode_name, j in selected_modes.items():
+                        f = (
+                                c0 /
+                                (2 * np.pi * np.sqrt(epsr * mu0r)) *
+                                (j / (radius * 1e-3))
+                        )
+
+                        f_dict[f'{radius}'][mode_name] = f
+
+                # ------------------------
+                # Cavity case
+                # ------------------------
+                else:
+
+                    for mode_name, j in selected_modes.items():
+
+                        pol = mode_name[:2].lower()
+                        m = int(mode_name[2])
+                        n = int(mode_name[3])
+
+                        for p in range(0, p_max + 1):
+
+                            # Enforce physical condition:
+                            # TE modes cannot have p=0 in PEC cavity
+                            if pol == "te" and p == 0:
+                                continue
+
+                            kr = j / (radius * 1e-3)
+                            kz = p * np.pi / (length * 1e-3)
+
+                            f = (
+                                    c0 /
+                                    (2 * np.pi * np.sqrt(epsr * mu0r)) *
+                                    np.sqrt(kr ** 2 + kz ** 2)
+                            )
+
+                            full_mode = f"{pol}{m}{n}{p}"
+                            f_dict[f'{radius}'][full_mode] = f
+
+        return f_dict
 
     @staticmethod
-    def rwg_cutoff(a, b, mn=None, l=0, p=None):
-        if isinstance(a, float) or isinstance(a, int):
+    def rwg_cutoff(a, b, mn=None, l=0, p=None, epsr=1, mu0r=1):
+
+        if isinstance(a, (float, int)):
             a = [a]
-        if isinstance(b, float) or isinstance(b, int):
+        if isinstance(b, (float, int)):
             b = [b]
-        if isinstance(l, float) or isinstance(l, int):
+        if isinstance(l, (float, int)):
             l = [l]
 
         if mn is None:
-            mn = [[0, 1]]
+            mn = [[1, 0]]
 
         if len(np.array(mn).shape) == 1:
             mn = [mn]
 
-        if isinstance(p, int):
+        if p is None:
+            p = [0]
+        elif isinstance(p, int):
             p = [p]
 
-        if p is None:
-            p = 0
+        f_dict = {}
 
-        f_cutoff = {}
-        try:
-            for a_ in a:
-                f_cutoff[f'a: {a_} mm'] = {}
-                for b_ in b:
-                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
-                    for l_ in l:
-                        f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'] = {}
-                        for mn_ in mn:
-                            m, n = mn_
-                            if l_ == 0:
-                                f = (c0 / (2 * np.pi)) * (
-                                        (m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2) ** 0.5
-                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'TE/TM({m},{n})'] = f * 1e-6
-                            else:
-                                f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'] = {}
-                                for p_ in p:
-                                    f = (c0 / (2 * np.pi)) * (
-                                            (m * np.pi / (a_ * 1e-3)) ** 2 + (n * np.pi / (b_ * 1e-3)) ** 2 + (
-                                            p_ * np.pi / (l_ * 1e-3)) ** 2) ** 0.5
-                                    f_cutoff[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'][
-                                        f'TE/TM({m},{n},{p_})'] = f * 1e-6
-            return f_cutoff
-        except ValueError:
-            print("Please enter a valid number.")
+        for a_ in a:
+            f_dict[f'a: {a_} mm'] = {}
+
+            for b_ in b:
+                f_dict[f'a: {a_} mm'][f'b: {b_} mm'] = {}
+
+                for l_ in l:
+
+                    # ---------------------------
+                    # Waveguide case
+                    # ---------------------------
+                    if l_ == 0:
+
+                        for m, n in mn:
+
+                            kc = np.sqrt(
+                                (m * np.pi / (a_ * 1e-3)) ** 2 +
+                                (n * np.pi / (b_ * 1e-3)) ** 2
+                            )
+
+                            f = (c0 / (2 * np.pi * np.sqrt(epsr * mu0r))) * kc
+
+                            if m == 0 and n == 0:
+                                continue
+
+                            mode_name = f"TE/TM({m},{n})"
+                            f_dict[f'a: {a_} mm'][f'b: {b_} mm'][mode_name] = f
+
+                    # ---------------------------
+                    # Cavity case
+                    # ---------------------------
+                    else:
+
+                        f_dict[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'] = {}
+
+                        for m, n in mn:
+                            for p_ in p:
+
+                                k = np.sqrt(
+                                    (m * np.pi / (a_ * 1e-3)) ** 2 +
+                                    (n * np.pi / (b_ * 1e-3)) ** 2 +
+                                    (p_ * np.pi / (l_ * 1e-3)) ** 2
+                                )
+
+                                f = (c0 / (2 * np.pi * np.sqrt(epsr * mu0r))) * k
+
+                                if m == 0 and n == 0 and p_ == 0:
+                                    continue
+
+                                mode_name = f"TE/TM({m},{n},{p_})"
+                                f_dict[f'a: {a_} mm'][f'b: {b_} mm'][f'l: {l_} mm'][mode_name] = f
+
+        return f_dict
 
     @staticmethod
     def coaxial_tline(D, d, x=0, epsr=1):
@@ -186,7 +237,11 @@ class QuickTools:
             kc = j_mn_p / R
             w = kc / np.sqrt(mu0 * eps0)
 
-            beta = np.sqrt(k ** 2 - kc ** 2)
+            if k == 0:
+                beta = 0
+            else:
+                # Use complex sqrt to handle k < kc cases
+                beta = np.lib.scimath.sqrt(k ** 2 - kc ** 2)
 
             Er = -1j * w * mu0 * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(
                 m,
@@ -204,7 +259,11 @@ class QuickTools:
             j_mn = jn_zeros(m, n)[n - 1]
             kc = j_mn / R
             w = kc / np.sqrt(mu0 * eps0)
-            beta = np.sqrt(k ** 2 - kc ** 2)
+            if k == 0:
+                beta = 0
+            else:
+                # Use complex sqrt to handle k < kc cases
+                beta = np.lib.scimath.sqrt(k**2 - kc**2)
             Ez = A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jv(m, kc * radius)
             Er = -1j * beta / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
             Et = -1j * beta * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
@@ -244,7 +303,11 @@ class QuickTools:
         k = 0  # no propagation in z
         kc = j_mn / R
         w = kc / np.sqrt(mu0 * eps0)
-        beta = np.sqrt(k ** 2 - kc ** 2)
+        if k == 0:
+            beta = 0
+        else:
+            # Use complex sqrt to handle k < kc cases
+            beta = np.lib.scimath.sqrt(k**2 - kc**2)
         Ez = A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jv(m, kc * radius)
         Er = -1j * beta / kc * A * (np.sin(m * theta + pol) + np.cos(m * theta + pol)) * jvp(m, kc * radius)
         Et = -1j * beta * m / (kc ** 2 * radius) * A * (np.cos(m * theta + pol) - np.sin(m * theta + pol)) * jv(m,
@@ -265,3 +328,23 @@ class QuickTools:
             return radius, theta, Er, Hr
         if component.lower() == 'longitudinal':
             return radius, theta, Ez, Hz
+
+    def pretty_print_modes(self, data, unit="MHz"):
+        for param, modes in data.items():
+            print(f"\nParameter: {param}")
+            print("-" * 50)
+            print(f"{'Mode':<8} {'Frequency (' + unit + ')':>20}")
+            print("-" * 50)
+
+            # sort by frequency
+            for mode, freq in sorted(modes.items(), key=lambda x: float(x[1])):
+                if unit == "MHz":
+                    value = float(freq) / 1e6
+                elif unit == "GHz":
+                    value = float(freq) / 1e9
+                else:
+                    value = float(freq)
+
+                print(f"{mode:<8} {value:>20.6f}")
+
+            print("-" * 50)

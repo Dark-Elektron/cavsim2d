@@ -61,8 +61,9 @@ class ABCIData:
                         frame_titles_objects[frame_count - 1] = frame_title
 
                         # select suitable title
+                        combined_title = ''.join(frame_title)
                         for decor in plot_decorations:
-                            if decor in frame_title[0] + frame_title[1]:
+                            if decor in combined_title:
                                 frame_objects[decor] = line_objects
                                 break
 
@@ -139,8 +140,9 @@ class ABCIData:
             frame_titles_objects[frame_count - 1] = frame_title
 
             # select suitable title
+            combined_title = ''.join(frame_title)
             for decor in plot_decorations:
-                if decor in frame_title[0] + frame_title[1]:
+                if decor in combined_title:
                     frame_objects[decor] = line_objects
                     break
 
@@ -440,8 +442,9 @@ class ABCIDataExtraction:
 
         def calc_k_loss():
             for key, value in d.items():
-                abci_data_long = ABCIData(abci_data_dir, key, 0)
-                abci_data_trans = ABCIData(abci_data_dir, key, 1)
+                fid = os.path.join(key, 'wakefield')
+                abci_data_long = ABCIData(abci_data_dir, fid, 0)
+                abci_data_trans = ABCIData(abci_data_dir, fid, 1)
 
                 # trans
                 x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
@@ -473,11 +476,10 @@ class ABCIDataExtraction:
                 dip_interval = [0.0, 2e10]
 
             for key, value in d.items():
-                # check if folder exists
-                # print(fr"{abci_data_dir}/{key}")
-                if os.path.exists(fr"{abci_data_dir}/{key}"):
-                    abci_data_mon = ABCIData(abci_data_dir, key, 0)
-                    abci_data_dip = ABCIData(abci_data_dir, key, 1)
+                fid = os.path.join(key, 'wakefield')
+                if os.path.exists(os.path.join(abci_data_dir, fid)):
+                    abci_data_mon = ABCIData(abci_data_dir, fid, 0)
+                    abci_data_dip = ABCIData(abci_data_dir, fid, 1)
                 else:
                     continue
 
@@ -539,9 +541,10 @@ class ABCIDataExtraction:
         def all(mon_interval, dip_interval):
             for key, value in d.items():
                 print(f"Processing for Cavity {key}")
-                if os.path.exists(fr"{abci_data_dir}/{key}"):
-                    abci_data_mon = ABCIData(abci_data_dir, key, 0)
-                    abci_data_dip = ABCIData(abci_data_dir, key, 1)
+                fid = os.path.join(key, 'wakefield')
+                if os.path.exists(os.path.join(abci_data_dir, fid)):
+                    abci_data_mon = ABCIData(abci_data_dir, fid, 0)
+                    abci_data_dip = ABCIData(abci_data_dir, fid, 1)
                 else:
                     continue
 
@@ -709,7 +712,7 @@ class ABCIDataExtraction:
             service = mp.Process(target=self.multiple_folders_data,
                                  args=(processor_shape_space, abci_data_folder, request),
                                  # keys[-1]]
-                                 kwargs={'save_excel': f'{temp_folder}\Proc_{p}', 'mon_interval': mon_interval,
+                                 kwargs={'save_excel': f'{temp_folder}/Proc_{p}', 'mon_interval': mon_interval,
                                          'dip_interval': dip_interval, 'parallel': True})
             service.start()
             processes.append(service)

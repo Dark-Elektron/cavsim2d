@@ -1,0 +1,16 @@
+version: 1
+project:
+  title: cavsim2d
+  toc:
+    - file: intro.md
+    - title: Notebooks
+      children:
+        - file: notebooks/pillbox.ipynb
+        - file: notebooks/animate_cav_geom_transition.ipynb
+        - file: notebooks/convergence_study.ipynb
+        - file: notebooks/eigenmode.ipynb
+        - file: notebooks/misc.ipynb
+        - file: notebooks/optimisation.ipynb
+
+site:
+  template: book-theme

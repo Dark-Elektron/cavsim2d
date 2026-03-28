@@ -111,6 +111,8 @@ ipython_config.py
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
+__pypackages
+
 
 # Celery stuff
 celerybeat-schedule
@@ -157,7 +159,31 @@ cython_debug/
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-.idea
+.idea/
+.claude/
 cavsim2d/solvers/ABCI/ABCI.exe
-cavsim2d/solvers/ABCI
-thesis
+cavsim2d/solvers/ABCI/TopDrawer for Windows/
+thesis/
+docs/_build/
+_build/
+
+# Artefacts (stray notebooks, geometry files, configs)
+artefacts/
+
+# Legacy monolithic module (replaced by cavity/ package)
+cavsim2d/cavity_legacy.py
+
+# Generated mesh/geometry files
+*.mesh
+*.vol
+*.vol.gz
+*.brep
+*.vtu
+*.step
+*.stp
+*.hlg
+*.stl
+
+# NGSolve/Gmsh configs
+ng.ini
+ngmesh.ini

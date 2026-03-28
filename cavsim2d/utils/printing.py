@@ -3,20 +3,20 @@ from termcolor import colored
 
 
 def error(*arg):
-    print(colored(f'ERROR:: {arg[0]}', 'red'))
+    print(f'\x1b[31mERROR:: {arg[0]}\x1b[0m')
 
 
 def warning(*arg):
-    print(colored(f'WARNING:: {arg[0]}', 'yellow'))
+    print(f'\x1b[33mWARNING:: {arg[0]}\x1b[0m')
 
 
 def running(*arg):
-    print(colored(f'{arg[0]}', 'cyan'))
+    print(f'\x1b[36m{arg[0]}\x1b[0m')
 
 
 def info(*arg):
-    print(colored(f'INFO:: {arg[0]}', 'blue'))
+    print(f'\x1b[34mINFO:: {arg[0]}\x1b[0m')
 
 
 def done(*arg):
-    print(colored(f'DONE:: {arg[0]}', 'green'))
+    print(f'\x1b[32mDONE:: {arg[0]}\x1b[0m')

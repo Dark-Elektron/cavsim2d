@@ -179,11 +179,11 @@ class ABCIGeometry(Geometry):
 
             # change save directory
             if sub_dir == '':
-                run_save_directory = projectDir / Path(fr'SimulationData/ABCI/{fid}')
+                run_save_directory = projectDir / Path(f'Cavities/{fid}/wakefield')
             else:
-                run_save_directory = projectDir / Path(fr'SimulationData/ABCI/{sub_dir}\{fid}')
+                run_save_directory = projectDir / Path(f'Cavities/{sub_dir}/wakefield/{fid}')
 
-            fname = Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')
+            fname = Path(fr'{run_save_directory}/cavity.abc')
 
             L_all_increment = 0
             self.L_all = 0
@@ -330,11 +330,12 @@ class ABCIGeometry(Geometry):
                         f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
 
+            print('it got here here')
             exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
             if LCPUTM == 'T':
-                subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')])
+                subprocess.call([exe_path, Path(fr'{run_save_directory}/cavity.abc')])
             else:
-                subprocess.call([exe_path, Path(fr'{run_save_directory}/Cavity_MROT_{MROT}.abc')],
+                subprocess.call([exe_path, Path(fr'{run_save_directory}/cavity.abc')],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             # save json file
@@ -475,11 +476,11 @@ class ABCIGeometry(Geometry):
 
             # change save directory
             if sub_dir == '':
-                run_save_directory = projectDir / fr'SimulationData\ABCI\{fid}'
+                run_save_directory = projectDir / f'Cavities/{fid}/wakefield'
             else:
-                run_save_directory = projectDir / fr'SimulationData\ABCI\{sub_dir}\{fid}'
+                run_save_directory = projectDir / f'Cavities/{sub_dir}/wakefield/{fid}'
 
-            fname = fr'{run_save_directory}\Cavity_MROT_{MROT}.abc'
+            fname = fr'{run_save_directory}\cavity.abc'
             # print('filename:: ', fname)
 
             L_all_increment = 0
@@ -654,13 +655,13 @@ class ABCIGeometry(Geometry):
                 f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
                         f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
                 f.write('\nSTOP\n')
-
+            print('it got here here fdfsd')
             exe_path = os.path.join(parentDir / Path(fr'solvers/ABCI/ABCI.exe'))
 
             if LCPUTM == 'T':
-                subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')])
+                subprocess.call([exe_path, Path(fr'{run_save_directory}\cavity.abc')])
             else:
-                subprocess.call([exe_path, Path(fr'{run_save_directory}\Cavity_MROT_{MROT}.abc')],
+                subprocess.call([exe_path, Path(fr'{run_save_directory}\cavity.abc')],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             # save json file
@@ -673,26 +674,9 @@ class ABCIGeometry(Geometry):
 
     @staticmethod
     def createFolder(fid, projectDir, subdir='', marker=''):
-        # path = os.path.join(path, f"{projectDir}\SimulationData\ABCI\{fid}{marker}")
-        # if os.path.exists(path):
-        #     pass
-        # else:
-        #     os.mkdir(path)
-
-        # change save directory
         if subdir == '':
-            path = projectDir / fr'SimulationData\ABCI\{fid}{marker}'
-            if os.path.exists(path):
-                pass
-            else:
-                os.mkdir(path)
+            path = projectDir / f'Cavities/{fid}{marker}/wakefield'
+            os.makedirs(path, exist_ok=True)
         else:
-            new_path = projectDir / fr'SimulationData\ABCI\{subdir}{marker}\{fid}'
-            if os.path.exists(projectDir / fr'SimulationData\ABCI\{subdir}{marker}'):
-                if os.path.exists(new_path):
-                    pass
-                else:
-                    os.mkdir(new_path)
-            else:
-                os.mkdir(projectDir / fr'SimulationData\ABCI\{subdir}{marker}')
-                os.mkdir(new_path)
+            new_path = projectDir / f'Cavities/{subdir}{marker}/wakefield/{fid}'
+            os.makedirs(new_path, exist_ok=True)
