@@ -51,27 +51,14 @@ class SplineCavity(Cavity):
             beampipe = self.beampipe
 
         if self.projectDir:
-            cav_dir_structure = {
-                self.name: {
-                    'geometry': None,
-                }
-            }
+            # Create cavity directory directly inside project folder
+            self.self_dir = os.path.join(self.projectDir, self.name)
+            geo_dir = os.path.join(self.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
 
-            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-            else:
-                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-
-            # write geometry file to folder
-            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
-
-            # define different paths for easier reference later
-            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
-            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
             self.uq_dir = os.path.join(self.self_dir, 'uq')
 
-            self.geo_filepath = os.path.join(self.self_dir, 'geometry', 'geodata.geo')
+            self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, n_cells, beampipe,
                                 write=self.geo_filepath)
 

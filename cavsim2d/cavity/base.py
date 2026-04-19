@@ -1,6 +1,7 @@
 from IPython.core.display import HTML, display_html, Math
 from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
+from pathlib import Path
 from cavsim2d.constants import *
 from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.processes import *
@@ -10,6 +11,7 @@ from ipywidgets import HBox, VBox, Label
 from matplotlib.animation import FuncAnimation
 from scipy.signal import find_peaks
 import ast
+import copy
 import ipywidgets as widgets
 import json
 import matplotlib
@@ -72,9 +74,13 @@ class Cavity(ABC):
 
         self.self_dir = None
         self.geo_filepath = None
-        self.eigenmode_dir = None
-        self.wakefield_dir = None
         self.uq_dir = None
+
+        # Solver-as-object: lazy properties (see bottom of class)
+        self._tune_solver = None
+        self._eigenmode_solver = None
+        self._wakefield_solver = None
+        self._tuned_cavity = None
 
         self.eigenmode_qois_all_modes = {}
         self.Epk_Eacc = None
@@ -143,26 +149,122 @@ class Cavity(ABC):
         # ───────────────────────────────────────────────────────────────────────────────────────────
         self.parameters = {}
 
+    # ─── Solver-as-object properties ──────────────────────────────────────
+
+    @property
+    def tune(self):
+        """TuneSolver object for this cavity."""
+        if self._tune_solver is None:
+            from cavsim2d.solvers.solver_objects import TuneSolver
+            self._tune_solver = TuneSolver(self)
+        return self._tune_solver
+
+    @property
+    def eigenmode(self):
+        """EigenmodeSolver object for this cavity."""
+        if self._eigenmode_solver is None:
+            from cavsim2d.solvers.solver_objects import EigenmodeSolver
+            self._eigenmode_solver = EigenmodeSolver(self)
+        return self._eigenmode_solver
+
+    @property
+    def wakefield(self):
+        """WakefieldSolver object for this cavity."""
+        if self._wakefield_solver is None:
+            from cavsim2d.solvers.solver_objects import WakefieldSolver
+            self._wakefield_solver = WakefieldSolver(self)
+        return self._wakefield_solver
+
+    @property
+    def tuned(self):
+        """Separate Cavity object living in ``<self_dir>/tuned/``.
+
+        Lazy: if the tuned folder exists on disk we instantiate the tuned
+        cavity from it on first access. Returns None when the cavity has
+        not been tuned yet.
+        """
+        if self._tuned_cavity is not None:
+            return self._tuned_cavity
+
+        if self.self_dir is None:
+            return None
+
+        tuned_dir = Path(self.self_dir) / 'tuned'
+        # Require proof of a completed tune — directory alone may be a
+        # leftover from a failed stage.
+        if not (tuned_dir / 'tune_info' / 'tune_res.json').exists():
+            return None
+
+        self._tuned_cavity = self._load_tuned_from_disk(tuned_dir)
+        return self._tuned_cavity
+
+    @tuned.setter
+    def tuned(self, value):
+        self._tuned_cavity = value
+
+    @property
+    def tuned_dir(self):
+        """Path to ``<self_dir>/tuned/`` (folder for the tuned cavity)."""
+        if self.self_dir is None:
+            return None
+        return str(Path(self.self_dir) / 'tuned')
+
+    @property
+    def tune_info_dir(self):
+        """Path to ``<self_dir>/tuned/tune_info/`` (tuning convergence data)."""
+        if self.self_dir is None:
+            return None
+        return str(Path(self.self_dir) / 'tuned' / 'tune_info')
+
+    @property
+    def eigenmode_dir(self):
+        """Backward-compat: eigenmode folder path."""
+        if self.self_dir is None:
+            return None
+        return str(Path(self.self_dir) / 'eigenmode')
+
+    @property
+    def wakefield_dir(self):
+        """Backward-compat: wakefield folder path."""
+        if self.self_dir is None:
+            return None
+        return str(Path(self.self_dir) / 'wakefield')
+
+    def _load_tuned_from_disk(self, tuned_dir):
+        """Restore a tuned cavity from an existing ``tuned/`` folder.
+
+        Subclasses override this to build an instance of the concrete type.
+        """
+        return None
+
+    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
+        """Create a deep-copy cavity object representing the tuned version.
+
+        The clone:
+        - lives in ``tuned_self_dir`` (typically ``<self_dir>/tuned/``)
+        - carries the updated ``tuned_parameters`` dict
+        - has its own ``geometry/`` folder written out
+        - has fresh, empty result caches (no stale eigenmode/wakefield data)
+
+        Subclasses must implement this so that the cloned object is of the
+        correct concrete cavity type and its geometry is rewritten from
+        the tuned parameters.
+        """
+        raise NotImplementedError(
+            "clone_for_tuning must be implemented by cavity subclasses"
+        )
+
+
     @abstractmethod
     def create(self):
         # If a geometry file is provided, skip dimension‐based setup:
         if self.geo_filepath:
-            # make directory paths
-            cav_dir_structure = {
-                self.name: {
-                    'geometry': None,
-                }
-            }
+            # make directory paths — flat structure, no Cavities/ subfolder
+            self.self_dir = str(Path(self.projectDir) / self.name)
+            geo_dir = Path(self.self_dir) / 'geometry'
+            geo_dir.mkdir(parents=True, exist_ok=True)
 
-            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-            else:
-                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-
-            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
-
-            self._init_from_geo(self.geo_filepath, os.path.join(self.self_dir, 'geometry'))
+            self._init_from_geo(self.geo_filepath, str(Path(self.self_dir) / 'geometry'))
             self.get_geometric_parameters()
 
     def _init_from_geo(self, filepath, output_filepath, kind='geo'):
@@ -656,7 +758,7 @@ class Cavity(ABC):
                                 'parentDir': parentDir,
                                 'projectDir': projectDir,
                                 'analysis folder': 'NGSolveMEVP',
-                                'cell_type': 'mid cell',
+                                'cell_type': 'mid-cell',
                                 'optimisation': False
                                 }
 
@@ -680,32 +782,28 @@ class Cavity(ABC):
        optimiser(self, optimisation_config)
 
     def get_ngsolve_tune_res(self):
+        """Load tune results from ``<self_dir>/tuned/tune_info/tune_res.json``.
+
+        After the tune refactor, tune artefacts live alongside the tuned
+        cavity — not inside the original cavity's ``eigenmode/`` folder.
+        A legacy fallback is kept for older projects.
+
+        The file is keyed by cell type (e.g. ``{'mid-cell': {...}}``); when
+        multiple cell types were tuned the final stage's ``FREQ`` is used
+        as the cavity's target frequency.
         """
+        from cavsim2d.processes.tune import last_stage_result
 
-        Parameters
-        ----------
-        tune_variable: {'A', 'B', 'a'. 'b', 'Ri', 'L', 'Req'}
-            Tune variable.
-        cell_type: {'mid cell', 'end-mid cell', 'mid-end cell', 'single cell'}
-            Type of cell to tune
+        new_path = Path(self.self_dir) / 'tuned' / 'tune_info' / 'tune_res.json'
+        legacy_path = Path(self.self_dir) / 'eigenmode' / 'tune_res.json'
+        tune_res_path = new_path if new_path.exists() else legacy_path
 
-        Returns
-        -------
-
-        """
-        tune_res = 'tune_res.json'
-        if os.path.exists(os.path.join(self.self_dir, 'eigenmode', 'tune_res.json')):
-            with open(os.path.join(self.self_dir, 'eigenmode', 'tune_res.json'),
-                      'r') as json_file:
+        if tune_res_path.exists():
+            with open(tune_res_path, 'r') as json_file:
                 self.tune_results = json.load(json_file)
-            self.freq = self.tune_results['FREQ']
-            # self.shape['IC'] = self.tune_results['IC']
-            # self.shape['OC'] = self.tune_results['OC']
-            # self.shape['OC_R'] = self.tune_results['OC_R']
-            # self.mid_cell = self.shape['IC']
-            # self.end_cell_left = self.shape['OC']
-            # self.end_cell_right = self.shape['OC_R']
-
+            last = last_stage_result(self.tune_results)
+            if last is not None and 'FREQ' in last:
+                self.freq = last['FREQ']
         else:
             error("Tune results not found. Please tune the cavity")
 
@@ -717,15 +815,16 @@ class Cavity(ABC):
 
         """
         qois = 'qois.json'
-        assert os.path.exists(
-            os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)), (
-            error(f"Eigenmode result does not exist {os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)}, please run eigenmode simulation."))
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)) as json_file:
+        qois_path = os.path.join(self.self_dir, 'eigenmode', qois)
+        assert os.path.exists(qois_path), (
+            error(f"Eigenmode result does not exist {qois_path}, please run eigenmode simulation."))
+        with open(qois_path) as json_file:
             self.eigenmode_qois = json.load(json_file)
 
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole',
-                               'qois_all_modes.json')) as json_file:
-            self.eigenmode_qois_all_modes = json.load(json_file)
+        all_modes_path = os.path.join(self.self_dir, 'eigenmode', 'qois_all_modes.json')
+        if os.path.exists(all_modes_path):
+            with open(all_modes_path) as json_file:
+                self.eigenmode_qois_all_modes = json.load(json_file)
 
         # with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
         #     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
@@ -812,31 +911,40 @@ class Cavity(ABC):
 
     def plot_spectra(self, var, ax=None):
         if len(self.uq_fm_results_all_modes) != 0:
-            df = pd.DataFrame({k: {sub_k: v[0] for sub_k, v in sub_dict.items()} for k, sub_dict in
-                               self.uq_fm_results_all_modes.items()})
+            results = self.uq_fm_results_all_modes
+
             if ax is None:
                 fig, ax = plt.subplots(figsize=(12, 4))
 
-            # Generate KDE data
-            for col in ['freq_1 [MHz]', 'freq_2 [MHz]', 'freq_3 [MHz]', 'freq_4 [MHz]', 'freq_5 [MHz]', 'freq_6 [MHz]',
-                        'freq_7 [MHz]', 'freq_8 [MHz]', 'freq_9 [MHz]']:
-                mean = df[col]["expe"]
-                std = df[col]["stdDev"]
-                x_values = np.linspace(mean - 10, mean + 10, 100000)  # Adjust range as needed
-                if std / mean < 1e-4:  # set a very narrow range for the x-axis around the mean.
-                    x = np.linspace(mean - 10, mean + 10, 100000)
-                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
-                    ax.plot(x, y_values * 1e-8, label=col)
-                else:
+            # Generate KDE data for each mode found in the nested results
+            # Sort modes numerically if possible
+            try:
+                sorted_modes = sorted(results.keys(), key=lambda x: int(x))
+            except ValueError:
+                sorted_modes = sorted(results.keys())
+
+            for mode_idx in sorted_modes:
+                qois = results[mode_idx]
+                if var in qois:
+                    stats = qois[var]
+                    mean = stats["expe"][0]
+                    std = stats["stdDev"][0]
+
+                    if std == 0:
+                        # Avoid division by zero, plot a vertical line for zero-variance results
+                        ax.axvline(mean, ls='--', alpha=0.5, label=f"{var}_{mode_idx} (std=0)")
+                        continue
+
+                    # Dynamic range based on standard deviation
+                    x_values = np.linspace(mean - 4 * std, mean + 4 * std, 1000)
                     y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
-                    ax.plot(x_values, y_values * 1e-8, label=col)
+                    
+                    ax.plot(x_values, y_values, label=f"{var}_{mode_idx}")
 
             # Plot settings
-            ax.set_title("KDE Plots for Frequencies")
-            ax.set_xlabel("Frequency (MHz)")
+            ax.set_title(f"KDE Plots for {var}")
+            ax.set_xlabel(var)
             ax.set_ylabel("Density")
-            ax.set_xlim(1270, 1310)
-            # ax.set_ylim(0, 3)
             ax.legend()
 
         else:
@@ -853,11 +961,15 @@ class Cavity(ABC):
 
         # get neighbours and all qois
         neighbours = {}
-        for dirr in os.listdir(os.path.join(folder, 'Cavities')):
-            if 'Q' in dirr.split('_')[-1]:
-                with open(os.path.join(folder, 'Cavities', dirr, 'eigenmode', 'monopole', 'qois.json'), 'r') as json_file:
-                    neighbour_uq_fm_results = json.load(json_file)
-                neighbours[dirr] = neighbour_uq_fm_results
+        cavities_dir = folder
+        for dirr in os.listdir(cavities_dir):
+            dirr_path = os.path.join(cavities_dir, dirr)
+            if os.path.isdir(dirr_path) and 'Q' in dirr.split('_')[-1]:
+                qois_path = os.path.join(dirr_path, 'eigenmode', 'qois.json')
+                if os.path.exists(qois_path):
+                    with open(qois_path, 'r') as json_file:
+                        neighbour_uq_fm_results = json.load(json_file)
+                    neighbours[dirr] = neighbour_uq_fm_results
 
         self.neighbours = pd.DataFrame.from_dict(neighbours, orient='index')
 
@@ -910,8 +1022,19 @@ class Cavity(ABC):
                 self.I0[key] = val['I0 [mA]']
 
     def get_abci_data(self):
-        self.abci_data = {'Long': ABCIData(self.wakefield_dir, '', 0),
-                          'Trans': ABCIData(self.wakefield_dir, '', 1)}
+        try:
+            self.abci_data = {'Long': ABCIData(self.wakefield_dir, '', 0),
+                              'Trans': ABCIData(self.wakefield_dir, '', 1)}
+        except FileNotFoundError as e:
+            from cavsim2d.constants import SOFTWARE_DIRECTORY
+            abci_exe = os.path.join(SOFTWARE_DIRECTORY, 'solvers', 'ABCI', 'ABCI.exe')
+            if not os.path.exists(abci_exe):
+                raise FileNotFoundError(
+                    f"ABCI solver output not found: {e}\n"
+                    f"ABCI.exe is missing from: {abci_exe}\n"
+                    f"Please install ABCI.exe to run wakefield analysis."
+                ) from None
+            raise
 
     def plot_animate_wakefield(self, save=False):
         def plot_contour_for_frame(data, frame_key, ax):
@@ -1094,19 +1217,40 @@ class Cavity(ABC):
 
     def plot(self, what, ax=None, scale_x=1, **kwargs):
         if what.lower() == 'geometry':
+            # Opt-in: `tuned=True` routes the plot to self.tuned when it
+            # exists, so callers can overlay before/after on the same ax.
+            tuned_flag = kwargs.pop('tuned', False)
+            target = self
+            if tuned_flag:
+                if self.tuned is None:
+                    warning('tuned=True requested but cavity has no tuned version yet — '
+                            'plotting original geometry instead.')
+                else:
+                    target = self.tuned
+
+            # Use the pure-matplotlib geometry function. The gmsh-oriented
+            # `write_cavity_geometry_cli` only populates `geo` under
+            # `write=...`, so it cannot draw a visible plot on its own.
+            # ``ignore_degenerate=True`` keeps the drawing going on
+            # borderline input instead of bailing on the tangent check —
+            # the caller wants to *see* the geometry, even if it would
+            # fail a strict mesh check.
+            common_kwargs = dict(scale=1, ax=ax, plot=True, ignore_degenerate=True)
             if 'mid_cell' in kwargs.keys():
                 new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
-                ax = write_cavity_geometry_cli(self.mid_cell, self.mid_cell, self.mid_cell,
-                                               'none', 1, scale=1, ax=ax, plot=True, **new_kwargs)
+                ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.mid_cell, target.mid_cell,
+                                                       'none', 1, **common_kwargs, **new_kwargs)
             elif 'end_cell_left' in kwargs.keys():
-                ax = write_cavity_geometry_cli(self.end_cell_left, self.end_cell_left, self.end_cell_left,
-                                               'left', 1, scale=1, ax=ax, plot=True, **kwargs)
+                ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_left, target.end_cell_left, target.end_cell_left,
+                                                       'left', 1, **common_kwargs, **kwargs)
             elif 'end_cell_right' in kwargs.keys():
-                ax = write_cavity_geometry_cli(self.end_cell_right, self.end_cell_right, self.end_cell_right,
-                                               'right', 1, scale=1, ax=ax, plot=True, **kwargs)
+                ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_right, target.end_cell_right, target.end_cell_right,
+                                                       'right', 1, **common_kwargs, **kwargs)
             else:
-                ax = write_cavity_geometry_cli(self.mid_cell, self.end_cell_left, self.end_cell_right,
-                                               self.beampipe, self.n_cells, scale=1, ax=ax, plot=True, **kwargs)
+                ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.end_cell_left, target.end_cell_right,
+                                                       target.beampipe, target.n_cells, **common_kwargs, **kwargs)
+            if ax is None:
+                return None
             ax.set_xlabel('$z$ [mm]')
             ax.set_ylabel(r"$r$ [mm]")
             return ax
@@ -1742,39 +1886,22 @@ class Cavity(ABC):
             e = self._check_if_path_exists(project_dir, project_name, overwrite)
 
             if e:
-                def make_dirs_from_dict(d, current_dir=fr"{project_dir}"):
-                    for key, val in d.items():
-                        os.mkdir(os.path.join(current_dir, key))
-                        if type(val) == dict:
-                            make_dirs_from_dict(val, os.path.join(current_dir, key))
-
-                # create project structure in folders
-                project_dir_structure = {
-                    f'{project_name}':
-                        {
-                            'Cavities': None,
-                            'OperatingPoints': None,
-                            'PostData': {
-                                'Plots': None,
-                                'Data': None,
-                            },
-                            'Reference': None
-                        }
-                }
+                # Create project directory (flat — cavity objects go directly inside)
+                proposed_path = Path(project_dir) / project_name
                 try:
-                    make_dirs_from_dict(project_dir_structure)
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    os.makedirs(str(proposed_path), exist_ok=True)
+                    self.projectDir = str(proposed_path)
                     return True
                 except Exception as e:
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    self.projectDir = str(proposed_path)
                     error("An exception occurred in created project: ", e)
                     return False
             else:
-                self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                self.projectDir = str(Path(project_dir) / project_name)
                 return True
         else:
             info('\tPlease enter a valid project name')
-            self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+            self.projectDir = str(Path(project_dir) / project_name)
             return False
 
     @staticmethod
@@ -1790,8 +1917,8 @@ class Cavity(ABC):
                 try:
                     directory_list = os.listdir(path)
 
-                    if 'Cavities' in directory_list \
-                            and len(directory_list) < 6:
+                    # Flat structure: just check it's a project folder
+                    if len(directory_list) < 20:
                         shutil.rmtree(path)
                         return True
                     else:
@@ -1818,7 +1945,7 @@ class Cavity(ABC):
     @staticmethod
     def _copyFiles(invar, parentDir, projectDir, name):
         src = os.path.join(parentDir, 'exe', 'SLANS_exe')
-        dst = os.path.join(projectDir, 'Cavities', name, 'eigenmode', f'_process_{invar}', 'SLANS_exe')
+        dst = os.path.join(projectDir, name, 'eigenmode', f'_process_{invar}', 'SLANS_exe')
 
         dir_util.copy_tree(src, dst)
 
@@ -1838,17 +1965,18 @@ class Cavity(ABC):
 
     # @abstractmethod
     def spawn(self, difference, folder):
+        from cavsim2d.cavity.cavities import Cavities
         spawn = Cavities(folder)
         for key, params_diff in difference.iterrows():
             # load base geometry
             base_geo = self.geo_filepath
 
             name = key
-            scav = Cavity(name=name, geo_filepath=os.path.join(self.self_dir, 'geometry', 'geodata.geo'))
+            scav = type(self)(name=name, geo_filepath=str(Path(self.self_dir) / 'geometry' / 'geodata.geo'))
             spawn.add_cavity(scav, names=name, plot_labels=name)
 
             # modify base_geo parameters according to params_diff
-            output_folder = os.path.join(scav.self_dir, "geometry")
+            output_folder = str(Path(scav.self_dir) / "geometry")
             self.update_geo_parameters(base_geo, output_folder, params_diff.to_dict())
 
         return spawn

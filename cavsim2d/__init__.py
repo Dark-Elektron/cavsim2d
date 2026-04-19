@@ -8,6 +8,12 @@ Main entry points:
     SplineCavity       - Spline-based cavity
     RFGun              - RF gun cavity
     Pillbox            - Pillbox cavity
+
+Solver objects (attached as lazy properties on Cavity/Cavities):
+    cav.tune           - TuneSolver
+    cav.eigenmode      - EigenmodeSolver
+    cav.wakefield      - WakefieldSolver
+    cavs.optimisation  - OptimisationSolver
 """
 from cavsim2d.cavity import (
     Cavities,
@@ -22,6 +28,14 @@ from cavsim2d.cavity import (
     show_welcome,
 )
 
+from cavsim2d.solvers import (
+    TuneSolver,
+    EigenmodeSolver,
+    WakefieldSolver,
+    OptimisationSolver,
+    EigenmodeResult,
+)
+
 __all__ = [
     'Cavities',
     'Cavity',
@@ -33,4 +47,9 @@ __all__ = [
     'Dakota',
     'OperationPoints',
     'show_welcome',
+    'TuneSolver',
+    'EigenmodeSolver',
+    'WakefieldSolver',
+    'OptimisationSolver',
+    'EigenmodeResult',
 ]

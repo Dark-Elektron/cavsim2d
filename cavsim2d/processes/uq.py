@@ -1,11 +1,15 @@
 """Parallel uncertainty quantification process functions."""
+import json
 import multiprocessing as mp
 import os.path
+import re
 import shutil
 import time
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import qmc
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.analysis.wakefield.abci_geometry import ABCIGeometry
@@ -95,7 +99,20 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         # spawn cavity objects
         cavs_object = cav.spawn(nodes_, os.path.join(cav.self_dir, 'uq'))
 
-        cavs_object.run_tune(eigenmode_config['uq_config']['tune_config'])
+        uq_cfg = eigenmode_config['uq_config']
+        
+        # Save UQ config for traceability
+        with open(os.path.join(cav.uq_dir, 'uq_config.json'), 'w') as f:
+            json.dump(eigenmode_config, f, indent=4, default=str)
+        if 'tune_config' in uq_cfg and uq_cfg['tune_config']:
+            # Refit each perturbed variant (e.g. retune Req) before measuring
+            # QoIs, then pull QoIs off the tuned cavities.
+            cavs_object.run_tune(uq_cfg['tune_config'])
+        else:
+            # Plain UQ: run eigenmode on each perturbed variant. Strip the
+            # nested uq_config so we don't recurse into another UQ sweep.
+            eig_cfg = {k: v for k, v in eigenmode_config.items() if k != 'uq_config'}
+            cavs_object.run_eigenmode(eig_cfg)
 
         uq_df = pd.DataFrame.from_dict(cavs_object.eigenmode_qois).T
 
@@ -151,11 +168,26 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
             Ttab_val_f_all_modes, weights_)
 
         for i, o in enumerate(uq_df_all.columns):
-            result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-            result_dict_eigen_all_modes[o]['expe'].append(mean_obj_all_modes[i])
-            result_dict_eigen_all_modes[o]['stdDev'].append(std_obj_all_modes[i])
-            result_dict_eigen_all_modes[o]['skew'].append(skew_obj_all_modes[i])
-            result_dict_eigen_all_modes[o]['kurtosis'].append(kurtosis_obj_all_modes[i])
+            # Extract mode number and base property name from column like 'freq_0 [MHz]'
+            match = re.search(r'^(.*?)_(\d+)(\s*\[.*\])?$', o)
+            if match:
+                prop_base = match.group(1).strip()
+                mode_idx = match.group(2)
+                unit = match.group(3).strip() if match.group(3) else ""
+                base_name = f"{prop_base} {unit}".strip()
+            else:
+                base_name = o
+                mode_idx = "0"
+
+            if mode_idx not in result_dict_eigen_all_modes:
+                result_dict_eigen_all_modes[mode_idx] = {}
+
+            result_dict_eigen_all_modes[mode_idx][base_name] = {
+                'expe': [mean_obj_all_modes[i]],
+                'stdDev': [std_obj_all_modes[i]],
+                'skew': [skew_obj_all_modes[i]],
+                'kurtosis': [kurtosis_obj_all_modes[i]]
+            }
 
         with open(os.path.join(cav.uq_dir, 'uq_all_modes.json'), 'w') as file:
             file.write(json.dumps(result_dict_eigen_all_modes, indent=4, separators=(',', ': ')))
@@ -180,8 +212,8 @@ def uq(proc_cavs_dict, eigenmode_config, proc_num):
 
     for name, cav in proc_cavs_dict.items():
 
-        filename = os.path.join(cav.eigenmode_dir, 'monopole', 'qois.json')
-        filename_all_modes = os.path.join(cav.eigenmode_dir, 'monopole', 'qois_all_modes.json')
+        filename = os.path.join(cav.eigenmode_dir, 'qois.json')
+        filename_all_modes = os.path.join(cav.eigenmode_dir, 'qois_all_modes.json')
 
         if os.path.exists(filename):
             qois_result_dict = dict()
@@ -247,12 +279,19 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         # cell_type = uq_config['cell_type']
         analysis_folder = solver_args_dict['analysis folder']
         uq_vars = uq_config['variables']
-        which_cell = uq_config['cell']
+        which_cell = uq_config.get('cell', 'all')
         # opt = solver_args_dict['optimisation']
         # delta = uq_config['delta']
 
         method = uq_config['method']
+        if 'perturbation_mode' not in uq_config:
+            # default: additive perturbation with bound from delta or 0.01
+            uq_config['perturbation_mode'] = ['add', uq_config.get('delta', 0.01)]
+
         perturbation_mode = uq_config['perturbation_mode']
+        if len(perturbation_mode) < 2:
+            perturbation_mode.append(uq_config.get('delta', 0.01))
+
         if not isinstance(perturbation_mode[1], list):
             perturbation_mode[1] = [perturbation_mode[1]] * len(uq_vars)
 
@@ -262,7 +301,7 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
         for key, shape in shape_space.items():
             n_cells = shape['n_cells']
 
-            uq_path = projectDir / f'Cavities/{key}/eigenmode'
+            uq_path = projectDir / f'{key}/eigenmode'
 
             result_dict_eigen = {}
             result_dict_eigen_all_modes = {}
@@ -318,7 +357,7 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
             nodes_.to_csv(uq_path / 'nodes.csv', index=False, sep='\t', float_format='%.32f')
 
             data_table_w = pd.DataFrame(weights_, columns=['weights'])
-            data_table_w.to_csv(os.path.join(projectDir, 'Cavities', key, 'eigenmode', 'weights.csv'),
+            data_table_w.to_csv(os.path.join(projectDir, key, 'eigenmode', 'weights.csv'),
                                 index=False, sep='\t',
                                 float_format='%.32f')
 
@@ -407,11 +446,26 @@ def uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict
             #     result_dict_eigen[o]['expe'].append(mean_obj[i])
             #     result_dict_eigen[o]['stdDev'].append(std_obj[i])
             for i, o in enumerate(df_all_modes.columns):
-                result_dict_eigen_all_modes[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
-                result_dict_eigen_all_modes[o]['expe'].append(mean_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['stdDev'].append(std_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['skew'].append(skew_obj_all_modes[i])
-                result_dict_eigen_all_modes[o]['kurtosis'].append(kurtosis_obj_all_modes[i])
+                # Extract mode number and base property name from column like 'freq_0 [MHz]'
+                match = re.search(r'^(.*?)_(\d+)(\s*\[.*\])?$', o)
+                if match:
+                    prop_base = match.group(1).strip()
+                    mode_idx = match.group(2)
+                    unit = match.group(3).strip() if match.group(3) else ""
+                    base_name = f"{prop_base} {unit}".strip()
+                else:
+                    base_name = o
+                    mode_idx = "0"
+
+                if mode_idx not in result_dict_eigen_all_modes:
+                    result_dict_eigen_all_modes[mode_idx] = {}
+
+                result_dict_eigen_all_modes[mode_idx][base_name] = {
+                    'expe': [mean_obj_all_modes[i]],
+                    'stdDev': [std_obj_all_modes[i]],
+                    'skew': [skew_obj_all_modes[i]],
+                    'kurtosis': [kurtosis_obj_all_modes[i]]
+                }
 
             with open(uq_path / fr'uq_all_modes.json', 'w') as file:
                 file.write(json.dumps(result_dict_eigen_all_modes, indent=4, separators=(',', ': ')))
@@ -452,7 +506,7 @@ def uq_multicell_s(key, objectives, uq_config, uq_path, solver_args_dict, sub_di
             # check if folder already exist (simulation already completed)
 
             skip = False
-            if os.path.exists(uq_path / f'{fid}/monopole/qois.json'):
+            if os.path.exists(uq_path / f'{fid}/qois.json'):
                 skip = True
                 info(f'processor {proc_num} skipped ', fid, 'Result already exists.')
 
@@ -483,8 +537,8 @@ def uq_multicell_s(key, objectives, uq_config, uq_path, solver_args_dict, sub_di
                                         beampipes='both',
                                         parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
 
-                filename = uq_path / f'{fid}/monopole/qois.json'
-                filename_all_modes = uq_path / f'{fid}/monopole/qois_all_modes.json'
+                filename = uq_path / f'{fid}/qois.json'
+                filename_all_modes = uq_path / f'{fid}/qois_all_modes.json'
                 if os.path.exists(filename):
                     qois_result_dict = dict()
 

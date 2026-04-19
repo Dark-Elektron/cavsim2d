@@ -9,6 +9,7 @@ from scipy.stats import qmc
 
 from cavsim2d.constants import SOFTWARE_DIRECTORY
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.utils.printing import suppress_errors
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 import shutil
 import multiprocessing as mp
@@ -38,7 +39,7 @@ def _resolve_cell_type(cell_type, shape, perturbed=None):
     Parameters
     ----------
     cell_type : str
-        One of 'mid cell', 'mid-end cell', 'end-end cell', or other.
+        One of 'mid-cell', 'end-cell', 'single-cell'.
     shape : dict
         Shape dictionary with 'IC' and 'OC' keys.
     perturbed : np.ndarray, optional
@@ -54,16 +55,16 @@ def _resolve_cell_type(cell_type, shape, perturbed=None):
     if ct == 'mid cell':
         cell_node = shape['IC'] if perturbed is None else perturbed
         return cell_node, cell_node, cell_node, 'none', shape['IC']
-    elif ct == 'mid end cell':
+    elif ct == 'end cell':
         base = shape['IC'] if perturbed is None else shape['IC']
         end = shape['OC'] if perturbed is None else perturbed
         return base, base, end, 'right', shape['OC']
-    elif ct == 'end end cell':
-        cell_node = shape['OC'] if perturbed is None else perturbed
-        return cell_node, cell_node, cell_node, 'right', shape['OC']
-    else:
+    elif ct == 'single cell':
         cell_node = shape['OC'] if perturbed is None else perturbed
         return cell_node, cell_node, cell_node, 'both', shape['OC']
+    else:
+        cell_node = shape['IC'] if perturbed is None else perturbed
+        return cell_node, cell_node, cell_node, 'none', shape['IC']
 
 
 class PyTuneNGSolve:
@@ -79,14 +80,27 @@ class PyTuneNGSolve:
 
         tol = tune_config.get('tol', 1e-4)
         maxiter = tune_config.get('maxiter', 10)
-        method = tune_config.get('method', 'newton')
 
         if cav.kind == 'elliptical cavity':
-            if '_m' in self.tune_var:
+            # If tune_var is a bare name (no suffix), map it based on cell_types
+            if '_m' not in self.tune_var and '_el' not in self.tune_var and '_er' not in self.tune_var:
+                ct = tune_config.get('cell_types', 'mid-cell').lower().replace('-', ' ').replace('_', ' ')
+                if ct in ('mid cell',):
+                    self.tune_var = f'{self.tune_var}_m'
+                elif ct in ('end cell r', 'end cell right'):
+                    self.tune_var = f'{self.tune_var}_er'
+                elif ct in ('end cell', 'end cell l', 'end cell left', 'single cell'):
+                    self.tune_var = f'{self.tune_var}_el'
+                else:
+                    self.tune_var = f'{self.tune_var}_m'
+
+            # Use suffix-based dispatch — substring matching breaks on names
+            # like 'Req_er' (which contains '_e').
+            if self.tune_var.endswith('_m'):
                 self.beampipe = 'none'
-            if '_el' in self.tune_var:
+            elif self.tune_var.endswith('_el'):
                 self.beampipe = 'left'
-            if '_er' in self.tune_var:
+            elif self.tune_var.endswith('_er'):
                 self.beampipe = 'right'
 
         self.freq_list = []
@@ -94,57 +108,192 @@ class PyTuneNGSolve:
         self.abs_err_list = []
         self.convergence_list = []
 
-        res = root_scalar(
-            self.tune_function,
-            method=method,
-            x0=cav.parameters[self.tune_var],
-            xtol=tol,
-            rtol=tol,
-            maxiter=maxiter
-        )
+        x0 = cav.parameters[self.tune_var]
+        self.x0_initial = x0  # Store for sanity check in tuner
+        # Secant method needs two starting points
+        x1 = x0 * 1.05  # 5% perturbation
 
-        self.tune_function(res.root)
+        self._degen_count = 0
+        # Secant probing routinely lands on parameter sets that yield
+        # degenerate geometry — the tuner handles these via a penalty and
+        # retreats. Silence the per-iteration "Parameter set leads to
+        # degenerate geometry." error so only the final stage result is
+        # reported. A terminal degeneracy still surfaces via the
+        # ValueError branch below.
+        try:
+            with suppress_errors('Parameter set leads to degenerate geometry'):
+                res = root_scalar(
+                    self.tune_function,
+                    method='secant',
+                    x0=x0,
+                    x1=x1,
+                    xtol=tol,
+                    rtol=tol,
+                    maxiter=maxiter
+                )
+                # Final evaluation at converged root
+                self.tune_function(res.root)
+            converged = bool(res.converged) if hasattr(res, 'converged') else True
+            root_val = res.root
+        except ValueError as e:
+            # Tuning aborted mid-iteration (e.g., repeated degeneracy).
+            error(f'Tune aborted: {e}')
+            converged = False
+            # Best-effort: pick the tv with smallest |diff| from the valid points collected.
+            root_val = self._best_valid_tv_or_zero()
 
         self.convergence_list.extend([self.tv_list, self.freq_list])
         self.conv_dict = {f'{self.tune_var}': self.convergence_list[0], 'freq [MHz]': self.convergence_list[1]}
 
-        if res:
-            return res.root, self.freq_list[self.tv_list.index(res.root)], self.conv_dict, self.abs_err_list
+        # Diagnose unreachable targets: if the final achievable freq is
+        # far from the target, surface that clearly rather than returning
+        # a spurious result.
+        if self._valid_freqs():
+            best_freq, best_diff = self._best_valid_result()
+            freq_tol_mhz = max(1e-2, 1e-3 * self.target_freq)  # 0.001% or 10 kHz
+            if abs(best_diff) > freq_tol_mhz:
+                min_f = min(self._valid_freqs())
+                max_f = max(self._valid_freqs())
+                error(
+                    f"Tune did not reach target {self.target_freq} MHz. "
+                    f"Best |diff| = {abs(best_diff):.3f} MHz at {self.tune_var}={root_val}. "
+                    f"Achievable freq range (sampled): [{min_f:.3f}, {max_f:.3f}] MHz. "
+                    f"Target may be unreachable by varying {self.tune_var} alone — "
+                    f"consider adjusting other geometry parameters (e.g., Req)."
+                )
+                return 0, 0, self.conv_dict, self.abs_err_list
+
+        if converged:
+            # Find closest match in recorded tv_list (float eq after re-eval may differ)
+            if root_val in self.tv_list:
+                idx = self.tv_list.index(root_val)
+            else:
+                idx = int(np.argmin(np.abs(np.array(self.tv_list) - root_val)))
+            return root_val, self.freq_list[idx], self.conv_dict, self.abs_err_list
         else:
             return 0, 0, self.conv_dict, self.abs_err_list
 
+    def _valid_freqs(self):
+        """Recorded frequencies from steps that weren't flagged degenerate."""
+        return [f for f, ok in zip(self.freq_list, getattr(self, '_valid_mask', [True]*len(self.freq_list))) if ok]
+
+    def _best_valid_result(self):
+        """Return (freq, diff) for the valid step closest to target."""
+        valid = [(f, f - self.target_freq) for f, ok in
+                 zip(self.freq_list, getattr(self, '_valid_mask', [True]*len(self.freq_list))) if ok]
+        if not valid:
+            return self.target_freq, 0.0
+        return min(valid, key=lambda fd: abs(fd[1]))
+
+    def _best_valid_tv_or_zero(self):
+        """Return the tune variable value of the best valid step, or 0 if none."""
+        valid_pairs = [(tv, f) for tv, f, ok in
+                       zip(self.tv_list, self.freq_list, getattr(self, '_valid_mask', [True]*len(self.freq_list))) if ok]
+        if not valid_pairs:
+            return 0
+        best = min(valid_pairs, key=lambda tf: abs(tf[1] - self.target_freq))
+        return best[0]
+
     def tune_function(self, x):
-        x_val = x if isinstance(x, float) else x[0]
+        x_val = float(x if isinstance(x, (float, int, np.floating)) else x[0])
         self.cav.parameters[self.tune_var] = x_val
         self.tv_list.append(x_val)
+        if not hasattr(self, '_valid_mask'):
+            self._valid_mask = []
 
         bp = self.beampipe if self.beampipe else 'none'
-        self.cav.create(1, bp, mode='tune')
 
-        res = ngsolve_mevp.solve(self.cav)
-        if not res:
-            error('Cannot continue with tuning -> Skipping degenerate geometry')
-            return 0, 0, [], []
+        # End-cell stages tune the end-cell in its real context (beampipe +
+        # end-cell + adjacent mid-cell half, PMC at both outer ends). The
+        # quarter-cell geometry used for mid-cell tuning mirrors the end-cell
+        # to itself, which excludes the pi-mode frequency the real multicell
+        # cavity has — i.e. the target is unreachable.
+        endcell_tune = bp in ('left', 'right')
+        tune_mode = 'tune-endcell' if endcell_tune else 'tune'
 
-        if 'uq_config' in self.tune_config:
-            uq_config = self.tune_config['uq_config']
-            if uq_config:
-                run_tune_uq(self.cav, self.tune_config)
+        # Geometry creation and solve both can fail on degenerate parameters.
+        # Rather than aborting the entire tune, record a penalty and let the
+        # root finder retreat toward the valid region.
+        degenerate = False
+        try:
+            self.cav.create(1, bp, mode=tune_mode)
+        except Exception as e:
+            degenerate = True
+
+        if not degenerate:
+            orig_n_cells = self.cav.n_cells
+            self.cav.n_cells = 1
+            try:
+                res = ngsolve_mevp.solve(self.cav)
+            except Exception:
+                res = False
+            finally:
+                self.cav.n_cells = orig_n_cells
+            if not res:
+                degenerate = True
+
+        if degenerate:
+            return self._degenerate_penalty(x_val)
+
+        if 'uq_config' in self.tune_config and self.tune_config['uq_config']:
+            run_tune_uq(self.cav, self.tune_config)
 
             with open(os.path.join(self.cav.self_dir, 'eigenmode', 'uq.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
-            with open(os.path.join(self.cav.self_dir, 'eigenmode', 'monopole', 'qois.json')) as json_file:
+            with open(os.path.join(self.cav.self_dir, 'eigenmode', 'qois.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
+            freq = eigenmode_qois['freq [MHz]']
 
-        freq = eigenmode_qois['freq [MHz]']
         self.freq_list.append(freq)
+        self._valid_mask.append(True)
+        self._degen_count = 0
 
-        diff = abs(freq - self.target_freq)
-        self.abs_err_list.append(diff)
+        diff = freq - self.target_freq
+        self.abs_err_list.append(abs(diff))
 
         return diff
+
+    def _degenerate_penalty(self, x_val):
+        """Handle degenerate geometry step by returning a penalty that
+        nudges the secant method back toward the valid region.
+
+        Strategy: keep the sign of the last valid diff and inflate magnitude
+        so the secant extrapolation retreats. After too many consecutive
+        failures, raise to terminate tuning.
+        """
+        self._degen_count = getattr(self, '_degen_count', 0) + 1
+
+        # Find the last valid freq (if any)
+        last_valid_freq = None
+        for f, ok in zip(reversed(self.freq_list), reversed(self._valid_mask)):
+            if ok:
+                last_valid_freq = f
+                break
+
+        if last_valid_freq is not None:
+            last_diff = last_valid_freq - self.target_freq
+            # Keep sign, amplify magnitude so secant retreats toward last valid x.
+            sign = 1.0 if last_diff >= 0 else -1.0
+            penalty = sign * max(abs(last_diff) * 10.0, 1e3)
+            placeholder_freq = last_valid_freq
+        else:
+            # No valid anchor yet — default to a large positive penalty.
+            penalty = 1e3
+            placeholder_freq = self.target_freq + penalty
+
+        # Record the failed step in all tracking lists to keep them aligned.
+        self.freq_list.append(placeholder_freq)
+        self._valid_mask.append(False)
+        self.abs_err_list.append(abs(penalty))
+
+        if self._degen_count >= 3:
+            raise ValueError(
+                f'Geometry degenerated {self._degen_count} consecutive times at '
+                f'{self.tune_var}≈{x_val:.4g}. Target frequency may be unreachable.'
+            )
+        return penalty
 
     def tune_multicell(self, multicell, tune_var, target_freq, bc,
                        sim_folder, parentDir, projectDir, proc=0, tune_config=None):
@@ -163,7 +312,7 @@ class PyTuneNGSolve:
             indx = VAR_TO_INDEX_DICT['L']
             fid = f'_process_{proc}' if proc != '' else '_process_0'
 
-            sim_path = os.path.join(projectDir, 'Cavities', '_tune_temp', fid)
+            sim_path = os.path.join(projectDir, '_tune_temp', fid)
             if os.path.exists(sim_path):
                 shutil.rmtree(sim_path)
             os.mkdir(sim_path)
@@ -273,29 +422,147 @@ class PyTuneNGSolve:
     @staticmethod
     def write_output(tv_list, freq_list, fid, projectDir):
         dd = {"tv": tv_list, "freq": freq_list}
-        with open(os.path.join(projectDir, 'Cavities', '_tune_temp', fid, "convergence_output.json"), "w") as outfile:
+        with open(os.path.join(projectDir, '_tune_temp', fid, "convergence_output.json"), "w") as outfile:
             json.dump(dd, outfile, indent=4, separators=(',', ': '))
 
 
 def run_tune_uq(cav, tune_config):
+    """Run eigenmode UQ at the current tune iteration.
+
+    Perturbs the requested variables around ``cav.parameters`` over a
+    quadrature rule, solves eigenmode at each node, and writes the
+    weighted mean/std/skew/kurtosis of ``freq [MHz]`` to
+    ``<cav.self_dir>/eigenmode/uq.json``. The tune loop then reads the
+    expected frequency from that file in place of a single deterministic
+    solve.
+    """
     uq_config = tune_config['uq_config']
 
-    objectives = uq_config['objectives']
-    solver_dict = {'ngsolvemevp': ngsolve_mevp}
-    solver_args_dict = {'eigenmode': tune_config,
-                        'n_cells': 1,
-                        'n_modules': 1,
-                        'analysis folder': 'Optimisation',
-                        'cell_type': 'mid-cell',
-                        'optimisation': True
-                        }
-
-    uq_cell_complexity = uq_config.get('cell_complexity', 'simplecell')
+    uq_cell_complexity = uq_config.get('cell_complexity',
+                                       uq_config.get('cell complexity', 'simplecell'))
     if uq_cell_complexity == 'multicell':
-        pass
+        # Multicell UQ during tuning is not wired up in the current flow.
+        warning('Multicell UQ during tuning is not supported; skipping UQ step.')
+        return
+
+    uq_vars = uq_config['variables']
+    delta = uq_config.get('delta', [0.05] * len(uq_vars))
+    method = uq_config.get('method', ['Quadrature', 'Stroud3'])
+
+    # Resolve bare variable names (A, B, ...) to the suffixed parameters
+    # that actually live on cav.parameters (A_m, A_el, ...). During a
+    # multi-stage tune the per-stage config passes ``cell_types`` (singular
+    # value) to pyTuner; UQ overrides via ``uq_config['cell_type']``.
+    cell_type = uq_config.get('cell_type', tune_config.get('cell_types', 'mid-cell'))
+    ct = cell_type.lower().replace('-', ' ').replace('_', ' ')
+    if ct in ('end cell r', 'end cell right'):
+        suffix = '_er'
+    elif ct in ('end cell', 'end cell l', 'end cell left', 'single cell'):
+        suffix = '_el'
     else:
-        shape_space = {name: shape}
-        uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
+        suffix = '_m'
+
+    def _resolve(v):
+        if v.endswith(('_m', '_el', '_er')):
+            return v
+        return f'{v}{suffix}'
+
+    resolved_vars = [_resolve(v) for v in uq_vars]
+
+    # Beampipe setting matching the suffix of the perturbed cell.
+    bp_map = {'_m': 'none', '_el': 'left', '_er': 'right'}
+    bp = bp_map.get(suffix, 'none')
+
+    # Quadrature nodes / weights.
+    rdim = len(resolved_vars)
+    method_name = method[1].lower() if len(method) > 1 else 'stroud3'
+    if method_name == 'stroud3':
+        nodes_, weights_, _ = quad_stroud3(rdim, 1)
+        nodes_ = 2. * nodes_ - 1.
+    elif method_name == 'stroud5':
+        nodes_, weights_ = cn_leg_05_2(rdim)
+    elif method_name == 'gaussian':
+        nodes_, weights_ = cn_gauss(rdim, 2)
+    else:
+        warning(f'UQ integration method {method!r} not recognised; '
+                'defaulting to Stroud3.')
+        nodes_, weights_, _ = quad_stroud3(rdim, 1)
+        nodes_ = 2. * nodes_ - 1.
+
+    n_sims = nodes_.shape[1]
+    base_params = dict(cav.parameters)
+    freqs = []
+
+    eigenmode_dir = os.path.join(cav.self_dir, 'eigenmode')
+    os.makedirs(eigenmode_dir, exist_ok=True)
+
+    with suppress_errors('Parameter set leads to degenerate geometry'):
+        for j in range(n_sims):
+            # Perturb in-place; cav is restored after the loop.
+            for i, rvar in enumerate(resolved_vars):
+                cav.parameters[rvar] = base_params[rvar] * (1 + delta[i] * nodes_[i, j])
+
+            ok = False
+            orig_n_cells = cav.n_cells
+            cav.n_cells = 1
+            # End-cell UQ uses the hybrid (end-cell + adjacent mid-cell half)
+            # geometry for the same reason the non-UQ tune path does.
+            uq_tune_mode = 'tune-endcell' if bp in ('left', 'right') else 'tune'
+            try:
+                cav.create(1, bp, mode=uq_tune_mode)
+                ok = bool(ngsolve_mevp.solve(cav))
+            except Exception as e:
+                info(f'UQ node {j} failed to solve ({e!r}); dropping from quadrature.')
+                ok = False
+            finally:
+                cav.n_cells = orig_n_cells
+
+            if ok:
+                with open(os.path.join(eigenmode_dir, 'qois.json')) as f:
+                    q = json.load(f)
+                freqs.append(q['freq [MHz]'])
+            else:
+                freqs.append(np.nan)
+
+    # Restore the base parameters so the outer tune loop continues from
+    # the same state it entered with.
+    cav.parameters.update(base_params)
+
+    freqs_arr = np.array(freqs, dtype=float).reshape(-1, 1)
+    if np.isnan(freqs_arr).all():
+        raise ValueError('All UQ eigenmode solves failed — cannot aggregate.')
+    valid_mask = ~np.isnan(freqs_arr[:, 0])
+    valid_freqs = freqs_arr[valid_mask]
+    valid_weights = np.asarray(weights_)[valid_mask]
+    # Renormalise weights over surviving nodes.
+    valid_weights = valid_weights / valid_weights.sum()
+
+    mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(valid_freqs, valid_weights)
+
+    result = {
+        'freq [MHz]': {
+            'expe': [float(mean_obj[0])],
+            'stdDev': [float(std_obj[0])],
+            'skew': [float(skew_obj[0])],
+            'kurtosis': [float(kurtosis_obj[0])],
+        }
+    }
+    with open(os.path.join(eigenmode_dir, 'uq.json'), 'w') as f:
+        json.dump(result, f, indent=4)
+
+    # Diagnostic dump: per-node freqs + nodes + weights for this tune iter.
+    debug_rows = {
+        'node': list(range(n_sims)),
+        'freq [MHz]': [float(v) if np.isfinite(v) else None for v in freqs],
+        'weight': [float(w) for w in np.asarray(weights_).ravel()],
+    }
+    for i, rv in enumerate(resolved_vars):
+        debug_rows[rv] = [float(base_params[rv] * (1 + delta[i] * nodes_[i, j]))
+                          for j in range(n_sims)]
+    debug_rows['Req_m (base)'] = [float(base_params.get('Req_m', np.nan))] * n_sims
+    debug_rows['mean freq [MHz]'] = [float(mean_obj[0])] * n_sims
+    pd.DataFrame(debug_rows).to_csv(os.path.join(eigenmode_dir, 'uq_nodes.csv'),
+                                    index=False, sep='\t', float_format='%.6f')
 
 
 def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict, solver):
@@ -329,7 +596,7 @@ def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict, so
     assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
 
     for key, shape in shape_space.items():
-        uq_path = projectDir / f'Cavities/{key}/eigenmode'
+        uq_path = projectDir / f'{key}/eigenmode'
         result_dict_eigen = {}
         eigen_obj_list = []
 
@@ -479,12 +746,12 @@ def uq_tuner(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
         ct = cell_type.lower().replace('-', ' ').replace('_', ' ')
         if ct == 'mid cell':
             mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'none'
-        elif ct == 'mid end cell':
+        elif ct == 'end cell':
             mid, left, right, beampipes = cell_node, cell_node, perturbed_cell_node, 'right'
-        elif ct == 'end end cell':
-            mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'right'
-        else:
+        elif ct == 'single cell':
             mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'both'
+        else:
+            mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'none'
 
         enforce_Req_continuity(mid, left, right, cell_type)
 

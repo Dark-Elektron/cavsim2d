@@ -187,3 +187,11 @@ cavsim2d/cavity_legacy.py
 # NGSolve/Gmsh configs
 ng.ini
 ngmesh.ini
+
+.claude/
+.ai/
+_build/
+cavsim2d.egg-info/
+.vscode/
+.venv/
+.venv_test/

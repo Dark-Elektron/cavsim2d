@@ -3,9 +3,11 @@ import multiprocessing as mp
 import os.path
 import shutil
 import time
+from pathlib import Path
 
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.constants import *
+from cavsim2d.processes.uq import uq_parallel, uq_parallel_multicell
 from cavsim2d.utils.shared_functions import *
 
 ngsolve_mevp = NGSolveMEVP()
@@ -36,10 +38,15 @@ def run_eigenmode_parallel(cavs_dict, solver_config, subdir=''):
         start_idx += current_chunk_size
 
         processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
-        service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
 
-        service.start()
-        jobs.append(service)
+        if processes == 1:
+            # Inline path: avoids Windows spawn guard requirement and
+            # surfaces stdout/stderr directly in Jupyter.
+            solver_config['target'](processor_cavs_dict, solver_config, subdir)
+        else:
+            service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
+            service.start()
+            jobs.append(service)
 
     for job in jobs:
         job.join()
@@ -86,16 +93,20 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         done(f'Done with Cavity {cav.name}. Time: {time.time() - start_time}')
 
     for i, (key, cav) in enumerate(list(cavs_dict.items())):
-
-        if os.path.exists(os.path.join(cav.self_dir, key)):
+        cav_path = Path(cav.self_dir)
+        if cav_path.exists():
             if rerun:
-                shutil.rmtree(os.path.join(cav.self_dir, "eigenmode", "monopole"))
+                eigenmode_path = cav_path / "eigenmode"
+                if eigenmode_path.exists():
+                    shutil.rmtree(eigenmode_path)
                 _run_ngsolve(cav, eigenmode_config)
             else:
-                if os.path.exists(os.path.join(cav.self_dir, 'eigenmode', "monopole", "qois.json")):
+                qois_path = cav_path / "eigenmode" / "qois.json"
+                if qois_path.exists():
                     pass
                 else:
-                    shutil.rmtree(os.path.join(cav.self_dir, key))
+                    if cav_path.exists():
+                        shutil.rmtree(cav_path)
                     _run_ngsolve(cav, eigenmode_config)
         else:
             _run_ngsolve(cav, eigenmode_config)

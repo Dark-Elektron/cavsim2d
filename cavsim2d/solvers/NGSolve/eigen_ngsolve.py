@@ -94,7 +94,7 @@ class NGSolveMEVP:
     def solve(self, cav, eigenmode_config=None):
         """Run eigenmode analysis on a single cavity object."""
         eigenmode_folder_structure = {
-            'eigenmode': {'monopole': None, 'dipole': None}
+            'eigenmode': None
         }
         make_dirs_from_dict(eigenmode_folder_structure, cav.self_dir)
 
@@ -114,15 +114,22 @@ class NGSolveMEVP:
         mesh.Curve(mesh_p)
         self.save_mesh(cav.self_dir, mesh)
 
-        save_dir = os.path.join(cav.self_dir, 'eigenmode', 'monopole')
+        save_dir = os.path.join(cav.self_dir, 'eigenmode')
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, save_dir, mesh, mesh_p)
-        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, n=cav.n_cells, save_dir=save_dir)
+
+        # Bug fix: Pass the actual half-cell length for correct normalization
+        # cav.parameters stores 'L_m' etc. in mm.
+        # We need to find the appropriate L for the cell being evaluated.
+        # For a single-cell or multicell eigenmode, we generally use the mid-cell length L_m.
+        L_norm = cav.parameters.get('L_m', 1) 
+        
+        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=cav.n_cells, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir)
         with open(os.path.join(save_dir, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
 
         qois_all_modes = {}
         for ii in range(len(freq_fes)):
-            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, n=ii, save_dir=save_dir)
+            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir)
 
         with open(os.path.join(save_dir, 'qois_all_modes.json'), "w") as f:
             json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
@@ -139,14 +146,13 @@ class NGSolveMEVP:
         if mesh_args is None:
             mesh_args = [20, 20]
 
-        pol_subdir = 'dipole' if pol.lower() != 'monopole' else 'monopole'
-
+        # Unified eigenmode folder — flat structure, no Cavities/ subfolder
         if opt:
-            run_save_directory = projectDir / f'Cavities/{fid}/eigenmode'
+            run_save_directory = projectDir / f'{fid}/eigenmode'
         elif subdir == '':
-            run_save_directory = projectDir / f'Cavities/{fid}/eigenmode/{pol_subdir}'
+            run_save_directory = projectDir / f'{fid}/eigenmode'
         else:
-            run_save_directory = projectDir / f'Cavities/{subdir}/eigenmode/{fid}/{pol_subdir}'
+            run_save_directory = projectDir / f'{subdir}/eigenmode/{fid}'
 
         self.write_geometry_multicell(run_save_directory, no_of_cells, multicell,
                                       beampipes, plot=False)
@@ -183,15 +189,15 @@ class NGSolveMEVP:
 
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(run_save_directory, mesh, mesh_p)
 
-        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes,
-                                  save_dir=run_save_directory)
+        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=no_of_cells, n_cells=no_of_cells,
+                                  L=L, save_dir=run_save_directory)
 
         with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
 
         qois_all_modes = {}
         for ii in range(len(freq_fes)):
-            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, n=ii)
+            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii, n_cells=no_of_cells, L=L)
 
         with open(os.path.join(run_save_directory, 'qois_all_modes.json'), "w") as f:
             json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
@@ -203,7 +209,19 @@ class NGSolveMEVP:
         fes = HCurl(mesh, order=mesh_p, dirichlet="PEC")
         u, v = fes.TnT()
 
-        a = BilinearForm(y * curl(u) * curl(v) * dx)
+        f_shift = 0
+        if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
+            f_shift = cav.eigenmode_config.get('f_shift', 0)
+        elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
+             f_shift = cav['f_shift']
+             
+        # Support searching around frequency if shift provided
+        if f_shift and f_shift != 'default':
+            shift_lam = (2 * pi * f_shift * 1e6 / c0)**2
+            a = BilinearForm(y * curl(u) * curl(v) * dx - shift_lam * y * u * v * dx)
+        else:
+            a = BilinearForm(y * curl(u) * curl(v) * dx)
+            
         m = BilinearForm(y * u * v * dx)
         apre = BilinearForm(y * curl(u) * curl(v) * dx + y * u * v * dx)
         pre = Preconditioner(apre, "direct", inverse="pardiso")
@@ -224,7 +242,11 @@ class NGSolveMEVP:
             evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=cav.n_cells + 2, maxit=20,
                                           printrates=False)
 
-            freq_fes = [c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6 for lam in evals]
+            if f_shift and f_shift != 'default':
+                shift_lam = (2 * pi * f_shift * 1e6 / c0)**2
+                freq_fes = [c0 * np.sqrt(np.abs(lam + shift_lam)) / (2 * np.pi) * 1e-6 for lam in evals]
+            else:
+                freq_fes = [c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6 for lam in evals]
 
             gfu_E = []
             gfu_H = []
@@ -244,30 +266,27 @@ class NGSolveMEVP:
     # ──────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, beta=1, save_dir=None, n=1, L=1):
-        """Compute cavity figures of merit for mode *n*.
+    def evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, beta=1, save_dir=None, mode_idx=1, n_cells=1, L=1):
+        """Compute cavity figures of merit for mode *mode_idx*.
 
         Works for both standard cavities and RF guns - the only difference
         is whether axis nodes come from a linspace or directly from the mesh.
         """
-        if n == 0:
-            n = -1
-
-        w = 2 * pi * freq_fes[n] * 1e6
+        w = 2 * pi * freq_fes[mode_idx] * 1e6
 
         # Accelerating voltage and gradient
-        Vacc = abs(Integrate(gfu_E[n][0] * exp(1j * w / (beta * c0) * x), mesh,
+        Vacc = abs(Integrate(gfu_E[mode_idx][0] * exp(1j * w / (beta * c0) * x), mesh,
                              definedon=mesh.Boundaries('AXI')))
-        Eacc = Vacc / (L * 1e-3 * 2 * n)
+        Eacc = Vacc / (n_cells * L * 1e-3 * 2) # Divisor is ActiveLength = n_cells * L_cell (Note: L is half-cell length)
 
         # Stored energy and R/Q
-        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[n], Conj(gfu_E[n])), mesh)
+        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[mode_idx], Conj(gfu_E[mode_idx])), mesh)
         RoQ = Vacc ** 2 / (w * U)
 
         # Peak surface fields
         xpnts_surf = get_boundary_nodes(mesh, 'PEC')
-        Esurf = [Norm(gfu_E[n])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
-        Hsurf = [Norm(gfu_H[n])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
+        Esurf = [Norm(gfu_E[mode_idx])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
+        Hsurf = [Norm(gfu_H[mode_idx])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
         Epk = max(Esurf)
         Hpk = max(Hsurf)
 
@@ -279,8 +298,8 @@ class NGSolveMEVP:
             definedon=mesh.Boundaries('PEC'))
 
         # Cell-to-cell coupling
-        f_diff = freq_fes[n] - freq_fes[1]
-        f_add = freq_fes[n] + freq_fes[1]
+        f_diff = freq_fes[mode_idx] - freq_fes[1]
+        f_add = freq_fes[mode_idx] + freq_fes[1]
         kcc = 2 * f_diff / f_add * 100
 
         Q = w * U / Ploss
@@ -291,7 +310,7 @@ class NGSolveMEVP:
         minz, maxz = axis_nodes[:, 0].min(), axis_nodes[:, 0].max()
         n_ax_pts = int(5000 * (maxz - minz))
         xpnts_ax = np.linspace(minz, maxz, n_ax_pts)
-        Ez_0_abs = np.array([Norm(gfu_E[n])(mesh(xi, 0.0)) for xi in xpnts_ax])
+        Ez_0_abs = np.array([Norm(gfu_E[mode_idx])(mesh(xi, 0.0)) for xi in xpnts_ax])
 
         peaks, _ = find_peaks(Ez_0_abs, distance=n_ax_pts // 100, width=100)
         Ez_0_abs_peaks = Ez_0_abs[peaks]
@@ -302,8 +321,8 @@ class NGSolveMEVP:
 
         qois = {
             "Normalization Length [mm]": 2 * L,
-            "N Cells": n,
-            "freq [MHz]": freq_fes[n],
+            "N Cells": n_cells,
+            "freq [MHz]": freq_fes[mode_idx],
             "Q []": Q,
             "Vacc [MV]": Vacc * 1e-6,
             "Eacc [MV/m]": Eacc * 1e-6,
@@ -339,7 +358,7 @@ class NGSolveMEVP:
 
     @staticmethod
     def save_mesh(cav_dir, mesh):
-        with open(os.path.join(cav_dir, "eigenmode", "monopole", "mesh.pkl"), "wb") as f:
+        with open(os.path.join(cav_dir, "eigenmode", "mesh.pkl"), "wb") as f:
             pickle.dump(mesh, f)
 
     @staticmethod

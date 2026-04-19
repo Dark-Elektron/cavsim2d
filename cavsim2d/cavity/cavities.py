@@ -1,9 +1,9 @@
 from IPython.core.display import HTML, display_html, Math
 from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
+from pathlib import Path
 from cavsim2d.cavity.base import Cavity
 from cavsim2d.constants import *
-from cavsim2d.optimisation import Optimisation
 from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
 from scipy.special import *
@@ -18,22 +18,26 @@ import pandas as pd
 import scipy.interpolate as sci
 import scipy.io as spio
 
-class Cavities(Optimisation):
+class Cavities:
     """
     Cavities object is an object containing several Cavity objects.
     """
 
-    def __init__(self, folder, name=None, cavities_list=None, names_list=None, overwrite=False):
+    def __init__(self, folder, name=None, cavities_list=None, names_list=None, overwrite=False,
+                 _skip_project_init=False):
         """Constructs all the necessary attributes of the Cavity object
 
         Parameters
         ----------
         cavities_list: list, array like
             List containing Cavity objects.
+        _skip_project_init: bool
+            Internal flag. When True, skips project directory creation
+            (used by spawn() for flat candidate folders).
 
         """
 
-        super().__init__()
+        self._optimisation_solver = None
 
         self.projectDir = folder
         self.cavities_list = cavities_list
@@ -48,7 +52,8 @@ class Cavities(Optimisation):
             assert isinstance(name, str), error('Please enter valid project name.')
             self.name = name
 
-        self.save(folder, overwrite)
+        if not _skip_project_init:
+            self.save(folder, overwrite)
 
         self.uq_nodes = {}
         self.uq_fm_results_all_modes = {}
@@ -79,6 +84,32 @@ class Cavities(Optimisation):
 
         self.E_acc = np.linspace(0.5, 30, 100) * 1e6  # V/m
         self.set_cavities_field()
+
+    @property
+    def tuned(self):
+        """Return a Cavities view containing each cavity's tuned version.
+
+        Each element is `cav.tuned` — a full cavity object with its own
+        folder (geometry, eigenmode, etc.), so you can call `.plot`,
+        `.eigenmode.run`, etc. on it. Cavities without a tuned version
+        are omitted.
+        """
+        tuned_cavs = []
+        tuned_names = []
+        for cav in self.cavities_list:
+            t = cav.tuned
+            if t is not None:
+                tuned_cavs.append(t)
+                tuned_names.append(t.name or f'{cav.name}_tuned')
+        if not tuned_cavs:
+            warning('No cavities in this Cavities have a tuned version yet. '
+                    'Run run_tune(...) first.')
+            return None
+        view = Cavities(self.projectDir, name=f'{self.name}_tuned',
+                        _skip_project_init=True)
+        for tc, nm in zip(tuned_cavs, tuned_names):
+            view.add_cavity(tc, nm)
+        return view
 
     def add_cavity(self, cavs, names=None, plot_labels=None):
         """
@@ -354,37 +385,30 @@ class Cavities(Optimisation):
         if project_name != '':
             # check if folder already exist
             e = self._check_if_path_exists(project_dir, project_name, overwrite)
-            print('result', e, project_dir, project_name)
+
+            proposed_path = Path(project_dir)
+            if proposed_path.name != project_name:
+                proposed_path = proposed_path / project_name
 
             if not e:
-                # create project structure in folders
-                project_dir_structure = {
-                    f'{project_name}':
-                        {
-                            'Cavities': None,
-                            'OperatingPoints': None,
-                            'PostData': {
-                                'Plots': None,
-                                'Data': None
-                            },
-                            'Reference': None
-                        }
-                }
+                # Create project directory (flat — cavity objects go directly inside)
                 try:
-                    make_dirs_from_dict(project_dir_structure, project_dir)
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    os.makedirs(str(proposed_path), exist_ok=True)
+                    self.projectDir = str(proposed_path)
                     return True, 1
                 except Exception as e:
-                    self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                    self.projectDir = str(proposed_path)
                     error("An exception occurred in created project: ", e)
                     return False, 0
             else:
-                # self.projectDir = os.path.join(project_dir, project_name)
-                self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+                self.projectDir = str(proposed_path)
                 return True, 2
         else:
             error('\tPlease enter a valid project name')
-            self.projectDir = f2b_slashes(fr"{project_dir}\{project_name}")
+            proposed_path = Path(project_dir)
+            if proposed_path.name != project_name:
+                proposed_path = proposed_path / project_name
+            self.projectDir = str(proposed_path)
             return False, 0
 
     @staticmethod
@@ -399,9 +423,8 @@ class Cavities(Optimisation):
                 try:
                     directory_list = os.listdir(path)
 
-                    if 'Cavities' in directory_list \
-                            and 'PostData' in directory_list \
-                             and len(directory_list) < 6:
+                    # Flat structure: just check it's a project folder
+                    if len(directory_list) < 20:
                         shutil.rmtree(path)
                         return False
                     else:
@@ -446,40 +469,49 @@ class Cavities(Optimisation):
 
                 tune_config = {
                             'freqs': 801.58,
-                            'parameters': 'Req',
-                            'cell_types': 'mid-cell',
+                            'cell_type': {
+                                'mid-cell': 'Req',
+                                'end-cell': 'Req',
+                            },
                             'processes': 1,
                             'rerun': True
                         }
+
+            Each key of ``cell_type`` is a cell type (``'mid-cell'``,
+            ``'end-cell'``, ``'single-cell'``) and each value is the tune
+            variable(s) for that cell type — either a single string
+            (``'Req'``) or a list (``['Req', 'L']``). Multiple cell types
+            are tuned consecutively in the order they appear; each stage's
+            tuned dimensions feed the next stage.
+
+            The legacy ``'parameters'``/``'cell_types'`` pair is still
+            accepted (with a deprecation warning).
 
         Returns
         -------
 
         """
+        from cavsim2d.processes.tune import normalize_cell_type_config
 
         if tune_config is None:
-            # set default tune_config
             tune_config = {
-                'parameters': ['Req' for _ in self],
+                'cell_type': {'mid-cell': 'Req'},
                 'freqs': [c0 / (4 * cav.L * 1e-3) * 1e-6 for cav in self],
-                'cell_types': ['mid_cell' for _ in self]
             }
             info(f'Tune variable and frequency not entered, defaulting to {json.dumps(tune_config, indent=4)}')
 
         if 'freqs' not in tune_config.keys():
-            # set default tune_config
             tune_config['freqs'] = [c0 / (4 * cav.L * 1e-3) * 1e-6 for cav in self]
             info(f'Target frequency not entered, defaulting to {tune_config["freqs"]}')
 
-        if 'parameters' not in tune_config.keys():
-            # set default tune_config
-            tune_config['parameters'] = ['Req' for _ in self]
-            info(f'"parameters" not entered, defaulting to {tune_config["parameters"]}')
+        if ('cell_type' not in tune_config.keys()
+                and 'parameters' not in tune_config.keys()
+                and 'cell_types' not in tune_config.keys()):
+            tune_config['cell_type'] = {'mid-cell': 'Req'}
+            info('"cell_type" not entered, defaulting to {"mid-cell": "Req"}')
 
-        if 'cell_types' not in tune_config.keys():
-            # set default tune_config
-            tune_config['cell_types'] = ['mid_cell' for _ in self]
-            info(f'"cell_types" not entered, defaulting to {tune_config["cell_types"]}')
+        # Validate by normalising (raises if the dict shape is wrong).
+        normalize_cell_type_config(tune_config)
 
         if 'uq_config' in tune_config.keys():
             uq_config = tune_config['uq_config']
@@ -526,17 +558,42 @@ class Cavities(Optimisation):
             run_tune_parallel(self.cavities_dict, tune_config, solver='NGSolveMEVP', resume=False)
 
         self.tune_config = tune_config
-        # get tune results
+        # get tune results (also attaches cav.tuned lazily from disk)
         self.get_tune_res()
-        self.get_eigenmode_qois(uq_config={})
+
+        # Automatically run eigenmode simulation on tuned cavities if config provided
+        if 'eigenmode_config' in tune_config:
+            tuned_view = self.tuned
+            if tuned_view:
+                info(f"Automatically running eigenmode simulation for tuned cavities...")
+                ec = tune_config['eigenmode_config']
+
+                # Adjust n_cells if specified in config
+                if 'n_cells' in ec:
+                    for cav in tuned_view.cavities_list:
+                        cav.set_n_cells(ec['n_cells'])
+
+                tuned_view.run_eigenmode(ec)
 
     def get_tune_res(self):
-        for key, cav in self.cavities_dict.items():
-            # try:
-            cav.get_ngsolve_tune_res()
-            self.tune_results[cav.name] = cav.tune_results
-            # except FileNotFoundError:
-            #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+        """Reload tune results from disk and attach tuned cavities.
+
+        After ``run_tune`` the subprocesses have written
+        ``<cav>/tuned/tune_info/tune_res.json`` and the tuned geometry.
+        The parent‐process cavity objects still have no ``_tuned_cavity``,
+        so we force the ``cav.tuned`` lazy loader to rebuild them from disk.
+        """
+        for cav in self.cavities_dict.values():
+            cav._tuned_cavity = None  # force reload via property
+            tuned = cav.tuned
+            if tuned is not None:
+                cav.tune_results = dict(tuned.tune_results)
+                cav.freq = tuned.freq
+                self.tune_results[cav.name] = dict(tuned.tune_results)
+            else:
+                # Fallback: legacy path or failed tune
+                cav.get_ngsolve_tune_res()
+                self.tune_results[cav.name] = cav.tune_results
 
     def run_eigenmode(self, eigenmode_config=None):
         """
@@ -617,6 +674,14 @@ class Cavities(Optimisation):
 
         self.eigenmode_config = eigenmode_config
         self.get_eigenmode_qois(uq_config)
+
+        # Save eigenmode config for traceability
+        for cav in self.cavities_list:
+            ec_path = Path(cav.self_dir) / 'eigenmode' / 'eigenmode_config.json'
+            # Ensure folder exists (might be empty if analysis failed but we still want the log)
+            os.makedirs(ec_path.parent, exist_ok=True)
+            with open(ec_path, 'w') as f:
+                json.dump(eigenmode_config, f, indent=4, default=str)
 
     def get_eigenmode_qois(self, uq_config):
         # get results
@@ -824,10 +889,17 @@ class Cavities(Optimisation):
             # except FileNotFoundError:
             #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
 
+    @property
+    def optimisation(self):
+        """OptimisationSolver object for this cavity collection."""
+        if self._optimisation_solver is None:
+            from cavsim2d.solvers.solver_objects import OptimisationSolver
+            self._optimisation_solver = OptimisationSolver(self)
+        return self._optimisation_solver
+
     def run_optimisation(self, optimisation_config):
-        # create dummy cavity
-        for cav in self.cavities_list:
-            cav.optimise(optimisation_config, optimiser=self.optimiser)
+        """Run optimisation using the OptimisationSolver."""
+        self.optimisation.run(optimisation_config)
 
     def plot(self, what, ax=None, scale_x=None, **kwargs):
         for ii, cav in enumerate(self.cavities_list):
@@ -3251,7 +3323,7 @@ class Cavities(Optimisation):
 
             df = pd.DataFrame.from_dict(data)
             df.to_excel(
-                os.path.join(self.projectDir, "PostprocessingData", "Data", f"{self.name}_excel_summary.xlsx"),
+                Path(self.projectDir) / "PostprocessingData" / "Data" / f"{self.name}_excel_summary.xlsx",
                 sheet_name='Cavities')
         except Exception as e:
             error("Either SLANS or ABCI results not available. Please use '<cav>.set_slans_qois(<folder>)' "

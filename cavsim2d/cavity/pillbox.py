@@ -42,28 +42,14 @@ class Pillbox(Cavity):
             beampipe = self.beampipe
 
         if self.projectDir:
-            cav_dir_structure = {
-                self.name: {
-                    'geometry': None,
-                }
-            }
+            # Create cavity directory directly inside project folder
+            self.self_dir = os.path.join(self.projectDir, self.name)
+            geo_dir = os.path.join(self.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
 
-            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-            else:
-                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-
-
-            # write geometry file to folder
-            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
-
-            # define different paths for easier reference later
-            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
-            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
             self.uq_dir = os.path.join(self.self_dir, 'uq')
 
-            self.geo_filepath = os.path.join(self.projectDir, 'Cavities', self.name, 'geometry', 'geodata.geo')
+            self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, n_cells, beampipe, write=self.geo_filepath)
 
     def write_geometry(self, parameters, n_cells, beampipe='none', write=None, plot=False, **kwargs):
@@ -310,7 +296,7 @@ class Pillbox(Cavity):
             Solver to be used. Native solver is still under development. Results are not as accurate as that of SLANS.
         freq: float
             Reference frequency in MHz
-        cell_type: {'mid cell', 'end-mid cell', 'mid-end cell', 'end-end cell', 'single cell'}
+        cell_type: {'mid-cell', 'end-cell', 'single-cell'}
             Type of cell to tune
         tune_variable: {'Req', 'L'}
             Tune variable. Currently supports only the tuning of the equator radius ``Req`` and half-cell length ``L``

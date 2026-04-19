@@ -1,10 +1,13 @@
 import datetime
 import json
+import operator
 import os
+from pathlib import Path
 import random
 import shutil
 from distutils import dir_util
 
+import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from paretoset import paretoset
@@ -16,6 +19,129 @@ from cavsim2d.processes import *
 from cavsim2d.utils.printing import *
 from cavsim2d.utils.shared_functions import *
 
+EIGENMODE_QOIS = {"Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"}
+
+CONSTRAINT_OPS = {
+    '>': operator.gt,
+    '<': operator.lt,
+    '>=': operator.ge,
+    '<=': operator.le,
+    '==': operator.eq,
+}
+
+
+def _uq_col_name(obj):
+    """Return the UQ-adjusted column name for a given objective tuple (sense, name, [target])."""
+    sense, name = obj[0], obj[1]
+    if sense == 'min':
+        return fr'E[{name}] + 6*std[{name}]'
+    elif sense == 'max':
+        return fr'E[{name}] - 6*std[{name}]'
+    else:
+        target = obj[2]
+        return fr'|E[{name}] - {target}| + std[{name}]'
+
+
+def _uq_robust_value(obj, expe, std):
+    """Compute the robust (6-sigma shifted) value for UQ ranking."""
+    sense = obj[0]
+    if sense == 'min':
+        return expe + 6 * std
+    elif sense == 'max':
+        return expe - 6 * std
+    else:
+        return np.abs(expe - obj[2]) + std
+
+
+def compute_hypervolume(points, ref):
+    """Compute the hypervolume dominated by a set of points w.r.t. a reference point.
+
+    All objectives are assumed to be for minimisation. For 'max' objectives, negate
+    the values before calling. Points that do not dominate the reference are ignored.
+
+    Parameters
+    ----------
+    points : array-like, shape (n, d)
+        Objective vectors of the Pareto front.
+    ref : array-like, shape (d,)
+        Reference point (must be worse than all Pareto points in every objective).
+
+    Returns
+    -------
+    float
+        Hypervolume indicator value.
+    """
+    points = np.asarray(points, dtype=float)
+    ref = np.asarray(ref, dtype=float)
+
+    if points.ndim == 1:
+        points = points.reshape(1, -1)
+
+    # Filter to points that dominate the reference in all objectives
+    mask = np.all(points <= ref, axis=1)
+    points = points[mask]
+
+    if len(points) == 0:
+        return 0.0
+
+    d = points.shape[1]
+    if d == 1:
+        return float(ref[0] - np.min(points[:, 0]))
+
+    if d == 2:
+        return _hv_2d(points, ref)
+
+    return _hv_recursive(points, ref)
+
+
+def _hv_2d(points, ref):
+    """O(n log n) hypervolume for 2 objectives."""
+    # Sort by first objective ascending
+    order = np.argsort(points[:, 0])
+    pts = points[order]
+
+    # Extract non-dominated subset (sweep for decreasing second objective)
+    nd = []
+    best_y = np.inf
+    for p in pts:
+        if p[1] < best_y:
+            nd.append(p)
+            best_y = p[1]
+
+    # Sum vertical strips
+    hv = 0.0
+    for i in range(len(nd)):
+        x_next = nd[i + 1][0] if i + 1 < len(nd) else ref[0]
+        hv += (x_next - nd[i][0]) * (ref[1] - nd[i][1])
+    return hv
+
+
+def _hv_recursive(points, ref):
+    """General hypervolume via recursive slicing on the last objective (HSO algorithm)."""
+    n, d = points.shape
+
+    if n == 0:
+        return 0.0
+    if d == 2:
+        return _hv_2d(points, ref)
+    if n == 1:
+        return float(np.prod(ref - points[0]))
+
+    # Sort by last objective ascending
+    order = np.argsort(points[:, -1])
+    pts = points[order]
+
+    hv = 0.0
+    for i in range(n):
+        z_hi = pts[i + 1, -1] if i + 1 < n else ref[-1]
+        height = z_hi - pts[i, -1]
+        if height <= 0:
+            continue
+        # Points 0..i are active in this slice — project onto d-1 dimensions
+        hv += height * _hv_recursive(pts[:i + 1, :-1], ref[:-1])
+
+    return hv
+
 
 class Optimisation:
 
@@ -25,7 +151,10 @@ class Optimisation:
         self.mid_cell = None
         self.wakefield_config = None
         self.tune_config = None
-        self.f2_interp = None
+        self.hv_history = None
+        self.hv_ref = None
+        self.hv_tol = None
+        self.hv_consecutive = None
         self.processes_count = None
         self.method = None
         self.mutation_factor = None
@@ -39,9 +168,6 @@ class Optimisation:
         self.df_global = None
         self.objs_dict = None
         self.constraints_dict = None
-        self.n_interp = None
-        self.interp_error = None
-        self.interp_error_avg = None
         self.cell_type = None
         self.bounds = None
         self.weights = None
@@ -55,17 +181,31 @@ class Optimisation:
         self.parentDir = None
         self.pareto_history = None
         self.optimisation_config = None
-        self.err = None
+        self.mutation_sigma = None
+        self.eta_sbx = None
 
-    def optimiser(self, cav, config):
+    def run(self, cav, config, opt_solver=None):
+        """Run the optimisation loop.
+
+        Parameters
+        ----------
+        cav : Cavity
+            Template cavity for spawning candidates.
+        config : dict
+            Optimisation configuration.
+        opt_solver : OptimisationSolver, optional
+            The solver object managing the output folder.
+        """
         self.cav = cav
-        self.err = []
+        self.opt_solver = opt_solver
         self.pareto_history = []
         self.optimisation_config = config
         self.parentDir = SOFTWARE_DIRECTORY
         self.projectDir = cav.projectDir
         self.initial_points = config['initial_points']
-        self.ng_max = config['no_of_generation']
+        self.ng_max = config.get('no_of_generation', 100)
+        self.hv_tol = config.get('hv_tol', 1e-9)
+        self.hv_consecutive = config.get('hv_consecutive', 3)
         self.objectives_unprocessed = config['objectives']
         self.objectives, weights = process_objectives(config['objectives'])
         self.objective_vars = [obj[1] for obj in self.objectives]
@@ -93,20 +233,34 @@ class Optimisation:
         self.elites_to_crossover = config['elites_for_crossover']
         self.chaos_factor = config['chaos_factor']
 
+        # Mutation spread: fraction of variable range used as Gaussian sigma (default 5%)
+        self.mutation_sigma = config.get('mutation_sigma', 0.05)
+        # SBX distribution index: higher = offspring closer to parents (default 2)
+        self.eta_sbx = config.get('eta_sbx', 2.0)
+
         self.tune_config = config['tune_config']
         tune_config_keys = self.tune_config.keys()
         assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
-        assert 'parameters' in tune_config_keys, error('Please enter the tune variable in tune_config_dict')
-        assert 'cell_types' in tune_config_keys, error('Please enter the cell_type in tune_config_dict')
+        assert ('cell_type' in tune_config_keys
+                or ('parameters' in tune_config_keys and 'cell_types' in tune_config_keys)), error(
+            "Please enter 'cell_type' (dict) in tune_config, e.g. {'mid-cell': 'Req'}.")
 
-        self.cell_type = self.tune_config['cell_types']
-        cts = ['end-cell', 'mid-end-cell', 'end-mid-cell', 'end_cell', 'mid_end_cell', 'end_mid_cell']
-        if self.cell_type in cts:
-            assert 'mid-cell' in config, error('To optimise an end-cell, mid cell dimensions are required')
+        # Normalise to the keyed form — optimisation only supports a single
+        # (cell_type, tune_variable) pair per candidate run.
+        from cavsim2d.processes.tune import normalize_cell_type_config
+        _ct_map = normalize_cell_type_config(self.tune_config)
+        if len(_ct_map) != 1 or len(next(iter(_ct_map.values()))) != 1:
+            error("Optimisation only supports a single cell_type/tune_variable pair; "
+                  "using the first one only.")
+        self.cell_type = next(iter(_ct_map.keys()))
+        self.tune_parameter = next(iter(_ct_map.values()))[0]
+
+        ct_norm = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
+        if ct_norm == 'end cell':
+            assert 'mid-cell' in config, error('end-cell optimisation requires mid-cell dimensions via "mid-cell" key.')
             assert len(config['mid-cell']) >= 7, error('Incomplete mid cell dimension.')
             self.mid_cell = config['mid-cell']
 
-        self.tune_parameter = self.tune_config['parameters']
         self.tune_freq = self.tune_config['freqs']
 
         self.wakefield_config = {}
@@ -127,70 +281,180 @@ class Optimisation:
                     assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
                         "The number of deltas must be equal to the number of variables.")
 
+        # eigenmode_config can be at top level or nested inside tune_config
         if 'eigenmode_config' in config:
             self.eigenmode_config = config['eigenmode_config']
+        elif 'eigenmode_config' in self.tune_config:
+            self.eigenmode_config = self.tune_config['eigenmode_config']
 
-            if 'uq_config' in self.eigenmode_config:
-                self.uq_config = self.eigenmode_config['uq_config']
-                if self.uq_config['delta']:
-                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                        "The number of deltas must be equal to the number of variables.")
+        if self.eigenmode_config and 'uq_config' in self.eigenmode_config:
+            self.uq_config = self.eigenmode_config['uq_config']
+            if self.uq_config['delta']:
+                assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
+                    "The number of deltas must be equal to the number of variables.")
 
         self.df = None
 
-        # interpolation
         self.df_global = pd.DataFrame()
         self.objs_dict = {}
         self.constraints_dict = {}
-        self.n_interp = 10000
-        self.interp_error = []
-        self.interp_error_avg = []
+        self.hv_history = []
+        self.hv_ref = None
         bar = tqdm(total=self.ng_max)
-        self.ea(0, bar)
+        self._run_ea(bar)
 
-    def ea(self, n, bar):
-        if n == 0:
-            self.df = self.generate_first_men(self.initial_points, 0)
-            self.f2_interp = [np.zeros(self.n_interp) for _ in range(len(self.objectives))]
+    def _run_ea(self, bar):
+        """Main evolutionary algorithm loop (iterative, not recursive)."""
+        self.df = self.generate_initial_population(self.initial_points, 0)
 
-            folder = os.path.join(self.cav.self_dir, 'optimisation')
+        # Use optimisation solver's candidates folder if available
+        if self.opt_solver is not None:
+            folder = self.opt_solver.candidates_folder
+        else:
+            folder = Path(self.cav.self_dir) / 'optimisation'
 
-            if os.path.exists(folder):
-                for filename in os.listdir(folder):
-                    try:
-                        shutil.rmtree(os.path.join(folder, filename))
-                    except NotADirectoryError:
-                        os.remove(os.path.join(folder, filename))
-            else:
-                os.mkdir(folder)
+        if folder.exists():
+            for filepath in folder.iterdir():
+                try:
+                    if filepath.is_dir():
+                        shutil.rmtree(filepath)
+                    else:
+                        filepath.unlink()
+                except Exception as e:
+                    error(f"Could not remove {filepath}: {e}")
+        else:
+            folder.mkdir(parents=True, exist_ok=True)
 
+        converged = False
+        for n in range(self.ng_max):
+            df = self._evaluate_generation(n)
+            if df is None:
+                return
+
+            # Check convergence: relative HV change below tolerance
+            # for hv_consecutive generations in a row
+            if len(self.hv_history) >= 2:
+                hv_cur = self.hv_history[-1]
+                hv_prev = self.hv_history[-2]
+                rel_change = abs(hv_cur - hv_prev) / max(abs(hv_cur), 1e-30)
+
+                k = self.hv_consecutive
+                if len(self.hv_history) >= k + 1:
+                    hv_arr = np.array(self.hv_history[-(k + 1):])
+                    recent_changes = np.abs(np.diff(hv_arr)) / np.maximum(np.abs(hv_arr[1:]), 1e-30)
+                    if np.all(recent_changes < self.hv_tol):
+                        info(f"Converged at generation {n}: relative HV change < {self.hv_tol} "
+                             f"for {k} consecutive generations.")
+                        converged = True
+                        bar.update(self.ng_max - n)
+                        break
+
+            # Birth next generation from current population
+            # Use n+1 so offspring keys match the generation they'll be evaluated in
+            df_cross = self.crossover(df, n + 1, self.crossover_factor) if len(df) > 1 else pd.DataFrame()
+            df_mutation = self.mutation(df, n + 1, self.mutation_factor)
+            df_chaos = self.chaos(self.chaos_factor, n + 1)
+
+            self.df = pd.concat([df_cross, df_mutation, df_chaos])
+
+            bar.update(1)
+            info("=" * 80)
+
+        if not converged:
+            info(f"Reached maximum generations ({self.ng_max}) without convergence.")
+
+        bar.update(0)
+        end = datetime.datetime.now()
+        info("End time: ", end)
+
+        # Save HV history for later retrieval via plot_convergence()
+        if self.opt_solver is not None and len(self.hv_history) > 0:
+            try:
+                hv_path = self.opt_solver.folder / 'hv_history.json'
+                with open(hv_path, 'w') as f:
+                    json.dump({'hv_history': self.hv_history, 'hv_tol': self.hv_tol}, f)
+            except Exception:
+                pass
+
+        if len(self.hv_history) > 1:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+            ax1.plot(self.hv_history, marker='o')
+            ax1.set_xlabel('Generation $n$')
+            ax1.set_ylabel('Hypervolume')
+            ax1.set_title('Hypervolume indicator')
+
+            # Relative change: |HV_n - HV_{n-1}| / HV_n
+            hv = np.array(self.hv_history)
+            rel_change = np.abs(np.diff(hv)) / np.maximum(hv[1:], 1e-30)
+            ax2.plot(range(1, len(hv)), rel_change, marker='s')
+            ax2.axhline(y=self.hv_tol, color='r', linestyle='--', label=f'tol = {self.hv_tol:.0e}')
+            ax2.set_yscale('log')
+            ax2.set_xlabel('Generation $n$')
+            ax2.set_ylabel(r'$|\Delta \mathrm{HV}| / \mathrm{HV}_n$')
+            ax2.set_title('Relative HV change')
+            ax2.legend()
+
+            plt.tight_layout()
+            plt.show()
+
+    def _evaluate_generation(self, n):
+        """Evaluate a single generation: simulate, collect results, rank, select. Returns df or None."""
         df = self.df
 
         # Remove duplicates already in global dataframe
         compared_cols = list(self.bounds.keys())
         if not self.df_global.empty:
-            df = df.loc[~df.set_index(compared_cols).index.isin(
-                self.df_global.set_index(compared_cols).index)]
+            df_temp = df.set_index(compared_cols)
+            df_global_temp = self.df_global.set_index(compared_cols)
+            mask = ~df_temp.index.isin(df_global_temp.index)
+            df = df.iloc[mask]
 
-        for index, row in df.iterrows():
-            rw = row.tolist()
+        # Spawn candidates into flat folder
+        if self.opt_solver is not None:
+            spawn_folder = str(self.opt_solver.candidates_folder)
+        else:
+            spawn_folder = str(Path(self.cav.self_dir) / 'optimisation')
 
-        n_cells = 1
-        cavs_object = self.cav.spawn(df, os.path.join(self.cav.self_dir, 'optimisation'))
+        # Map short bounds names (A, B, ...) to spawn column convention (A_m, B_m, ...)
+        ct = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
+        param_map = {'A': 'A_m', 'B': 'B_m', 'a': 'a_m', 'b': 'b_m',
+                     'Ri': 'Ri_m', 'L': 'L_m', 'Req': 'Req_m'}
+        if ct in ('end cell', 'single cell'):
+            # Optimising end cell params: map to end-cell-left columns
+            param_map = {'A': 'A_el', 'B': 'B_el', 'a': 'a_el', 'b': 'b_el',
+                         'Ri': 'Ri_el', 'L': 'L_el', 'Req': 'Req_el'}
+
+        df_spawn = df.rename(columns={k: v for k, v in param_map.items() if k in df.columns})
+        cavs_object = self.cav.spawn(df_spawn, spawn_folder)
         cavs_dict = cavs_object.cavities_dict
-        cavs_dict.run_eigenmode(self.eigenmode_config)
 
-        # Get successfully tuned geometries
+        # Run tuning (which internally runs eigenmode after adjusting the tune parameter)
+        self.run_tune_opt(cavs_dict, self.tune_config)
+
+        # Get successfully tuned geometries. Post-refactor, tune artefacts
+        # live at <self_dir>/tuned/tune_info/tune_res.json keyed by cell
+        # type. Fall back to the legacy location for older on-disk runs.
+        from cavsim2d.processes.tune import last_stage_result
+
         processed_keys = []
         tune_result = []
         for key, scav in cavs_dict.items():
-            filename = os.path.join(scav.self_dir, 'eigenmode', 'tune_res.json')
+            new_path = Path(scav.self_dir) / 'tuned' / 'tune_info' / 'tune_res.json'
+            legacy_path = Path(scav.self_dir) / 'eigenmode' / 'tune_res.json'
+            filename = new_path if new_path.exists() else legacy_path
             try:
                 with open(filename, 'r') as file:
                     tune_res = json.load(file)
 
-                freq = tune_res['FREQ']
-                tune_variable_value = tune_res['parameters'][tune_res['TUNED VARIABLE']]
+                last = last_stage_result(tune_res) or {}
+                freq = last.get('FREQ')
+                tuned_vars = last.get('TUNED VARIABLES') or (
+                    [last['TUNED VARIABLE']] if 'TUNED VARIABLE' in last else [])
+                if not tuned_vars or freq is None:
+                    info(f'Incomplete tune result for {scav.self_dir}, skipping.')
+                    continue
+                tune_variable_value = last['parameters'][tuned_vars[-1]]
 
                 tune_result.append([tune_variable_value, freq])
                 processed_keys.append(key)
@@ -207,8 +471,20 @@ class Optimisation:
         if len(intersection) > 0:
             obj_result = []
             processed_keys = []
+            tuned_keys = set(df.index)
             for key, scav in cavs_dict.items():
-                filename = os.path.join(scav.eigenmode_dir, 'monopole', 'qois.json')
+                if key not in tuned_keys:
+                    continue
+                # Post-refactor, eigenmode ran on the *tuned* cavity —
+                # qois.json lives at <self_dir>/tuned/eigenmode/qois.json.
+                # Fall back to the legacy eigenmode/ path for older runs.
+                tuned_cav = scav.tuned
+                if tuned_cav is not None:
+                    filename = Path(tuned_cav.eigenmode_dir) / 'qois.json'
+                    if not filename.exists():
+                        filename = Path(scav.eigenmode_dir) / 'qois.json'
+                else:
+                    filename = Path(scav.eigenmode_dir) / 'qois.json'
                 try:
                     with open(filename, 'r') as file:
                         qois = json.load(file)
@@ -225,7 +501,7 @@ class Optimisation:
                       "This is most likely due to all generated initial geometries being degenerate.\n"
                       "Check the variable bounds or increase the number of initial geometries.\n"
                       "Tune ended.")
-                return
+                return None
 
             df = df.loc[processed_keys]
 
@@ -237,11 +513,12 @@ class Optimisation:
         for o in self.objectives:
             if "ZL" in o[1] or "ZT" in o[1] or o[1] in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]',
                                                         'P_HOM [kW]']:
-                wake_shape_space = self.run_wakefield_opt(df, self.wakefield_config)
+                wake_shape_space = self.run_wakefield_opt(df, self.wakefield_config, cavs_dict)
 
                 df_wake, processed_keys = get_wakefield_objectives_value(wake_shape_space,
                                                                          self.objectives_unprocessed,
-                                                                         self.projectDir / 'Cavities')
+                                                                         Path(cavs_object.projectDir),
+                                                                         key_subdir='tuned')
                 df = df.merge(df_wake, on='key', how='inner')
                 break
 
@@ -249,24 +526,24 @@ class Optimisation:
         if self.uq_config:
             uq_result_dict = {}
             for key in df['key']:
-                filename_eigen = self.projectDir / f'Cavities/{key}/eigenmode/uq.json'
-                filename_abci = self.projectDir / f'Cavities/{key}/wakefield/uq.json'
+                # Prefer the tuned cavity's uq files; fall back to legacy paths.
+                tuned_eigen = Path(self.projectDir) / f'{key}/tuned/eigenmode/uq.json'
+                tuned_abci = Path(self.projectDir) / f'{key}/tuned/wakefield/uq.json'
+                legacy_eigen = Path(self.projectDir) / f'{key}/eigenmode/uq.json'
+                legacy_abci = Path(self.projectDir) / f'{key}/wakefield/uq.json'
+                filename_eigen = tuned_eigen if tuned_eigen.exists() else legacy_eigen
+                filename_abci = tuned_abci if tuned_abci.exists() else legacy_abci
                 if os.path.exists(filename_eigen):
                     uq_result_dict[key] = []
                     with open(filename_eigen, "r") as infile:
                         uq_d = json.load(infile)
                         for o in self.objectives:
-                            if o[1] in {"Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                                        "G [Ohm]", "Q []"}:
-                                uq_result_dict[key].append(uq_d[o[1]]['expe'][0])
-                                uq_result_dict[key].append(uq_d[o[1]]['stdDev'][0])
-                                if o[0] == 'min':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] + 6 * uq_d[o[1]]['stdDev'][0])
-                                elif o[0] == 'max':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] - 6 * uq_d[o[1]]['stdDev'][0])
-                                else:
-                                    uq_result_dict[key].append(
-                                        np.abs(uq_d[o[1]]['expe'][0] - o[2]) + uq_d[o[1]]['stdDev'][0])
+                            if o[1] in EIGENMODE_QOIS:
+                                expe = uq_d[o[1]]['expe'][0]
+                                std = uq_d[o[1]]['stdDev'][0]
+                                uq_result_dict[key].append(expe)
+                                uq_result_dict[key].append(std)
+                                uq_result_dict[key].append(_uq_robust_value(o, expe, std))
 
                 if os.path.exists(filename_abci):
                     if key not in uq_result_dict:
@@ -274,25 +551,18 @@ class Optimisation:
                     with open(filename_abci, "r") as infile:
                         uq_d = json.load(infile)
                         for o in self.objectives:
-                            if o[1] not in {"Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]",
-                                            "G [Ohm]", "Q []"}:
-                                uq_result_dict[key].append(uq_d[o[1]]['expe'][0])
-                                uq_result_dict[key].append(uq_d[o[1]]['stdDev'][0])
-                                if o[0] == 'min':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] + 6 * uq_d[o[1]]['stdDev'][0])
-                                elif o[0] == 'max':
-                                    uq_result_dict[key].append(uq_d[o[1]]['expe'][0] - 6 * uq_d[o[1]]['stdDev'][0])
+                            if o[1] not in EIGENMODE_QOIS:
+                                expe = uq_d[o[1]]['expe'][0]
+                                std = uq_d[o[1]]['stdDev'][0]
+                                uq_result_dict[key].append(expe)
+                                uq_result_dict[key].append(std)
+                                uq_result_dict[key].append(_uq_robust_value(o, expe, std))
 
             uq_column_names = []
             for o in self.objectives:
                 uq_column_names.append(fr'E[{o[1]}]')
                 uq_column_names.append(fr'std[{o[1]}]')
-                if o[0] == 'min':
-                    uq_column_names.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == 'max':
-                    uq_column_names.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                else:
-                    uq_column_names.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
+                uq_column_names.append(_uq_col_name(o))
 
             df_uq = pd.DataFrame.from_dict(uq_result_dict, orient='index')
 
@@ -303,42 +573,23 @@ class Optimisation:
             df = df.merge(df_uq, on='key', how='inner')
 
         # Filter by constraints
-        for const in self.constraints:
-            c = const.split(" ")
-            op = c[1]
-            val = float(c[2])
-            col = c[0]
+        for col, op_func, val in self.constraints:
+            df = df.loc[op_func(df[col], val)]
 
-            if op == '>':
-                df = df.loc[df[col] > val]
-            elif op == '<':
-                df = df.loc[df[col] < val]
-            elif op == '<=':
-                df = df.loc[df[col] <= val]
-            elif op == '>=':
-                df = df.loc[df[col] >= val]
-            elif op == '==':
-                df = df.loc[df[col] == val]
-
-        # Update with global dataframe
+        # Merge with global (elite archive) dataframe
         if not self.df_global.empty:
             df = pd.concat([self.df_global, df], ignore_index=True)
+            # Drop exact duplicates that may arise from elitism
+            df = df.drop_duplicates(subset=list(self.bounds.keys()), keep='first').reset_index(drop=True)
 
         # Rank shapes by objectives
-        df['total_rank'] = 0
+        df['total_rank'] = 0.0
 
         for i, obj in enumerate(self.objectives):
             if self.uq_config:
-                if obj[0] == "min":
-                    col = fr'E[{obj[1]}] + 6*std[{obj[1]}]'
-                    df[f'rank_{col}'] = df[col].rank() * self.weights[i]
-                elif obj[0] == "max":
-                    col = fr'E[{obj[1]}] - 6*std[{obj[1]}]'
-                    df[f'rank_{col}'] = df[col].rank(ascending=False) * self.weights[i]
-                elif obj[0] == "equal":
-                    col = fr'|E[{obj[1]}] - {obj[2]}| + std[{obj[1]}]'
-                    df[f'rank_{col}'] = df[col].rank() * self.weights[i]
-
+                col = _uq_col_name(obj)
+                ascending = (obj[0] != 'max')
+                df[f'rank_{col}'] = df[col].rank(ascending=ascending) * self.weights[i]
                 df['total_rank'] = df['total_rank'] + df[f'rank_{col}']
             else:
                 if obj[0] == "min":
@@ -359,22 +610,39 @@ class Optimisation:
         # Pareto front
         reorder_indx, pareto_indx_list = self.pareto_front(df)
 
-        # Estimate convergence
-        obj_error = []
-        obj0 = self.objectives[0][1]
-        for i, obj in enumerate(self.objectives):
-            if i != 0:
-                pareto_shapes = df.loc[pareto_indx_list, [obj0, obj[1]]]
-                pareto_shapes_sorted = pareto_shapes.sort_values(obj0)
-                f1 = np.linspace(min(pareto_shapes[obj0]), max(pareto_shapes[obj0]), self.n_interp)
-                f2_interp = np.interp(f1, pareto_shapes_sorted[obj0], pareto_shapes_sorted[obj[1]])
-                rel_error = np.linalg.norm(f2_interp - self.f2_interp[i]) / max(np.abs(f2_interp))
-                obj_error.append(rel_error)
-                self.f2_interp[i] = f2_interp
+        # Estimate convergence via hypervolume indicator
+        if self.uq_config:
+            obj_cols = [_uq_col_name(o) for o in self.objectives]
+        else:
+            obj_cols = self.objective_vars
 
-        if len(obj_error) != 0:
-            self.interp_error.append(max(obj_error))
-            self.interp_error_avg.append(np.average(self.interp_error))
+        pareto_vals = df.loc[pareto_indx_list, obj_cols].values.copy()
+        if len(pareto_vals) > 0:
+            # Transform all objectives to minimisation so hypervolume is well-defined:
+            #   min  → keep as-is
+            #   max  → negate (minimise the negative)
+            #   equal → use |value - target| (minimise distance)
+            for i, obj in enumerate(self.objectives):
+                if obj[0] == 'max':
+                    pareto_vals[:, i] = -pareto_vals[:, i]
+                elif obj[0] == 'equal':
+                    pareto_vals[:, i] = np.abs(pareto_vals[:, i] - obj[2])
+
+            # Set reference point on first generation; expand if later fronts exceed it
+            obj_max = np.max(pareto_vals, axis=0)
+            if self.hv_ref is None:
+                obj_min = np.min(pareto_vals, axis=0)
+                span = obj_max - obj_min
+                margin = np.where(span > 0, 0.1 * span, 0.1 * np.abs(obj_max) + 1.0)
+                self.hv_ref = obj_max + margin
+            elif np.any(obj_max > self.hv_ref):
+                # A Pareto point exceeds the reference — expand it so no point is lost
+                new_ref = np.maximum(self.hv_ref, obj_max * 1.1 + 1.0)
+                info(f"Expanding HV reference point: {self.hv_ref} -> {new_ref}")
+                self.hv_ref = new_ref
+
+            hv = compute_hypervolume(pareto_vals, self.hv_ref)
+            self.hv_history.append(hv)
 
         df = df.loc[reorder_indx, :]
         df = df.dropna().reset_index(drop=True)
@@ -383,43 +651,46 @@ class Optimisation:
 
         if self.df_global.shape[0] == 0:
             error("Unfortunately, none survived the constraints and the program has to end.")
-            return
+            return None
         done(self.df_global)
 
         # Save dataframe
-        filename = os.path.join(self.cav.self_dir, 'optimisation', f'g{n}.xlsx')
+        if self.opt_solver is not None:
+            save_folder = self.opt_solver.folder
+        else:
+            save_folder = Path(self.cav.self_dir) / 'optimisation'
+        generations_folder = save_folder / 'generations'
+        generations_folder.mkdir(parents=True, exist_ok=True)
+        filename = generations_folder / f'g{n}.xlsx'
         self.recursive_save(self.df_global, filename, reorder_indx)
 
-        # Birth next generation
-        if len(df) > 1:
-            df_cross = self.crossover(df, n, self.crossover_factor)
-        else:
-            df_cross = pd.DataFrame()
+        # Save pareto front and history for the solver
+        # After reorder + reset_index, Pareto-optimal rows are the first self.poc rows
+        pareto_df = self.df_global.iloc[:self.poc].copy()
+        pareto_df['generation'] = n
+        self.pareto_history.append(pareto_df)
 
-        df_mutation = self.mutation(df, n, self.mutation_factor)
-        df_chaos = self.chaos(self.chaos_factor, n)
+        if self.opt_solver is not None:
+            try:
+                self.df_global.to_csv(save_folder / 'history.csv', index=False)
+                pareto_df.to_csv(save_folder / 'pareto_front.csv', index=False)
 
-        df_ng = pd.concat([df_cross, df_mutation, df_chaos])
-        self.df = df_ng
+                # Save full pareto history (all generations)
+                pareto_hist_df = pd.concat(self.pareto_history, ignore_index=True)
+                pareto_hist_df.to_csv(save_folder / 'pareto_history.csv', index=False)
 
-        n += 1
-        info("=" * 80)
-        if n < self.ng_max:
-            bar.update(1)
-            return self.ea(n, bar)
-        else:
-            bar.update(1)
-            end = datetime.datetime.now()
-            info("End time: ", end)
-            plt.plot(self.interp_error, marker='P', label='max error')
-            plt.plot(self.interp_error_avg, marker='X', label='average')
-            plt.plot([x + 1 for x in range(len(self.err))], self.err, marker='o', label='convex hull vol')
-            plt.yscale('log')
-            plt.legend()
-            plt.xlabel('Generation $n$')
-            plt.ylabel(r"Pareto surface interp. error")
-            plt.show()
-            return
+                # Save objective metadata so plots know which columns to use
+                obj_meta = {
+                    'objectives': self.objectives,
+                    'objective_vars': self.objective_vars,
+                    'uq_config': bool(self.uq_config),
+                }
+                with open(save_folder / 'objective_meta.json', 'w') as f:
+                    json.dump(obj_meta, f, indent=2)
+            except Exception:
+                pass
+
+        return df
 
     def run_uq(self, df, objectives, solver_dict, solver_args_dict, uq_config):
         """Run UQ for eigenmode and/or wakefield solvers."""
@@ -433,13 +704,12 @@ class Optimisation:
 
             if ct == 'mid cell':
                 shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-            elif ct == 'mid end cell':
-                assert 'mid cell' in list(self.optimisation_config.keys()), \
-                    ("If cell_type is set as 'mid-end cell', the mid cell geometry parameters must "
-                     "be provided in the optimisation_config dictionary.")
-                assert len(self.optimisation_config['mid cell']) > 6, ("Incomplete mid cell geometry parameter. "
+            elif ct == 'end cell':
+                assert 'mid-cell' in list(self.optimisation_config.keys()), \
+                    ("end-cell optimisation requires mid-cell dimensions via 'mid-cell' key.")
+                assert len(self.optimisation_config['mid-cell']) > 6, ("Incomplete mid-cell geometry parameter. "
                                                                        "At least 7 geometric parameters required.")
-                IC = self.optimisation_config['mid cell']
+                IC = self.optimisation_config['mid-cell']
                 df_check = tangent_coords(*np.array(IC)[0:8], 0)
                 assert df_check[-2] == 1, ("The mid-cell geometry dimensions given result in a degenerate geometry.")
                 shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw}
@@ -459,10 +729,6 @@ class Optimisation:
         return shape_space
 
     def run_tune_opt(self, cav_dict, tune_config):
-        freqs = tune_config['freqs']
-        tune_parameters = tune_config['parameters']
-        cell_types = tune_config['cell_types']
-
         processes = tune_config.get('processes', 1)
         if processes <= 0:
             error('Number of processes must be greater than zero.')
@@ -470,7 +736,30 @@ class Optimisation:
 
         run_tune_parallel(cav_dict, tune_config)
 
-    def run_wakefield_opt(self, df, wakefield_config):
+        # After tuning, each candidate has a <self_dir>/tuned/ folder.
+        # Force-refresh the lazy `.tuned` accessor (the parent process's
+        # cavity objects were not mutated by the mp children) and then
+        # run eigenmode on the *tuned* cavities so qois.json lands in
+        # <self_dir>/tuned/eigenmode/.
+        tuned_cavs_dict = {}
+        for key, cav in cav_dict.items():
+            cav._tuned_cavity = None  # force lazy reload from disk
+            tuned = cav.tuned
+            if tuned is not None:
+                tuned_cavs_dict[key] = tuned
+
+        if tuned_cavs_dict and self.eigenmode_config:
+            eig_cfg = dict(self.eigenmode_config)
+            eig_cfg['target'] = run_eigenmode_s
+            run_eigenmode_parallel(tuned_cavs_dict, eig_cfg, self.projectDir)
+
+    def run_wakefield_opt(self, df, wakefield_config, cavs_dict):
+        """Run wakefield analysis on the tuned cavities.
+
+        Returns a shape_space dict keyed by candidate name so
+        ``get_wakefield_objectives_value`` can iterate it and locate the
+        ABCI output under ``<projectDir>/<key>/tuned/wakefield/``.
+        """
         wakefield_config_keys = wakefield_config.keys()
         MROT = 2
         MT = 10
@@ -480,12 +769,16 @@ class Optimisation:
         DDR_SIG = 0.1
         DDZ_SIG = 0.1
 
-        if 'bunch_length' in wakefield_config_keys:
+        wakefield_config.setdefault('beam_config', {})
+        wakefield_config.setdefault('wake_config', {})
+        wakefield_config.setdefault('mesh_config', {})
+
+        if 'bunch_length' in wakefield_config['beam_config']:
             assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
                 'Bunch length must be of type integer or float.')
         else:
             wakefield_config['beam_config']['bunch_length'] = bunch_length
-        if 'wakelength' in wakefield_config_keys:
+        if 'wakelength' in wakefield_config['wake_config']:
             assert not isinstance(wakefield_config['wake_config']['wakelength'], str), error(
                 'Wakelength must be of type integer or float.')
         else:
@@ -506,33 +799,32 @@ class Optimisation:
             wakefield_config['MT'] = MT
         if 'NFS' not in wakefield_config_keys:
             wakefield_config['NFS'] = NFS
-        if 'DDR_SIG' not in wakefield_config_keys:
+        if 'DDR_SIG' not in wakefield_config['mesh_config']:
             wakefield_config['mesh_config']['DDR_SIG'] = DDR_SIG
-        if 'DDZ_SIG' not in wakefield_config_keys:
+        if 'DDZ_SIG' not in wakefield_config['mesh_config']:
             wakefield_config['mesh_config']['DDZ_SIG'] = DDZ_SIG
 
-        df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
-        shape_space = {}
+        # Only run wakefield on candidates that survived tuning.
+        survived_keys = df['key'].tolist() if 'key' in df.columns else list(df.index)
+        tuned_cavs_dict = {}
+        for key in survived_keys:
+            cav = cavs_dict.get(key)
+            if cav is None:
+                continue
+            tuned = cav.tuned
+            if tuned is not None:
+                tuned_cavs_dict[key] = tuned
 
-        df = df.set_index('key')
-        for index, row in df.iterrows():
-            rw = row.tolist()
-            if self.cell_type.lower() == 'end-mid cell':
-                A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i = self.mid_cell
-                IC = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req_i]
-                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
-                                           'CELL PARAMETERISATION': 'simplecell'}
-            else:
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw, 'n_cells': 1, 'BP': 'both',
-                                           'CELL PARAMETERISATION': 'simplecell'}
+        if tuned_cavs_dict:
+            wk_cfg = dict(wakefield_config)
+            wk_cfg['target'] = run_wakefield_s
+            run_wakefield_parallel(tuned_cavs_dict, wk_cfg)
 
-        shape_space_multicell = {}
-        for key, shape in shape_space.items():
-            shape_space_multicell[key] = to_multicell(1, shape)
+        # Build a shape_space dict for `get_wakefield_objectives_value`
+        # (it only iterates keys — the values are unused).
+        return {key: None for key in tuned_cavs_dict}
 
-        return shape_space
-
-    def generate_first_men(self, initial_points, n):
+    def generate_initial_population(self, initial_points, n):
         method_name = list(self.method.keys())[0]
 
         if method_name == "LHS":
@@ -569,7 +861,7 @@ class Optimisation:
             return df.set_index('key')
 
         elif method_name == "Sobol Sequence":
-            seed = self.method['LHS'].get('seed') or None
+            seed = self.method['Sobol Sequence'].get('seed') or None
 
             columns = list(self.bounds.keys())
             dim = len(columns)
@@ -601,125 +893,106 @@ class Optimisation:
             df['alpha_i'] = np.zeros(initial_points)
             df['alpha_o'] = np.zeros(initial_points)
 
-            return df
+            return df.set_index('key')
 
         elif method_name == "Random":
-            data = {'key': [f"G0_C{i}_P" for i in range(initial_points)]}
+            data = {'key': [f"G{n}_C{i}_P" for i in range(initial_points)]}
             for j, (var, bounds) in enumerate(self.bounds.items()):
                 data[var] = random.sample(
                     list(np.linspace(bounds[0], bounds[1] + (1 if var == 'Req' else 0), initial_points * 2)),
                     initial_points)
             data['alpha_i'] = np.zeros(initial_points)
             data['alpha_o'] = np.zeros(initial_points)
-            return pd.DataFrame.from_dict(data)
+            return pd.DataFrame.from_dict(data).set_index('key')
 
         elif method_name == "Uniform":
-            data = {'key': [f"G0_C{i}_P" for i in range(initial_points)]}
+            data = {'key': [f"G{n}_C{i}_P" for i in range(initial_points)]}
             for j, (var, bounds) in enumerate(self.bounds.items()):
                 data[var] = np.linspace(bounds[0], bounds[1] + (1 if var == 'Req' else 0), initial_points)
             data['alpha_i'] = np.zeros(initial_points)
             data['alpha_o'] = np.zeros(initial_points)
-            return pd.DataFrame.from_dict(data)
+            return pd.DataFrame.from_dict(data).set_index('key')
 
     @staticmethod
     def process_constraints(constraints):
-        processed_constraints = []
+        """Parse constraint dict into (column, operator_func, value) tuples."""
+        processed = []
         for key, bounds in constraints.items():
             if isinstance(bounds, list):
                 if len(bounds) == 2:
-                    processed_constraints.append(fr'{key} > {bounds[0]}')
-                    processed_constraints.append(fr'{key} < {bounds[1]}')
+                    processed.append((key, operator.gt, bounds[0]))
+                    processed.append((key, operator.lt, bounds[1]))
                 else:
-                    processed_constraints.append(fr'{key} > {bounds[0]}')
+                    processed.append((key, operator.gt, bounds[0]))
             else:
-                processed_constraints.append(fr'{key} = {bounds}')
-        return processed_constraints
+                processed.append((key, operator.eq, bounds))
+        return processed
 
-    def crossover(self, df, generation, f):
-        elites = {}
-        for i, o in enumerate(self.objectives):
-            if self.uq_config:
-                if o[0] == "min":
-                    col = fr'E[{o[1]}] + 6*std[{o[1]}]'
-                elif o[0] == "max":
-                    col = fr'E[{o[1]}] - 6*std[{o[1]}]'
+    def crossover(self, df, generation, n_offspring):
+        """Simulated Binary Crossover (SBX) between tournament-selected parents."""
+        vars_list = list(self.bounds.keys())
+        l_bounds = np.array([self.bounds[v][0] for v in vars_list])
+        u_bounds = np.array([self.bounds[v][1] for v in vars_list])
+        eta = self.eta_sbx
+        pool_size = min(self.elites_to_crossover, len(df))
+
+        rows = []
+        for i in range(n_offspring):
+            # Tournament selection: pick 2 distinct parents from top-ranked pool
+            idx = np.random.choice(pool_size, size=2, replace=False)
+            p1 = df.iloc[idx[0]][vars_list].values.astype(float)
+            p2 = df.iloc[idx[1]][vars_list].values.astype(float)
+
+            # SBX operator (per variable)
+            child = np.empty_like(p1)
+            for j in range(len(vars_list)):
+                if l_bounds[j] == u_bounds[j]:
+                    child[j] = p1[j]
+                    continue
+
+                u = np.random.random()
+                if u <= 0.5:
+                    beta = (2.0 * u) ** (1.0 / (eta + 1.0))
                 else:
-                    col = fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'
-                elites[col] = df.sort_values(col, ascending=(o[0] != 'max'))
-            else:
-                elites[o[1]] = df.sort_values(o[1], ascending=(o[0] != 'max'))
+                    beta = (1.0 / (2.0 * (1.0 - u))) ** (1.0 / (eta + 1.0))
 
-        obj_dict = {}
-        for o in self.objectives:
-            if self.uq_config:
-                if o[0] == 'min':
-                    col = fr'E[{o[1]}] + 6*std[{o[1]}]'
-                elif o[0] == 'max':
-                    col = fr'E[{o[1]}] - 6*std[{o[1]}]'
-                else:
-                    col = fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]'
-                obj_dict[col] = elites[col]
-            else:
-                obj_dict[o[1]] = elites[o[1]]
+                child[j] = 0.5 * ((1 + beta) * p1[j] + (1 - beta) * p2[j])
 
-        obj = {key: o.reset_index(drop=True) for key, o in obj_dict.items()}
+            # Clip to bounds
+            child = np.clip(child, l_bounds, u_bounds)
+            rows.append(child)
 
-        df_co = pd.DataFrame(columns=self.bounds.keys())
-
-        inf_dict = {var: ['All'] for var in self.bounds.keys()}
-        for key, influence in inf_dict.items():
-            if influence == [''] or influence == ['All']:
-                if self.uq_config:
-                    ll = []
-                    for o in self.objectives:
-                        if o[0] == 'min':
-                            ll.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                        elif o[0] == 'max':
-                            ll.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                        else:
-                            ll.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
-                    inf_dict[key] = ll
-                else:
-                    inf_dict[key] = self.objective_vars
-
-        n_elites_to_cross = self.elites_to_crossover
-
-        for i in range(f):
-            row_values = []
-            for var, keys in inf_dict.items():
-                vals = [
-                    obj[key].loc[
-                        np.random.randint(min(n_elites_to_cross, df.shape[0]))
-                    ][var]
-                    for key in keys
-                ]
-                row_values.append(sum(vals) / len(vals))
-
-            df_co.loc[f"G{generation}_C{i}_CO"] = row_values
+        df_co = pd.DataFrame(rows, columns=vars_list)
+        df_co.index = [f"G{generation}_C{i}_CO" for i in range(n_offspring)]
         df_co.index.name = 'key'
         return df_co
 
-    def mutation(self, df, n, f):
-        if df.shape[0] < f:
-            ml = np.arange(df.shape[0])
-        else:
-            ml = np.arange(f)
+    def mutation(self, df, n, n_mutants):
+        """Gaussian mutation: perturb top individuals with per-variable Gaussian noise, clipped to bounds."""
+        vars_list = list(self.bounds.keys())
+        l_bounds = np.array([self.bounds[v][0] for v in vars_list])
+        u_bounds = np.array([self.bounds[v][1] for v in vars_list])
+        ranges = u_bounds - l_bounds
+        sigma = self.mutation_sigma
 
-        df_ng_mut = pd.DataFrame(columns=self.bounds.keys())
+        n_parents = min(n_mutants, len(df))
 
-        for var, bound in self.bounds.items():
-            if bound[0] == bound[1]:
-                df_ng_mut.loc[:, var] = df.loc[ml, var]
-            else:
-                df_ng_mut.loc[:, var] = df.loc[ml, var] * random.uniform(0.85, 1.5)
+        rows = []
+        for i in range(n_parents):
+            parent = df.iloc[i][vars_list].values.astype(float)
+            noise = np.random.normal(0, sigma, size=len(vars_list)) * ranges
+            # Don't mutate fixed variables
+            noise[ranges == 0] = 0.0
+            child = np.clip(parent + noise, l_bounds, u_bounds)
+            rows.append(child)
 
-        key1 = [f"G{n}_C{i}_M" for i in range(len(df_ng_mut))]
-        df_ng_mut.loc[:, 'key'] = key1
-
-        return df_ng_mut.set_index('key')
+        df_mut = pd.DataFrame(rows, columns=vars_list)
+        df_mut.index = [f"G{n}_C{i}_M" for i in range(n_parents)]
+        df_mut.index.name = 'key'
+        return df_mut
 
     def chaos(self, f, n):
-        return self.generate_first_men(f, n)
+        return self.generate_initial_population(f, n)
 
     @staticmethod
     def remove_duplicate_values(d):
@@ -742,25 +1015,18 @@ class Optimisation:
         try:
             styler.to_excel(filename)
         except PermissionError:
-            filename = filename.split('.xlsx')[0]
-            filename = fr'{filename}_1.xlsx'
+            filename = Path(filename)
+            filename = filename.with_name(f'{filename.stem}_1.xlsx')
             self.recursive_save(df, filename, pareto_index)
 
     def pareto_front(self, df):
-        sense = []
         if self.uq_config:
-            obj = []
-            for o in self.objectives:
-                if o[0] == 'min':
-                    obj.append(fr'E[{o[1]}] + 6*std[{o[1]}]')
-                elif o[0] == 'max':
-                    obj.append(fr'E[{o[1]}] - 6*std[{o[1]}]')
-                elif o[0] == 'equal':
-                    obj.append(fr'|E[{o[1]}] - {o[2]}| + std[{o[1]}]')
+            obj = [_uq_col_name(o) for o in self.objectives]
             datapoints = df.loc[:, obj]
         else:
             datapoints = df.loc[:, self.objective_vars]
 
+        sense = []
         for o in self.objectives:
             if o[0] == 'min':
                 sense.append('min')
@@ -785,17 +1051,17 @@ class Optimisation:
 
     @staticmethod
     def overwriteFolder(invar, projectDir):
-        path = os.path.join(projectDir, 'Cavities', '_optimisation', f'_process_{invar}')
-        if os.path.exists(path):
+        path = Path(projectDir) / '_optimisation' / f'_process_{invar}'
+        if path.exists():
             shutil.rmtree(path)
-            dir_util._path_created = {}
-        os.makedirs(path)
+            # Flush any internal caches if necessary
+        path.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def copyFiles(invar, parentDir, projectDir):
-        src = os.path.join(parentDir, 'exe', 'SLANS_exe')
-        dst = os.path.join(projectDir, 'Cavities', '_optimisation', f'_process_{invar}', 'SLANS_exe')
-        dir_util.copy_tree(src, dst)
+        src = Path(parentDir) / 'exe' / 'SLANS_exe'
+        dst = Path(projectDir) / '_optimisation' / f'_process_{invar}' / 'SLANS_exe'
+        shutil.copytree(src, dst, dirs_exist_ok=True)
 
     @staticmethod
     def color_pareto(df, no_pareto_optimal):

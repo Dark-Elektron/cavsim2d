@@ -179,11 +179,15 @@ class ABCIGeometry(Geometry):
 
             # change save directory
             if sub_dir == '':
-                run_save_directory = projectDir / Path(f'Cavities/{fid}/wakefield')
+                run_save_directory = projectDir / Path(f'{fid}/wakefield')
             else:
-                run_save_directory = projectDir / Path(f'Cavities/{sub_dir}/wakefield/{fid}')
+                run_save_directory = projectDir / Path(f'{sub_dir}/wakefield/{fid}')
 
-            fname = Path(fr'{run_save_directory}/cavity.abc')
+            # Create polarization subfolders
+            for m in [0, 1]:
+                os.makedirs(run_save_directory / MROT_DICT[m], exist_ok=True)
+
+            fname = Path(fr'{run_save_directory}/{MROT_DICT[marker]}/cavity.abc')
 
             L_all_increment = 0
             self.L_all = 0
@@ -476,9 +480,9 @@ class ABCIGeometry(Geometry):
 
             # change save directory
             if sub_dir == '':
-                run_save_directory = projectDir / f'Cavities/{fid}/wakefield'
+                run_save_directory = projectDir / f'{fid}/wakefield'
             else:
-                run_save_directory = projectDir / f'Cavities/{sub_dir}/wakefield/{fid}'
+                run_save_directory = projectDir / f'{sub_dir}/wakefield/{fid}'
 
             fname = fr'{run_save_directory}\cavity.abc'
             # print('filename:: ', fname)
@@ -675,8 +679,8 @@ class ABCIGeometry(Geometry):
     @staticmethod
     def createFolder(fid, projectDir, subdir='', marker=''):
         if subdir == '':
-            path = projectDir / f'Cavities/{fid}{marker}/wakefield'
+            path = projectDir / f'{fid}{marker}/wakefield'
             os.makedirs(path, exist_ok=True)
         else:
-            new_path = projectDir / f'Cavities/{subdir}{marker}/wakefield/{fid}'
+            new_path = projectDir / f'{subdir}{marker}/wakefield/{fid}'
             os.makedirs(new_path, exist_ok=True)

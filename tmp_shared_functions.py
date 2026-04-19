@@ -1,20 +1,15 @@
-"""Geometry creation, writing, and manipulation utilities."""
-from matplotlib.patches import Ellipse
-import copy
 import json
+import math
 import os
 import re
 from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib.patches import Ellipse
 from scipy.optimize import fsolve
-import math
-from cavsim2d.constants import *
+import numpy as np
 from cavsim2d.utils.printing import *
-from cavsim2d.utils.data_utils import VAR_NAMES
-from cavsim2d.utils.quadrature import generate_nodes
+from cavsim2d.utils.shared_classes import Sobol, PCE, Data
 
 
 def update_alpha(cell, cell_parameterisation='simplecell'):
@@ -122,7 +117,6 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
               "reentrant": [[1.1, -1.1], [1.9, -1.9], [1.5, -1.5], [1.75, -1.75], ]
               }
     msg = 4
-    df = pd.DataFrame()
     for ii in range(max_restart):
         if msg != 1:
             if a + A > L:
@@ -268,7 +262,6 @@ def jac(z, *data):
     return J
 
 
-
 def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, sub_dir='', opt=False, solver='NGSolveMEVP'):
     """
     Writes cavity geometric data that can be imported into CST Studio
@@ -298,7 +291,7 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, sub_dir='',
         folder = 'Optimisation'
 
     if cell_type is None:
-        path = os.path.join(projectDir, sub_dir, key, 'geometry', f'{key}.txt')
+        path = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}.txt')
 
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'alpha', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
@@ -314,8 +307,8 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, sub_dir='',
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
 
     else:
-        path = os.path.join(projectDir, sub_dir, key, 'geometry', f'{key}.txt')
-        path_mc = os.path.join(projectDir, sub_dir, key, 'geometry', f'{key}_Multicell.txt')
+        path = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}.txt')
+        path_mc = os.path.join(projectDir, 'SimulationData', folder, sub_dir, key, f'{key}_Multicell.txt')
 
         with open(path, 'w') as f:
             name_list = ['Aeq', 'Beq', 'ai', 'bi', 'Ri', 'L', 'Req', 'Aeq_e', 'Beq_e', 'ai_e', 'bi_e', 'Ri_e',
@@ -358,6 +351,491 @@ def write_cst_paramters(key, ic_, oc_l, oc_r, projectDir, cell_type, sub_dir='',
                 else:
                     f.write(f'{name_list[i]} = "{value_list[i]}" ""\n')
 
+
+def stroud(p):
+    """
+    Stroud-3 method
+
+    Parameters
+    ----------
+    p: int
+        Dimension
+
+    Returns
+    -------
+    Nodes of quadrature rule in [0,1]**p (column-wise)
+    """
+    # Stroud-3 method
+    #
+    # Input parameters:
+    #  p   number of dimensions
+    # Output parameters:
+    #  nodes   nodes of quadrature rule in [0,1]**p (column-wise)
+    #
+
+    nodes = np.zeros((p, 2 * p))
+    coeff = np.pi / p
+    fac = np.sqrt(2 / 3)
+
+    for i in range(2 * p):
+        for r in range(int(np.floor(0.5 * p))):
+            k = 2 * r
+            nodes[k, i] = fac * np.cos((k + 1) * (i + 1) * coeff)
+            nodes[k + 1, i] = fac * np.sin((k + 1) * (i + 1) * coeff)
+
+        if 0.5 * p != np.floor(0.5 * p):
+            nodes[-1, i] = ((-1) ** (i + 1)) / np.sqrt(3)
+
+    # transform nodes from [-1,+1]**p to [0,1]**p
+    nodes = 0.5 * nodes + 0.5
+
+    return nodes
+
+
+def quad_stroud3(rdim, degree):
+    """
+    Stroud-3 quadrature in :math:`[0,1]^k`
+
+    .. note::
+
+        Dimensional Threshold Limitation: In practice, the Stroud 3 quadrature rule may be effective in dimensions
+        up to around 3 to 6, depending on the specific problem and the function being integrated. Beyond this,
+        the accuracy of the rule typically degrades, and higher-order quadrature rules or
+        Monte Carlo methods might be more appropriate.
+
+    Parameters
+    ----------
+    rdim: int
+        Dimension of variables
+    degree: int
+        Degree
+
+    Returns
+    -------
+    Nodes and corresponding weights
+    """
+    # data for Stroud-3 quadrature in [0,1]**k
+    # nodes and weights
+    nodes = stroud(rdim)
+    nodestr = 2. * nodes - 1.
+    weights = (1 / (2 * rdim)) * np.ones((2 * rdim, 1))
+
+    # evaluation of Legendre polynomials
+    bpoly = np.zeros((degree + 1, rdim, 2 * rdim))
+    for ll in range(rdim):
+        for j in range(2 * rdim):
+            bpoly[0, ll, j] = 1
+            bpoly[1, ll, j] = nodestr[ll, j]
+            for i in range(1, degree):
+                bpoly[i + 1, ll, j] = ((2 * (i + 1) - 1) * nodestr[ll, j] * bpoly[i, ll, j] - i * bpoly[
+                    i - 1, ll, j]) / (i + 1)
+
+    # standardisation of Legendre polynomials
+    for i in range(1, degree + 1):
+        bpoly[i, :, :] = bpoly[i, :, :] * np.sqrt(2 * (i + 1) - 1)
+    return nodes, weights, bpoly
+
+
+def c1_leg_monomial_integral(expon):
+    if expon < 0:
+        error("\n")
+        error("C1_LEG_MONOMIAL_INTEGRAL - Fatal error!")
+        error("EXPON < 0.")
+        raise ValueError("C1_LEG_MONOMIAL_INTEGRAL - Fatal error!")
+
+    if expon % 2 == 1:
+        return 0.0
+
+    value = 2.0 / (expon + 1)
+    return value
+
+
+def cn_leg_03_xiu(n):
+    o = 2 * n
+
+    x = np.zeros((n, o))
+    w = np.zeros(o)
+
+    expon = 0
+    volume = c1_leg_monomial_integral(expon)
+    volume = volume ** n
+
+    for j in range(1, o + 1):
+
+        i = 0
+        for r in range(1, math.floor(n / 2) + 1):
+            arg = (2 * r - 1) * j * np.pi / n
+            i += 1
+            x[i - 1, j - 1] = np.sqrt(2.0) * np.cos(arg) / np.sqrt(3.0)
+            i += 1
+            x[i - 1, j - 1] = np.sqrt(2.0) * np.sin(arg) / np.sqrt(3.0)
+
+        if i < n:
+            i += 1
+            x[i - 1, j - 1] = np.sqrt(2.0) * (-1) ** j / np.sqrt(3.0)
+            if n == 1:
+                x[i - 1, j - 1] = x[i - 1, j - 1] / np.sqrt(2.0)
+
+    w[0:o] = volume / o
+
+    return x, np.atleast_2d(w).T / np.sum(w)
+
+
+def cn_leg_03_1(n):
+    o = 2 * n
+
+    w = np.zeros(o)
+    x = np.zeros((n, o))
+
+    expon = 0
+    volume = c1_leg_monomial_integral(expon)
+    volume = volume ** n
+
+    for j in range(1, o + 1):
+
+        i = 0
+
+        for r in range(1, math.floor(n / 2) + 1):
+            arg = (2 * r - 1) * j * np.pi / n
+            i += 1
+            x[i - 1, j - 1] = np.sqrt(2.0) * np.cos(arg) / np.sqrt(3.0)
+            i += 1
+            x[i - 1, j - 1] = np.sqrt(2.0) * np.sin(arg) / np.sqrt(3.0)
+
+        if i < n:
+            i += 1
+            if n == 1:
+                x[i - 1, j - 1] = r8_mop(j) / np.sqrt(3.0)
+            else:
+                x[i - 1, j - 1] = np.sqrt(2.0) * r8_mop(j) / np.sqrt(3.0)
+
+    w[0:o] = volume / o
+
+    return x, np.atleast_2d(w).T / np.sum(w)
+
+
+def r8_mop(i):
+    if i % 2 == 0:
+        value = 1.0
+    else:
+        value = -1.0
+
+    return value
+
+
+def cn_leg_05_1(n, option=1):
+    """
+    The rule has order
+
+    O = 2 N^2 + N + 2.
+
+    The rule has precision P = 5.
+
+    CN_LEG is the cube [-1,+1]^N with the Legendre weight function
+
+    w(x) = 1.
+
+    .. note::
+
+        Dimensional Threshold Limitation: In practice, the Stroud 3 quadrature rule may be effective in dimensions
+        up to around 3 to 6, depending on the specific problem and the function being integrated. Beyond this,
+        the accuracy of the rule typically degrades, and higher-order quadrature rules or
+        Monte Carlo methods might be more appropriate.
+
+    Parameters
+    ----------
+    n
+    option
+
+    Returns
+    -------
+
+    """
+    # Check if the value of n is 4, 5, or 6
+    if n not in [4, 5, 6]:
+        error("\n")
+        error("CN_LEG_05_1 - Fatal error!")
+        error("The value of N must be 4, 5, or 6.")
+        raise ValueError("CN_LEG_05_1 - Fatal error!")
+
+    # Check for valid option when n = 4 or 5
+    if n in [4, 5] and option not in [1, 2]:
+        error("\n")
+        error("CN_LEG_05_1 - Fatal error!")
+        error("When N = 4 or 5, OPTION must be 1 or 2.")
+        raise ValueError("CN_LEG_05_1 - Fatal error!")
+
+    o = n ** 2 + n + 2
+    w = np.zeros(o)
+    x = np.zeros((n, o))
+
+    expon = 0
+    volume = c1_leg_monomial_integral(expon)
+    volume = volume ** n
+
+    if (n == 4 and option == 1):
+        eta = 0.778984505799815
+        lmbda = 1.284565137874656
+        xsi = -0.713647298819253
+        mu = -0.715669761974162
+        gamma = 0.217089151000943
+        a = 0.206186096875899e-01 * volume
+        b = 0.975705820221664e-02 * volume
+        c = 0.733921929172573e-01 * volume
+    elif (n == 4 and option == 2):
+        eta = 0.546190755827425E+00
+        lmbda = 0.745069130115661E+00
+        xsi = - 0.413927294508700E+00
+        mu = - 0.343989637454535E+00
+        gamma = 1.134017894600344E+00
+        a = 0.853094758323323E-01 * volume
+        b = 0.862099000096395E-01 * volume
+        c = 0.116418206881849E-01 * volume
+    elif (n == 5 and option == 1):
+        eta = 0.522478547481276E+00
+        lmbda = 0.936135175985774E+00
+        xsi = - 0.246351362101519E+00
+        mu = - 0.496308106093758E+00
+        gamma = 0.827180176822930E+00
+        a = 0.631976901960153E-01 * volume
+        b = 0.511464127430166E-01 * volume
+        c = 0.181070246088902E-01 * volume
+    elif (n == 5 and option == 2):
+        eta = 0.798317301388741E+00
+        lmbda = 0.637344273885728E+00
+        xsi = - 0.455245909918377E+00
+        mu = - 1.063446229997311E+00
+        gamma = 0.354482076665770E+00
+        a = 0.116952384292206E-01 * volume
+        b = 0.701731258612708E-01 * volume
+        c = 0.137439132264426E-01 * volume
+    else:
+        eta = 0.660225291773525E+00
+        lmbda = 1.064581294844754E+00
+        xsi = 0.000000000000000E+00
+        mu = - 0.660225291773525E+00
+        gamma = 0.660225291773525E+00
+        a = 0.182742214532872E-01 * volume
+        b = 0.346020761245675E-01 * volume
+        c = 0.182742214532872E-01 * volume
+
+    # Set x and w based on parameters
+    k = 0
+    # k += 1
+    for i in range(n):
+        x[i, k] = eta
+    w[k] = a
+
+    # k += 1
+    for i in range(n):
+        x[i, k] = -eta
+    w[k] = a
+
+    for i1 in range(n):
+        for i in range(1, n):
+            x[i, k] = xsi
+        x[i1, k] = lmbda
+        w[k] = b
+        k = k + 1
+
+    for i1 in range(n):
+        for i in range(n):
+            x[i, k] = - xsi
+        x[i1, k] = - lmbda
+        w[k] = b
+        k = k + 1
+
+    for i1 in range(n - 1):
+        for i2 in range(i1 + 1, n):
+            for i in range(n):
+                x[i, k] = gamma
+            x[i1, k] = mu
+            x[i2, k] = mu
+            w[k] = c
+            k = k + 1
+
+    for i1 in range(n - 1):
+        for i2 in range(i1 + 1, n):
+            for i in range(n):
+                x[i, k] = - gamma
+            x[i1, k] = - mu
+            x[i2, k] = - mu
+            w[k] = c
+            k = k + 1
+
+    return x, np.atleast_2d(w).T / np.sum(w)
+
+
+def cn_leg_05_2(n):
+    """
+    The rule has order
+
+    O = 2 N^2 + 1.
+
+    The rule has precision P = 5.
+
+    CN_LEG is the cube [-1,+1]^N with the Legendre weight function
+
+    w(x) = 1.
+
+    .. note::
+
+        Dimensional Threshold Limitation: In practice, the Stroud 5 quadrature rule may be effective in dimensions
+        up to around 5 to 10, depending on the specific problem and the function being integrated. Beyond this,
+        the accuracy of the rule typically degrades, and higher-order quadrature rules or
+        Monte Carlo methods might be more appropriate.
+
+    Parameters
+    ----------
+    n
+    option
+
+    Returns
+    -------
+
+    """
+    if n < 2:
+        error("CN_LEG_05_2 - Fatal error!")
+        error("N must be at least 2.")
+        raise ValueError("CN_LEG_05_2 - Fatal error!")
+
+    o = 2 * n ** 2 + 1
+    w = np.zeros(o, dtype=np.float64)
+    x = np.zeros((n, o), dtype=np.float64)
+
+    expon = 0
+    volume = c1_leg_monomial_integral(expon)
+    volume = volume ** n
+
+    b0 = (25 * n * n - 115 * n + 162) * volume / 162.0
+    b1 = (70 - 25 * n) * volume / 162.0
+    b2 = 25.0 * volume / 324.0
+
+    r = np.sqrt(3.0 / 5.0)
+
+    k = 0
+
+    k += 1
+    for i in range(n):
+        x[i, k - 1] = 0.0
+    w[k - 1] = b0
+
+    for i1 in range(1, n + 1):
+        k += 1
+        for i in range(n):
+            x[i, k - 1] = 0.0
+        x[i1 - 1, k - 1] = +r
+        w[k - 1] = b1
+
+        k += 1
+        for i in range(n):
+            x[i, k - 1] = 0.0
+        x[i1 - 1, k - 1] = -r
+        w[k - 1] = b1
+
+    for i1 in range(1, n):
+        for i2 in range(i1 + 1, n + 1):
+            k += 1
+            for i in range(n):
+                x[i, k - 1] = 0.0
+            x[i1 - 1, k - 1] = +r
+            x[i2 - 1, k - 1] = +r
+            w[k - 1] = b2
+
+            k += 1
+            for i in range(n):
+                x[i, k - 1] = 0.0
+            x[i1 - 1, k - 1] = +r
+            x[i2 - 1, k - 1] = -r
+            w[k - 1] = b2
+
+            k += 1
+            for i in range(n):
+                x[i, k - 1] = 0.0
+            x[i1 - 1, k - 1] = -r
+            x[i2 - 1, k - 1] = +r
+            w[k - 1] = b2
+
+            k += 1
+            for i in range(n):
+                x[i, k - 1] = 0.0
+            x[i1 - 1, k - 1] = -r
+            x[i2 - 1, k - 1] = -r
+            w[k - 1] = b2
+
+    return x, np.atleast_2d(w).T / np.sum(w)
+
+
+def cn_gauss(rdim, degree):
+    x, w = np.polynomial.legendre.leggauss(degree)
+
+    X = [x for _ in range(rdim)]
+
+    nodes = np.array(np.meshgrid(*X, indexing='ij')).reshape(rdim, -1)
+    weights = np.ones(degree ** rdim) / (degree ** rdim)
+
+    return nodes, np.atleast_2d(weights).T / np.sum(weights)
+
+
+def weighted_mean_obj(tab_var, weights):
+    # print(weights, weights.shape)
+    # print(tab_var, tab_var.shape)
+    rows_sims_no, cols = np.shape(tab_var)
+    no_weights, dummy = np.shape(weights)
+    if rows_sims_no == no_weights:
+        # expe = np.zeros((cols, 1))
+        # outvar = np.zeros((cols, 1))
+        # for i in range(cols):
+        #     expe[i, 0] = np.dot(tab_var[:, i], weights)[0]
+        #     outvar[i, 0] = np.dot(tab_var[:, i] ** 2, weights)[0]
+        #
+        # stdDev = np.sqrt(abs(outvar - expe ** 2))
+        mean = weighted_mean(tab_var, weights.T[0])
+        std = np.sqrt(weighted_variance(tab_var, weights.T[0], mean))
+        skew = weighted_skew(tab_var, weights.T[0], mean, std)
+        kurtosis = weighted_kurtosis(tab_var, weights.T[0], mean, std)
+    else:
+        mean = 0
+        std = 0
+        skew = 0
+        kurtosis = 0
+        error('Cols_sims_no != No_weights')
+    return list(mean), list(std), list(skew), list(kurtosis)
+
+
+def weighted_mean(var, wts):
+    """Calculates the weighted mean"""
+    return np.average(var, weights=wts, axis=0)
+
+
+def weighted_variance(var, wts, mean):
+    """Calculates the weighted variance"""
+    return np.average((var - mean) ** 2, weights=wts, axis=0)
+
+
+def weighted_skew(var, wts, mean, std):
+    """Calculates the weighted skewness, returning NaN where std==0."""
+    num = np.average((var - mean) ** 3, weights=wts, axis=0)
+    denom = std**3
+    # allocate output, fill with NaN
+    skew = np.full_like(num, np.nan, dtype=float)
+    # divide only where denom != 0
+    np.divide(num, denom, out=skew, where=(denom != 0))
+    return skew
+
+
+def weighted_kurtosis(var, wts, mean, std):
+    """Calculates the weighted kurtosis, returning NaN where std==0."""
+    num = np.average((var - mean) ** 4, weights=wts, axis=0)
+    denom = std**4
+    kurt = np.full_like(num, np.nan, dtype=float)
+    np.divide(num, denom, out=kurt, where=(denom != 0))
+    return kurt
+
+
+def normal_dist(x, mean, sd):
+    prob_density = (np.pi * sd) * np.exp(-0.5 * ((x - mean) / sd) ** 2)
+    return prob_density
 
 
 def linspace(start, stop, step):
@@ -623,7 +1101,6 @@ def add_ellipse(cav, pt_indx, curve_indx, start_pt, center_pt, majax_pt, end_pt)
     return pt_indx, curve_indx
 
 
-
 def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=None, tangent_check=False,
                               ignore_degenerate=False, plot=False, write=None, dimension=False,
                               contour=False, **kwargs):
@@ -765,9 +1242,9 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
                     # DRAW ARC:
                     if plot and dimension:
                         ax.scatter(L_bp_l - shift, Ri_el + b_el, c='r', ec='k', s=20)
-                        ellipse = Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
-                                          height=2 * b_el, angle=0, edgecolor='gray', ls='--',
-                                          facecolor='none')
+                        ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri_el + b_el), width=2 * a_el,
+                                                                 height=2 * b_el, angle=0, edgecolor='gray', ls='--',
+                                                                 facecolor='none')
                         ax.add_patch(ellipse)
                         ax.annotate('', xy=(L_bp_l - shift + a_el, Ri_el + b_el),
                                     xytext=(L_bp_l - shift, Ri_el + b_el),
@@ -911,11 +1388,11 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
 
                             if plot and dimension:
                                 ax.scatter(L_el + L_er + L_bp_l - shift, Ri_er + b_er, c='r', ec='k', s=20)
-                                ellipse = Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
-                                                  width=2 * a_er,
-                                                  height=2 * b_er, angle=0, edgecolor='gray',
-                                                  ls='--',
-                                                  facecolor='none')
+                                ellipse = plt.matplotlib.patches.Ellipse((L_el + L_er + L_bp_l - shift, Ri_er + b_er),
+                                                                         width=2 * a_er,
+                                                                         height=2 * b_er, angle=0, edgecolor='gray',
+                                                                         ls='--',
+                                                                         facecolor='none')
                                 ax.add_patch(ellipse)
                                 ax.annotate('', xy=(L_el + L_er + L_bp_l - shift, Ri_er + b_er),
                                             xytext=(L_el + L_er + L_bp_l - shift - a_er, Ri_er + b_er),
@@ -1333,10 +1810,26 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     # geo.append([start_point[1], start_point[0], 0])
     geo = np.array(geo)
 
-    # NOTE: plotting is handled by `write_cavity_geometry_cli_wo_gmsh`
-    # (callers pass plot=True there). This gmsh-oriented variant only
-    # populates `geo` when `write` is set, so there is nothing to draw
-    # here. Keeping the function return stable for callers.
+    # if plot:
+    #
+    #     if dimension:
+    #         top = ax.plot(geo[:, 1] * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #     else:
+    #         # recenter asymmetric cavity to center
+    #         shift_left = (L_bp_l + L_bp_r + L_el + L_er + 2 * (n_cell - 1) * L_m) / 2
+    #         if n_cell == 1:
+    #             shift_to_center = L_er + L_bp_r
+    #         else:
+    #             shift_to_center = n_cell * L_m + L_bp_r
+    #
+    #         top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
+    #         bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+    #                          **kwargs)
+    #
+    #     # plot legend without duplicates
+    #     handles, labels = plt.gca().get_legend_handles_labels()
+    #     by_label = dict(zip(labels, handles))
+    #     ax.legend(by_label.values(), by_label.keys())
 
     return ax
 
@@ -1469,9 +1962,9 @@ def write_cavity_geometry_cli_multicell(n_cell, multicell, BP, scale=1, ax=None,
             # DRAW ARC:
             if plot and dimension:
                 ax.scatter(L_bp_l - shift, Ri + b, c='r', ec='k', s=20)
-                ellipse = Ellipse((L_bp_l - shift, Ri + b), width=2 * a,
-                                  height=2 * b, angle=0, edgecolor='gray', ls='--',
-                                  facecolor='none')
+                ellipse = plt.matplotlib.patches.Ellipse((L_bp_l - shift, Ri + b), width=2 * a,
+                                                         height=2 * b, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
                 ax.add_patch(ellipse)
                 ax.annotate('', xy=(L_bp_l - shift + a, Ri + b),
                             xytext=(L_bp_l - shift, Ri + b),
@@ -1512,9 +2005,9 @@ def write_cavity_geometry_cli_multicell(n_cell, multicell, BP, scale=1, ax=None,
 
             if plot and dimension:
                 ax.scatter(L + L_bp_l - shift, Req - B, c='r', ec='k', s=20)
-                ellipse = Ellipse((L + L_bp_l - shift, Req - B), width=2 * A,
-                                  height=2 * B, angle=0, edgecolor='gray', ls='--',
-                                  facecolor='none')
+                ellipse = plt.matplotlib.patches.Ellipse((L + L_bp_l - shift, Req - B), width=2 * A,
+                                                         height=2 * B, angle=0, edgecolor='gray', ls='--',
+                                                         facecolor='none')
                 ax.add_patch(ellipse)
                 ax.annotate('', xy=(L + L_bp_l - shift, Req - B),
                             xytext=(L + L_bp_l - shift - A, Req - B),
@@ -1694,13 +2187,11 @@ def write_cavity_geometry_cli_multicell(n_cell, multicell, BP, scale=1, ax=None,
                 shift_to_center = n_cell * L + L_bp_r
 
             top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
-            # Only the top half gets the label — bottom is a visual mirror.
-            bottom_kwargs = {k: v for k, v in kwargs.items() if k != 'label'}
-            ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3,
-                    c=top[0].get_color(), **bottom_kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
 
         # plot legend without duplicates
-        handles, labels = ax.get_legend_handles_labels()
+        handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         ax.legend(by_label.values(), by_label.keys())
 
@@ -2439,13 +2930,11 @@ def write_cavity_geometry_cli_wo_gmsh(IC, OC, OC_R, BP, n_cell, scale=1, ax=None
                 shift_to_center = n_cell * L_m + L_bp_r
 
             top = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, geo[:, 0] * 1e3, **kwargs)
-            # Only the top half gets the label — bottom is a visual mirror.
-            bottom_kwargs = {k: v for k, v in kwargs.items() if k != 'label'}
-            ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3,
-                    c=top[0].get_color(), **bottom_kwargs)
+            bottom = ax.plot((geo[:, 1] - shift_left + shift_to_center) * 1e3, -geo[:, 0] * 1e3, c=top[0].get_color(),
+                             **kwargs)
 
         # plot legend without duplicates
-        handles, labels = ax.get_legend_handles_labels()
+        handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         ax.legend(by_label.values(), by_label.keys())
 
@@ -3010,7 +3499,6 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None
         plt.legend(by_label.values(), by_label.keys())
 
         return ax
-
 
 
 def writeCavityForMultipac(file_path, n_cell, mid_cell, end_cell_left=None, end_cell_right=None, beampipe='none',
@@ -4027,6 +4515,80 @@ def write_pillbox_geometry(file_path, n_cell, cell_par, beampipe='none', plot=Fa
     # plt.legend(by_label.values(), by_label.keys())
 
 
+def f2b_slashes(path):
+    """
+    Replaces forward slashes with backward slashes for windows OS
+
+    Parameters
+    ----------
+    path: str
+        Directory path
+
+    Returns
+    -------
+
+    """
+
+    if os.name == 'nt':
+        path = path.replace("/", "\\")
+    else:
+        path = path.replace('\\', '/')
+    return Path(path)
+
+
+def get_qoi_value(d, obj):
+    """
+    Gets the quantities of interest from simulation results
+
+    Parameters
+    ----------
+    d: dict
+        Dictionary containing several figures of merits from eigenmode solver
+    obj: list
+        List of objective functions
+
+    Returns
+    -------
+
+    """
+    # Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
+    # Freq = d['FREQUENCY'][n_cells - 1]
+    # E_stored = d['STORED ENERGY'][n_cells - 1]
+    # # Rsh = d['SHUNT IMPEDANCE'][n_cells-1]  # MOhm
+    # Q = d['QUALITY FACTOR'][n_cells - 1]
+    # Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
+    # Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
+    # # Vacc = dict['ACCELERATION'][0]
+    # # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells-1]  # MV/m
+    # Rsh_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
+    #
+    # Vacc = np.sqrt(
+    #     2 * Rsh_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6
+    # # factor of 2, remember circuit and accelerator definition
+    # # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
+    # Eacc = Vacc / (norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
+    # Epk_Eacc = Epk / Eacc
+    # Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
+    #
+    # d = {
+    #     "Req": Req,
+    #     "freq": Freq,
+    #     "Q": Q,
+    #     "E": E_stored,
+    #     "R/Q": 2 * Rsh_Q,
+    #     "Epk/Eacc": Epk_Eacc,
+    #     "Bpk/Eacc": Bpk_Eacc
+    # }
+
+    objective = []
+
+    # append objective functions
+    for o in obj:
+        if o in d.keys():
+            objective.append(d[o])
+
+    return objective
+
 
 def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type=None):
     """
@@ -4046,13 +4608,13 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type=None):
 
     if cell_type:
         ct = cell_type.lower().replace('-', ' ').replace('_', ' ')
-        if ct == 'mid cell':
+        if ct in ('mid cell',):
             par_mid[6] = par_end_r[6]
             par_end_l[6] = par_end_r[6]
-        elif ct == 'end cell':
+        elif ct in ('end cell',):
             par_end_l[6] = par_mid[6]
             par_end_r[6] = par_mid[6]
-        elif ct == 'single cell':
+        elif ct in ('single cell',):
             par_mid[6] = par_end_r[6]
             par_end_l[6] = par_end_r[6]
         else:
@@ -4068,7 +4630,6 @@ def enforce_Req_continuity(par_mid, par_end_l, par_end_r, cell_type=None):
 def save_tune_result(d, folder, filename):
     with open(os.path.join(folder, 'eigenmode', filename), 'w') as file:
         file.write(json.dumps(d, indent=4, separators=(',', ': ')))
-
 
 
 def to_multicell(n_cells, shape):
@@ -4088,6 +4649,254 @@ def to_multicell(n_cells, shape):
 
 from scipy.interpolate import interp1d
 
+
+def interpolate_pareto(pareto, x_values):
+    """Interpolate y-values for a given set of x-values based on a Pareto front."""
+    f = interp1d(pareto[:, 0], pareto[:, 1], kind='linear', bounds_error=False, fill_value="extrapolate")
+    return f(x_values)
+
+
+def extend_pareto(pareto1, pareto2):
+    """Extend Pareto fronts by adding boundary points to match their x-ranges."""
+    x_min1, x_max1 = pareto1[:, 0].min(), pareto1[:, 0].max()
+    x_min2, x_max2 = pareto2[:, 0].min(), pareto2[:, 0].max()
+
+    # Find boundary points to extend Pareto fronts
+    extend_left1 = pareto2[pareto2[:, 0] == x_min2]
+    extend_right1 = pareto2[pareto2[:, 0] == x_max2]
+    extend_left2 = pareto1[pareto1[:, 0] == x_min1]
+    extend_right2 = pareto1[pareto1[:, 0] == x_max1]
+
+    if len(extend_left1) > 0 and x_min1 > x_min2:
+        pareto1 = np.vstack([extend_left1, pareto1])
+    if len(extend_right1) > 0 and x_max1 < x_max2:
+        pareto1 = np.vstack([pareto1, extend_right1])
+    if len(extend_left2) > 0 and x_min2 > x_min1:
+        pareto2 = np.vstack([extend_left2, pareto2])
+    if len(extend_right2) > 0 and x_max2 < x_max1:
+        pareto2 = np.vstack([pareto2, extend_right2])
+
+    return np.array(sorted(pareto1, key=lambda p: p[0])), np.array(sorted(pareto2, key=lambda p: p[0]))
+
+
+def line_intersection(p1, p2):
+    """Find the intersection point of two line segments (p1 and p2)."""
+
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    xdiff = (p1[0] - p1[2], p2[0] - p2[2])
+    ydiff = (p1[1] - p1[3], p2[1] - p2[3])
+
+    div = det(xdiff, ydiff)
+    if div == 0:
+        return None  # Parallel lines
+
+    d = (det((p1[0], p1[1]), (p1[2], p1[3])), det((p2[0], p2[1]), (p2[2], p2[3])))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return (x, y)
+
+
+def find_all_intersections(pareto1, pareto2):
+    """Find all intersection points between the segments of two Pareto fronts."""
+    intersections = []
+
+    for i in range(len(pareto1) - 1):
+        p1 = (pareto1[i, 0], pareto1[i, 1], pareto1[i + 1, 0], pareto1[i + 1, 1])
+        for j in range(len(pareto2) - 1):
+            p2 = (pareto2[j, 0], pareto2[j, 1], pareto2[j + 1, 0], pareto2[j + 1, 1])
+            intersect_point = line_intersection(p1, p2)
+            if intersect_point:
+                xi, yi = intersect_point
+                if min(p1[0], p1[2]) <= xi <= max(p1[0], p1[2]) and min(p2[0], p2[2]) <= xi <= max(p2[0], p2[2]):
+                    intersections.append((round(xi, 6), round(yi, 6)))
+
+    return sorted(set(intersections))
+
+
+def calculate_bounded_area(x_values, y_values1, y_values2):
+    """Calculate the area between two Pareto fronts."""
+    return np.abs(np.trapz(np.abs(y_values1 - y_values2), x_values))
+
+
+def area_pareto_fronts(pareto1, pareto2):
+    """Plot the two Pareto fronts and correctly fill the area between them, handling edge cases."""
+    # Extend Pareto fronts to cover the same x-range
+    pareto1, pareto2 = extend_pareto(pareto1, pareto2)
+
+    # Determine the combined range of x-values
+    min_x = min(pareto1[:, 0].min(), pareto2[:, 0].min())
+    max_x = max(pareto1[:, 0].max(), pareto2[:, 0].max())
+
+    # Create a fine grid of x-values spanning the combined range
+    x_values = np.linspace(min_x, max_x, 500)
+
+    # # Interpolate both Pareto fronts at these x-values
+    # y_values1 = interpolate_pareto(pareto1, x_values)
+    # y_values2 = interpolate_pareto(pareto2, x_values)
+
+    # Find intersection points and split x_values accordingly
+    intersections = find_all_intersections(pareto1, pareto2)
+    if intersections:
+        segments = [x_values[(x_values >= min_x) & (x_values <= intersections[0][0])]]
+        for i in range(len(intersections) - 1):
+            segments.append(x_values[(x_values >= intersections[i][0]) & (x_values <= intersections[i + 1][0])])
+        segments.append(x_values[(x_values >= intersections[-1][0]) & (x_values <= max_x)])
+    else:
+        segments = [x_values]
+
+    # Calculate bounded area
+    total_area = 0
+    for segment in segments:
+        seg_y1 = interpolate_pareto(pareto1, segment)
+        seg_y2 = interpolate_pareto(pareto2, segment)
+        total_area += calculate_bounded_area(segment, seg_y1, seg_y2)
+
+    return total_area
+    # print(f'Bounded Area: {total_area:.2f}')
+    # if intersections:
+    #     print('Intersection Points:')
+    #     for x, y in intersections:
+    #         print(f'X: {x:.2f}, Y: {y:.2f}')
+    #
+    # # Plot Pareto fronts
+    # plt.plot(pareto1[:, 0], pareto1[:, 1], 'r-o', label='Pareto Front 1')
+    # plt.plot(pareto2[:, 0], pareto2[:, 1], 'b-o', label='Pareto Front 2')
+    #
+    # # Fill the area between the two fronts in black
+    # plt.fill_between(x_values, y_values1, y_values2, where=(y_values1 > y_values2), color='black', alpha=0.3)
+    # plt.fill_between(x_values, y_values1, y_values2, where=(y_values1 <= y_values2), color='black', alpha=0.3)
+    #
+    # plt.xlabel('X-axis')
+    # plt.ylabel('Y-axis')
+    # plt.title('Area Between Two Pareto Fronts with Edge Cases')
+    # plt.legend()
+    # plt.show()
+
+
+def reorder_legend(h, l, ncols):
+    re_h = sum((h[ii::ncols] for ii in range(ncols)), [])
+    re_l = sum((l[ii::ncols] for ii in range(ncols)), [])
+    # reorder = lambda ll, nc: sum((ll[ii::nc] for ii in range(nc)), [])
+    return re_h, re_l
+
+
+def get_wakefield_data(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    data = {}
+    current_points = []
+    current_type = None
+    in_electric_field_frame = False  # Flag to track "Electric Field Lines" frames
+    frame_count = 0  # Counter for Electric Field Lines frames
+
+    for line in lines:
+        if "NEW FRAME" in line:
+            if in_electric_field_frame:
+                # Store the data for the current frame before moving to the next
+                if current_type and current_points:
+                    data[f"Frame_{frame_count}"].append(
+                        (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+            in_electric_field_frame = False  # Reset the flag when a new frame starts
+            current_points = []
+            current_type = None
+        elif "Electric Field Lines" in line:
+            in_electric_field_frame = True  # Set the flag for "Electric Field Lines"
+            frame_count += 1
+            data[f"Frame_{frame_count}"] = []  # Initialize a new entry for the frame
+        elif "JOIN 1" in line and in_electric_field_frame:
+            if current_type and current_points:
+                data[f"Frame_{frame_count}"].append(
+                    (current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+            current_type = "DOTS" if "DOTS" in line else "SOLID"
+            current_points = []
+        elif in_electric_field_frame and (re.match(r'\s*\d\.\d+E[+-]\d+\s+\d\.\d+E[+-]\d+', line) or re.match(
+                r'\s*\d\.\d+\s+\d\.\d+E[+-]\d+', line)):
+            point = [float(x) for x in re.findall(r'[-+]?\d*\.\d+E[-+]?\d+|\d+\.\d+', line)]
+            current_points.append(point)
+
+    # Add the last set of points if any
+    if in_electric_field_frame and current_type and current_points:
+        data[f"Frame_{frame_count}"].append((current_type, pd.DataFrame(current_points, columns=['X', 'Y'])))
+
+    return data
+
+
+import numpy as np
+import copy
+import re
+from numpy.polynomial.legendre import leggauss
+
+# Ordered parameter names
+VAR_NAMES = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'alpha']
+
+
+def stroud3_nodes_and_weights(p: int):
+    """Stroud’s 3rd-degree rule nodes & weights in [0,1]^p."""
+    coeff = np.pi / p
+    fac = np.sqrt(2 / 3)
+    raw = np.zeros((p, 2 * p))
+    for i in range(2 * p):
+        for r in range(p // 2):
+            k = 2 * r
+            raw[k, i] = fac * np.cos((k + 1) * (i + 1) * coeff)
+            raw[k + 1, i] = fac * np.sin((k + 1) * (i + 1) * coeff)
+        if p % 2:
+            raw[-1, i] = ((-1) ** (i + 1)) / np.sqrt(3)
+    nodes = (0.5 * raw + 0.5).T  # (2p, p)
+    weights = np.full(2 * p, 1.0 / (2 * p))
+    return nodes, weights
+
+
+def generate_uniform_nodes(k: int, bound: float, n: int):
+    """Uniform random delta-vectors in [-bound,+bound] with equal weights."""
+    deltas = [np.random.uniform(-bound, bound, size=k) for _ in range(n)]
+    weights = [1.0 / n] * n
+    return deltas, weights
+
+def generate_normal_nodes(k: int, bound: float, n: int, seed=None):
+    """
+    n independent multivariate normal samples in k dims,
+    each component ~ N(0,bound^2).
+    """
+    rng     = np.random.default_rng(seed)
+    sample  = rng.standard_normal(size=(n, k)) * bound
+    deltas  = list(sample)
+    weights = [1.0/n]*n
+    return deltas, weights
+
+def generate_gauss_legendre_nodes(k: int, bound: float, n: int):
+    """Tensor-product Gauss–Legendre nodes & weights on [-bound,bound]."""
+    x1d, w1d = leggauss(n)
+    x1d *= bound
+    w1d *= bound
+    grids = np.meshgrid(*([x1d] * k), indexing='ij')
+    wgrids = np.meshgrid(*([w1d] * k), indexing='ij')
+    flat_x = np.stack([g.ravel() for g in grids], axis=1)  # (n**k, k)
+    flat_w = np.prod([wg.ravel() for wg in wgrids], axis=0)  # (n**k,)
+    return list(flat_x), list(flat_w)
+
+
+def generate_stroud3_nodes(k: int, bound: float):
+    """Stroud-III delta-vectors mapped to [-bound,bound] and equal weights."""
+    nodes, w = stroud3_nodes_and_weights(k)
+    deltas = [(vec - 0.5) * 2 * bound for vec in nodes]
+    return deltas, list(w)
+
+
+def generate_nodes(k: int, bound: float, node_type: list):
+    """Dispatch to the appropriate node generator."""
+    if node_type[0].lower() == 'uniform':
+        return generate_uniform_nodes(k, bound, node_type[1])
+    elif node_type[0].lower() == 'normal':
+        return generate_normal_nodes(k, bound, node_type[1], seed=3799)
+    if node_type[0].lower() == 'gauss_legendre':
+        return generate_gauss_legendre_nodes(k, bound, node_type[1])
+    if node_type[0].lower() == 'stroud3':
+        return generate_stroud3_nodes(k, bound)
+    raise ValueError(f"Unknown node_type {node_type[0]!r}")
 
 
 def expand_cells(cav: dict, cells):
@@ -4159,7 +4968,6 @@ def generate_perturbed_shapes(shape: dict,
     return shapes, np.atleast_2d(weights).T
 
 
-
 def perturb_geometry(cav, eigenmode_config):
 
     uq_config = eigenmode_config['uq_config']
@@ -4168,13 +4976,9 @@ def perturb_geometry(cav, eigenmode_config):
 
     method = uq_config['method']
     if 'perturbation_mode' not in uq_config:
-        # default: additive perturbation with bound from delta or 0.01
-        uq_config['perturbation_mode'] = ['add', uq_config.get('delta', 0.01)]
+        uq_config['perturbation_mode'] = ['add']  # default: additive perturbation with bound 0.01
 
     perturbation_mode = uq_config['perturbation_mode']
-    if len(perturbation_mode) < 2:
-        perturbation_mode.append(uq_config.get('delta', 0.01))
-
     if not isinstance(perturbation_mode[1], list):
         perturbation_mode[1] = [perturbation_mode[1]] * len(uq_vars)
 
@@ -4184,37 +4988,21 @@ def perturb_geometry(cav, eigenmode_config):
     node_type = method
 
     # get perturbed variables
-    # get perturbed variables
     uq_parameters = uq_config['variables']
     if isinstance(uq_parameters, str):
         uq_parameters = [uq_parameters]
 
-    # Map deltas to expanded variables
-    config_deltas = uq_config.get('delta', 0.01)
-    if not isinstance(config_deltas, (list, np.ndarray, list)):
-        config_deltas = [config_deltas] * len(uq_parameters)
-        
-    if uq_config.get('cell', 'all') == 'all':
-        perturbed_vars = []
-        full_delta = []
-        for par in cav.parameters:
-            for i, k_var in enumerate(uq_parameters):
-                if k_var in par:
-                    perturbed_vars.append(par)
-                    full_delta.append(config_deltas[i])
-                    break
+    if uq_config['cell'] == 'all':
+        perturbed_vars = [par for par in cav.parameters if any(k in par for k in uq_parameters)]
     else:
         perturbed_vars = uq_parameters
-        full_delta = config_deltas
 
     k = len(perturbed_vars)
-    mode[1] = full_delta
 
     deltas, weights = generate_nodes(k, mode[1], node_type)
     perturbed_cavs_dict = apply_perturbation(cav, deltas, perturbed_vars, mode[0])
 
     return perturbed_cavs_dict, np.atleast_2d(weights).T
-
 
 def enforce_continuity_df(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -4287,6 +5075,158 @@ def shapes_to_dataframe(cavs_dict):
 
 
 
+def merge_runs_within_variable(df: pd.DataFrame, var: str,
+                               rtol=1e-6, atol=1e-8):
+    """
+    For a given variable prefix (e.g. 'Ri' or 'Req'), find all columns
+    like 'Ri1','Ri2',… sorted by index; then group any consecutive indices
+    i, i+1 where df[Ri_i] ≈ df[Ri_{i+1}], producing merged names ['Ri2Ri3'], etc.
+    Returns an ordered list of (merged_name, series).
+    """
+    # 1) find all columns for this var, extract indices
+    pat = re.compile(rf'^{re.escape(var)}(\d+)$')
+    cols = []
+    for c in df.columns:
+        m = pat.match(c)
+        if m:
+            idx = int(m.group(1))
+            cols.append((idx, c))
+    cols.sort(key=lambda x: x[0])
+    merged = []
+    i = 0
+    while i < len(cols):
+        idx, name = cols[i]
+        # look ahead
+        if i+1 < len(cols):
+            idx2, name2 = cols[i+1]
+            # must be consecutive indices
+            if idx2 == idx+1:
+                # compare the arrays
+                a = df[name].to_numpy()
+                b = df[name2].to_numpy()
+                if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
+                    # merge them
+                    new_name = f"{name}{name2}"
+                    merged.append((new_name, df[name]))
+                    i += 2
+                    continue
+        # else no merge
+        merged.append((name, df[name]))
+        i += 1
+    return merged
+
+def merge_equal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Collapse runs of equal columns **within** each variable (Ri, Req),
+    then reassemble all merged columns in the original half‐cell order.
+    """
+    # 1) Determine half‐cell column order from df.columns via regex pairs
+    #    We assume columns alternate Ri#, Req#, Ri#, Req#, …
+    order = []
+    pat = re.compile(r'^(Ri|Req)(\d+)$')
+    for c in df.columns:
+        if pat.match(c):
+            order.append(c)
+
+    # 2) Build merged lists
+    ri_merged  = merge_runs_within_variable(df, 'Ri')
+    req_merged = merge_runs_within_variable(df, 'Req')
+
+    # 3) Map original col → merged_name
+    col_to_merged = {}
+    for new_name, series in ri_merged + req_merged:
+        # the group names are concatenations, so split back
+        # e.g. 'Ri2Ri3' → ['Ri2','Ri3']
+        parts = re.findall(r'(Ri\d+|Req\d+)', new_name)
+        for p in parts:
+            col_to_merged[p] = new_name
+
+    # 4) Reassemble in original order, but only add each merged_name once
+    final = []
+    seen = set()
+    for c in order:
+        m = col_to_merged.get(c)
+        if m and m not in seen:
+            seen.add(m)
+            # pick the series from df via the first part
+            first_part = re.match(r'(Ri\d+|Req\d+)', m).group(1)
+            final.append((m, df[first_part]))
+
+    # 5) Build DataFrame
+    return pd.DataFrame({name: ser for name, ser in final})
+
+def run_sa():
+    folder = r'C:\Users\sosoho\Documents'
+    # read nodes
+    nodes = pd.read_csv(fr'{folder}/nodes.csv', sep='\t')
+    nodes = nodes.loc[:, nodes.columns.str.contains('Ri|Req')]
+    # merge welded dimensions at seam
+    nodes = merge_equal_columns(nodes)
+
+    results = pd.read_excel(fr'{folder}/table.xlsx', 'Sheet1')
+    print(results.columns)
+    print()
+    data = pd.concat([nodes, results], axis=1)
+    data.to_excel(fr'{folder}/data.xlsx', index=False)
+    # print(data)
+
+    names = list(nodes.columns)
+
+    midcell = [42, 42, 12, 19, 35, 57.652, 103.3536]  # <- A, B, a, b, Ri, L, Req
+    endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.7251, 103.3536]
+    endcell_r = [42, 42, 9, 12.8, 39, 56.8407, 103.3536]
+
+    print(names)
+    problem = {
+        'names': names,
+        'num_vars': len(names),
+        'bounds': [[38.7, 39.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [34.7, 35.3], [103.0536, 103.6536],
+                   [38.7, 39.3]]
+    }
+    #
+    for obj in ['ff [%]']:
+        # obj = 'kcc [%]'
+        pce_order, pce_truncation = 2, 2
+
+        pce_data = Data(fr'{folder}', problem)
+
+        X_train, Y_train = pce_data.train_data(obj)
+        X_test, Y_test = pce_data.test_data()
+
+        pce_reg = PCE(pce_data, Y_train)
+
+        pce_reg.pce_regression(pce_order, pce_truncation)
+
+        Y_reg = pce_reg.evaluate_reg(X_test)
+
+        # plot
+        fig, axs = plt.subplot_mosaic([[0], [1]], figsize=(13, 7))
+        ax = axs[0]
+        ax_err = axs[1]
+
+        ax.plot(Y_test[:50], label='actual', mec='k', lw=0, marker='o', mfc='none', ms=10)
+        ax.plot(Y_reg[:50], label=f'pce reg. ({pce_order},{pce_truncation})]',
+            zorder=23, lw=1, marker='^', mfc='none', ms=8)
+        ax_err.plot(np.abs(Y_reg - Y_test), label='error pce reg')
+
+        # calculate sobol
+        # resample for sobol
+        sobol_indices = {}
+        sobol = Sobol(problem, folder)
+        sobol_indices[obj] = sobol.analyse(pce_reg.evaluate_reg, 'pce reg')
+        sobol.plot(obj, figsize=(10, 3))
+
+        # # save sobol indices
+        # with open(f"{folder}/{obj.replace('/', '_')}.pkl", 'wb') as f:
+        #     pickle.dump(sobol.sobol_indices, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 def make_dirs_from_dict(d, current_dir):
     for key, val in d.items():

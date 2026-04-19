@@ -21,7 +21,7 @@ setup(
     install_requires=[
         'matplotlib>=3.8.4',
         'pandas>=2.2.2',
-        'numpy==1.26.4',
+        'numpy',
         'scipy>=1.13.1',
         'psutil>=6.0.0',
         'paretoset',
@@ -29,7 +29,7 @@ setup(
         'tqdm>=4.66.4',
         'setuptools>=72.1.0',
         'termcolor>=2.1.0',
-        'ngsolve==6.2.2402',
+        'ngsolve',
         'openpyxl'
     ],
     packages=find_packages(exclude=('tests', 'docs')),

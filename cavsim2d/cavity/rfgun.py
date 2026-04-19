@@ -44,27 +44,14 @@ class RFGun(Cavity):
             beampipe = self.beampipe
 
         if self.projectDir:
-            cav_dir_structure = {
-                self.name: {
-                    'geometry': None,
-                }
-            }
+            # Create cavity directory directly inside project folder
+            self.self_dir = os.path.join(self.projectDir, self.name)
+            geo_dir = os.path.join(self.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
 
-            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-            else:
-                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-
-            # write geometry file to folder
-            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
-
-            # define different paths for easier reference later
-            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
-            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
             self.uq_dir = os.path.join(self.self_dir, 'uq')
 
-            self.geo_filepath = os.path.join(self.self_dir, 'geometry', 'geodata.geo')
+            self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters,
                                 write=self.geo_filepath)
 
@@ -415,16 +402,20 @@ class RFGun(Cavity):
         # print('it is here')
         qois = 'qois.json'
         assert os.path.exists(
-            os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)), (
+            os.path.join(self.self_dir, 'eigenmode', qois)), (
             error('Eigenmode result does not exist, please run eigenmode simulation.'))
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', qois)) as json_file:
+        with open(os.path.join(self.self_dir, 'eigenmode', qois)) as json_file:
             self.eigenmode_qois = json.load(json_file)
 
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'qois_all_modes.json')) as json_file:
-            self.eigenmode_qois_all_modes = json.load(json_file)
+        all_modes_path = os.path.join(self.self_dir, 'eigenmode', 'qois_all_modes.json')
+        if os.path.exists(all_modes_path):
+            with open(all_modes_path) as json_file:
+                self.eigenmode_qois_all_modes = json.load(json_file)
 
-        with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
-            self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+        ez_path = os.path.join(self.self_dir, 'eigenmode', 'Ez_0_abs.csv')
+        if os.path.exists(ez_path):
+            with open(ez_path) as csv_file:
+                self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
 
         self.freq = self.eigenmode_qois['freq [MHz]']
         self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
@@ -450,8 +441,8 @@ class RFGun(Cavity):
                 ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
                 ax.axhline(max(Ez_0_abs_peaks), c='k')
         else:
-            if os.path.exists(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')):
-                with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
+            if os.path.exists(os.path.join(self.self_dir, 'eigenmode', 'Ez_0_abs.csv')):
+                with open(os.path.join(self.self_dir, 'eigenmode', 'Ez_0_abs.csv')) as csv_file:
                     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
                 ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
                 ax.legend(loc="upper right")

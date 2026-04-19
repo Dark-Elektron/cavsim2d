@@ -52,6 +52,14 @@ class EllipticalCavity(Cavity):
         else:
             self.end_cell_right = np.copy(self.end_cell_left)
 
+        # Equator radius Req (index 6) is physically shared across all cells
+        # of a multi-cell cavity. If the user passed mismatched values,
+        # unify them toward the canonical source (mid-cell for n_cells >= 2,
+        # end-cell-left for a single-cell cavity) and warn — otherwise the
+        # geometry writer silently uses OC_R's Req for every tangent check,
+        # producing misleading "degenerate geometry" errors.
+        self._unify_equator_radius()
+
         # Unpack 7 parameters
         (self.A, self.B, self.a, self.b,
          self.Ri, self.L, self.Req) = self.mid_cell[:7]
@@ -92,32 +100,90 @@ class EllipticalCavity(Cavity):
         if beampipe is None:
             beampipe = self.beampipe
 
+        # In tune mode, just rewrite the geometry file with current parameters
+        # (self_dir and geo_filepath are already set from spawn)
+        if mode == 'tune' and self.geo_filepath:
+            self.write_quarter_geometry(self.parameters, beampipe, write=self.geo_filepath)
+            return
+        if mode == 'tune-endcell' and self.geo_filepath:
+            self.write_endcell_tune_geometry(self.parameters, beampipe, write=self.geo_filepath)
+            return
+
+        # If self_dir is already set and geometry exists, skip re-creation
+        # (e.g. when spawned by optimisation with flat folder structure)
+        if self.self_dir and self.geo_filepath and os.path.exists(self.geo_filepath):
+            return
+
         if self.projectDir:
-            cav_dir_structure = {
-                self.name: {
-                    'geometry': None,
-                }
-            }
+            # Create cavity directory directly inside project folder (no Cavities/ subfolder)
+            self.self_dir = os.path.join(self.projectDir, self.name)
+            geo_dir = os.path.join(self.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
 
-            if os.path.exists(os.path.join(self.projectDir, 'Cavities')):
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-            else:
-                os.mkdir(os.path.join(self.projectDir, 'Cavities'))
-                make_dirs_from_dict(cav_dir_structure, os.path.join(self.projectDir, 'Cavities'))
-
-            # write geometry file to folder
-            self.self_dir = os.path.join(self.projectDir, 'Cavities', self.name)
-
-            # define different paths for easier reference later
-            self.eigenmode_dir = os.path.join(self.self_dir, 'eigenmode')
-            self.wakefield_dir = os.path.join(self.self_dir, 'wakefield')
             self.uq_dir = os.path.join(self.self_dir, 'uq')
 
-            self.geo_filepath = os.path.join(self.projectDir, 'Cavities', self.name, 'geometry', 'geodata.geo')
+            self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             if mode is None:
                 self.write_geometry(self.parameters, n_cells, beampipe, write=self.geo_filepath)
+            elif mode == 'tune-endcell':
+                self.write_endcell_tune_geometry(self.parameters, beampipe, write=self.geo_filepath)
             else:
                 self.write_quarter_geometry(self.parameters, beampipe, write=self.geo_filepath)
+
+    def _unify_equator_radius(self):
+        """Force Req to be identical on mid, end-left and end-right cells.
+
+        For multi-cell cavities the canonical source is the mid-cell; for
+        single-cell cavities it is end-cell-left. A warning is emitted if
+        any sibling had to be adjusted, so the user knows their input was
+        inconsistent.
+        """
+        req_m, req_el, req_er = (float(self.mid_cell[6]),
+                                 float(self.end_cell_left[6]),
+                                 float(self.end_cell_right[6]))
+        if np.isclose(req_m, req_el) and np.isclose(req_m, req_er):
+            return
+
+        canonical = req_m if (self.n_cells or 1) >= 2 else req_el
+        source = 'mid-cell' if (self.n_cells or 1) >= 2 else 'end-cell-left'
+        warning(
+            f"Req differs across cells (mid={req_m}, end-left={req_el}, "
+            f"end-right={req_er}). Req is physically shared across all cells — "
+            f"unifying to the {source} value ({canonical}). Adjust your input "
+            f"or call cav._unify_equator_radius() explicitly to silence this."
+        )
+        self.mid_cell[6] = canonical
+        self.end_cell_left[6] = canonical
+        self.end_cell_right[6] = canonical
+
+    def write_endcell_tune_geometry(self, parameters, bp, write=None):
+        """Build a 1-cell geometry for end-cell tuning: beampipe + end-cell
+        half + adjacent mid-cell half, with PMC at both iris/beampipe ends.
+
+        The adjacent half uses the current mid-cell parameters, so the
+        solve returns the same pi-mode frequency the end-cell has inside
+        the real multicell cavity — which is what the secant root-finder
+        needs to hit the target.
+
+        ``bp`` selects the end-cell being tuned:
+        - 'left'  : end-LEFT cell tuned; end-right parameters are replaced
+                    with the current mid-cell parameters for the adjacent
+                    half of the geometry.
+        - 'right' : mirrored — end-RIGHT cell tuned; end-left params are
+                    replaced with mid-cell params.
+        """
+        params = dict(parameters)
+        names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
+        if bp == 'left':
+            for n in names:
+                params[f'{n}_er'] = params[f'{n}_m']
+        elif bp == 'right':
+            for n in names:
+                params[f'{n}_el'] = params[f'{n}_m']
+        else:
+            # Should not be called with 'none'/'both'; fall back to full geom.
+            pass
+        self.write_geometry(params, n_cells=1, BP=bp, write=write)
 
     def write_geometry(self, parameters, n_cells, BP, scale=1, ax=None, bc=None, tangent_check=False,
                                   ignore_degenerate=False, plot=False, write=None, dimension=False,
@@ -1079,7 +1145,21 @@ class EllipticalCavity(Cavity):
                 self.parameters[f"{name}_{shape_keys[key]}"] = value
 
     def spawn(self, difference, folder):
-        spawn = Cavities(folder)
+        """Spawn candidate cavities into a flat folder structure.
+
+        Each candidate cavity gets its own subfolder directly under `folder`:
+            folder/G0_C0_P/
+            folder/G0_C1_P/
+            ...
+
+        No project structure (cavities/Cavities/) is created.
+        """
+        from cavsim2d.cavity.cavities import Cavities
+
+        # Create container without project directory structure
+        spawn = Cavities(folder, _skip_project_init=True)
+        os.makedirs(folder, exist_ok=True)
+
         for key, params_diff in difference.iterrows():
             # modify parameters
             mid_cells_mod = self._modify_parameters(
@@ -1095,17 +1175,28 @@ class EllipticalCavity(Cavity):
                 params_diff,
                 np.copy(self.end_cell_right))
 
-            # print(key)
-            # print('\tmid cell', self.mid_cell, mid_cells_mod)
-            # print('\tend cell left', self.end_cell_left, endcell_l_mod)
-            # print('\tend cell right', self.end_cell_right, endcell_r_mod)
-            # print()
-
             name = key
             scav = EllipticalCavity(self.n_cells, mid_cells_mod, endcell_l_mod, endcell_r_mod, beampipe=self.beampipe)
-            spawn.add_cavity(scav, names=name, plot_labels=name)
+            scav.name = name
+
+            # Set self_dir directly — flat structure, no Cavities/ nesting
+            scav.projectDir = folder
+            scav.self_dir = os.path.join(folder, str(name))
+            os.makedirs(scav.self_dir, exist_ok=True)
+
+            # Write geometry
+            geo_dir = os.path.join(scav.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
+            scav.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+            scav.write_geometry(scav.parameters, scav.n_cells, scav.beampipe, write=scav.geo_filepath)
+
+            spawn.cavities_list.append(scav)
+            spawn.cavities_dict[name] = scav
+            spawn.shape_space[name] = scav.shape
+            spawn.shape_space_multicell[name] = scav.shape_multicell
 
         return spawn
+
 
     def _modify_parameters(self, columns, row, values):
 
@@ -1118,5 +1209,109 @@ class EllipticalCavity(Cavity):
                 values[col_to_index[key]] = val
 
         return values
+
+    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
+        """Return a fresh EllipticalCavity living in ``tuned_self_dir``.
+
+        ``tuned_parameters`` is the full suffixed parameter dict
+        (A_m, B_m, ..., A_el, ..., A_er, ...) that the tuner has updated.
+        The clone gets its own ``geometry/`` folder with a freshly written
+        geodata.geo. Result caches are empty so subsequent eigenmode /
+        wakefield runs write into the clone's own folders.
+        """
+        if beampipe is None:
+            beampipe = self.beampipe
+
+        mid = np.array([tuned_parameters[f'{n}_m'] for n in
+                        ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+        left = np.array([tuned_parameters[f'{n}_el'] for n in
+                         ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+        right = np.array([tuned_parameters[f'{n}_er'] for n in
+                          ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+
+        clone = EllipticalCavity(
+            n_cells=self.n_cells,
+            mid_cell=mid,
+            end_cell_left=left,
+            end_cell_right=right,
+            beampipe=beampipe,
+            name=self.name,
+            cell_parameterisation=self.cell_parameterisation,
+            color=self.color,
+            plot_label=self.plot_label,
+        )
+        clone.projectDir = self.projectDir
+        clone.self_dir = str(tuned_self_dir)
+
+        geo_dir = os.path.join(clone.self_dir, 'geometry')
+        os.makedirs(geo_dir, exist_ok=True)
+        clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+        clone.write_geometry(clone.parameters, clone.n_cells, clone.beampipe,
+                             write=clone.geo_filepath)
+
+        clone.uq_dir = os.path.join(clone.self_dir, 'uq')
+
+        return clone
+
+    def _load_tuned_from_disk(self, tuned_dir):
+        """Rebuild the tuned EllipticalCavity from a persisted ``tuned/`` folder.
+
+        Reads tuned parameters from ``tune_info/tune_res.json`` (if present)
+        and rebuilds the cavity. Falls back to the current cavity's shape
+        if tune_res.json is missing. The file is keyed by cell type — the
+        final stage's parameter snapshot is the cumulative tuned geometry.
+        """
+        from cavsim2d.processes.tune import last_stage_result
+
+        tuned_dir = Path(tuned_dir)
+        tune_res_path = tuned_dir / 'tune_info' / 'tune_res.json'
+
+        tune_res = None
+        if tune_res_path.exists():
+            with open(tune_res_path, 'r') as f:
+                tune_res = json.load(f)
+            last = last_stage_result(tune_res)
+            tuned_params = (last or {}).get('parameters', {}) or {}
+        else:
+            tuned_params = {}
+
+        # Fall back to the source cavity's own parameters for any suffix that
+        # wasn't touched by this tune run (e.g. single-cell tunes only produce
+        # `_m` keys; end-cell-r may be absent when not tuned separately).
+        full_params = dict(self.parameters)
+        full_params.update(tuned_params)
+
+        mid = np.array([full_params[f'{n}_m'] for n in
+                        ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+        left = np.array([full_params[f'{n}_el'] for n in
+                         ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+        right = np.array([full_params[f'{n}_er'] for n in
+                          ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
+
+        clone = EllipticalCavity(
+            n_cells=self.n_cells,
+            mid_cell=mid,
+            end_cell_left=left,
+            end_cell_right=right,
+            beampipe=self.beampipe,
+            name=self.name,
+            cell_parameterisation=self.cell_parameterisation,
+            color=self.color,
+            plot_label=self.plot_label,
+        )
+        clone.projectDir = self.projectDir
+        clone.self_dir = str(tuned_dir)
+        geo_filepath = tuned_dir / 'geometry' / 'geodata.geo'
+        if geo_filepath.exists():
+            clone.geo_filepath = str(geo_filepath)
+        clone.uq_dir = str(tuned_dir / 'uq')
+
+        if tune_res is not None:
+            clone.tune_results = tune_res
+            last = last_stage_result(tune_res)
+            if last is not None and 'FREQ' in last:
+                clone.freq = last['FREQ']
+
+        return clone
 
 

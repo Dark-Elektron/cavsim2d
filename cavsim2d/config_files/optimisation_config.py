@@ -7,7 +7,7 @@ optimisation_config = {
         # 'Uniform': {},
     },
     'cell type': 'mid-cell',
-    # 'mid cell': [1, 2, 3, 3, 6, 5, 2],  # must enter if mid-end cell selected
+    # 'mid-cell': [1, 2, 3, 3, 6, 5, 2],  # must enter if end-cell selected
     'optimisation by': 'pareto',
     'crossover factor': 5,
     'elites for crossover': 2,
@@ -17,7 +17,9 @@ optimisation_config = {
     'solver': 'NGSolveMEVP',
     'tune variable': 'Req',
     'processes': 1,
-    'no. of generation': 2,
+    'no_of_generation': 100,  # maximum number of generations
+    'hv_tol': 1e-9,  # convergence tolerance for relative hypervolume change
+    'hv_consecutive': 3,  # number of consecutive generations below hv_tol to stop
     'normalisation length': 57.7,
     'bounds': {'A': [20.0, 80.0],
                'B': [20.0, 80.0],

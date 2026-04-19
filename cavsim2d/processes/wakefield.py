@@ -45,10 +45,15 @@ def run_wakefield_parallel(cavs_dict, solver_config, subdir=''):
         start_idx += current_chunk_size
 
         processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
-        service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
 
-        service.start()
-        jobs.append(service)
+        if processes == 1:
+            # Inline path: avoids Windows spawn guard requirement and
+            # surfaces stdout/stderr directly in Jupyter.
+            solver_config['target'](processor_cavs_dict, solver_config, subdir)
+        else:
+            service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
+            service.start()
+            jobs.append(service)
 
     for job in jobs:
         job.join()
@@ -82,7 +87,7 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
 
         if operating_points:
             try:
-                folder = os.path.join(cav.eigenmode_dir, 'monopole', 'qois.json')
+                folder = os.path.join(cav.eigenmode_dir, 'qois.json')
                 if os.path.exists(folder):
                     try:
                         with open(folder, 'r') as json_file:
@@ -130,9 +135,11 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                 show_valid_operating_point_structure()
 
     for i, (key, cav) in enumerate(cavs_dict.items()):
-        if os.path.exists(os.path.join(cav.self_dir, key)):
+        if os.path.exists(cav.self_dir):
             if rerun:
-                shutil.rmtree(os.path.join(cav.self_dir, "wakefield", "longitudinal"))
+                wake_long = os.path.join(cav.self_dir, "wakefield", "longitudinal")
+                if os.path.exists(wake_long):
+                    shutil.rmtree(wake_long)
                 _run_abci(cav, wakefield_config)
             else:
                 if os.path.exists(os.path.join(cav.self_dir, 'wakefield', "longitudinal", "qois.json")):
@@ -143,7 +150,13 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
             _run_abci(cav, wakefield_config)
 
 
-def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
+def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key_subdir=''):
+    """Read ABCI results and compute wakefield objectives.
+
+    ``key_subdir`` is inserted between <key> and 'wakefield' when building the
+    ABCI fid path. Pass ``'tuned'`` when the wakefield ran on the tuned
+    cavity (results live at <projectDir>/<key>/tuned/wakefield/).
+    """
     k_loss_array_transverse = []
     k_loss_array_longitudinal = []
     k_loss_M0 = []
@@ -155,9 +168,14 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
     processed_keys_mon = []
     processed_keys_dip = []
 
+    def _fid(key):
+        if key_subdir:
+            return os.path.join(key, key_subdir, 'wakefield')
+        return os.path.join(key, 'wakefield')
+
     def calc_k_loss():
         for key, value in d.items():
-            fid = os.path.join(key, 'wakefield')
+            fid = _fid(key)
             abci_data_long = ABCIData(abci_data_dir, fid, 0)
             abci_data_trans = ABCIData(abci_data_dir, fid, 1)
 
@@ -187,7 +205,7 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
 
         for key, value in d.items():
             try:
-                fid = os.path.join(key, 'wakefield')
+                fid = _fid(key)
                 abci_data_mon = ABCIData(abci_data_dir, fid, 0)
 
                 xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
@@ -225,7 +243,7 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
 
         for key, value in d.items():
             try:
-                fid = os.path.join(key, 'wakefield')
+                fid = _fid(key)
                 abci_data_dip = ABCIData(abci_data_dir, fid, 1)
 
                 xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
@@ -259,7 +277,7 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir):
 
     def all(mon_interval, dip_interval):
         for key, value in d.items():
-            fid = os.path.join(f'{key}_', 'wakefield')
+            fid = _fid(key)
             abci_data_long = ABCIData(abci_data_dir, fid, 0)
             abci_data_trans = ABCIData(abci_data_dir, fid, 1)
 
