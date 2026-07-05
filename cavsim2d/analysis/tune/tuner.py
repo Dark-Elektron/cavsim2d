@@ -1,204 +1,196 @@
-import copy
+import os
 import time
+
 from cavsim2d.analysis.tune.pyTuner import PyTuneNGSolve
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 import shutil
+import json
+from cavsim2d.constants import *
 
 ngsolve_mevp = NGSolveMEVP()
 
-VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6}
+VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
 
 
 class Tuner:
     def __init__(self):
         pass
 
-    def tune_ngsolve(self, pseudo_shape_space, bc, parentDir, projectDir, filename, resume="No",
-                     proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', iter_set=None, cell_type='Mid Cell',
-                     progress_list=None, convergence_list=None, save_last=True, n_cell_last_run=1):
+    def tune_ngsolve(self, pseudo_cavs_dict, bc, resume="No",
+                     proc=0, tune_variable='Req', tune_config=None):
 
-        # tuner
+        if tune_config is None:
+            tune_config = {}
+
         pytune_ngsolve = PyTuneNGSolve()
 
         start = time.time()
-        population = {}
-        total_no_of_shapes = len(list(pseudo_shape_space.keys()))
-
-        # check for already processed shapes
+        tuned_shape_space = {}
+        all_tune_res = {}
+        all_conv = {}
+        all_abs_err = {}
         existing_keys = []
 
-        if resume == "Yes":
-            # check if value set is already written. This is to enable continuation in case of break in program
-            if os.path.exists(os.path.join(projectDir, 'Cavities', filename)):
-                population = json.load(open(os.path.join(projectDir, 'Cavities', filename), 'r'))
+        tol = tune_config.get('tol', 1e-4)
 
-                existing_keys = list(population.keys())
-
-        progress = 0
-        error_msg1 = 1
-        error_msg2 = 1
-
-        for key, pseudo_shape in pseudo_shape_space.items():
-            A_i, B_i, a_i, b_i, Ri_i, L_i, Req = pseudo_shape['IC'][:7]
-            A_o, B_o, a_o, b_o, Ri_o, L_o, Req_o = pseudo_shape['OC'][:7]  # Req here is none but required
-
-            beampipes = pseudo_shape['BP']
-            target_freq = pseudo_shape['FREQ']
-
-            # Check if simulation is already run
+        for key, cav in pseudo_cavs_dict.items():
+            target_freq = cav.shape['FREQ']
             freq = 0
-            alpha_i = 0
-            alpha_o = 0
-            if resume == "Yes" and os.path.exists(os.path.join(projectDir, 'SimulationData', f'{sim_folder}', key)):
+            tune_var = 0
+            abs_err_list = []
+            conv_dict = []
 
-                alpha_i, error_msg1 = calculate_alpha(A_i, B_i, a_i, b_i, Ri_i, L_i, Req, 0)
-                alpha_o, error_msg2 = calculate_alpha(A_o, B_o, a_o, b_o, Ri_o, L_o, Req, 0)
-
-                inner_cell = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req, alpha_i]
-                outer_cell = [A_o, B_o, a_o, b_o, Ri_o, L_o, Req, alpha_o]
-            else:
-                # remove any existing folder to avoid copying the wrong retults
-                if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{key}"):
-                    shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
-
-                inner_cell = [A_i, B_i, a_i, b_i, Ri_i, L_i, Req, 0]
-                outer_cell = [A_o, B_o, a_o, b_o, Ri_o, L_o, Req_o, 0]
-
-                # edit to check for key later
-                if key not in existing_keys:
+            if resume == "Yes" and os.path.exists(os.path.join(cav.self_dir, key)):
+                # Attempt to load previous tuning result
+                prev_result_path = os.path.join(cav.self_dir, key, 'tune_res.json')
+                if os.path.exists(prev_result_path):
                     try:
-                        tune_var, freq, abs_err_list = pytune_ngsolve.tune(inner_cell, outer_cell, tune_variable,
-                                                                           target_freq,
-                                                                           cell_type, beampipes, bc, sim_folder,
-                                                                           parentDir, projectDir, iter_set=iter_set,
-                                                                           proc=proc,
-                                                                           conv_list=convergence_list)
-                    except FileNotFoundError:
-                        tune_var, freq = 0, 0
-                if tune_var != 0 and freq != 0:
-                    if cell_type.lower() == 'mid cell' or cell_type.lower() == 'mid-cell' or cell_type.lower() == 'mid_cell':
-                        tuned_mid_cell = pseudo_shape['IC'][:7]
-                        tuned_mid_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
-                        tuned_end_cell = pseudo_shape['OC'][:7]
-                        # enforce equator continuity
-                        tuned_end_cell[6] = tuned_mid_cell[6]
-                    elif cell_type.lower() == 'mid-end cell' or cell_type.lower() == 'mid-end-cell' or cell_type.lower() == 'mid_end_cell':
-                        tuned_mid_cell = pseudo_shape['IC'][:7]
-                        tuned_end_cell = pseudo_shape['OC'][:7]
-                        tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
-                    elif (cell_type.lower() == 'end-end cell' or cell_type.lower() == 'end-end-cell'
-                          or cell_type.lower() == 'end_end_cell') or cell_type.lower() == 'end end cell':
-                        tuned_mid_cell = pseudo_shape['IC'][:7]
-                        tuned_end_cell = pseudo_shape['OC'][:7]
-                        tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
-                        tuned_mid_cell = copy.deepcopy(tuned_end_cell)
-                    else:
-                        tuned_mid_cell = pseudo_shape['IC'][:7]
-                        tuned_end_cell = pseudo_shape['OC'][:7]
-                        tuned_end_cell[VAR_TO_INDEX_DICT[tune_variable]] = tune_var
-                        tuned_mid_cell = copy.deepcopy(tuned_end_cell)
+                        with open(prev_result_path, 'r') as f:
+                            prev_result = json.load(f)
 
-                        # # enforce equator continuity
-                        # tuned_mid_cell[6] = tuned_end_cell[6]
+                        # Determine the cell-type key: check new keyed format first,
+                        # then fall back to flat (legacy) format.
+                        ct_label = tune_config.get('cell_types', '')
+                        if ct_label and ct_label in prev_result:
+                            prev_data = prev_result[ct_label]
+                        elif 'parameters' in prev_result:
+                            prev_data = prev_result
+                        else:
+                            # Pick the first key if structure is unrecognised
+                            first_key = next(iter(prev_result))
+                            prev_data = prev_result[first_key]
 
-                    alpha_i, error_msg1 = calculate_alpha(*tuned_mid_cell, 0)
-                    alpha_o, error_msg2 = calculate_alpha(*tuned_end_cell, 0)
+                        freq = prev_data.get('FREQ', 0)
+                        tune_var = prev_data.get('TUNED VARIABLE', tune_variable)
 
-                    # update cells with alpha
-                    tuned_mid_cell = np.append(tuned_mid_cell, alpha_i)
-                    tuned_end_cell = np.append(tuned_end_cell, alpha_o)
+                        if freq != 0:
+                            accuracy = abs(freq - target_freq)
+                            if accuracy <= tol:
+                                # Valid previous result — use it
+                                tuned_shape_space[key] = {
+                                    "parameter": prev_data.get('parameters', {}),
+                                    'FREQ': freq
+                                }
+                                all_tune_res[key] = prev_data
+                                all_conv[key] = prev_data.get('convergence', [])
+                                all_abs_err[key] = prev_data.get('abs_err', [])
 
-                    inner_cell = [*tuned_mid_cell, alpha_i]
-                    outer_cell = [*tuned_end_cell, alpha_o]
+                                done(f'Resumed previous tuning result for {key}: '
+                                     f'freq={freq}, var={tune_var}')
+                                continue
+                            else:
+                                info(f'Previous result for {key} did not meet tolerance '
+                                     f'({accuracy:.2e} > {tol:.2e}). Re-tuning.')
+                    except (json.JSONDecodeError, KeyError, TypeError) as e:
+                        warning(f'Could not load previous result for {key}: {e}. Re-tuning.')
+                else:
+                    info(f'No previous result file found for {key}. Tuning from scratch.')
 
-            result = "Failed"
+            # Clean up old eigenmode directory if present
+            eigenmode_dir = os.path.join(cav.self_dir, 'eigenmode', key)
+            if os.path.exists(eigenmode_dir):
+                shutil.rmtree(eigenmode_dir)
+
+            if key not in existing_keys:
+                try:
+                    tune_var, freq, conv_dict, abs_err_list = pytune_ngsolve.tune(
+                        cav, tune_config=tune_config
+                    )
+                except (FileNotFoundError, ValueError) as e:
+                    error(f'Tuning failed for {key}: {e}')
+                    tune_var, freq = 0, 0
+
+                # Sanity check: reject wild tune values from secant divergence
+                if tune_var != 0:
+                    x0_initial = getattr(pytune_ngsolve, 'x0_initial', None)
+                    if x0_initial is not None and x0_initial != 0:
+                        if abs(tune_var) > 10 * abs(x0_initial) or tune_var < 0:
+                            error(f'Tuned value {tune_var:.4e} is out of bounds '
+                                  f'(original: {x0_initial:.4e}). Treating as failed.')
+                            tune_var, freq = 0, 0
+
+            # Build result for this cavity
+            d_tune_res = {}
+            abs_err_dict = {}
+
             if tune_var != 0 and freq != 0:
-                if (1 - 0.001) * target_freq < round(freq, 2) < (1 + 0.001) * target_freq \
-                        and (90.0 <= alpha_i <= 180) \
-                        and (90.0 <= alpha_o <= 180) and error_msg1 == 1 and error_msg2 == 1:
+                accuracy = abs(freq - target_freq)
+                if accuracy <= tol:
                     result = f"Success: {target_freq, freq}"
+                else:
+                    result = (f"Failed: Accuracy of {tol:.2e} could not be reached. "
+                              f"Accuracy of {accuracy:.2e} reached.")
 
-                    population[key] = {"IC": inner_cell, "OC": outer_cell, "BP": 'both', 'FREQ': freq}
+                tuned_shape_space[key] = {"parameter": dict(cav.parameters), 'FREQ': freq}
 
-                    # save last slans run if activated. Save only when condition is fulfilled
-                    if save_last:
-                        beampipes = 'both'
-                        if 'mid' in cell_type.lower():
-                            beampipes = 'none'
+                resolved_tune_var = getattr(pytune_ngsolve, 'tune_var', tune_variable)
+                d_tune_res = {
+                    'parameters': dict(cav.parameters),
+                    'TUNED VARIABLE': resolved_tune_var,
+                    'FREQ': freq
+                }
+                abs_err_dict = {'abs_err': abs_err_list}
+            else:
+                result = "Failed"
 
-                        # make directory
-                        if os.path.exists(fr"{projectDir}/SimulationData/{sim_folder}/{key}"):
-                            shutil.rmtree(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
+            # Log with stage info
+            ct_label = tune_config.get('cell_types', '') or ''
+            var_label = getattr(pytune_ngsolve, 'tune_var', tune_variable)
+            stage_tag = f'[{ct_label}: {var_label}]' if ct_label else f'[{var_label}]'
 
-                        os.mkdir(fr"{projectDir}/SimulationData/{sim_folder}/{key}")
+            if "Success" in result:
+                done(f'Done Tuning Cavity {key} {stage_tag}: {result}')
+            else:
+                error(f'Done Tuning Cavity {key} {stage_tag}: {result}')
 
-                        ngsolve_mevp.cavity(n_cell_last_run, 1, tuned_mid_cell, tuned_end_cell, tuned_end_cell,
-                                            f_shift=0, bc=bc,
-                                            beampipes=beampipes, n_modes=n_cell_last_run + 1, fid=key,
-                                            sim_folder=sim_folder, parentDir=parentDir, projectDir=projectDir)
-
-                        # write cst_studio parameters
-                        write_cst_paramters(key, tuned_mid_cell, tuned_end_cell, tuned_end_cell, projectDir, cell_type,
-                                            solver='Optimisation')
-
-                        # write tune results
-                        d_tune_res = {'IC': list(tuned_mid_cell), 'OC': list(tuned_end_cell),
-                                      'OC_R': list(tuned_end_cell),
-                                      'TUNED VARIABLE': tune_variable, 'CELL TYPE': cell_type, 'FREQ': freq}
-                        self.save_tune_result(d_tune_res, 'tune_res.json', projectDir, key, sim_folder)
-
-                        # save convergence information
-                        if convergence_list:
-                            conv_dict = {f'{tune_variable}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
-                            abs_err_dict = {'abs_err': abs_err_list}
-                            self.save_tune_result(conv_dict, 'convergence.json', projectDir, key, sim_folder)
-                            self.save_tune_result(abs_err_dict, 'absolute_error.json', projectDir, key, sim_folder)
-
-            done(f'Done Tuning Cavity {key}: {result}')
-
-            # clear folder after every run. This is to avoid copying of wrong values to save folder
-            # processor folder
-            proc_fold = os.path.join(projectDir, 'SimulationData', f'{sim_folder}', f'_process_{proc}')
-            keep = ['SLANS_exe']
-            for item in os.listdir(proc_fold):
-                if item not in keep:  # If it isn't in the list for retaining
-                    try:
-                        os.remove(item)
-                    except FileNotFoundError:
-                        continue
-
-            # update progress
-            progress_list.append((progress + 1) / total_no_of_shapes)
-
-            # Update progressbar
-            progress += 1
-
-            # print("Saving Dictionary", f"shape_space{proc}.json")◙
-            # print("Done saving")
+            # Accumulate results for all cavities
+            all_tune_res[key] = d_tune_res
+            all_conv[key] = conv_dict
+            all_abs_err[key] = abs_err_dict
 
         end = time.time()
-
         runtime = end - start
-        info(f'\tProcessor {proc} runtime: {runtime} s')
+        info(f'\tProcessor {proc} runtime: {runtime}s')
 
-    @staticmethod
-    def save_tune_result(d, filename, projectDir, key, sim_folder='SLAN_Opt'):
-        with open(fr"{projectDir}\SimulationData\{sim_folder}\{key}\{filename}", 'w') as file:
-            file.write(json.dumps(d, indent=4, separators=(',', ': ')))
+        return tuned_shape_space, all_tune_res, all_conv, all_abs_err
 
-    # if __name__ == '__main__':
-#     #
-#     tune = Tuner()
-#
-#     tune_var =
-#     par_mid =
-#     par_end =
-#     target_freq = 400  # MHz
-#     beampipes =
-#     bc =  # boundary conditions
-#     parentDir = ""  # location of slans code. See folder structure in the function above
-#     projectDir = ""  # location to write results to
-#     iter_set =
-#     proc = 0
-#     tune.tune(self, tune_var, par_mid, par_end, target_freq, beampipes, bc, parentDir, projectDir, iter_set, proc=0):
+    def tune_ngsolve_multicell(self, pseudo_shape_space, bc, parentDir, projectDir, filename, resume="No",
+                               proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell',
+                               tune_config=None):
+
+        if tune_config is None:
+            tune_config = {}
+        target_freq = tune_config['freq']
+        abs_err_list, conv_dict = [], []
+        pytune_ngsolve = PyTuneNGSolve()
+
+        tuned_multicell_shape_space = {}
+        for key, multicell in pseudo_shape_space.items():
+
+            if os.path.exists(os.path.join(projectDir, key, "eigenmode")):
+                shutil.rmtree(os.path.join(projectDir, key, "eigenmode"))
+
+            tune_var_dict, freq_dict, conv_dict, abs_err_list = pytune_ngsolve.tune_multicell(
+                multicell, tune_variable, target_freq, bc,
+                sim_folder, parentDir, projectDir,
+                proc=proc, tune_config=tune_config)
+
+            tuned_multicell_shape_space[key] = multicell  # tuning done in place
+
+            # Clear processor folder to avoid stale results
+            proc_fold = os.path.join(projectDir, '_tune_temp', f'_process_{proc}')
+            shutil.rmtree(proc_fold)
+
+            result = "Passed"
+            d_tune_res = {}
+            abs_err_dict = {}
+            end_freq_list = []
+            for fkey, freq_list in freq_dict.items():
+                end_freq_list.append(freq_list[-1])
+                if not (1 - 0.001) * target_freq < round(freq_list[-1], 2) < (1 + 0.001) * target_freq:
+                    result = 'Failed'
+
+            done(f'Done Tuning Cavity {key}: {result}:: {end_freq_list}')
+
+        return tuned_multicell_shape_space, d_tune_res, conv_dict, abs_err_dict

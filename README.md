@@ -1,58 +1,472 @@
-![GitHub all releases](https://img.shields.io/github/downloads/Dark-Elektron/CavityDesignHub/total?logo=Github) 
-![GitHub issues](https://img.shields.io/github/issues-raw/Dark-Elektron/CavityDesignHub?logo=Github) 
-![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github) 
-![GitHub pull requests](https://img.shields.io/github/issues-pr/Dark-Elektron/CavityDesignHub?logo=Github) 
-![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/Dark-Elektron/CavityDesignHub?logo=Github)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Status](https://img.shields.io/badge/status-beta-orange)
 
+# cavsim2d
 
-Installation
-============
+`cavsim2d` is a Python toolkit for designing and analysing 2D axisymmetric RF
+structures. It provides, through one small object-oriented API:
 
-Overview
-=======
+- **Eigenmode analysis** — fundamental (monopole) *and* higher-order-mode
+  (dipole, quadrupole, sextupole, …) passbands, with the usual figures of merit
+  (frequency, R/Q, G, Q, Epk/Eacc, Bpk/Eacc, field flatness, cell-to-cell
+  coupling).
+- **Frequency tuning** of elliptical cavities to a target frequency.
+- **Wakefield / impedance analysis** via the ABCI solver.
+- **Uncertainty quantification (UQ)** on any of the above.
+- **Multi-objective shape optimisation.**
+- **Plotting and comparison** helpers for all of the above.
 
-This repository contains Python codes for conducting analysis on accelerating
-cavities. Eigenmode analysis, wakefield analysis, and general post-processing.
+The eigenmode solver is built on [NGSolve](https://ngsolve.org); wakefield
+analysis uses the free [ABCI](https://abci.kek.jp/abci.htm) code.
 
-Each module performs a different operation. The analysis that are currently
-supported in this module are eigenmode analysis, wakefield analysis,
-and multipacting analysis.
+## Cavity types and what is supported
 
-* Eigenmode analysis - SLANS [[1]](#1)
-* Wakefield analysis - ABCI [[2]](2#)
-* Optimisation - Python
-* Uncertainty quantification - Python
-* Postprocessing - Python
+`EllipticalCavity` is the fully-supported, exercised path. Other geometry
+classes exist at varying maturity:
 
-## Eigenmode Analysis
+| Cavity type | Eigenmode | Tuning | Wakefield | UQ / Optimisation |
+|---|---|---|---|---|
+| `EllipticalCavity` | ✅ | ✅ | ✅ | ✅ |
+| `Pillbox` | ✅ | ➖ | ✅ | ⚠️ |
+| `RFGun` | ✅¹ | ➖ | ➖ | ➖ |
+| `EllipticalCavityFlatTop` | ⚠️ | ➖ | ⚠️ | ⚠️ |
+| `SplineCavity` | ⚠️ | ➖ | ⚠️ | ⚠️ |
 
-Eigenmode analysis is performed using the SLANS electromagnetic code. The code
-also calculates most of the figures of merit. Some postprocessing is, however,
-required to transform them to the form that is used in most papers related
-to accelerating cavities design.
+✅ supported and exercised · ⚠️ present but not verified in this release · ➖ not
+available (tuning needs a per-type `clone_for_tuning`, implemented only for
+`EllipticalCavity`). ¹ RF-gun eigenmode gives correct frequencies and fields;
+the length-normalised QOIs (`Eacc`, `Epk/Eacc`) default to the on-axis field
+extent as the active length (override with
+`eigenmode_config['normalization_length']`, mm). Both `cavs.run_eigenmode()`
+and the per-cavity `cav.run_eigenmode()` work for every type above. Unless
+noted, examples below use `EllipticalCavity`.
 
-The SUPERLANS code is intended to calculate azimuthal-homogenous modes in
-axissymmetric cavities, periodical structure, and cut-off frequencies in
-long homogenous waveguides. SLANS is written by Sergey
-Belomestnykh and it consists of a set of executable files for different
-purposes.
+---
 
+## Installation
 
-## Wakefield Analysis
+Clone the repository and install it (editable install recommended while the API
+is stabilising):
 
-Wakefield analysis is performed using the ABCI electromagnetic code which solves the Maxwell
-equations directly in the time domain when a bunched beam goes through an axi-symmetric
-structure on or off axis. An arbitrary charge distribution can be defined 
-by the user (default=Gaussian)
+```bash
+git clone https://github.com/Dark-Elektron/cavsim2d.git
+cd cavsim2d
+pip install -e .
+```
 
+This installs the core dependencies (NGSolve, gmsh, numpy, scipy, pandas,
+matplotlib, …). For the example notebooks and the Jupyter banner, also install
+the optional extra:
 
-## References
-   <a id="1">[1]<a/>
-   D. Myakishev and V. Yakovlev, "The new possibilities of SUPERLANS code for evaluation of 
-   axisymmetric cavities", in Proc. of the 1995 Particle Accelerator Conf. 
-   Dallas, TX, 1995, pp. 2348-50, Available: 
-   http://epaper.kek.jp/p95/ARTICLES/MPC/MPC17.PDF.
+```bash
+pip install -e ".[jupyter]"
+```
 
-   <a id="2">[2]<a/>
-   Y. H. Chin, Azimuthal Beam Cavity Interaction (ABCI), https://abci.kek.jp/
-   
+Requirements: **Python ≥ 3.10**. NGSolve provides the finite-element backend and
+is easiest to obtain in a conda environment (`conda install -c ngsolve ngsolve`)
+if the pip wheel is not available for your platform.
+
+### Third-party code — ABCI (wakefield only)
+
+Wakefield analysis uses the ABCI electromagnetic time-domain solver. A Windows
+build of `ABCI.exe` ships in `cavsim2d/solvers/ABCI/`. If you need to (re)install
+it, download the latest release from [ABCI](https://abci.kek.jp/abci.htm) and
+place the executable at:
+
+```
+cavsim2d/solvers/ABCI/ABCI.exe
+```
+
+`ABCI.exe` is a Windows binary. On Windows it runs directly; on Linux/macOS it is
+launched through [`wine`](https://www.winehq.org) if that is installed. If the
+executable or `wine` is missing, wakefield runs fail early with a clear message —
+eigenmode, tuning, UQ and optimisation do not need ABCI.
+
+> [!TIP]
+> `pip install pprintpp` gives nicer nested-dict printing for the quantities of
+> interest, but is not required.
+
+---
+
+## Quickstart
+
+Everything is driven by two classes: **`Cavities`**, a container that owns a
+project folder, and **`Cavity`** (here `EllipticalCavity`), a single cavity.
+Results are written under the project folder and cached on the objects.
+
+```python
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+from cavsim2d.cavity import Cavities, EllipticalCavity
+
+# A project folder — all results and geometry are written here.
+cavs = Cavities(r'/path/to/my_project')
+
+# A 1-cell TESLA mid-cell:  A, B, a, b, Ri, L, Req  [mm]
+midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
+tesla = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
+cavs.add_cavity([tesla], names=['TESLA'])
+
+# Fundamental-mode eigenmode analysis.
+cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
+pp.pprint(cavs.eigenmode_qois)
+```
+
+For the 1-cell TESLA cavity this reports `freq ≈ 1300 MHz`, `R/Q ≈ 113 Ω`,
+`G ≈ 271 Ω`, `Epk/Eacc ≈ 2.04`, `Bpk/Eacc ≈ 4.16 mT/(MV/m)`.
+
+> [!TIP]
+> Prefer runnable scripts to prose? The [`examples/`](examples/) directory has
+> one self-contained script per feature (`01_eigenmode.py` … `06_optimisation.py`
+> and `run_all.py`) that writes results and plots to disk. They are the quickest
+> way to see each workflow end to end.
+
+### Project folder layout
+
+```
+my_project/
+└── cavities/
+    └── TESLA/
+        ├── geometry/            geodata.geo, snapshot
+        ├── eigenmode/
+        │   ├── monopole/        qois.json, qois_all_modes.json, fields, mesh
+        │   ├── dipole/          (if requested)
+        │   └── quadrupole/      (if requested)
+        ├── tuned/               tuned cavity + tune_info/
+        ├── wakefield/
+        │   ├── longitudinal/    ABCI output
+        │   └── transversal/
+        └── uq/                  UQ nodes and statistics
+```
+
+---
+
+## Eigenmode analysis
+
+`run_eigenmode` accepts a configuration dictionary; every key is optional:
+
+| key | meaning | default |
+|-----|---------|---------|
+| `processes` | parallel worker processes | 1 |
+| `rerun` | recompute even if results exist | True |
+| `boundary_conditions` | end-wall BCs, e.g. `'mm'` (magnetic-magnetic) | `'mm'` |
+| `polarisation` | azimuthal order(s) to solve — see below | `'monopole'` |
+| `n_modes` | physical modes per m-pole solve | `n_cells + 2` |
+| `mesh_config` | `{'h': ..., 'p': ...}` mesh size / order | h=20, p=3 |
+| `conductivity` | wall conductivity [S/m] for Q/Ploss (normal conductor) | copper, 5.96e7 |
+| `surface_resistance` | fixed surface resistance [Ω] (e.g. SRF) — overrides `conductivity` | — |
+| `uq_config` | enable uncertainty quantification (see below) | — |
+
+> [!TIP]
+> Q, Rsh and wall power depend on the surface resistance. By default the walls
+> are copper; pass `conductivity` for another normal conductor, or
+> `surface_resistance` (a fixed Rs, e.g. `1e-8` Ω) to model an SRF cavity. The
+> geometric factor `G` is material-independent.
+
+Access results either on the container or per cavity:
+
+```python
+cavs.eigenmode_qois            # {name: {qoi: value}} for the fundamental mode
+tesla.get_eigenmode_qois()     # populate tesla.eigenmode_qois, tesla.freq, ...
+tesla.eigenmode.qois           # fundamental-mode QOIs (solver-object API)
+tesla.eigenmode.modes          # list of all computed modes
+```
+
+Compare several cavities:
+
+```python
+cavs.add_cavity([EllipticalCavity(1,
+        [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27],  # a re-entrant mid-cell
+        [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27],
+        [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27], beampipe='none')], ['reentrant'])
+cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
+cavs.plot_compare_fm_bar()
+```
+
+### Visualising the mesh and fields
+
+Meshes and fields belong to a **`Cavity`** (not the container), so index or name
+the cavity:
+
+```python
+cavs['TESLA'].plot_mesh()
+cavs['TESLA'].plot_fields(mode=1, which='E')     # |E| of the fundamental
+cavs['TESLA'].plot_fields(mode=1, which='H')     # |H|
+cavs['TESLA'].plot_axis_field()                  # on-axis Ez and field flatness
+```
+
+All `plot*` methods return a `matplotlib` axes/figure so you can restyle or save
+them. For multi-cell cavities, `plot_dispersion()` shows the passband.
+
+---
+
+## Higher-order-mode (m-pole) eigenmodes
+
+Dipole, quadrupole, and higher azimuthal modes ($m \ge 1$) are solved on the same
+2D meridian mesh via an $H(\mathrm{curl}) \times H^1$ product-space formulation.
+Select them with the `polarisation` key (names or azimuthal mode numbers, a
+single value or a list):
+
+```python
+cavs.run_eigenmode({
+    'processes': 1,
+    'rerun': True,
+    'boundary_conditions': 'mm',
+    'polarisation': ['monopole', 'dipole', 'quadrupole'],  # or [0, 1, 2]
+    'n_modes': 4,
+})
+
+# Per-polarisation results:
+tesla.eigenmode.mpole_qois('dipole')          # all dipole modes, by index
+tesla.eigenmode.mpole_modes('quadrupole')     # list of EigenmodeResult
+tesla.plot_fields(mode=0, which='E', pol='dipole')      # in-plane |E| envelope
+tesla.plot_fields(mode=0, which='Ephi', pol='dipole')   # azimuthal envelope
+```
+
+Each polarisation is written to its own folder (`eigenmode/monopole/`,
+`eigenmode/dipole/`, …). Reruns are per polarisation: rerunning the dipole never
+overwrites monopole results, and `rerun=False` only solves the polarisations
+whose results are missing.
+
+For $m \ge 1$ the accelerating quantities are the **transverse** analogues: since
+$E_z \sim r^m$ vanishes on axis, the longitudinal voltage is evaluated off-axis
+and converted to a transverse kick voltage via Panofsky–Wenzel. The QOI keys
+`Vacc`/`Eacc`/`R/Q` hold these transverse values, and `R/Q_t [Ohm/m^(2(m-1))]`
+is normalised so it is independent of the evaluation radius (equal to `R/Q` for
+the dipole).
+
+---
+
+## Cavity tuning
+
+Tuning drives a chosen geometry parameter until the fundamental hits a target
+frequency. Give a target `freqs` and a `cell_type` mapping (cell → parameter to
+vary); a nested `eigenmode_config` controls the solves.
+
+```python
+cavs = Cavities(r'/path/to/my_project')
+midcell = [42, 42, 12, 19, 35, 57.7, 100]        # deliberately wrong Req
+tesla = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
+cavs.add_cavity([tesla], ['TESLA'])
+
+cavs.run_tune({
+    'freqs': 1300,                               # MHz
+    'cell_type': {'mid-cell': 'Req'},            # vary Req of the mid-cell
+    'processes': 1,
+    'rerun': True,
+    'eigenmode_config': {'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'},
+})
+
+pp.pprint(tesla.tune.qois)      # tuned parameters and achieved frequency
+tuned = tesla.tuned             # the tuned Cavity (its own folder + results)
+```
+
+`Req` converges to ≈ 103.35 mm and the frequency to 1300 MHz. The tuned cavity is
+a full `Cavity` living under `<cavity>/tuned/`, so you can run eigenmode/wakefield
+on it directly (`tesla.tuned.run_eigenmode(...)`).
+
+---
+
+## Wakefield analysis
+
+```python
+cavs = Cavities(r'/path/to/my_project')
+midcell   = [42, 42, 12, 19, 35, 57.7, 103.353]
+endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
+endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
+tesla = EllipticalCavity(9, midcell, endcell_l, endcell_r, beampipe='both')
+cavs.add_cavity([tesla], ['TESLA'])
+
+cavs.run_wakefield({
+    'processes': 1,
+    'rerun': True,
+    'MROT': 'both',        # 'monopole'/'longitudinal' (0), 'dipole'/'transverse' (1), 'both' (2)
+    'wakelength': 50,      # metres
+    'bunch_length': 25,    # mm
+})
+```
+
+> [!NOTE]
+> In **wakefield** configs the beam mode is `MROT` (`'polarisation'` is accepted
+> as a deprecated alias). This is *not* the same as `polarisation` in an
+> **eigenmode** config, which selects the azimuthal mode order.
+
+Plot the impedance spectra and wake potentials:
+
+```python
+ax = tesla.plot('zl')            # longitudinal impedance |Z_L|
+ax = tesla.plot('zt', ax)        # transverse impedance |Z_T| on the same axes
+tesla.plot('wpl'); tesla.plot('wpt')             # wake potentials
+
+# Or via the solver-object API, which returns DataFrames:
+tesla.wakefield.wake_z           # f [MHz], |Z| [Ohm], s [m], W [V/pC]
+tesla.wakefield.plot_z(quantity='impedance')
+tesla.wakefield.plot_t(quantity='wake')
+```
+
+### Loss/kick factors and HOM power at operating points
+
+Pass an `operating_points` dictionary to compute loss/kick factors and
+higher-order-mode power (requires R/Q from a prior eigenmode run):
+
+```python
+op_points = {
+    "Z": {
+        "freq [MHz]": 400.79, "E [GeV]": 45.6, "I0 [mA]": 1280, "V [GV]": 0.12,
+        "Eacc [MV/m]": 5.72, "nu_s []": 0.0370, "alpha_p [1e-5]": 2.85,
+        "tau_z [ms]": 354.91, "tau_xy [ms]": 709.82, "f_rev [kHz]": 3.07,
+        "beta_xy [m]": 56, "N_c []": 56, "T [K]": 4.5,
+        "sigma_SR [mm]": 4.32, "sigma_BS [mm]": 15.2, "Nb [1e11]": 2.76,
+    }
+}
+cavs.run_wakefield({
+    'processes': 1, 'rerun': True,
+    'bunch_length': 25, 'wakelength': 50,
+    'operating_points': op_points,
+})
+pp.pprint(cavs.wakefield_qois)
+cavs.plot_compare_hom_bar('Z_SR_4.32mm')
+```
+
+---
+
+## Uncertainty quantification
+
+Any analysis can carry uncertainty quantification by adding a `uq_config`. It
+propagates geometry uncertainties through the solve and reports the mean and
+standard deviation of each objective.
+
+```python
+cavs.run_eigenmode({
+    'processes': 1,
+    'rerun': True,
+    'boundary_conditions': 'mm',
+    'uq_config': {
+        'variables': ['A', 'B', 'a', 'b'],           # varied parameters
+        'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []",
+                       "Bpk/Eacc [mT/MV/m]", "G [Ohm]"],
+        'delta': [0.05, 0.05, 0.05, 0.05],           # 5% std on each
+        'processes': 1,
+        'distribution': 'gaussian',
+        'method': ['Quadrature', 'Stroud3'],
+        'cell_type': 'mid-cell',
+        'cell_complexity': 'simplecell',
+    },
+})
+pp.pprint(cavs.uq_fm_results)
+cavs.plot_compare_fm_bar(uq=True)     # bar chart with error bars
+```
+
+> [!IMPORTANT]
+> The key is `cell_complexity` (underscore). If a config contains an unrecognised
+> key, `cavsim2d` emits a `UserWarning` with a "did you mean …?" suggestion —
+> useful for catching typos that would otherwise be silently ignored.
+
+---
+
+## Optimisation
+
+Multi-objective shape optimisation uses a genetic algorithm. Each candidate is
+tuned to the target frequency (via a nested `tune_config`) before its objectives
+are evaluated.
+
+```python
+cavs = Cavities(r'/path/to/my_project')
+
+optimisation_config = {
+    'initial_points': 6,
+    'no_of_generation': 2,
+    'method': {'LHS': {'seed': 5}},
+    'bounds': {                       # search space; fix a variable with equal bounds
+        'A': [38, 46], 'B': [38, 46], 'a': [10, 15], 'b': [15, 22],
+        'Ri': [33, 37], 'L': [57.7, 57.7], 'Req': [100, 106],
+    },
+    'objectives': [
+        ['min', 'Epk/Eacc []'],
+        ['min', 'Bpk/Eacc [mT/MV/m]'],
+        # ['max', 'R/Q [Ohm]'],
+        # ['min', 'ZL', [1, 2, 5]],   # impedance peak in a frequency window (needs wakefield)
+    ],
+    'tune_config': {
+        'freqs': 1300,
+        'cell_type': {'mid-cell': 'Req'},
+        'processes': 1,
+        'eigenmode_config': {'n_cells': 1, 'processes': 1, 'boundary_conditions': 'mm'},
+    },
+    # GA controls — these are integer offspring counts, not fractions:
+    'mutation_factor': 4,
+    'crossover_factor': 4,
+    'elites_for_crossover': 2,
+    'chaos_factor': 2,
+    'weights': [1, 1],
+}
+cavs.run_optimisation(optimisation_config)
+
+opt = cavs.optimisation
+opt.history            # every evaluated candidate (DataFrame)
+opt.pareto             # Pareto-optimal candidates
+opt.plot_pareto(kind='scatter')
+opt.plot_convergence()
+```
+
+Supported objective quantities: `freq [MHz]`, `Epk/Eacc []`,
+`Bpk/Eacc [mT/MV/m]`, `R/Q [Ohm]`, `G [Ohm]`, `Q []`, and the wakefield impedance
+peaks `ZL`, `ZT` (with a `[low, ..., high]` frequency window as the third
+element). Each objective is `['min'|'max'|'equal', name]` (plus a target value
+for `'equal'`, or the window for `ZL`/`ZT`).
+
+> [!NOTE]
+> `mutation_factor`, `crossover_factor` and `chaos_factor` are **counts** of
+> offspring / random individuals per generation (integers), not probabilities.
+
+---
+
+## Configuration dictionaries
+
+Every analysis is driven by a config dict, and they nest consistently. UQ slots
+into any solver config via `uq_config`; optimisation wraps a `tune_config` (which
+itself wraps an `eigenmode_config`), and optionally a `wakefield_config`:
+
+```
+optimisation_config
+├── tune_config
+│   └── eigenmode_config
+│       └── uq_config
+├── wakefield_config
+│   └── uq_config
+├── bounds, objectives, initial_points, no_of_generation, ...
+└── mutation_factor, crossover_factor, elites_for_crossover, chaos_factor
+```
+
+Unrecognised keys are reported as warnings (with suggestions), so a mistyped key
+never silently changes behaviour. For the full accepted-key reference, see
+`cavsim2d/utils/config_validation.py`, or `help(cavs.run_eigenmode)` etc.
+
+---
+
+## Parallelisation
+
+Set `processes` in any config to run cavities in parallel. When UQ is enabled, a
+second `processes` inside `uq_config` parallelises the quadrature/sample points.
+The default is a single process (which also gives the cleanest tracebacks and
+Jupyter output).
+
+---
+
+## Running the tests
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -q
+```
+
+The solver tests self-skip where NGSolve/gmsh are unavailable, and the wakefield
+tests skip off Windows (they need the bundled `ABCI.exe`), so the suite stays
+green in minimal environments.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

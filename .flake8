@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 127
+max-complexity = 12
+exclude =
+    .git,
+    __pycache__,
+    _build,
+    build,
+    dist,
+    artefacts,
+    thesis,
+    .idea,
+    *.egg-info,
+    cavsim2d/cavity_legacy.py,
+    tmp_shared_functions.py
+# E203/W503 conflict with black-style slicing/line breaks; E501 handled by max-line-length
+extend-ignore = E203, W503

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cavsim2d"
+version = "0.1.0"
+description = "Quick 2D axisymmetric RF cavity analysis: eigenmode, tuning, wakefield, UQ and optimisation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sosoho-Abasi Udongwo", email = "numurho@gmail.com" }]
+keywords = ["rf-cavity", "accelerator", "eigenmode", "wakefield", "finite-element", "ngsolve"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+# Core runtime dependencies. NGSolve pulls in netgen. The eigenmode pipeline
+# needs gmsh for meshing; wakefield additionally needs the bundled ABCI.exe
+# (Windows / wine) — see the README.
+dependencies = [
+    "numpy>=1.26.4",
+    "scipy>=1.13.1",
+    "pandas>=2.2.2",
+    "matplotlib>=3.8.4",
+    "ngsolve>=6.2.2402",
+    "gmsh>=4.13",
+    "paretoset>=1.2.4",
+    "psutil>=6.0.0",
+    "termcolor>=2.1.0",
+    "tqdm>=4.66.4",
+    "openpyxl",
+    "scikit-learn>=1.6",
+    "SALib",
+]
+
+[project.optional-dependencies]
+# Jupyter banner / widgets used in the example notebooks.
+jupyter = ["ipython>=8.26.0", "ipywidgets>=8.1.3"]
+# Test + lint tooling.
+dev = ["pytest", "flake8"]
+
+[project.urls]
+Homepage = "https://github.com/Dark-Elektron/cavsim2d"
+Repository = "https://github.com/Dark-Elektron/cavsim2d"
+
+[tool.setuptools.packages.find]
+include = ["cavsim2d*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+# Ship the bundled ABCI solver and TopDrawer alongside the package.
+"cavsim2d.solvers.ABCI" = ["ABCI.exe", "**/*"]

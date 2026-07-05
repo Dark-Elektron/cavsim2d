@@ -104,7 +104,6 @@ class ABCI:
         """
 
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_BPL::It got here")
         f.write('-3., 0.000\n')
         f.write('{} {}\n'.format(self.Rbp_L - self.c_L, WG_L - self.x_L))
         f.write('{} {}\n'.format(zr12_BPL[0][1], WG_L - self.x_L + zr12_BPL[0][0]))
@@ -137,7 +136,6 @@ class ABCI:
         -------
 
         """
-        # print("\t\tABCI_N1_L::It got here")
         f.write('-3., 0.000\n')
         f.write('{} {}\n'.format(self.ri_L + self.b_L, WG_L))
         f.write('{} {}\n'.format(zr12_L[1][1], WG_L + self.L_L - zr12_L[1][0]))
@@ -171,7 +169,6 @@ class ABCI:
         """
 
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_N1_R::It got here")
         if n == 1:
             f.write('-3., 0.000\n')
             f.write('{} {}\n'.format(self.Req_L - self.B_R, WG_L + self.L_L))
@@ -214,7 +211,6 @@ class ABCI:
 
         """
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_BPR::It got here")
         if n == 1:
             f.write('-3., 0.000\n')
             f.write('{} {}\n'.format(self.ri_R + self.bt_R, WG_L + self.L_L + self.L_R))
@@ -266,7 +262,6 @@ class ABCI:
         -------
 
         """
-        # print("\t\tABCI_M::It got here")
         # Left and right Cell
         # First Half cell
         if i == 1 and end_type == 1:
@@ -502,7 +497,6 @@ class ABCI_flattop:
         """
 
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_BPL::It got here")
         f.write('-3., 0.000\n')
         f.write('{} {}\n'.format(self.Rbp_L - self.c_L, WG_L - self.x_L))
         f.write('{} {}\n'.format(zr12_BPL[0][1], WG_L - self.x_L + zr12_BPL[0][0]))
@@ -535,7 +529,6 @@ class ABCI_flattop:
         -------
 
         """
-        # print("\t\tABCI_N1_L::It got here")
         f.write('-3., 0.000\n')
         f.write('{} {}\n'.format(self.ri_L + self.b_L, WG_L))
         f.write('{} {}\n'.format(zr12_L[1][1], WG_L + self.L_L - zr12_L[1][0]))
@@ -569,7 +562,6 @@ class ABCI_flattop:
         """
 
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_N1_R::It got here")
         if n == 1:
             f.write('-3., 0.000\n')
             f.write('{} {}\n'.format(self.Req_L - self.B_R, WG_L + self.L_L + self.l_L))
@@ -614,7 +606,6 @@ class ABCI_flattop:
 
         """
         # N1 Z R Alfa Mesh_thick Jx Jy BC_sign Vol_sign
-        # print("\t\tABCI_BPR::It got here")
         if n == 1:
             f.write('-3., 0.000\n')
             f.write('{} {}\n'.format(self.ri_R + self.bt_R, WG_L + self.L_L + self.l_L + self.L_R))
@@ -666,7 +657,6 @@ class ABCI_flattop:
         -------
 
         """
-        # print("\t\tABCI_M::It got here")
         # Left and right Cell
         # First Half cell
         if i == 1 and end_type == 1:
