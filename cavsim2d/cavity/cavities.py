@@ -463,9 +463,14 @@ class Cavities:
     # the manual workaround). This wrapper is kept so the API shape is stable
     # once sweep is ported.
 
-    def plot_dispersion(self):
+    def plot_dispersion(self, pol='monopole', ax=None, **kwargs):
+        """Overlay each cavity's passband. ``pol`` selects the polarisation
+        ('monopole', 'dipole', 'quadrupole', ...)."""
         for cav in self.cavities_list:
-            cav.plot_dispersion()
+            ax = cav.plot_dispersion(ax=ax, pol=pol, **kwargs)
+        if ax is not None:
+            ax.legend()
+        return ax
 
     def run_tune(self, tune_config=None):
         """
@@ -1055,6 +1060,7 @@ class Cavities:
         results = []
         for cav in self.cavities_list:
             results.append({
+                r"freq [MHz]": cav.freq,
                 r"Epk/Eacc []": cav.e,
                 r"Bpk/Eacc [mT/MV/m]": cav.b,
                 r"kcc [%]": cav.k_cc,
@@ -1292,7 +1298,36 @@ class Cavities:
 
         self.save_all_plots(f"{fname}_power_comparison.png")
 
-        plt.show()
+    def _resolve_qoi_keys(self, qois, df_columns):
+        import re
+        def normalize(s):
+            s = s.lower()
+            s = s.replace(r'\mathrm', '').replace(r'\epk', 'epk').replace(r'\bpk', 'bpk')
+            s = s.replace(r'\parallel', 'loss').replace(r'\perp', 'kick')
+            s = s.replace('kick', 'kick').replace('loss', 'loss').replace('perp', 'kick').replace('parallel', 'loss')
+            s = re.sub(r'[^a-z0-9]', '', s)
+            return s
+
+        resolved = []
+        if isinstance(qois, str):
+            qois = [qois]
+
+        normalized_cols = {normalize(col): col for col in df_columns}
+
+        for qoi in qois:
+            norm_qoi = normalize(qoi)
+            if norm_qoi in normalized_cols:
+                resolved.append(normalized_cols[norm_qoi])
+            else:
+                found = False
+                for norm_col, col in normalized_cols.items():
+                    if norm_qoi in norm_col or norm_col in norm_qoi:
+                        resolved.append(col)
+                        found = True
+                        break
+                if not found:
+                    resolved.append(qoi)
+        return [r for r in resolved if r in df_columns]
 
     def plot_compare_bar(self):
         """
@@ -1354,7 +1389,7 @@ class Cavities:
 
         return qois
 
-    def plot_compare_power_scatter(self, rf_config, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
+    def plot_compare_power_scatter(self, rf_config, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plots bar chart of power quantities of interest
 
@@ -1362,7 +1397,8 @@ class Cavities:
         -------
 
         """
-        plt.rcParams["figure.figsize"] = figsize
+        if qois is None:
+            qois = ['Pwp/cav', 'Pin/cav', 'PHOM/cav', 'k_loss', 'k_kick', 'p_hom']
 
         self.rf_config = rf_config
 
@@ -1399,7 +1435,11 @@ class Cavities:
             self.hom_results = self.qois_hom(op_points_list[0])
 
             df = pd.DataFrame.from_dict(self.hom_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+            selected_qois = self._resolve_qoi_keys(qois, df.columns)
+            if not selected_qois:
+                raise ValueError("None of the specified qois are present in the results.")
+            df = df[selected_qois]
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 3))
 
             labels = [cav.plot_label for cav in self.cavities_list]
             colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
@@ -1442,8 +1482,12 @@ class Cavities:
 
             # Step 2: Create a Mosaic Plot
             metrics = df_list[0]['metric'].unique()
+            selected_qois = self._resolve_qoi_keys(qois, metrics)
+            metrics = [q for q in selected_qois if q in metrics]
+            if not metrics:
+                raise ValueError("None of the specified qois are present in the UQ results.")
             layout = [[metric for metric in metrics]]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 3))
 
             # Plotting labels and colors
             labels = df_list[0]['cavity'].unique()
@@ -1487,17 +1531,17 @@ class Cavities:
 
         self.save_all_plots(f"{fname}_power_scatter_{op_points_list}.png")
 
-    def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3):
+    def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3, qois=None):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_fm_scatter(uq=uq, ncols=ncols)
+            self.plot_compare_fm_scatter(uq=uq, ncols=ncols, qois=qois)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_fm_bar(uq=uq, ncols=ncols)
+            self.plot_compare_fm_bar(uq=uq, ncols=ncols, qois=qois)
 
-    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3)):
+    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3), qois=None):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols, figsize=figsize)
+            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols, figsize=figsize, qois=qois)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols)
+            self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols, qois=qois)
 
     # def plot_compare_hom_bar_(self, opt, ncols=3, uq=False):
     #     """
@@ -1572,7 +1616,7 @@ class Cavities:
     #
     #     return axd
 
-    def plot_compare_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
+    def plot_compare_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -1582,13 +1626,17 @@ class Cavities:
             Number of columns for the legend. The default is 3.
         uq : bool, optional
             If True, plots with uncertainty quantification. The default is False.
+        qois : list of str, optional
+            List of quantities of interest (QoIs) to plot.
 
         Returns
         -------
         axd : dict
             A dictionary of axes from the scatter plot.
         """
-        plt.rcParams["figure.figsize"] = figsize
+        if qois is None:
+            qois = ['k_loss', 'k_kick', 'p_hom']
+
         if isinstance(op_points_list, str):
             op_points_list = [op_points_list]
 
@@ -1596,7 +1644,11 @@ class Cavities:
             self.hom_results = self.qois_hom(op_points_list[0])
 
             df = pd.DataFrame.from_dict(self.hom_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+            selected_qois = self._resolve_qoi_keys(qois, df.columns)
+            if not selected_qois:
+                raise ValueError("None of the specified qois are present in the HOM results.")
+            df = df[selected_qois]
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 3))
 
             labels = [cav.plot_label for cav in self.cavities_list]
             colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
@@ -1642,8 +1694,12 @@ class Cavities:
 
             # Step 2: Create a Mosaic Plot
             metrics = df_list[0]['metric'].unique()
+            selected_qois = self._resolve_qoi_keys(qois, metrics)
+            metrics = [q for q in selected_qois if q in metrics]
+            if not metrics:
+                raise ValueError("None of the specified qois are present in the UQ HOM results.")
             layout = [[metric for metric in metrics]]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 3))
 
             # Plotting labels and colors
             labels = df_list[0]['cavity'].unique()
@@ -1688,7 +1744,7 @@ class Cavities:
 
         return axd
 
-    def plot_compare_hom_scatter(self, op_points_list, ncols=3, uq=False, figsize=(12, 3)):
+    def plot_compare_hom_scatter(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -1698,13 +1754,17 @@ class Cavities:
             Number of columns for the legend. The default is 3.
         uq : bool, optional
             If True, plots with uncertainty quantification. The default is False.
+        qois : list of str, optional
+            List of quantities of interest (QoIs) to plot.
 
         Returns
         -------
         axd : dict
             A dictionary of axes from the scatter plot.
         """
-        plt.rcParams["figure.figsize"] = figsize
+        if qois is None:
+            qois = ['k_loss', 'k_kick', 'p_hom']
+
         if isinstance(op_points_list, str):
             op_points_list = [op_points_list]
 
@@ -1712,7 +1772,11 @@ class Cavities:
             self.hom_results = self.qois_hom(op_points_list[0])
 
             df = pd.DataFrame.from_dict(self.hom_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+            selected_qois = self._resolve_qoi_keys(qois, df.columns)
+            if not selected_qois:
+                raise ValueError("None of the specified qois are present in the HOM results.")
+            df = df[selected_qois]
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 3))
 
             labels = [cav.plot_label for cav in self.cavities_list]
             colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
@@ -1758,8 +1822,12 @@ class Cavities:
 
             # Step 2: Create a Mosaic Plot
             metrics = df_list[0]['metric'].unique()
+            selected_qois = self._resolve_qoi_keys(qois, metrics)
+            metrics = [q for q in selected_qois if q in metrics]
+            if not metrics:
+                raise ValueError("None of the specified qois are present in the UQ HOM results.")
             layout = [[metric for metric in metrics]]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 3))
 
             # Plotting labels and colors
             labels = df_list[0]['cavity'].unique()
@@ -1805,7 +1873,7 @@ class Cavities:
 
         return axd
 
-    def plot_compare_fm_bar(self, ncols=3, uq=False):
+    def plot_compare_fm_bar(self, ncols=3, uq=False, qois=None):
         """
         Plot bar chart of fundamental mode quantities of interest
 
@@ -1813,13 +1881,18 @@ class Cavities:
         -------
 
         """
-        plt.rcParams["figure.figsize"] = (12, 4)
+        if qois is None:
+            qois = ['freq', 'Epk/Eacc', 'Bpk/Eacc', 'R/Q']
 
         if not uq:
             self.fm_results = self.qois_fm()
 
             df = pd.DataFrame.from_dict(self.fm_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+            selected_qois = self._resolve_qoi_keys(qois, df.columns)
+            if not selected_qois:
+                raise ValueError("None of the specified qois are present in the fundamental mode results.")
+            df = df[selected_qois]
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 4))
 
             labels = [cav.plot_label for cav in self.cavities_list]
             # Plot each column in a separate subplot
@@ -1854,12 +1927,14 @@ class Cavities:
             # label) are worth a bar — bookkeeping keys like
             # "Normalization Length [mm]" or "N Cells" are skipped.
             metrics = [m for m in df['metric'].unique() if m in LABELS]
+            selected_qois = self._resolve_qoi_keys(qois, metrics)
+            metrics = [q for q in selected_qois if q in metrics]
             if not metrics:
                 info("No plottable figures of merit in the UQ results.")
                 return None
 
             layout = [list(metrics)]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained')
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 4))
 
             for metric, ax in axd.items():
                 sub_df = df[df['metric'] == metric]
@@ -1885,9 +1960,9 @@ class Cavities:
 
         return axd
 
-    def plot_compare_fm_scatter(self, ncols=3, uq=False):
+    def plot_compare_fm_scatter(self, ncols=3, uq=False, qois=None):
         """
-        Plot scatter chart of higher-order mode quantities of interest.
+        Plot scatter chart of fundamental mode quantities of interest.
 
         Parameters
         ----------
@@ -1895,18 +1970,61 @@ class Cavities:
             Number of columns for the legend. The default is 3.
         uq : bool, optional
             If True, plots with uncertainty quantification. The default is False.
+        qois : list of str, optional
+            List of quantities of interest (QoIs) to plot. Default includes:
+            frequency, Epk/Eacc, Bpk/Eacc, R/Q.
 
         Returns
         -------
         axd : dict
             A dictionary of axes from the scatter plot.
         """
-        plt.rcParams["figure.figsize"] = (12, 3)
+        QOI_MAP = {
+            'frequency': 'freq [MHz]',
+            'freq': 'freq [MHz]',
+            'freq [mhz]': 'freq [MHz]',
+            'epk/eacc': 'Epk/Eacc []',
+            'epk/eacc []': 'Epk/Eacc []',
+            'epk': 'Epk/Eacc []',
+            'bpk/eacc': 'Bpk/Eacc [mT/MV/m]',
+            'bpk/eacc [mt/mv/m]': 'Bpk/Eacc [mT/MV/m]',
+            'bpk': 'Bpk/Eacc [mT/MV/m]',
+            'r/q': 'R/Q [Ohm]',
+            'r/q [ohm]': 'R/Q [Ohm]',
+            'g': 'G [Ohm]',
+            'g [ohm]': 'G [Ohm]',
+            'gr/q': 'GR/Q [Ohm^2]',
+            'gr/q [ohm^2]': 'GR/Q [Ohm^2]',
+            'kcc': 'kcc [%]',
+            'kcc [%]': 'kcc [%]',
+            'ff': 'ff [%]',
+            'ff [%]': 'ff [%]',
+            'q': 'Q []',
+            'q []': 'Q []'
+        }
+
+        if qois is None:
+            selected_qois = ['freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]', 'R/Q [Ohm]']
+        else:
+            if isinstance(qois, str):
+                qois = [qois]
+            selected_qois = []
+            for qoi in qois:
+                qoi_lower = qoi.strip().lower()
+                if qoi_lower in QOI_MAP:
+                    selected_qois.append(QOI_MAP[qoi_lower])
+                else:
+                    selected_qois.append(qoi)
 
         if not uq:
             self.fm_results = self.qois_fm()
             df = pd.DataFrame.from_dict(self.fm_results)
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained')
+            selected_qois = [q for q in selected_qois if q in df.columns]
+            if not selected_qois:
+                raise ValueError("None of the specified qois are present in the fundamental mode results.")
+            df = df[selected_qois]
+
+            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 3))
 
             labels = [cav.plot_label for cav in self.cavities_list]
             colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
@@ -1937,14 +2055,17 @@ class Cavities:
             df = pd.DataFrame(rows)
 
             labels = [cav.plot_label for cav in self.cavities_list]
-            # colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
             colors = [cav.color for cav in self.cavities_list]
 
             # Step 2: Create a Mosaic Plot
             metrics = df['metric'].unique()
+            metrics = [m for m in metrics if m in selected_qois]
+            metrics = [q for q in selected_qois if q in metrics]
+            if not metrics:
+                raise ValueError("None of the specified qois are present in the UQ fundamental mode results.")
+
             layout = [[metric for metric in metrics]]
-            # layout = [metrics[:4], [*metrics[4:], '.']]
-            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(21, 3))
+            fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 3))
 
             # Plot each metric on a separate subplot
             for metric, ax in axd.items():
@@ -1963,16 +2084,9 @@ class Cavities:
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.margins(0.3)
-                # ax.set_ylabel(LABELS[metric])
                 ax.set_xlabel(LABELS[metric])
 
             h, l = ax.get_legend_handles_labels()
-
-        # by_label = dict(zip(l, h))
-        # if 'nominal' in by_label.keys():
-        #     nominal_handle = by_label.pop('nominal')  # Remove 'nominal' entry
-        #     # Reinsert 'nominal' as the last entry
-        #     by_label['nominal'] = nominal_handle
 
         # Set legend
         if not ncols:

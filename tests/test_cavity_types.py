@@ -35,6 +35,22 @@ def test_pillbox_wakefield(project_dir):
     assert os.path.exists(os.path.join(wf, 'transversal', 'cavity.top'))
 
 
+def test_pillbox_tuning(project_dir):
+    """Tune a pillbox's equator radius to a target frequency; the tuned
+    cavity is reachable via cav.tuned and re-solves to the target."""
+    cavs = Cavities(project_dir)
+    pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
+    cavs.add_cavity([pb], ['PB'])
+    cavs.run_tune({'freqs': 1100, 'cell_type': {'mid-cell': 'Req'},
+                   'processes': 1, 'rerun': True,
+                   'eigenmode_config': {'processes': 1, 'boundary_conditions': 'mm'}})
+    res = pb.tune.qois['mid-cell']
+    assert abs(res['FREQ'] - 1100) < 1.0
+    assert res['parameters']['Req'] != 100     # Req moved
+    tuned = pb.tuned
+    assert tuned is not None and isinstance(tuned, Pillbox)
+
+
 def test_pillbox_inherits_base_run_eigenmode():
     """Pillbox no longer carries its own legacy run_* overrides."""
     for name in ('run_eigenmode', 'run_wakefield', 'run_tune'):

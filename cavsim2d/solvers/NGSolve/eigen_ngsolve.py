@@ -406,14 +406,12 @@ class NGSolveMEVP:
             a = BilinearForm((r*curl(u)*curl(v) + 1/r * (m**2*u*v + m*u*grad(v_phi) + m*grad(u_phi)*v + grad(u_phi)*grad(v_phi)))*dx).Assemble()
             b = BilinearForm((r*u*v + 1/r * u_phi*v_phi)*dx).Assemble()
             
-            sum_mat = a.mat.CreateMatrix()
-            sum_mat.AsVector().data = a.mat.AsVector() + b.mat.AsVector()
+            sum_mat = (a.mat+b.mat).CreateSparseMatrix()    # also works for different graphs
             pre = sum_mat.Inverse(fes.FreeDofs())
 
             # Build projector
-            embU   = Embedding(fes.ndof, fes.Range(0))
-            embPhi = Embedding(fes.ndof, fes.Range(1))
-            G  = (embU @ Grz + (-m) * embPhi).CreateSparseMatrix()
+            embU, embPhi = fes.embeddings
+            G  = (embU @ Grz - m * embPhi).CreateSparseMatrix()
 
             GT = G.CreateTranspose()
             math1 = GT @ b.mat @ G

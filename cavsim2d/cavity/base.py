@@ -573,7 +573,7 @@ class Cavity(ABC):
             "the current geometry pipeline). Workaround: build one cavity per "
             "sweep value and call cav.eigenmode.run() on each.")
 
-    def study_mesh_convergence(self, h=2, h_passes=7, h_step=1.5, p=2, p_passes=6, p_step=1):
+    def study_mesh_convergence(self, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
         """
 
         Parameters
@@ -907,18 +907,38 @@ class Cavity(ABC):
         self.Epk_Eacc = self.e
         self.Bpk_Eacc = self.b
 
-    def plot_dispersion(self, ax=None, show_continuous=True, **kwargs):
+    def plot_dispersion(self, ax=None, show_continuous=True, pol='monopole', **kwargs):
+        """Plot the n-cell passband (frequency vs cell phase advance).
+
+        ``pol`` selects the polarisation: 'monopole' (default) reads the
+        fundamental passband; 'dipole'/'quadrupole'/… read the corresponding
+        m-pole passband from ``eigenmode/<pol>/qois_all_modes.json``.
+        """
+        from cavsim2d.solvers.eigenmode_result import pol_number
         if ax is None:
             fig, ax = plt.subplots()
 
-        df = pd.DataFrame.from_dict(self.eigenmode_qois_all_modes, orient='index')
-        freqs = df['freq [MHz]'][1:self.n_cells + 1]
+        if pol_number(pol) == 0:
+            all_modes = self.eigenmode_qois_all_modes
+            # monopole: index 0 is the spurious/DC mode; passband is 1..n_cells
+            lo, hi = 1, self.n_cells + 1
+        else:
+            all_modes = self.eigenmode.mpole_qois(pol)  # {idx: qois}, no DC mode
+            lo, hi = 0, self.n_cells
 
-        k = np.linspace(np.pi / self.n_cells, np.pi, self.n_cells, endpoint=True)
+        df = pd.DataFrame.from_dict(all_modes, orient='index')
+        if df.empty or 'freq [MHz]' not in df:
+            info(f"No {pol} passband data — run eigenmode with that polarisation first.")
+            return ax
+        freqs = df['freq [MHz]'].iloc[lo:hi]
+
+        k = np.linspace(np.pi / self.n_cells, np.pi, self.n_cells, endpoint=True)[:len(freqs)]
         axis_label = ['$' + f'({i + 1}/{self.n_cells})' + r'\pi$' if i - 1 != self.n_cells else r'$\pi$' for i in
                       range(self.n_cells)]
-        ax.plot(k, freqs, marker='o', mec='k', label=self.name, **kwargs)
-        ax.set_xticklabels(axis_label)
+        label = kwargs.pop('label', f'{self.name} ({pol})')
+        ax.plot(k, freqs, marker='o', mec='k', label=label, **kwargs)
+        ax.set_xticks(k)
+        ax.set_xticklabels(axis_label[:len(freqs)])
         ax.set_ylabel('$f$ [MHz]')
         ax.set_xlabel('$k$')
 

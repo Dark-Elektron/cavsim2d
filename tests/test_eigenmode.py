@@ -164,6 +164,31 @@ def test_mpole_only_results_do_not_crash_qoi_read(project_dir):
         cav.get_eigenmode_qois()
 
 
+def test_mpole_dispersion_plot(project_dir):
+    """plot_dispersion(pol='dipole') plots the dipole passband of a 2-cell
+    cavity (distinct from, and above, the monopole passband)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['D'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole', 'dipole'], 'n_modes': 4})
+    cav.get_eigenmode_qois()
+
+    plt.close('all')
+    ax = cav.plot_dispersion(pol='monopole')
+    ax = cav.plot_dispersion(pol='dipole', ax=ax)
+    # both passbands drawn (2 lines), dipole above monopole
+    assert len(ax.lines) == 2
+    mono_y = ax.lines[0].get_ydata()
+    dip_y = ax.lines[1].get_ydata()
+    assert min(dip_y) > min(mono_y)
+    plt.close('all')
+
+
 def test_field_and_mesh_render_non_blank(project_dir):
     """The matplotlib renderers produce a non-empty figure (regression for the
     hardcoded edge mask that deleted every triangle, and for plot_fields

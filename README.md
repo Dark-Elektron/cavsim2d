@@ -28,14 +28,15 @@ classes exist at varying maturity:
 | Cavity type | Eigenmode | Tuning | Wakefield | UQ / Optimisation |
 |---|---|---|---|---|
 | `EllipticalCavity` | ✅ | ✅ | ✅ | ✅ |
-| `Pillbox` | ✅ | ➖ | ✅ | ⚠️ |
+| `Pillbox` | ✅ | ✅ | ✅ | ⚠️ |
 | `RFGun` | ✅¹ | ➖ | ➖ | ➖ |
 | `EllipticalCavityFlatTop` | ⚠️ | ➖ | ⚠️ | ⚠️ |
 | `SplineCavity` | ⚠️ | ➖ | ⚠️ | ⚠️ |
 
 ✅ supported and exercised · ⚠️ present but not verified in this release · ➖ not
-available (tuning needs a per-type `clone_for_tuning`, implemented only for
-`EllipticalCavity`). ¹ RF-gun eigenmode gives correct frequencies and fields;
+available (tuning needs a per-type `clone_for_tuning` — implemented for
+`EllipticalCavity` and `Pillbox`; the flattop/spline/RF-gun types don't have one
+yet). ¹ RF-gun eigenmode gives correct frequencies and fields;
 the length-normalised QOIs (`Eacc`, `Epk/Eacc`) default to the on-axis field
 extent as the active length (override with
 `eigenmode_config['normalization_length']`, mm). Both `cavs.run_eigenmode()`
@@ -235,6 +236,16 @@ and converted to a transverse kick voltage via Panofsky–Wenzel. The QOI keys
 `Vacc`/`Eacc`/`R/Q` hold these transverse values, and `R/Q_t [Ohm/m^(2(m-1))]`
 is normalised so it is independent of the evaluation radius (equal to `R/Q` for
 the dipole).
+
+**Conventions to note.** The headline `qois.json` for an m-pole solve is the
+**lowest** mode (index 0), whereas the monopole headline is the accelerating
+π-mode (index `n_cells`). Use `mpole_qois(pol)` for the full set. The `kcc [%]`
+cell-to-cell coupling for $m \ge 1$ reuses the monopole passband formula
+(relative to mode index 1) and is of limited physical meaning for a deflecting
+passband. Plot the passband with `cav.plot_dispersion(pol='dipole')`.
+
+M-pole QOIs are not yet available as UQ or optimisation objectives (those still
+operate on the monopole figures of merit).
 
 ---
 

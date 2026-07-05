@@ -161,7 +161,10 @@ def _filter_params_for_ct(params, ct_name):
     suffix = _SUFFIX_FOR_CT.get(_normalize_ct_name(ct_name))
     if not suffix:
         return dict(params)
-    return {k: v for k, v in params.items() if k.endswith(suffix)}
+    filtered = {k: v for k, v in params.items() if k.endswith(suffix)}
+    # Non-elliptical cavities (pillbox, ...) use unsuffixed params (Req, L, …);
+    # if nothing matched the cell suffix, keep the full dict rather than drop it.
+    return filtered if filtered else dict(params)
 
 
 def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
