@@ -35,6 +35,10 @@ def test_valid_configs_are_silent():
         'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
         'polarisation': ['monopole', 'dipole'], 'n_modes': 4,
     }) == []
+    assert _warnings_for(validate_eigenmode_config, {
+        'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+        'polarisation': 'monopole', 'nmodes': 4,
+    }) == []
     assert _warnings_for(validate_wakefield_config, {
         'processes': 1, 'rerun': True, 'MROT': 'dipole', 'wakelength': 5,
         'bunch_length': 25,

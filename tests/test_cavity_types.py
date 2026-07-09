@@ -8,7 +8,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import requires_abci
-from cavsim2d.cavity import Cavities, Pillbox, RFGun
+from cavsim2d.cavity import Cavities, Pillbox, RFGun, EllipticalCavity
 
 
 def test_pillbox_eigenmode(project_dir):
@@ -86,6 +86,23 @@ def test_rfgun_qois_normalised_sensibly(project_dir):
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
     gun.get_eigenmode_qois()
     assert 1 < gun.eigenmode_qois['Epk/Eacc []'] < 50
+
+
+def test_parallel_eigenmode_processes_gt_1(project_dir):
+    """processes>1 spawns worker processes (Windows uses 'spawn'); Cavity
+    objects must pickle and both results must be written (P2-8)."""
+    import os
+    cavs = Cavities(project_dir)
+    mid = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20]
+    mid2 = [62.22, 66.13, 30.22, 23.11, 78, 93.5, 171.20]
+    c1 = EllipticalCavity(1, mid, mid, mid, beampipe='both')
+    c2 = EllipticalCavity(1, mid2, mid2, mid2, beampipe='both')
+    cavs.add_cavity([c1, c2], ['A', 'B'])
+    cavs.run_eigenmode({'processes': 2, 'rerun': True, 'boundary_conditions': 'mm'})
+    for name in ('A', 'B'):
+        qp = os.path.join(project_dir, 'cavities', name,
+                          'eigenmode', 'monopole', 'qois.json')
+        assert os.path.exists(qp), f"{name} results missing from processes=2 run"
 
 
 def test_per_cavity_run_eigenmode_delegates(project_dir):

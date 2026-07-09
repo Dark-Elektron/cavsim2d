@@ -7,8 +7,24 @@ import numpy as np
 # Azimuthal mode number <-> polarisation folder name. Results of an m-pole
 # eigenmode solve are stored in ``<cavity>/eigenmode/<pol_name(m)>/``
 # (the monopole keeps its flat ``<cavity>/eigenmode/`` layout).
-MPOLE_NAMES = {0: 'monopole', 1: 'dipole', 2: 'quadrupole', 3: 'sextupole',
-               4: 'octupole', 5: 'decapole', 6: 'dodecapole'}
+MPOLE_NAMES = {
+    0: 'monopole',
+    1: 'dipole',
+    2: 'quadrupole',
+    3: 'sextupole',
+    4: 'octupole',
+    5: 'decapole',
+    6: 'dodecapole',
+    7: 'tetradecapole',
+    8: 'hexadecapole',
+    9: 'octadecapole',
+    10: 'icosapole',
+    11: 'docosapole',
+    12: 'tetracosapole',
+    13: 'hexacosapole',
+    14: 'octacosapole',
+    15: 'triacontapole'
+}
 _MPOLE_M = {v: k for k, v in MPOLE_NAMES.items()}
 
 

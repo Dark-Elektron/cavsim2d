@@ -116,6 +116,10 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
             cavs_object.run_eigenmode(eig_cfg)
 
         uq_df = pd.DataFrame.from_dict(cavs_object.eigenmode_qois).T
+        # Keep only numeric QOIs — the qois schema now carries non-numeric
+        # metadata ('polarisation', ...) that can't be averaged and would break
+        # the weighted statistics below.
+        uq_df = uq_df.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
 
         records = []
         for outer_key, mid_dict in cavs_object.eigenmode_qois_all_modes.items():
@@ -163,14 +167,18 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         uq_df_all.to_csv(os.path.join(cav.uq_dir, 'table_all_modes.csv'), index=False, sep='\t', float_format='%.32f')
         uq_df_all.to_excel(os.path.join(cav.uq_dir, 'table_all_modes.xlsx'), index=False)
 
+        # Numeric-only, as above (drop 'polarisation' and any other text metadata).
+        uq_df_all = uq_df_all.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
         Ttab_val_f_all_modes = uq_df_all.to_numpy()
 
         mean_obj_all_modes, std_obj_all_modes, skew_obj_all_modes, kurtosis_obj_all_modes = weighted_mean_obj(
             Ttab_val_f_all_modes, weights_)
 
         for i, o in enumerate(uq_df_all.columns):
-            # Extract mode number and base property name from column like 'freq_0 [MHz]'
-            match = re.search(r'^(.*?)_(\d+)(\s*\[.*\])?$', o)
+            # Extract the mode key and base property name from a column like
+            # 'freq_0 [MHz]' or, with the unified all-modes schema, 'freq_0-1 [MHz]'
+            # where the mode key is "<mode index>-<azimuthal m>".
+            match = re.search(r'^(.*?)_(\d+-\d+|\d+)(\s*\[.*\])?$', o)
             if match:
                 prop_base = match.group(1).strip()
                 mode_idx = match.group(2)

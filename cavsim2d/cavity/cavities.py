@@ -60,7 +60,8 @@ class Cavities:
 
         self.name = 'cavities'
         if name:
-            assert isinstance(name, str), error('Please enter valid project name.')
+            if not isinstance(name, str):
+                raise ValueError('Cavities name must be a string.')
             self.name = name
 
         if not _skip_project_init and folder is not None:
@@ -567,7 +568,8 @@ class Cavities:
         rerun = True
         if 'rerun' in tune_config:
             rerun = tune_config['rerun']
-            assert isinstance(rerun, bool), error('rerun should be boolean.')
+            if not isinstance(rerun, bool):
+                raise ValueError("tune_config['rerun'] must be a boolean.")
         else:
             tune_config['rerun'] = rerun
 
@@ -1081,6 +1083,14 @@ class Cavities:
             })
 
         return results
+
+    def summary(self):
+        """Fundamental-mode QOIs for all cavities as a DataFrame, indexed by
+        cavity name. In Jupyter it renders as an HTML table; elsewhere use
+        ``.to_string()`` / ``.to_markdown()``. Requires eigenmode results
+        (run ``run_eigenmode`` first)."""
+        names = [cav.name for cav in self.cavities_list]
+        return pd.DataFrame(self.qois_fm(), index=names)
 
     def qois_hom(self, opt):
         """

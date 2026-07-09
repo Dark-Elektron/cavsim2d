@@ -25,6 +25,7 @@ mu0 = 4 * pi * 1e-7
 eps0 = 8.85418782e-12
 c0 = 299792458
 SIGMA_COPPER = 5.96e7  # electrical conductivity of copper [S/m]
+DEFAULT_N_MODES = 10
 
 
 def surface_resistance(w, conductivity=SIGMA_COPPER, rs=None):
@@ -68,6 +69,33 @@ class NGSolveMEVP:
         self.mesh = None
         self.fields = None
 
+    @staticmethod
+    def requested_n_modes(cav=None, eigenmode_config=None, n_modes=None):
+        """Number of user-requested eigenmodes.
+
+        Explicit ``n_modes``/``nmodes`` in the config wins. If no explicit
+        value is supplied and *cav* is a cavity-like object, default to
+        ``cav.n_cells + 2``; otherwise use the general default of 10.
+        """
+        if n_modes is None and eigenmode_config:
+            n_modes = eigenmode_config.get('n_modes', eigenmode_config.get('nmodes', None))
+
+        if n_modes is None and hasattr(cav, 'n_cells'):
+            n_modes = int(cav.n_cells) + 2
+
+        if n_modes is None:
+            n_modes = DEFAULT_N_MODES
+
+        if isinstance(n_modes, bool) or int(n_modes) <= 0:
+            raise ValueError("'n_modes' must be a positive integer.")
+
+        return int(n_modes)
+
+    @staticmethod
+    def pinvit_n_modes(requested_n_modes):
+        """PINVIT search size: always two more than requested."""
+        return int(requested_n_modes) + 2
+
     # ──────────────────────────────────────────────────────────────────────
     # Geometry
     # ──────────────────────────────────────────────────────────────────────
@@ -109,6 +137,28 @@ class NGSolveMEVP:
 
         return self.step_geo, self.ngmesh, self.bcs
 
+    def _build_mesh(self, cav, maxh, order):
+        """Return a boundary-tagged, curved NGSolve mesh for *cav*.
+
+        Two backends behind one call:
+        - Native: if the cavity exposes a unified ``profile()`` (a geometry
+          :class:`~cavsim2d.geometry.Profile`), mesh it directly with
+          netgen.occ — exact edges, no gmsh, no ``.geo`` round-trip.
+        - Import: otherwise mesh the cavity's ``.geo`` file via gmsh
+          (elliptical, spline, imported CAD).
+        """
+        maker = getattr(cav, 'profile', None)
+        profile = maker() if callable(maker) else None
+        if profile is not None:
+            return profile.mesh(maxh=maxh, order=order)
+
+        step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=maxh)
+        for key, bc in bcs.items():
+            ngmesh.SetBCName(key - 1, bc)
+        mesh = Mesh(ngmesh)
+        mesh.Curve(order)
+        return mesh
+
     def _get_boundaries_from_gmsh(self):
         """Extract boundary condition name map from the current Gmsh model."""
         line_bc_map = {}
@@ -149,19 +199,14 @@ class NGSolveMEVP:
             mesh_p = mesh_config.get('p', mesh_p)
 
         pols = parse_polarisations((eigenmode_config or {}).get('polarisation', 0))
+        n_modes = self.requested_n_modes(cav, eigenmode_config)
 
         # Wall material for Q / Ploss / Rsh / G (default copper normal
         # conductor; pass 'surface_resistance' for a fixed Rs, e.g. SRF).
         conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
         rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
 
-        step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=mesh_h)
-
-        for key, bc in bcs.items():
-            ngmesh.SetBCName(key - 1, bc)
-
-        mesh = Mesh(ngmesh)
-        mesh.Curve(mesh_p)
+        mesh = self._build_mesh(cav, mesh_h, mesh_p)
 
         # Half-cell length (mm) for the Eacc normalisation. Elliptical cavities
         # store it as 'L_m'; guns/pillboxes have no 'L_m', so allow an explicit
@@ -175,10 +220,15 @@ class NGSolveMEVP:
             save_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(0))
             os.makedirs(save_dir, exist_ok=True)
             self.save_mesh(save_dir, mesh)
-            freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, save_dir, mesh, mesh_p)
+            freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, save_dir, mesh, mesh_p, n_modes)
 
-            qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=cav.n_cells, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
+            # Headline QOIs are the accelerating (pi-)mode. The solver now
+            # filters the spurious gradient/DC mode, so the n-cell fundamental
+            # passband occupies indices 0..n_cells-1 and the pi-mode is the last
+            # of them (index n_cells-1).
+            qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=cav.n_cells - 1, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
                                       conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+            qois["No of DOFs"] = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
             with open(os.path.join(save_dir, 'qois.json'), "w") as f:
                 json.dump(qois, f, indent=4, separators=(',', ': '))
 
@@ -229,7 +279,7 @@ class NGSolveMEVP:
         os.makedirs(pol_dir, exist_ok=True)
         self.save_mesh(pol_dir, mesh)
 
-        n_modes = (eigenmode_config or {}).get('n_modes', cav.n_cells + 2)
+        n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
         rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem_mpole(mesh, mesh_p, m, n_modes, save_dir=pol_dir)
@@ -239,6 +289,9 @@ class NGSolveMEVP:
         qois = self.evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=0,
                                         n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
                                         conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
+        _, fes_phi = fes_rz.CreateGradient()
+        qois["No of DOFs"] = fes_rz.ndof + fes_phi.ndof
         with open(os.path.join(pol_dir, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
 
@@ -293,7 +346,6 @@ class NGSolveMEVP:
 
         step_geo = OCCGeometry(os.path.join(run_save_directory, "mesh.step"), dim=2)
         ngmesh = step_geo.GenerateMesh(maxh=maxh)
-
         bcs = self._get_boundaries_from_gmsh()
         gmsh.finalize()
 
@@ -304,9 +356,10 @@ class NGSolveMEVP:
         mesh.Curve(mesh_p)
         self.save_mesh(run_save_directory, mesh)
 
-        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(run_save_directory, mesh, mesh_p)
+        n_modes = self.requested_n_modes(n_modes=n_modes if n_modes is not None else no_of_cells + 2)
+        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(run_save_directory, run_save_directory, mesh, mesh_p, n_modes)
 
-        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=no_of_cells, n_cells=no_of_cells,
+        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=no_of_cells - 1, n_cells=no_of_cells,
                                   L=L, save_dir=run_save_directory)
 
         with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
@@ -321,16 +374,19 @@ class NGSolveMEVP:
 
         return True
 
-    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p):
+    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None):
         """Assemble and solve the Maxwell eigenvalue problem. Returns (freqs, E_fields, H_fields)."""
+        n_modes = self.requested_n_modes(cav, n_modes=n_modes)
         fes = HCurl(mesh, order=mesh_p, dirichlet="PEC")
         u, v = fes.TnT()
 
         f_shift = 0
         direct_solver = default_direct_solver()
+        pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
         if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
             f_shift = cav.eigenmode_config.get('f_shift', 0)
             direct_solver = cav.eigenmode_config.get('direct_solver', direct_solver)
+            pinvit_maxit = int(cav.eigenmode_config.get('pinvit_maxit', pinvit_maxit))
         elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
              f_shift = cav['f_shift']
 
@@ -353,13 +409,15 @@ class NGSolveMEVP:
             gradmat, fesh1 = fes.CreateGradient()
             gradmattrans = gradmat.CreateTranspose()
             math1 = gradmattrans @ m.mat @ gradmat
-            math1[0, 0] += 1
             invh1 = math1.Inverse(inverse=direct_solver, freedofs=fesh1.FreeDofs())
 
             proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
             projpre = proj @ pre.mat
-            evals, evecs = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=cav.n_cells + 2, maxit=20,
-                                          printrates=False)
+            evals_, evecs_ = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=self.pinvit_n_modes(n_modes),
+                                          maxit=pinvit_maxit, printrates=False)
+            mask_ = np.array(evals_) > 1
+            evals = np.array(evals_)[mask_]
+            evecs = np.array(evecs_)[mask_]
 
             if f_shift and f_shift != 'default':
                 shift_lam = (2 * pi * f_shift * 1e6 / c0)**2
@@ -389,13 +447,15 @@ class NGSolveMEVP:
         gradient kernel (u, u_phi) = (-grad psi, m psi) is exactly
         representable). That kernel is removed from the PINVIT iteration with
         a b-orthogonal projector, mirroring the monopole gradient projection,
-        so only ``n_modes`` physical eigenpairs need to be computed.
+        so only ``n_modes + 2`` eigenpairs are computed for ``n_modes``
+        requested physical modes.
 
         Returns (freqs [MHz], gfu_E, gfu_H) where each gfu_E entry is a
         product-space GridFunction (components: in-plane (E_x, E_y), u_phi)
         and each gfu_H entry is a pair (H_inplane_cf, H_phi_cf) of azimuthal
         envelope coefficient functions.
         """
+        n_modes = self.requested_n_modes(n_modes=n_modes)
         r = y
         fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
         Grz, fes_phi = fes_rz.CreateGradient()
@@ -420,7 +480,9 @@ class NGSolveMEVP:
             proj = IdentityMatrix(fes.ndof) - G @ invh1 @ GT @ b.mat
             projpre = proj @ pre
 
-            evals_, evecs_ = solvers.PINVIT(a.mat, b.mat, pre=projpre, num=n_modes+4, maxit=10, printrates=False)
+            evals_, evecs_ = solvers.PINVIT(
+                a.mat, b.mat, pre=projpre, num=self.pinvit_n_modes(n_modes),
+                maxit=10, printrates=False)
 
             evals = np.array(evals_)[np.array(evals_) > 1]
             evecs = np.array(evecs_)[np.array(evals_) > 1]
@@ -464,6 +526,7 @@ class NGSolveMEVP:
         S/m); pass *surface_resistance_ohm* for a fixed Rs (e.g. an SRF
         niobium cavity). The geometric factor G is material-independent.
         """
+
         w = 2 * pi * freq_fes[mode_idx] * 1e6
 
         # Active length for the Eacc normalisation. For elliptical cavities L is
@@ -507,9 +570,10 @@ class NGSolveMEVP:
             y * (Hphi * Conj(Hphi)), mesh,
             definedon=mesh.Boundaries('PEC')).real
 
-        # Cell-to-cell coupling
-        f_diff = freq_fes[mode_idx] - freq_fes[1]
-        f_add = freq_fes[mode_idx] + freq_fes[1]
+        # Cell-to-cell coupling: pi-mode vs the 0-mode (lowest passband mode,
+        # index 0 now that the spurious mode is filtered out).
+        f_diff = freq_fes[mode_idx] - freq_fes[0]
+        f_add = freq_fes[mode_idx] + freq_fes[0]
         kcc = 2 * f_diff / f_add * 100
 
         Q = w * U / Ploss
@@ -530,6 +594,8 @@ class NGSolveMEVP:
             ff = 0
 
         qois = {
+            'm': 0,
+            'polarisation': 'monopole',
             "Normalization Length [mm]": 2 * L,
             "N Cells": n_cells,
             "freq [MHz]": freq_fes[mode_idx],
@@ -638,9 +704,10 @@ class NGSolveMEVP:
             Ploss += seg * dl
         Ploss *= pi * 0.5 * Rs
 
-        # Cell-to-cell coupling (same convention as the monopole passband)
+        # Cell-to-cell coupling (same convention as the monopole passband:
+        # pi-mode vs the index-0 lowest passband mode)
         if len(freq_fes) > 1:
-            kcc = 2 * (freq_fes[mode_idx] - freq_fes[1]) / (freq_fes[mode_idx] + freq_fes[1]) * 100
+            kcc = 2 * (freq_fes[mode_idx] - freq_fes[0]) / (freq_fes[mode_idx] + freq_fes[0]) * 100
         else:
             kcc = 0
 

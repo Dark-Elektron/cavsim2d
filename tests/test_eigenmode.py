@@ -24,6 +24,22 @@ def _run(project_dir, name='CAV', n_cells=1, config=None):
     return cav
 
 
+def test_mode_count_resolution_defaults_and_aliases():
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+
+    class DummyCavity:
+        n_cells = 3
+
+    solver = NGSolveMEVP()
+    assert solver.requested_n_modes() == 10
+    assert solver.requested_n_modes(DummyCavity()) == 5
+    assert solver.requested_n_modes(DummyCavity(), {'n_modes': 7}) == 7
+    assert solver.requested_n_modes(DummyCavity(), {'nmodes': 8}) == 8
+    assert solver.pinvit_n_modes(8) == 10
+    with pytest.raises(ValueError):
+        solver.requested_n_modes(n_modes=0)
+
+
 def test_monopole_writes_monopole_folder(project_dir):
     cav = _run(project_dir)
     eig = os.path.join(cav.self_dir, 'eigenmode')

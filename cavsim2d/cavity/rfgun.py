@@ -402,9 +402,11 @@ class RFGun(Cavity):
         # print('it is here')
         qois = 'qois.json'
         mono_dir = self._eigenmode_pol_dir('monopole')
-        assert os.path.exists(
-            os.path.join(mono_dir, qois)), (
-            error('Eigenmode result does not exist, please run eigenmode simulation.'))
+        qois_path = os.path.join(mono_dir, qois)
+        if not os.path.exists(qois_path):
+            raise FileNotFoundError(
+                f"Eigenmode result does not exist at {qois_path}. "
+                f"Run run_eigenmode() first.")
         with open(os.path.join(mono_dir, qois)) as json_file:
             self.eigenmode_qois = json.load(json_file)
 

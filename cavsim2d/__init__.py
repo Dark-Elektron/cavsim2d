@@ -26,6 +26,7 @@ from cavsim2d.cavity import (
     Dakota,
     OperationPoints,
     show_welcome,
+    CircularWaveguide,
 )
 
 from cavsim2d.solvers import (
@@ -47,6 +48,7 @@ __all__ = [
     'Dakota',
     'OperationPoints',
     'show_welcome',
+    'CircularWaveguide',
     'TuneSolver',
     'EigenmodeSolver',
     'WakefieldSolver',

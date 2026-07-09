@@ -14,6 +14,7 @@ from cavsim2d.cavity.pillbox import Pillbox
 from cavsim2d.cavity.dakota import Dakota
 from cavsim2d.cavity.operating_points import OperationPoints
 from cavsim2d.cavity.welcome import show_welcome
+from cavsim2d.cavity.circular_waveguide import CircularWaveguide
 
 __all__ = [
     'Cavity',
@@ -26,4 +27,5 @@ __all__ = [
     'Dakota',
     'OperationPoints',
     'show_welcome',
+    'CircularWaveguide',
 ]

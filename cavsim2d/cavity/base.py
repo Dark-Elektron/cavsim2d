@@ -20,6 +20,7 @@ import numpy as np
 import operator as op
 import os
 import pandas as pd
+import time
 
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
@@ -573,11 +574,12 @@ class Cavity(ABC):
             "the current geometry pipeline). Workaround: build one cavity per "
             "sweep value and call cav.eigenmode.run() on each.")
 
-    def study_mesh_convergence(self, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
+    def study_mesh_convergence_fm(self, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
         """
 
         Parameters
         ----------
+        h_passes
         h
         passes
         solver
@@ -602,15 +604,22 @@ class Cavity(ABC):
                                         'p': p
                                     }
                                     }
+                if 'polarisation' not in eigenmode_config.keys():
+                    eigenmode_config["polarisation"] = ['monopole']
 
+                t0 = time.perf_counter()
                 run_eigenmode_s({self.name: self}, eigenmode_config, '')
+                elapsed = time.perf_counter() - t0
                 # read results
-                self.get_eigenmode_qois()
+                self.get_eigenmode_qois(eigenmode_config)
 
-                convergence_dict_h[ih] = self.eigenmode_qois
+                qois_copy = dict(self.eigenmode_qois)
+                qois_copy['time [s]'] = elapsed
+                convergence_dict_h[ih] = qois_copy
                 convergence_dict_h[ih]['h'] = hs
                 convergence_dict_h[ih]['p'] = p
                 convergence_dict_h[ih]['No of Mesh Elements'] = self.eigenmode_qois['No of Mesh Elements']
+                convergence_dict_h[ih]['No of DOFs'] = self.eigenmode_qois.get('No of DOFs', 0)
 
                 hs /= h_step
             convergence_df_data_h = pd.DataFrame.from_dict(convergence_dict_h, orient='index')
@@ -631,14 +640,98 @@ class Cavity(ABC):
         self.convergence_df_data = convergence_df_data_ph
         self.convergence_df = convergence_df_ph
 
+    def study_mesh_convergence(self, eigenmode_config=None, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
+        """
+        Runs a mesh convergence sweep (h- and p-refinement) tracking
+        all extracted eigenmodes instead of a single scalar mode.
+        """
+
+        # We will collect flat row dictionaries across the entire sweep
+        all_rows = []
+
+        hs = h
+        for ip in range(p_passes):
+            for ih in range(h_passes):
+                if eigenmode_config is None:
+                    eigenmode_config = {
+                        'boundary_conditions': 'mm',
+                        'mesh_config': {
+                            'h': hs,
+                            'p': p
+                        }
+                    }
+
+                eigenmode_config['mesh_config']['h'] = hs
+                eigenmode_config['mesh_config']['p'] = p
+
+                if 'polarisation' not in eigenmode_config.keys():
+                    eigenmode_config["polarisation"] = ['monopole']
+
+                t0 = time.perf_counter()
+                # Run the multimode solver
+                run_eigenmode_s({self.name: self}, eigenmode_config, '')
+                self.get_eigenmode_qois(eigenmode_config)
+                # print(self.eigenmode_qois_all_modes)
+                elapsed = time.perf_counter() - t0
+
+                # Fetch the dictionary containing all modes
+                # Expected structure: {'0': {...}, '1': {...}, ...}
+                all_modes_data = getattr(self, 'eigenmode_qois_all_modes', {})
+
+                # Fallback if all_modes isn't populated but the single mode is
+                if not all_modes_data and hasattr(self, 'eigenmode_qois'):
+                    all_modes_data = {'0': self.eigenmode_qois}
+
+                # Loop through every tracked mode in this simulation step
+                for mode_str, qois in all_modes_data.items():
+                    row = dict(qois)  # Copy all quantities (freq, Q, R/Q, etc.)
+
+                    # Append iteration tracking metadata
+                    row['mode_index'] = mode_str
+                    row['h'] = hs
+                    row['p'] = p
+                    row['h_pass'] = ih
+                    row['p_pass'] = ip
+                    row['time [s]'] = elapsed
+
+                    # Safe checking for element/DOF tracking
+                    row['No of Mesh Elements'] = qois.get('No of Mesh Elements',
+                                                          self.eigenmode_qois.get('No of Mesh Elements', 0))
+                    row['No of DOFs'] = qois.get('No of DOFs', self.eigenmode_qois.get('No of DOFs', 0))
+
+                    all_rows.append(row)
+
+                hs /= h_step
+            hs = h
+            p += p_step
+
+        # Build the comprehensive raw data dataframe
+        convergence_df_data_ph = pd.DataFrame(all_rows)
+
+        # Compute relative errors
+        # Note: Ensure your self.calculate_rel_errors handles multi-mode data frames,
+        # or apply it grouped by mode index:
+        try:
+            convergence_df_ph = self.calculate_rel_errors(convergence_df_data_ph)
+        except Exception:
+            # Fallback if calculate_rel_errors expects single-mode schemas
+            convergence_df_ph = convergence_df_data_ph.copy()
+
+            # Assign data structures back to the object instance
+        self.convergence_df_data = convergence_df_data_ph
+        self.convergence_df = convergence_df_ph
+
     def calculate_rel_errors(self, df):
         # Specify the columns to exclude
-        columns_to_exclude = ['h', 'p', 'No of Mesh Elements']
-        df_to_compute = df.drop(columns=columns_to_exclude)
+        columns_to_exclude = ['h', 'p', 'No of Mesh Elements', 'No of DOFs', 'time [s]']
+        
+        # Filter columns to exclude to only those present in df
+        actual_exclude = [col for col in columns_to_exclude if col in df.columns]
+        df_to_compute = df.drop(columns=actual_exclude)
         df_prev = df_to_compute.shift(1)
         relative_errors = (df_to_compute - df_prev).abs() / df_prev.abs()
         relative_errors.columns = [f'rel_error_{col}' for col in df_to_compute.columns]
-        excluded_columns = df[columns_to_exclude]
+        excluded_columns = df[actual_exclude]
         rel_errors_df = pd.concat([relative_errors, excluded_columns], axis=1)
 
         return rel_errors_df
@@ -672,13 +765,17 @@ class Cavity(ABC):
         config.setdefault('processes', 1)
         config.setdefault('rerun', True)
 
+        if 'polarisation' not in config.keys():
+            config["polarisation"] = ['monopole']
+
         self.eigenmode.run(config)
 
         try:
-            self.get_eigenmode_qois()
+            self.get_eigenmode_qois(config)
             if config.get('uq_config'):
-                self.get_uq_fm_results(
-                    os.path.join(self.self_dir, 'eigenmode', 'uq.json'))
+                # UQ results are written to <cav>/uq/ (uq.json, uq_all_modes.json);
+                # get_uq_fm_results takes that folder, not a file path.
+                self.get_uq_fm_results(os.path.join(self.self_dir, 'uq'))
             return True
         except FileNotFoundError as e:
             error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
@@ -860,7 +957,7 @@ class Cavity(ABC):
         else:
             error("Tune results not found. Please tune the cavity")
 
-    def get_eigenmode_qois(self):
+    def get_eigenmode_qois(self, config=None):
         """
         Get quantities of interest written by the SLANS code
         Returns
@@ -868,44 +965,78 @@ class Cavity(ABC):
 
         """
         qois = 'qois.json'
-        mono_dir = self._eigenmode_pol_dir('monopole')
-        qois_path = os.path.join(mono_dir, qois)
-        if not os.path.exists(qois_path):
-            # No monopole result. If higher-order (m-pole) results exist, this
-            # was an m-pole-only run — the monopole-derived summary attributes
-            # (freq, R/Q, …) simply aren't available; use cav.eigenmode.mpole_qois()
-            # for those. Only error when there is no eigenmode result at all.
-            available = self._available_polarisations()
-            if available:
-                info(f"No monopole eigenmode result for {self.name}; solved "
-                     f"polarisations: {available}. Read them with "
-                     f"cav.eigenmode.mpole_qois('<pol>').")
-                return
-            raise FileNotFoundError(
-                f"No eigenmode result for {self.name} at {qois_path}. "
-                f"Run run_eigenmode() first.")
-        with open(qois_path) as json_file:
-            self.eigenmode_qois = json.load(json_file)
 
-        all_modes_path = os.path.join(mono_dir, 'qois_all_modes.json')
-        if os.path.exists(all_modes_path):
-            with open(all_modes_path) as json_file:
-                self.eigenmode_qois_all_modes = json.load(json_file)
+        # Which polarisations to read: those named in the config (normalised to
+        # names — a bare 'dipole'/1 or a list are all accepted), or, when no
+        # config is given (e.g. the Cavities-level caller), whatever was solved.
+        from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
+        raw = (config or {}).get('polarisation') if isinstance(config, dict) else None
+        if raw is not None:
+            if not isinstance(raw, (list, tuple, set)):
+                raw = [raw]
+            poles = [pol_name(pol_number(p)) for p in raw]
+        else:
+            poles = self._available_polarisations() or ['monopole']
+
+        # Initialize the all-modes dictionary so we can append to it across polarisations
+        self.eigenmode_qois_all_modes = {}
+
+        for pole in poles:
+            mono_dir = self._eigenmode_pol_dir(pole)
+            qois_path = os.path.join(mono_dir, qois)
+
+            if not os.path.exists(qois_path):
+                # No monopole result. If higher-order (m-pole) results exist, this
+                # was an m-pole-only run — the monopole-derived summary attributes
+                # (freq, R/Q, …) simply aren't available; use cav.eigenmode.mpole_qois()
+                # for those. Only error when there is no eigenmode result at all.
+                available = self._available_polarisations()
+                if available:
+                    info(f"No monopole eigenmode result for {self.name}; solved "
+                         f"polarisations: {available}. Read them with "
+                         f"cav.eigenmode.mpole_qois('<pol>').")
+                    return
+                raise FileNotFoundError(
+                    f"No eigenmode result for {self.name} at {qois_path}. "
+                    f"Run run_eigenmode() first.")
+
+            # Keep tracking the baseline summary QOIs if monopole is processed
+            if pole == 'monopole':
+                with open(qois_path) as json_file:
+                    self.eigenmode_qois = json.load(json_file)
+
+            # Process the all-modes JSON and dynamically append/remap keys
+            all_modes_path = os.path.join(mono_dir, 'qois_all_modes.json')
+            if os.path.exists(all_modes_path):
+                with open(all_modes_path) as json_file:
+                    data = json.load(json_file)
+
+                    # Loop through each mode profile and modify the keys
+                    for mode_idx, mode_data in data.items():
+                        m_value = mode_data.get('m', 'unknown')
+                        new_key = f"{mode_idx}-{m_value}"
+
+                        # Store inside our master dictionary
+                        self.eigenmode_qois_all_modes[new_key] = mode_data
 
         # with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
         #     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
 
-        self.freq = self.eigenmode_qois['freq [MHz]']
-        self.k_cc = self.eigenmode_qois['kcc [%]']
-        self.ff = self.eigenmode_qois['ff [%]']
-        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-        self.G = self.GR_Q / self.R_Q
-        self.Q = self.eigenmode_qois['Q []']
-        self.e = self.eigenmode_qois['Epk/Eacc []']
-        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
-        self.Epk_Eacc = self.e
-        self.Bpk_Eacc = self.b
+        # Monopole-derived summary attributes. Only set them when a monopole
+        # result was actually read — an m-pole-only run leaves eigenmode_qois
+        # empty, and those scalars aren't defined without the monopole.
+        if self.eigenmode_qois:
+            self.freq = self.eigenmode_qois['freq [MHz]']
+            self.k_cc = self.eigenmode_qois['kcc [%]']
+            self.ff = self.eigenmode_qois['ff [%]']
+            self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
+            self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
+            self.G = self.GR_Q / self.R_Q
+            self.Q = self.eigenmode_qois['Q []']
+            self.e = self.eigenmode_qois['Epk/Eacc []']
+            self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
+            self.Epk_Eacc = self.e
+            self.Bpk_Eacc = self.b
 
     def plot_dispersion(self, ax=None, show_continuous=True, pol='monopole', **kwargs):
         """Plot the n-cell passband (frequency vs cell phase advance).
@@ -919,12 +1050,12 @@ class Cavity(ABC):
             fig, ax = plt.subplots()
 
         if pol_number(pol) == 0:
-            all_modes = self.eigenmode_qois_all_modes
-            # monopole: index 0 is the spurious/DC mode; passband is 1..n_cells
-            lo, hi = 1, self.n_cells + 1
+            all_modes = self.eigenmode.mpole_qois('monopole')  # {idx: qois}
         else:
-            all_modes = self.eigenmode.mpole_qois(pol)  # {idx: qois}, no DC mode
-            lo, hi = 0, self.n_cells
+            all_modes = self.eigenmode.mpole_qois(pol)          # {idx: qois}
+        # The solver filters the spurious gradient/DC mode for every
+        # polarisation, so the n-cell passband is simply indices 0..n_cells-1.
+        lo, hi = 0, self.n_cells
 
         df = pd.DataFrame.from_dict(all_modes, orient='index')
         if df.empty or 'freq [MHz]' not in df:

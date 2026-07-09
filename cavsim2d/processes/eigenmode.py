@@ -124,6 +124,18 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
                         legacy_path = eigenmode_path / legacy
                         if legacy_path.exists():
                             legacy_path.unlink()
+                    # UQ results are computed from the monopole solve, so drop
+                    # stale UQ artefacts on a monopole rerun — otherwise the old
+                    # uq.json (and perturbed-cavity sims) outlive the eigenmode
+                    # results they were derived from and could be served as
+                    # current (P2-6). A fresh uq_config regenerates them.
+                    for uq_file in ('uq.json', 'uq_all_modes.json'):
+                        uq_path = eigenmode_path / uq_file
+                        if uq_path.exists():
+                            uq_path.unlink()
+                    uq_dir = cav_path / 'uq'
+                    if uq_dir.exists():
+                        shutil.rmtree(uq_dir)
                 _run_ngsolve(cav, eigenmode_config)
             else:
                 missing = [m for m in pols

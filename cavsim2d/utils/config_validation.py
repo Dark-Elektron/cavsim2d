@@ -13,9 +13,9 @@ import warnings
 # keys the run functions inject internally, so validation flags typos without
 # false positives.
 EIGENMODE_KEYS = {
-    'processes', 'rerun', 'boundary_conditions', 'polarisation', 'n_modes',
+    'processes', 'rerun', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
     'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
-    'conductivity', 'surface_resistance', 'normalization_length',
+    'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
     'opt', 'target', 'solver_save_directory',
 }
 UQ_KEYS = {
@@ -106,6 +106,12 @@ def validate_eigenmode_config(cfg):
     validate_config(cfg, EIGENMODE_KEYS, 'eigenmode_config')
     if isinstance(cfg, dict):
         _check_processes(cfg, 'eigenmode_config')
+        for key in ('n_modes', 'nmodes'):
+            if key in cfg:
+                require(isinstance(cfg[key], int) and not isinstance(cfg[key], bool),
+                        f"eigenmode_config: '{key}' must be an integer.")
+                require(cfg[key] > 0,
+                        f"eigenmode_config: '{key}' must be greater than zero.")
         if isinstance(cfg.get('uq_config'), dict):
             validate_uq_config(cfg['uq_config'])
 

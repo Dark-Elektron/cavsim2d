@@ -195,5 +195,9 @@ cavsim2d.egg-info/
 .vscode/
 .venv/
 .venv_test/
+
 # Local release checklist — kept out of git
 SHIPPING_ACTION_PLAN.md
+benchmark/cavities/
+benchmark/cylindrical_waveguide/
+benchmark_test_proj/

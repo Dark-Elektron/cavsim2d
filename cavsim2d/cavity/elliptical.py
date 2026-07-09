@@ -1226,6 +1226,83 @@ class EllipticalCavity(Cavity):
 
         return values
 
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` (metres) — the native
+        netgen.occ geometry path, with *exact* ellipse arcs.
+
+        Ported incrementally: currently handles the symmetric single-cell case
+        (mid == end-left == end-right, beampipe both/none). Returns ``None``
+        for anything else — multicell, asymmetric end cells or one-sided
+        beampipes — so the solver transparently falls back to the gmsh ``.geo``
+        importer. Degenerate parameter sets also return ``None`` so the existing
+        writer reports them.
+
+        Reads ``self.parameters`` rather than ``self.mid_cell``: that dict is the
+        live source of truth ``write_geometry`` uses, and the tuner mutates it in
+        place while searching.
+        """
+        from cavsim2d.geometry import Profile
+        from cavsim2d.utils.geometry import tangent_coords
+
+        if self.n_cells != 1:
+            return None
+
+        names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')
+        try:
+            cells = {suf: np.array([float(self.parameters[f'{n}_{suf}']) for n in names])
+                     for suf in ('m', 'el', 'er')}
+        except (KeyError, TypeError, ValueError):
+            return None
+        mid = cells['m']
+        if not (np.allclose(mid, cells['el']) and np.allclose(mid, cells['er'])):
+            return None
+
+        bp = self.beampipe.lower()
+        if bp not in ('both', 'none'):
+            return None                       # asymmetric beampipe: gmsh path
+
+        A, B, a, b, Ri, L, Req = (v * 1e-3 for v in mid)
+        L_bp = 4 * L if bp == 'both' else 0.0
+        L_bp_l = L_bp_r = L_bp
+        shift = (L_bp_l + L_bp_r + 2 * L) / 2.0
+
+        try:
+            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp_l)
+        except Exception:
+            return None                       # let write_geometry report it
+        if df[-2] != 1:
+            return None                       # degenerate geometry
+        x1, y1, x2, y2 = df[0]
+
+        z_iris = L_bp_l - shift               # iris ellipse centre z
+        z_eq = L_bp_l + L - shift             # equator plane (0 for symmetric)
+
+        def mirror(z):
+            return 2.0 * z_eq - z
+
+        p = Profile('elliptical')
+        p.start(-shift, 0.0)
+        p.line_to(-shift, Ri, 'PMC')                      # left aperture
+        if L_bp_l > 0:
+            p.line_to(z_iris, Ri, 'PEC')                  # left beampipe
+        # left half-cell: iris arc -> tangent line -> equator arc
+        p.ellipse_arc_to(-shift + x1, y1, center=(z_iris, Ri + b),
+                         semi_z=a, semi_r=b, boundary='PEC')
+        p.line_to(-shift + x2, y2, 'PEC')
+        p.ellipse_arc_to(z_eq, Req, center=(z_eq, Req - B),
+                         semi_z=A, semi_r=B, boundary='PEC')
+        # right half-cell: mirror of the left about the equator plane
+        p.ellipse_arc_to(mirror(-shift + x2), y2, center=(z_eq, Req - B),
+                         semi_z=A, semi_r=B, boundary='PEC')
+        p.line_to(mirror(-shift + x1), y1, 'PEC')
+        p.ellipse_arc_to(mirror(z_iris), Ri, center=(mirror(z_iris), Ri + b),
+                         semi_z=a, semi_r=b, boundary='PEC')
+        if L_bp_r > 0:
+            p.line_to(mirror(-shift), Ri, 'PEC')          # right beampipe
+        p.line_to(mirror(-shift), 0.0, 'PMC')             # right aperture
+        p.close('AXI')
+        return p
+
     def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
         """Return a fresh EllipticalCavity living in ``tuned_self_dir``.
 
