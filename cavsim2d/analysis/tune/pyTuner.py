@@ -27,6 +27,15 @@ def print_(*arg):
         print(colored(f'\t\t\t{arg}', file_color))
 
 
+# Exceptions that mean "the code or the cavity type is wrong", not "this candidate
+# geometry did not tune". They must propagate rather than be reported as a
+# degenerate geometry (tune_function) or swallowed into a silent no-op
+# (processes.tune), both of which left cav.tuned = None while run_tune() returned
+# normally.
+TUNE_DEFECTS = (NotImplementedError, TypeError, AttributeError, KeyError,
+                ImportError, UnicodeError, IndexError)
+
+
 VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
 TUNE_VAR_STEP_DIRECTION_DICT = {'A': -1, 'B': 1, 'a': -1, 'b': 1, 'Ri': 1, 'L': 1, 'Req': -1, 'l': 1}
 MAX_TUNE_ITERATION = 10
@@ -83,7 +92,11 @@ class PyTuneNGSolve:
         tol = tune_config.get('tol', 1e-4)
         maxiter = tune_config.get('maxiter', 10)
 
-        if cav.kind == 'elliptical cavity':
+        # Whether this cavity's parameters carry per-cell suffixes (`Req_m`, `Req_el`,
+        # `Req_er`). Ask the model, don't compare `kind` strings: `kind` is
+        # 'elliptical cavity flat top' for the flattop, which used to fall through
+        # this branch and then look up a bare 'Req' that does not exist.
+        if cav.uses_cell_suffixes:
             # If tune_var is a bare name (no suffix), map it based on cell_types
             if '_m' not in self.tune_var and '_el' not in self.tune_var and '_er' not in self.tune_var:
                 ct = tune_config.get('cell_types', 'mid-cell').lower().replace('-', ' ').replace('_', ' ')
@@ -110,7 +123,7 @@ class PyTuneNGSolve:
         self.abs_err_list = []
         self.convergence_list = []
 
-        x0 = cav.parameters[self.tune_var]
+        x0 = cav.get_tune_value(self.tune_var)
         self.x0_initial = x0  # Store for sanity check in tuner
         # Secant method needs two starting points
         x1 = x0 * 1.05  # 5% perturbation
@@ -198,7 +211,7 @@ class PyTuneNGSolve:
 
     def tune_function(self, x):
         x_val = float(x if isinstance(x, (float, int, np.floating)) else x[0])
-        self.cav.parameters[self.tune_var] = x_val
+        self.cav.set_tune_value(self.tune_var, x_val)
         self.tv_list.append(x_val)
         if not hasattr(self, '_valid_mask'):
             self._valid_mask = []
@@ -216,10 +229,17 @@ class PyTuneNGSolve:
         # Geometry creation and solve both can fail on degenerate parameters.
         # Rather than aborting the entire tune, record a penalty and let the
         # root finder retreat toward the valid region.
+        #
+        # But only *geometry* failures mean "degenerate". A TypeError from a
+        # mismatched create() signature, or an AttributeError from a missing
+        # writer, is a defect: reporting it as degeneracy sent the root finder
+        # wandering and then blamed the user's parameters. Let those out.
         degenerate = False
         try:
             self.cav.create(1, bp, mode=tune_mode)
-        except Exception as e:
+        except TUNE_DEFECTS:
+            raise
+        except Exception:
             degenerate = True
 
         if not degenerate:
@@ -294,7 +314,7 @@ class PyTuneNGSolve:
         if self._degen_count >= 3:
             raise ValueError(
                 f'Geometry degenerated {self._degen_count} consecutive times at '
-                f'{self.tune_var}≈{x_val:.4g}. Target frequency may be unreachable.'
+                f'{self.tune_var}~={x_val:.4g}. Target frequency may be unreachable.'
             )
         return penalty
 
@@ -499,11 +519,16 @@ def run_tune_uq(cav, tune_config):
     eigenmode_dir = os.path.join(cav.self_dir, 'eigenmode')
     os.makedirs(eigenmode_dir, exist_ok=True)
 
+    # Read through the model's accessor: a variable need not be a plain scalar
+    # slot in `parameters` (a spline's 'p3_r' lives inside a control point).
+    base_values = {rvar: cav.get_tune_value(rvar) for rvar in resolved_vars}
+
     with suppress_errors('Parameter set leads to degenerate geometry'):
         for j in range(n_sims):
             # Perturb in-place; cav is restored after the loop.
             for i, rvar in enumerate(resolved_vars):
-                cav.parameters[rvar] = base_params[rvar] * (1 + delta[i] * nodes_[i, j])
+                cav.set_tune_value(
+                    rvar, base_values[rvar] * (1 + delta[i] * nodes_[i, j]))
 
             ok = False
             orig_n_cells = cav.n_cells

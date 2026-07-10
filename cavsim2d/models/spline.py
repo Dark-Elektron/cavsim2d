@@ -71,6 +71,41 @@ class SplineCavity(Cavity):
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']
 
+    #: A control point is ``[z, r]``; each contributes two scalar tune handles.
+    COORD_SUFFIXES = ('_z', '_r')
+
+    def tune_variables(self):
+        """Control-point coordinates, e.g. ``'p2_r'``.
+
+        The wall is parameterised by points rather than by scalars, so the base
+        implementation (which only accepts scalar parameters) would report none.
+        Each point ``p2 = [z, r]`` supplies two handles instead.
+        """
+        return {f'{key}{suffix}'
+                for key, value in (self.parameters or {}).items()
+                if isinstance(key, str) and np.ndim(value) == 1 and len(value) == 2
+                for suffix in self.COORD_SUFFIXES}
+
+    def _split_coordinate(self, name):
+        """``'p2_r'`` -> ``('p2', 1)``."""
+        for index, suffix in enumerate(self.COORD_SUFFIXES):
+            key = name[:-len(suffix)]
+            if name.endswith(suffix) and key in self.parameters:
+                return key, index
+        raise ValueError(
+            f"Unknown tune variable {name!r} for {type(self).__name__}. "
+            f"It accepts: {', '.join(sorted(self.tune_variables()))}.")
+
+    def get_tune_value(self, name):
+        key, index = self._split_coordinate(name)
+        return self.parameters[key][index]
+
+    def set_tune_value(self, name, value):
+        key, index = self._split_coordinate(name)
+        point = list(self.parameters[key])
+        point[index] = value
+        self.parameters[key] = point
+
     def spline_kind(self):
         """Normalised curve type: ``'bspline'`` or ``'bezier'`` (None if unknown)."""
         return self._KIND_ALIASES.get(str(self.kind).lower())
@@ -389,5 +424,10 @@ class SplineCavity(Cavity):
             cav.write(f"\nPlane Surface(1) = {{{1}}};")
             cav.write(f"\nReverse Surface {1};")
             cav.write(f'\nPhysical Surface("Domain") = {1};')
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh SplineCavity from its control-point dict."""
+        return SplineCavity({'geometry': dict(parameters), 'n_cells': self.n_cells},
+                            name=self.name, kind=self.kind)
+
 
 

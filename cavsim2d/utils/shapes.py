@@ -97,12 +97,12 @@ def apply_perturbation(base,
         cav    = copy.deepcopy(base)
         # one slot for the very left half-cell
 
-        # choose apply function
+        # choose apply function. Go through the model's accessors, not
+        # cav.parameters[...], so a variable that is not a plain scalar slot
+        # (a spline's 'p3_r' lives inside the control point [z, r]) perturbs too.
         for pvar, d in zip(perturbed_vars, delta):
-            if mode == 'add':
-                cav.parameters[pvar] += d
-            else:
-                cav.parameters[pvar] *= (1 + d)
+            x = cav.get_tune_value(pvar)
+            cav.set_tune_value(pvar, x + d if mode == 'add' else x * (1 + d))
 
         # rename
         new_name = f'{cav.name}_Q{ii}'
@@ -272,14 +272,16 @@ def perturb_geometry(cav, eigenmode_config):
         config_deltas = [config_deltas] * len(uq_parameters)
         
     if uq_config.get('cell', 'all') == 'all':
+        # Ask the model which parameter slots each variable names. The old code
+        # substring-matched the variable against parameter keys, which found
+        # nothing for a spline's 'p3_r' (k = 0 -> ZeroDivisionError in the
+        # quadrature) and matched the pillbox's 'L_bp' when asked for 'L'.
         perturbed_vars = []
         full_delta = []
-        for par in cav.parameters:
-            for i, k_var in enumerate(uq_parameters):
-                if k_var in par:
-                    perturbed_vars.append(par)
-                    full_delta.append(config_deltas[i])
-                    break
+        for i, k_var in enumerate(uq_parameters):
+            for par in cav.expand_variable(k_var):
+                perturbed_vars.append(par)
+                full_delta.append(config_deltas[i])
     else:
         perturbed_vars = uq_parameters
         full_delta = config_deltas

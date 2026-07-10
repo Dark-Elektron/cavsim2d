@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 from cavsim2d.analysis.tune.tuner import Tuner
+from cavsim2d.analysis.tune.pyTuner import TUNE_DEFECTS
 from cavsim2d.constants import *
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s  # noqa: F401 — used by multicell path
 from cavsim2d.utils.shared_functions import *
@@ -37,7 +38,6 @@ _SUFFIX_FOR_CT = {
 # half] that requires Req_m == Req_el for a continuous equator.
 _ALWAYS_PROPAGATE_BARE = {'Req'}
 
-_VALID_BARE_VARS = {'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'l'}
 _VALID_SUFFIXES = ('_m', '_el', '_er')
 
 
@@ -99,15 +99,60 @@ def normalize_cell_type_config(tune_config):
         "'parameters' and 'cell_types' (legacy API).")
 
 
-def _resolve_suffixed_var(var, ct):
-    """Map a bare tune variable and cell-type to its suffixed parameter name."""
-    if var.endswith(_VALID_SUFFIXES):
+def _check_known(var, bare, cav):
+    """Validate *bare* against the model's own parameters."""
+    if cav is None:
+        return                      # no model context: nothing to check against
+    known = cav.tune_variables()
+    if bare in known:
+        return
+    name = type(cav).__name__
+    if not known:
+        raise ValueError(
+            f"{name} exposes no tunable parameters, so it cannot be tuned by name. "
+            f"Geometries read from a mesh or CAD file are not parameterised — tune a "
+            f"parameterised model, or give {name} a `parameters` dict.")
+    raise ValueError(
+        f"Unknown tune variable {var!r} for {name}. It accepts: "
+        f"{', '.join(sorted(known))}.")
+
+
+def _resolve_suffixed_var(var, ct, cav=None):
+    """Map a tune variable and cell type to the model's parameter name.
+
+    The variable is validated against the model's own parameters
+    (:meth:`Cavity.tune_variables`) rather than a fixed elliptical name list, so
+    any geometry that exposes scalar parameters — the gun's ``R6``, the spline's
+    ``p2_r``, or a model not yet written — can name them.
+
+    Only models whose parameters carry per-cell suffixes get one appended; for
+    everything else the name is used as given. (The old code split on ``'_'`` to
+    find the bare name, which silently turned the pillbox's ``L_bp`` into ``L``.)
+    """
+    if cav is not None and not cav.uses_cell_suffixes:
+        _check_known(var, var, cav)
         return var
-    bare = var.split('_')[0] if '_' in var else var
-    if bare not in _VALID_BARE_VARS:
-        raise ValueError(f"Unknown tune variable {var!r}.")
+
+    if var.endswith(_VALID_SUFFIXES):
+        bare = next(var[:-len(s)] for s in _VALID_SUFFIXES if var.endswith(s))
+        _check_known(var, bare, cav)
+        return var
+
+    _check_known(var, var, cav)
     suffix = _SUFFIX_FOR_CT.get(_normalize_ct_name(ct), '_m')
-    return f'{bare}{suffix}'
+    return f'{var}{suffix}'
+
+
+def validate_cell_type_config(cell_type_config, cavs):
+    """Reject unknown tune variables before any process is spawned.
+
+    Without this the failure surfaces deep inside a worker, per cavity, after
+    the geometry has already been written.
+    """
+    for cav in cavs:
+        for ct, tune_vars in cell_type_config.items():
+            for var in tune_vars:
+                _resolve_suffixed_var(var, ct, cav)
 
 
 def last_stage_result(tune_res):
@@ -142,12 +187,12 @@ def last_stage_result(tune_res):
     }
 
 
-def _collect_scheduled_suffixed_vars(cell_type_config):
+def _collect_scheduled_suffixed_vars(cell_type_config, cav=None):
     """Return set of suffixed parameter names explicitly tuned by any stage."""
     scheduled = set()
     for ct, vars_ in cell_type_config.items():
         for v in vars_:
-            scheduled.add(_resolve_suffixed_var(v, ct))
+            scheduled.add(_resolve_suffixed_var(v, ct, cav))
     return scheduled
 
 
@@ -181,6 +226,7 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
 
     # Canonicalise cell_type config (handles legacy parameters+cell_types).
     cell_type_config = normalize_cell_type_config(tune_config)
+    validate_cell_type_config(cell_type_config, cavs_dict.values())
     tune_config = dict(tune_config)  # shallow copy so we don't mutate caller
     tune_config['cell_type'] = cell_type_config
 
@@ -249,8 +295,6 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         if isinstance(tune_config['rerun'], bool):
             rerun = tune_config['rerun']
 
-    scheduled_vars = _collect_scheduled_suffixed_vars(cell_type_config)
-
     def _propagate_after_stage(cav, tuned_suffixed_var, pre_tune_params):
         """Propagate a tuned parameter to sibling `_m/_el/_er` slots.
 
@@ -270,6 +314,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         """
         if not tuned_suffixed_var:
             return
+        scheduled_vars = _collect_scheduled_suffixed_vars(cell_type_config, cav)
         bare = None
         src_suf = None
         for suf in _VALID_SUFFIXES:
@@ -357,7 +402,17 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                         tune_variable=tune_var,
                         tune_config=stage_tune_config,
                     )
+                except TUNE_DEFECTS:
+                    # A bug or an unsupported cavity type, not a bad candidate
+                    # geometry. Restore the pre-tune parameters, then let it out:
+                    # swallowing these turned "this type cannot tune" into a silent
+                    # no-op that left cav.tuned = None while run_tune returned
+                    # normally.
+                    _restore_and_bail()
+                    raise
                 except Exception as e:
+                    # Genuine tuning failure (degenerate geometry, no convergence).
+                    # Optimisation relies on these being tolerated per candidate.
                     error(f'Tuning failed for {key} at cell_type={ct_name} var={tune_var}: {e!r}')
                     _restore_and_bail()
                     return
@@ -377,7 +432,8 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                     _restore_and_bail()
                     return
 
-                resolved_var = d_tune_res.get('TUNED VARIABLE') or _resolve_suffixed_var(tune_var, ct_name)
+                resolved_var = (d_tune_res.get('TUNED VARIABLE')
+                                or _resolve_suffixed_var(tune_var, ct_name, cav))
                 _propagate_after_stage(cav, resolved_var, pre_tune_params)
 
                 # Per-stage snapshot records only the cell that was tuned

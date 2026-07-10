@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from cavsim2d.geometry import Profile
-from cavsim2d.processes.tune import last_stage_result
 
 class Pillbox(Cavity):
     def __init__(self, n_cells, dims, beampipe='none'):
@@ -281,54 +280,7 @@ class Pillbox(Cavity):
             'L_bp': self.L_bp
         }
 
-    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
-        """Return a fresh Pillbox in ``tuned_self_dir`` carrying the tuned
-        (unsuffixed) parameter dict, with its own geometry written out."""
-        if beampipe is None:
-            beampipe = self.beampipe
-        dims = [tuned_parameters['L'], tuned_parameters['Req'],
-                tuned_parameters['Ri'], tuned_parameters['S'],
-                tuned_parameters['L_bp']]
-        clone = Pillbox(self.n_cells, dims, beampipe=beampipe)
-        clone.name = self.name
-        clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_self_dir)
 
-        geo_dir = os.path.join(clone.self_dir, 'geometry')
-        os.makedirs(geo_dir, exist_ok=True)
-        clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
-        clone.write_geometry(clone.parameters, clone.n_cells, clone.beampipe,
-                             write=clone.geo_filepath)
-        clone.uq_dir = os.path.join(clone.self_dir, 'uq')
-        clone._write_geometry_snapshot()
-        return clone
-
-    def _load_tuned_from_disk(self, tuned_dir):
-        """Rebuild the tuned Pillbox from a persisted ``tuned/`` folder,
-        reading the tuned (unsuffixed) parameters from tune_res.json."""
-
-        params = dict(self.parameters)
-        tune_res_path = os.path.join(str(tuned_dir), 'tune_info', 'tune_res.json')
-        tune_res = {}
-        if os.path.exists(tune_res_path):
-            with open(tune_res_path) as f:
-                tune_res = json.load(f)
-            last = last_stage_result(tune_res)
-            if last and last.get('parameters'):
-                for k, v in last['parameters'].items():
-                    try:
-                        params[k] = float(v)
-                    except (TypeError, ValueError):
-                        pass
-
-        dims = [params['L'], params['Req'], params['Ri'], params['S'], params['L_bp']]
-        clone = Pillbox(self.n_cells, dims, beampipe=self.beampipe)
-        clone.name = self.name
-        clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_dir)
-        clone.geo_filepath = os.path.join(clone.self_dir, 'geometry', 'geodata.geo')
-        clone.tune_results = tune_res
-        return clone
 
     def plot(self, what, ax=None, **kwargs):
         if what.lower() == 'geometry':
@@ -373,3 +325,9 @@ class Pillbox(Cavity):
                 return ax
             except ValueError:
                 info("Convergence data not available.")
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh Pillbox from an unsuffixed parameter dict (L, Req, Ri, S, L_bp)."""
+        dims = [float(parameters[k]) for k in ('L', 'Req', 'Ri', 'S', 'L_bp')]
+        return Pillbox(self.n_cells, dims,
+                       beampipe=self.beampipe if beampipe is None else beampipe)
+

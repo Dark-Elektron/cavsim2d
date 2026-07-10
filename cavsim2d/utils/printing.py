@@ -1,4 +1,5 @@
 
+import sys
 from contextlib import contextmanager
 from termcolor import colored
 
@@ -36,6 +37,22 @@ def verbose(flag=True):
         _verbose = prev
 
 
+def _printable(msg):
+    """Downgrade characters the console cannot encode, instead of crashing.
+
+    The Windows console is cp1252 by default, which cannot encode e.g. U+2248
+    ('almost equal') or U+2192 ('right arrow'). Printing one raised
+    ``UnicodeEncodeError`` from inside an *error message*, so a tuning failure
+    crashed the run instead of reporting itself.
+    """
+    encoding = getattr(sys.stdout, 'encoding', None) or 'utf-8'
+    try:
+        msg.encode(encoding)
+        return msg
+    except (UnicodeEncodeError, LookupError):
+        return msg.encode(encoding, errors='replace').decode(encoding, errors='replace')
+
+
 def error(*arg):
     if not arg:
         return
@@ -43,7 +60,7 @@ def error(*arg):
     for s in _suppress_substrings:
         if s in msg:
             return
-    print(f'\x1b[31mERROR:: {msg}\x1b[0m')
+    print(f'\x1b[31mERROR:: {_printable(msg)}\x1b[0m')
 
 
 @contextmanager
@@ -68,22 +85,22 @@ def suppress_errors(*substrings):
 def warning(*arg):
     if not _verbose:
         return
-    print(f'\x1b[33mWARNING:: {arg[0]}\x1b[0m')
+    print(f'\x1b[33mWARNING:: {_printable(str(arg[0]))}\x1b[0m')
 
 
 def running(*arg):
     if not _verbose:
         return
-    print(f'\x1b[36m{arg[0]}\x1b[0m')
+    print(f'\x1b[36m{_printable(str(arg[0]))}\x1b[0m')
 
 
 def info(*arg):
     if not _verbose:
         return
-    print(f'\x1b[34mINFO:: {arg[0]}\x1b[0m')
+    print(f'\x1b[34mINFO:: {_printable(str(arg[0]))}\x1b[0m')
 
 
 def done(*arg):
     if not _verbose:
         return
-    print(f'\x1b[32mDONE:: {arg[0]}\x1b[0m')
+    print(f'\x1b[32mDONE:: {_printable(str(arg[0]))}\x1b[0m')

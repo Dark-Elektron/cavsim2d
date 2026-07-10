@@ -188,3 +188,36 @@ def test_multicell_uq_runs_end_to_end(project_dir):
     nodes = os.path.join(cav.self_dir, 'uq', 'nodes.csv')
     header = open(nodes).readline().strip().split('\t')
     assert len(header) == 4 * 7
+
+
+def test_uq_works_for_every_cavity_type(project_dir):
+    """Generic spawn() is built on rebuild(), so UQ is no longer elliptical-only.
+
+    It used to die with
+    `TypeError: Pillbox.__init__() got an unexpected keyword argument 'name'`
+    because base.spawn called `type(self)(name=..., geo_filepath=...)`.
+    """
+    import numpy as np
+    from cavsim2d.cavity import Cavities, Pillbox, EllipticalCavityFlatTop, RFGun
+
+    ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
+    gun = {'geometry': {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
+                        'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
+                        'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
+                        'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
+    cases = [('PB', Pillbox(1, [100, 100, 20, 0, 50], beampipe='both'), 'Req'),
+             ('FT', EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='both'), 'A'),
+             ('GUN', RFGun(gun), 'R6')]
+
+    for name, cav, var in cases:
+        cavs = Cavities(os.path.join(project_dir, name))
+        cavs.add_cavity([cav], [name])
+        cavs.run_eigenmode({
+            'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+            'uq_config': {'variables': [var], 'objectives': ['monopole:freq [MHz]'],
+                          'method': ['stroud3'], 'delta': [0.02], 'processes': 1}})
+        with open(os.path.join(cav.self_dir, 'uq', 'uq.json')) as fh:
+            uq = json.load(fh)
+        stats = uq['monopole:freq [MHz]']
+        assert stats['expe'][0] > 0
+        assert stats['stdDev'][0] > 0, f'{name}: perturbing {var} moved nothing'

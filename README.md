@@ -11,7 +11,7 @@ structures. It provides, through one small object-oriented API:
   (dipole, quadrupole, sextupole, …) passbands, with the usual figures of merit
   (frequency, R/Q, G, Q, Epk/Eacc, Bpk/Eacc, field flatness, cell-to-cell
   coupling).
-- **Frequency tuning** of elliptical cavities to a target frequency.
+- **Frequency tuning** to a target frequency.
 - **Wakefield / impedance analysis** via the ABCI solver.
 - **Uncertainty quantification (UQ)** on any of the above.
 - **Multi-objective shape optimisation.**
@@ -28,20 +28,37 @@ classes exist at varying maturity:
 | Cavity type | Eigenmode | Tuning | Wakefield | UQ / Optimisation |
 |---|---|---|---|---|
 | `EllipticalCavity` | ✅ | ✅ | ✅ | ✅ |
-| `Pillbox` | ✅ | ✅ | ✅ | ⚠️ |
-| `RFGun` | ✅¹ | ➖ | ➖ | ➖ |
-| `EllipticalCavityFlatTop` | ⚠️ | ➖ | ⚠️ | ⚠️ |
-| `SplineCavity` | ⚠️ | ➖ | ⚠️ | ⚠️ |
+| `EllipticalCavityFlatTop` | ✅ | ✅ | ✅ | ✅ |
+| `Pillbox` | ✅ | ✅ | ✅ | ✅ |
+| `SplineCavity` | ✅ | ✅² | ✅ | ✅² |
+| `RFGun` | ✅¹ | ✅ | ✅ | ✅ |
 
-✅ supported and exercised · ⚠️ present but not verified in this release · ➖ not
-available (tuning needs a per-type `clone_for_tuning` — implemented for
-`EllipticalCavity` and `Pillbox`; the flattop/spline/RF-gun types don't have one
-yet). ¹ RF-gun eigenmode gives correct frequencies and fields;
-the length-normalised QOIs (`Eacc`, `Epk/Eacc`) default to the on-axis field
-extent as the active length (override with
-`eigenmode_config['normalization_length']`, mm). Both `cavs.run_eigenmode()`
-and the per-cavity `cav.run_eigenmode()` work for every type above. Unless
+✅ supported and exercised · ¹ ² see notes.
+
+Every type builds its mesh from the same `Profile` blueprint, implements a single
+`rebuild()` hook, and declares its own tunable parameters via `tune_variables()`.
+Adding a geometry therefore needs no edit to any central list:
+
+```python
+tesla.tune_variables()     # {'A', 'B', 'a', 'b', 'Ri', 'L', 'Req'}
+gun.tune_variables()       # {'y1', 'R2', 'T2', 'L3', ..., 'R6', ..., 'x'}
+spline.tune_variables()    # {'p0_z', 'p0_r', ..., 'p5_z', 'p5_r'}
+```
+
+Any of those names can be a tune variable (`tune_config['cell_type']`) or a UQ /
+optimisation variable. A geometry imported from a mesh or CAD file has no
+parameters, and says so rather than reporting an unknown variable name. Unless
 noted, examples below use `EllipticalCavity`.
+
+¹ RF-gun eigenmode gives correct frequencies and fields; the length-normalised
+QOIs (`Eacc`, `Epk/Eacc`) default to the on-axis field extent as the active
+length (override with `eigenmode_config['normalization_length']`, mm). Its
+`Epk/Eacc` does not converge under mesh refinement — the cathode corner is a
+field singularity, so treat that number as mesh-dependent.
+
+² A `SplineCavity` is parameterised by control points rather than by scalars, so
+its handles are the point *coordinates*: `'p3_r'` moves the radial coordinate of
+`p3` and leaves `p3_z` alone.
 
 ---
 
@@ -302,6 +319,13 @@ cavs.run_wakefield({
 > In **wakefield** configs the beam mode is `MROT` (`'polarisation'` is accepted
 > as a deprecated alias). This is *not* the same as `polarisation` in an
 > **eigenmode** config, which selects the azimuthal mode order.
+
+ABCI requires a beam pipe at **each** end of the structure, of at least five mesh
+lengths. Any end that does not already have one is given a pipe of **three times
+the device's axial length**; ends that already have one are left alone. Override
+with `wakefield_config['beampipe_length']` (metres). This means geometries built
+with `beampipe='none'` still run — the pipes exist only in the ABCI deck, not in
+the cavity you defined.
 
 Plot the impedance spectra and wake potentials:
 

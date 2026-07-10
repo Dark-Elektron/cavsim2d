@@ -10,6 +10,7 @@ import pandas as pd
 from cavsim2d.utils.config_validation import require
 
 class EllipticalCavityFlatTop(Cavity):
+    uses_cell_suffixes = True
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  color='k', plot_label=None):
@@ -96,7 +97,16 @@ class EllipticalCavityFlatTop(Cavity):
         self.to_multicell()
         self.get_geometric_parameters()
 
-    def create(self, n_cells=None, beampipe=None, tune=None):
+    def create(self, n_cells=None, beampipe=None, mode=None):
+        """Build this cavity's geometry.
+
+        ``mode`` is accepted for signature compatibility with the other models and
+        with the tuner, which passes ``mode='tune'``. The flat top has no
+        quarter-cell writer, so — like the pillbox — it tunes on the full geometry
+        instead. (The parameter used to be named ``tune``, so the tuner's
+        ``mode=`` keyword raised a TypeError that ``tune_function`` then reported
+        as "degenerate geometry".)
+        """
         if n_cells is None:
             n_cells = self.n_cells
         if beampipe is None:
@@ -107,6 +117,7 @@ class EllipticalCavityFlatTop(Cavity):
             self.self_dir = os.path.join(self.projectDir, self.name)
             geo_dir = os.path.join(self.self_dir, 'geometry')
             os.makedirs(geo_dir, exist_ok=True)
+            self.uq_dir = os.path.join(self.self_dir, 'uq')
 
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, n_cells, beampipe,
@@ -704,5 +715,19 @@ class EllipticalCavityFlatTop(Cavity):
             values = self.shape[key]
             for name, value in zip(parameter_names, values):
                 self.parameters[f"{name}_{shape_keys[key]}"] = value
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh flat-top cavity from a suffixed parameter dict (adds the flat length `l`)."""
+        names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'l')
+        cells = [np.array([float(parameters[f'{n}_{suf}']) for n in names])
+                 for suf in ('m', 'el', 'er')]
+        return EllipticalCavityFlatTop(
+            n_cells=self.n_cells,
+            mid_cell=cells[0], end_cell_left=cells[1], end_cell_right=cells[2],
+            beampipe=self.beampipe if beampipe is None else beampipe,
+            name=self.name,
+            color=self.color,
+            plot_label=self.plot_label,
+        )
+
 
 

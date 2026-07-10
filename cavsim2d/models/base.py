@@ -23,6 +23,7 @@ import os
 import pandas as pd
 import time
 from cavsim2d.processes.tune import last_stage_result
+from cavsim2d.geometry.beampipes import abci_shape
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
 from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import TuneSolver, EigenmodeSolver, WakefieldSolver
@@ -234,12 +235,83 @@ class Cavity(ABC):
             return None
         return str(Path(self.self_dir) / 'wakefield')
 
-    def _load_tuned_from_disk(self, tuned_dir):
-        """Restore a tuned cavity from an existing ``tuned/`` folder.
+    #: Whether ``self.parameters`` keys carry per-cell suffixes (``Req_m``,
+    #: ``Req_el``, ``Req_er``). The tuner uses this to decide whether to expand a
+    #: bare tune variable like ``'Req'``. True for the elliptical families; the
+    #: pillbox, gun, waveguide and spline use unsuffixed parameter names.
+    uses_cell_suffixes = False
 
-        Subclasses override this to build an instance of the concrete type.
+    #: Suffixes appended to per-cell parameter names when ``uses_cell_suffixes``.
+    CELL_SUFFIXES = ('_m', '_el', '_er')
+
+    def tune_variables(self):
+        """The names this model accepts as tune variables.
+
+        A model declares its tunable handles simply by exposing them in
+        ``self.parameters`` — there is no central list to update when a new
+        geometry is added. Only *scalar* parameters qualify, because tuning
+        drives a single number with a secant iteration.
+
+        When ``uses_cell_suffixes`` the bare name is reported (``Req_m`` ->
+        ``Req``), since that is what a ``tune_config['cell_type']`` mapping
+        names; the cell type supplies the suffix.
+
+        Returns an empty set for a geometry that has no parameters at all
+        (one imported from a mesh or CAD file), which is what lets the tuner
+        say so instead of blaming the variable name.
         """
-        return None
+        names = set()
+        for key, value in (self.parameters or {}).items():
+            if not isinstance(key, str):
+                continue
+            if isinstance(value, bool) or not np.isscalar(value):
+                continue
+            if self.uses_cell_suffixes:
+                for suffix in self.CELL_SUFFIXES:
+                    if key.endswith(suffix):
+                        names.add(key[:-len(suffix)])
+                        break
+                else:
+                    names.add(key)
+            else:
+                names.add(key)
+        return names
+
+    def expand_variable(self, name):
+        """Every parameter slot the variable *name* refers to.
+
+        A bare name on a multi-cell elliptical cavity means "the same quantity in
+        every cell", so ``'Req'`` expands to ``['Req_m', 'Req_el', 'Req_er']``.
+        Everywhere else a name refers to exactly one slot.
+
+        UQ used to expand by substring-matching the name against parameter keys,
+        which found nothing for a spline's ``'p3_r'`` (silently yielding zero
+        random variables) and quietly pulled the pillbox's ``'L_bp'`` in
+        alongside ``'L'``.
+        """
+        if self.uses_cell_suffixes and not name.endswith(self.CELL_SUFFIXES):
+            expanded = [f'{name}{s}' for s in self.CELL_SUFFIXES
+                        if f'{name}{s}' in self.parameters]
+            if expanded:
+                return expanded
+        if name in self.parameters or name in self.tune_variables():
+            return [name]
+        known = ', '.join(sorted(self.tune_variables()))
+        if not known:
+            raise ValueError(
+                f"{type(self).__name__} is not parameterised, so {name!r} cannot be "
+                f"perturbed or tuned.")
+        raise ValueError(
+            f"Unknown variable {name!r} for {type(self).__name__}. "
+            f"It accepts: {known}.")
+
+    def get_tune_value(self, name):
+        """Read the tune variable *name*. See :meth:`tune_variables`."""
+        return self.parameters[name]
+
+    def set_tune_value(self, name, value):
+        """Write the tune variable *name*. See :meth:`tune_variables`."""
+        self.parameters[name] = value
 
     def half_cells(self):
         """The per-half-cell parameter array — the canonical multicell representation.
@@ -257,25 +329,83 @@ class Cavity(ABC):
             f"{type(self).__name__} has no half-cell representation; "
             "only elliptical cavities decompose into per-cell parameters.")
 
-    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
-        """Create a deep-copy cavity object representing the tuned version.
+    def rebuild(self, parameters, beampipe=None):
+        """Return a fresh, bare cavity of this type built from *parameters*.
 
-        The clone:
-        - lives in ``tuned_self_dir`` (typically ``<self_dir>/tuned/``)
-        - carries the updated ``tuned_parameters`` dict
-        - has its own ``geometry/`` folder written out
-        - has fresh, empty result caches (no stale eigenmode/wakefield data)
+        This is the one hook every concrete model owes the framework. It creates
+        the object only — no directories, no geometry file, no result caches. The
+        generic machinery that needs to reconstruct a cavity from a parameter dict
+        (:meth:`clone_for_tuning` for tuning, :meth:`spawn` for UQ and
+        optimisation) is built on top of it, so a model that implements ``rebuild``
+        gets tuning, UQ and optimisation for free.
 
-        Subclasses must implement this so that the cloned object is of the
-        correct concrete cavity type and its geometry is rewritten from
-        the tuned parameters.
+        ``parameters`` uses the same keys as ``self.parameters``.
         """
         raise NotImplementedError(
-            f"Frequency tuning is currently only supported for EllipticalCavity; "
-            f"{type(self).__name__} tuning is not implemented (the tuner is built "
-            f"around the elliptical cell parameterisation). Adjust the geometry "
-            f"manually and re-run eigenmode instead."
+            f"{type(self).__name__} does not implement rebuild(parameters), so it "
+            f"cannot be reconstructed from a parameter dict. Tuning, UQ and "
+            f"optimisation all need this. Implement "
+            f"{type(self).__name__}.rebuild(parameters, beampipe=None) returning a "
+            f"fresh instance built from those parameters."
         )
+
+    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
+        """A cavity of this type carrying ``tuned_parameters``, living in
+        ``tuned_self_dir`` (typically ``<self_dir>/tuned/``).
+
+        Generic: the only type-specific step is :meth:`rebuild`. The clone gets its
+        own ``geometry/`` folder with a freshly written geometry, and empty result
+        caches so later eigenmode/wakefield runs write into the clone's folders.
+        """
+        clone = self.rebuild(tuned_parameters,
+                             beampipe=self.beampipe if beampipe is None else beampipe)
+        clone.name = self.name
+        clone.projectDir = self.projectDir
+        clone.self_dir = str(tuned_self_dir)
+
+        geo_dir = os.path.join(clone.self_dir, 'geometry')
+        os.makedirs(geo_dir, exist_ok=True)
+        clone.uq_dir = os.path.join(clone.self_dir, 'uq')
+        clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+        clone.write_geometry(clone.parameters, clone.n_cells, clone.beampipe,
+                             write=clone.geo_filepath)
+        clone._write_geometry_snapshot()
+        return clone
+
+    def _load_tuned_from_disk(self, tuned_dir):
+        """Rebuild the tuned cavity from a persisted ``tuned/`` folder.
+
+        Generic: reads the merged tuned parameters from ``tune_info/tune_res.json``
+        and reconstructs via :meth:`rebuild`.
+        """
+        params = dict(self.parameters)
+        tune_res_path = os.path.join(str(tuned_dir), 'tune_info', 'tune_res.json')
+        if os.path.exists(tune_res_path):
+            with open(tune_res_path) as fh:
+                tune_res = json.load(fh)
+            last = last_stage_result(tune_res)
+            if last and last.get('parameters'):
+                for k, v in last['parameters'].items():
+                    # Not every model is parameterised by scalars: a spline's
+                    # control point is [z, r]. float() raises on those, and
+                    # swallowing it silently dropped the tuned value.
+                    if isinstance(v, (list, tuple)):
+                        params[k] = list(v)
+                        continue
+                    try:
+                        params[k] = float(v)
+                    except (TypeError, ValueError):
+                        pass
+
+        clone = self.rebuild(params, beampipe=self.beampipe)
+        clone.name = self.name
+        clone.projectDir = self.projectDir
+        clone.self_dir = str(tuned_dir)
+        clone.uq_dir = os.path.join(clone.self_dir, 'uq')
+        geo_dir = os.path.join(clone.self_dir, 'geometry')
+        if os.path.exists(os.path.join(geo_dir, 'geodata.geo')):
+            clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+        return clone
 
 
     @abstractmethod
@@ -1870,75 +2000,49 @@ class Cavity(ABC):
 
     # Main converter
     def geo_to_abc(self, wakefield_config=None, folder=None, **kwargs):
-        # Read input
-        with open(self.geo_filepath) as f:
-            lines = [l.split('%', 1)[0].strip() for l in f]
+        """Write this cavity's ABCI input deck(s).
 
-        # 1) Build symbol table from DefineNumber
-        symbols = {}
-        define_re = re.compile(r"(\w+)\s*=\s*DefineNumber\[\s*([^,\]]+)")
-        for line in lines:
-            m = define_re.search(line)
-            if m:
-                symbols[m.group(1)] = m.group(2).strip()
-        # Evaluate until fixed
-        changed = True
-        while changed:
-            changed = False
-            for k, v in list(symbols.items()):
-                if isinstance(v, str):
-                    try:
-                        symbols[k] = self.eval_expr(v, symbols)
-                        changed = True
-                    except:
-                        pass
-
-        # 2) Parse geometry segments
-        point_re = re.compile(r"Point\((\d+)\)\s*=\s*\{([^}]+)\}")
-        ellipse_re = re.compile(r"Ellipse\(\d+\)\s*=\s*\{([^}]+)\}")
-
-        points = {}  # pid -> (r,z)
-        segments = []  # list of ('point', r, z) or ('ellipse', end_pid)
-
-        # First pass: collect points structs and z-values
-        zvals = []
-        for line in lines:
-            m = point_re.match(line)
-            if m:
-                pid = int(m.group(1))
-                coords = [p.strip() for p in m.group(2).split(',')]
-                z = self.eval_expr(coords[0], symbols)
-                r = self.eval_expr(coords[1], symbols)
-                points[pid] = (r, z)
-                zvals.append(z)
-
-        zmin = min(zvals) if zvals else 0.0
-
-        # Second pass: build segment list
-        for line in lines:
-            if line.startswith('Point('):
-                m = point_re.match(line)
-                pid = int(m.group(1))
-                r, z = points[pid]
-                segments.append(('point', r, z - zmin))
-            elif line.startswith('Line('):
-                continue
-            elif line.startswith('Ellipse('):
-                m = ellipse_re.match(line)
-                ids = [int(x.strip()) for x in m.group(1).split(',')]
-                # remove last 3 point segments
-                if len(segments) >= 3:
-                    segments = segments[:-3]
-                # add ellipse indicator + endpoint
-                mid_pid = ids[1]
-                end_pid = ids[3]
-                # segments.append(('ellipse', mid_pid))
-                segments.append(('ellipse', mid_pid, end_pid))
-
-        # Create geometry if not crated
+        The contour comes from the unified :class:`~cavsim2d.geometry.Profile`
+        (densified to the mesh spacing, exact for ellipse / circle / spline
+        walls), with beam pipes guaranteed at both ends because ABCI refuses to
+        run without them. Cavities that expose no ``profile()`` — an imported
+        ``.geo``/CAD — fall back to parsing the ``.geo`` text.
+        """
         self.create()
 
-        # 3) Write output
+        cfg = wakefield_config or {}
+        mesh_cfg = cfg.get('mesh_config') or {}
+        ddr = float(mesh_cfg.get('DDR', 0.00125))
+        ddz = float(mesh_cfg.get('DDZ', 0.00125))
+        ds = float(cfg.get('contour_ds', min(ddr, ddz)))
+        # ABCI wants at least 5 mesh lengths of pipe; ask for a little margin.
+        min_pipe = 6.0 * ddz
+        pipe_length = cfg.get('beampipe_length')      # metres; None -> 3x axial length
+
+        maker = getattr(self, 'profile', None)
+        profile = maker() if callable(maker) else None
+
+        if profile is not None:
+            # ABCI's own arc primitive is kept: replacing an arc that meets a beam
+            # pipe tangentially (an elliptical cavity's iris) with a dense polyline
+            # makes ABCI's mesher emit NaN wake potentials.
+            items, added_l, added_r = abci_shape(profile, ds, min_pipe, pipe_length)
+            if added_l or added_r:
+                info(f"{self.name}: ABCI needs a beam pipe at each end; added "
+                     f"{added_l * 1e3:.1f} mm on the left and {added_r * 1e3:.1f} mm on "
+                     f"the right.")
+            zmin = min(it[1] if it[0] == 'point' else it[2][0] for it in items)
+            segments = []
+            for it in items:
+                if it[0] == 'point':
+                    segments.append(('point', it[2], it[1] - zmin))
+                else:
+                    (zc, rc), (ze, re) = it[1], it[2]
+                    segments.append(('arc', rc, zc - zmin, re, ze - zmin))
+            points = {}
+        else:
+            points, segments, zmin = self._contour_from_geo()
+
         wakefield_folder_structure = {
             'wakefield': {
                 'longitudinal': None,
@@ -1954,9 +2058,72 @@ class Cavity(ABC):
         MROT = resolve_mrot(wakefield_config)
         if MROT == 2:
             for m in range(2):
-                self._write_abc(points, segments, zmin, symbols, m, wakefield_config, folder, **kwargs)
+                self._write_abc(points, segments, zmin, {}, m, wakefield_config, folder, **kwargs)
         else:
-            self._write_abc(points, segments, zmin, symbols, MROT, wakefield_config, folder, **kwargs)
+            self._write_abc(points, segments, zmin, {}, MROT, wakefield_config, folder, **kwargs)
+
+    def _contour_from_geo(self):
+        """Legacy contour extraction: regex-parse the gmsh ``.geo`` text.
+
+        Only understands ``Point(...)`` and ``Ellipse(...)``, and encodes each
+        ellipse as an ABCI ``-3.`` *circular* arc about the ellipse centre — which
+        is only faithful when the ellipse is a circle. Kept for cavities with an
+        imported ``.geo`` and no ``profile()``.
+        """
+        with open(self.geo_filepath) as f:
+            lines = [l.split('%', 1)[0].strip() for l in f]
+
+        symbols = {}
+        define_re = re.compile(r"(\w+)\s*=\s*DefineNumber\[\s*([^,\]]+)")
+        for line in lines:
+            m = define_re.search(line)
+            if m:
+                symbols[m.group(1)] = m.group(2).strip()
+        changed = True
+        while changed:
+            changed = False
+            for k, v in list(symbols.items()):
+                if isinstance(v, str):
+                    try:
+                        symbols[k] = self.eval_expr(v, symbols)
+                        changed = True
+                    except Exception:
+                        pass
+
+        point_re = re.compile(r"Point\((\d+)\)\s*=\s*\{([^}]+)\}")
+        ellipse_re = re.compile(r"Ellipse\(\d+\)\s*=\s*\{([^}]+)\}")
+
+        points = {}
+        segments = []
+        zvals = []
+        for line in lines:
+            m = point_re.match(line)
+            if m:
+                pid = int(m.group(1))
+                coords = [p.strip() for p in m.group(2).split(',')]
+                z = self.eval_expr(coords[0], symbols)
+                r = self.eval_expr(coords[1], symbols)
+                points[pid] = (r, z)
+                zvals.append(z)
+
+        zmin = min(zvals) if zvals else 0.0
+
+        for line in lines:
+            if line.startswith('Point('):
+                m = point_re.match(line)
+                pid = int(m.group(1))
+                r, z = points[pid]
+                segments.append(('point', r, z - zmin))
+            elif line.startswith('Line('):
+                continue
+            elif line.startswith('Ellipse('):
+                m = ellipse_re.match(line)
+                ids = [int(x.strip()) for x in m.group(1).split(',')]
+                if len(segments) >= 3:
+                    segments = segments[:-3]
+                segments.append(('ellipse', ids[1], ids[3]))
+
+        return points, segments, zmin
 
     def _write_abc(self, points, segments, zmin, symbols, MROT, wakefield_config, folder, **kwargs):
         # defaults
@@ -2045,7 +2212,15 @@ class Cavity(ABC):
                 if seg[0] == 'point':
                     _, r, z = seg
                     out.write(f"{r:.16f} {z:.16f}\n")
+                elif seg[0] == 'arc':
+                    # '-3.' introduces an arc given by its centre, then its end point.
+                    # Emitted by the Profile path; already z-shifted.
+                    _, r_c, z_c, r_e, z_e = seg
+                    out.write("-3., 0.000\n")
+                    out.write(f"{r_c:.16f} {z_c:.16f}\n")
+                    out.write(f"{r_e:.16f} {z_e:.16f}\n")
                 elif seg[0] == 'ellipse':
+                    # legacy .geo path: point ids into `points`
                     _, pid_m, pid_e = seg
                     r_m, z_m = points[pid_m]
                     r_e, z_e = points[pid_e]
@@ -2194,20 +2369,43 @@ class Cavity(ABC):
 
     # @abstractmethod
     def spawn(self, difference, folder):
+        """A container of perturbed cavities, one per row of *difference*.
+
+        Generic, built on :meth:`rebuild`: each row is a partial parameter dict
+        overlaid on this cavity's own parameters. Used by UQ and optimisation.
+
+        (This used to call ``type(self)(name=..., geo_filepath=...)``, which no
+        model's constructor accepts — every non-elliptical UQ died with
+        ``TypeError: Pillbox.__init__() got an unexpected keyword argument 'name'``.)
+        """
         # Deferred: breaks the base <-> cavities import cycle.
         from cavsim2d.cavity.cavities import Cavities
-        spawn = Cavities(folder)
-        for key, params_diff in difference.iterrows():
-            # load base geometry
-            base_geo = self.geo_filepath
+        spawn = Cavities(folder, _skip_project_init=True)
+        os.makedirs(folder, exist_ok=True)
 
-            name = key
-            scav = type(self)(name=name, geo_filepath=str(Path(self.self_dir) / 'geometry' / 'geodata.geo'))
-            spawn.add_cavity(scav, names=name, plot_labels=name)
+        for key, row in difference.iterrows():
+            params = dict(self.parameters)
+            for k, v in row.items():
+                if k in params:
+                    params[k] = v
 
-            # modify base_geo parameters according to params_diff
-            output_folder = str(Path(scav.self_dir) / "geometry")
-            self.update_geo_parameters(base_geo, output_folder, params_diff.to_dict())
+            scav = self.rebuild(params)
+            scav.name = str(key)
+            scav.projectDir = folder
+            scav.self_dir = os.path.join(folder, str(key))
+            scav.uq_dir = os.path.join(scav.self_dir, 'uq')
+            geo_dir = os.path.join(scav.self_dir, 'geometry')
+            os.makedirs(geo_dir, exist_ok=True)
+
+            scav.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+            scav.write_geometry(scav.parameters, scav.n_cells, scav.beampipe,
+                                write=scav.geo_filepath)
+            scav._write_geometry_snapshot()
+
+            spawn.cavities_list.append(scav)
+            spawn.cavities_dict[scav.name] = scav
+            spawn.shape_space[scav.name] = scav.shape
+            spawn.shape_space_multicell[scav.name] = scav.shape_multicell
 
         return spawn
 

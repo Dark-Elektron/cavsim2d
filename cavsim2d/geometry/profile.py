@@ -226,6 +226,97 @@ class Profile:
         self._segs.append({'kind': 'line', 'i0': i0, 'i1': 0, 'name': boundary})
         return self
 
+    # -- contour sampling ---------------------------------------------------
+
+    def _arc_points(self, seg, n):
+        """Sample a three-point circular arc segment."""
+        p0 = np.asarray(self._pts[seg['i0']], dtype=float)
+        p1 = np.asarray(self._pts[seg['i1']], dtype=float)
+        pm = np.asarray(seg['mid'], dtype=float)
+
+        # circumcentre of the three points
+        ax, ay = p0
+        bx, by = pm
+        cx, cy = p1
+        d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+        if abs(d) < 1e-18:                       # collinear -> straight
+            return [tuple(p0), tuple(p1)]
+        ux = ((ax ** 2 + ay ** 2) * (by - cy) + (bx ** 2 + by ** 2) * (cy - ay)
+              + (cx ** 2 + cy ** 2) * (ay - by)) / d
+        uy = ((ax ** 2 + ay ** 2) * (cx - bx) + (bx ** 2 + by ** 2) * (ax - cx)
+              + (cx ** 2 + cy ** 2) * (bx - ax)) / d
+        centre = np.array([ux, uy])
+        radius = np.linalg.norm(p0 - centre)
+
+        a0 = np.arctan2(p0[1] - uy, p0[0] - ux)
+        am = np.arctan2(pm[1] - uy, pm[0] - ux)
+        a1 = np.arctan2(p1[1] - uy, p1[0] - ux)
+
+        def unwrap(a, ref):
+            while a - ref > np.pi:
+                a -= 2 * np.pi
+            while a - ref < -np.pi:
+                a += 2 * np.pi
+            return a
+
+        am = unwrap(am, a0)
+        a1 = unwrap(a1, am)
+        return [(ux + radius * np.cos(t), uy + radius * np.sin(t))
+                for t in np.linspace(a0, a1, n)]
+
+    def _segment_length(self, seg):
+        """Approximate arclength of a segment, for choosing a sample count."""
+        if seg['kind'] == 'line':
+            p0 = np.asarray(self._pts[seg['i0']])
+            p1 = np.asarray(self._pts[seg['i1']])
+            return float(np.linalg.norm(p1 - p0))
+        pts = np.asarray(self._segment_points(seg, 33))
+        return float(np.sum(np.linalg.norm(np.diff(pts, axis=0), axis=1)))
+
+    def _segment_points(self, seg, n):
+        """Sample *n* points along one segment, endpoints included."""
+        if seg['kind'] == 'line':
+            p0 = np.asarray(self._pts[seg['i0']], dtype=float)
+            p1 = np.asarray(self._pts[seg['i1']], dtype=float)
+            return [tuple(p0 + (p1 - p0) * t) for t in np.linspace(0.0, 1.0, max(2, n))]
+        if seg['kind'] == 'arc':
+            return self._arc_points(seg, max(3, n))
+        if seg['kind'] == 'ellipse':
+            return self._ellipse_points(seg, self._pts, n=max(3, n))
+        if seg['kind'] == 'spline':
+            return self._spline_points(seg, self._pts, n=max(3, n))
+        raise ValueError(f"unknown segment kind {seg['kind']!r}")
+
+    def contour_points(self, ds, skip=('AXI',)):
+        """The meridian wall as an ordered, densified ``[(z, r), ...]`` polyline.
+
+        Curved segments are sampled at roughly *ds* spacing; straight ones keep
+        their two endpoints. Segments whose boundary name is in *skip* are left
+        out — by default the axis, since external wake codes want the wall only.
+
+        This is the geometry seam for wakefield solvers: a solver takes the
+        contour, not a ``.geo`` file. (The old ABCI writer regex-parsed the
+        ``.geo`` text and understood only ``Point`` and ``Ellipse``, so it could
+        not see a spline wall and had no source at all for a cavity with no
+        ``.geo``.)
+        """
+        if ds <= 0:
+            raise ValueError('ds must be positive')
+        out = []
+        for seg in self._segs:
+            if seg['name'] in skip:
+                continue
+            if seg['kind'] == 'line':
+                n = 2
+            else:
+                n = int(np.ceil(self._segment_length(seg) / ds)) + 1
+                n = max(3, min(n, 2000))
+            pts = self._segment_points(seg, n)
+            if out and np.allclose(out[-1], pts[0], atol=1e-12):
+                pts = pts[1:]
+            out.extend(tuple(map(float, p)) for p in pts)
+        return out
+
     # -- queries ------------------------------------------------------------
 
     @property

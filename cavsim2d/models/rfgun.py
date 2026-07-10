@@ -148,7 +148,10 @@ class RFGun(Cavity):
         prof.close('AXI')
         return prof
 
-    def write_geometry(self, parameters, write=None):
+    def write_geometry(self, parameters, n_cells=None, beampipe=None, write=None, **kwargs):
+        # n_cells / beampipe accepted for signature compatibility with the other
+        # models, so the generic clone_for_tuning can call every write_geometry
+        # the same way. A gun has one cell and no beampipe parameterisation.
         names = [
             "y1", "R2", "T2", "L3", "R4", "L5", "R6", "L7", "R8",
             "T9", "R10", "T10", "L11", "R12", "L13", "R14", "x"
@@ -482,35 +485,19 @@ class RFGun(Cavity):
             except ValueError:
                 info("Convergence data not available.")
 
-    def get_eigenmode_qois(self):
+    def get_eigenmode_qois(self, config=None):
+        """Read the eigenmode QOIs, plus the gun's on-axis |Ez| profile.
+
+        This used to reimplement the base reader with a monopole-only body and a
+        narrower signature, so any caller passing a config (UQ does) hit a
+        TypeError. Only the |Ez| profile is gun-specific.
         """
-        Get quantities of interest written by the SLANS code
-        Returns
-        -------
+        super().get_eigenmode_qois(config)
 
-        """
-        # print('it is here')
-        qois = 'qois.json'
-        mono_dir = self._eigenmode_pol_dir('monopole')
-        qois_path = os.path.join(mono_dir, qois)
-        if not os.path.exists(qois_path):
-            raise FileNotFoundError(
-                f"Eigenmode result does not exist at {qois_path}. "
-                f"Run run_eigenmode() first.")
-        with open(os.path.join(mono_dir, qois)) as json_file:
-            self.eigenmode_qois = json.load(json_file)
-
-        all_modes_path = os.path.join(mono_dir, 'qois_all_modes.json')
-        if os.path.exists(all_modes_path):
-            with open(all_modes_path) as json_file:
-                self.eigenmode_qois_all_modes = json.load(json_file)
-
-        ez_path = os.path.join(mono_dir, 'Ez_0_abs.csv')
+        ez_path = os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')
         if os.path.exists(ez_path):
             with open(ez_path) as csv_file:
                 self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-
-        self.freq = self.eigenmode_qois['freq [MHz]']
         self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
         self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
         self.G = self.GR_Q / self.R_Q
@@ -562,5 +549,9 @@ class RFGun(Cavity):
         #     }
         # }
         return fr"{json.dumps(p, indent=4)}"
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh RFGun from its geometry parameter dict."""
+        return RFGun({'geometry': dict(parameters)}, name=self.name)
+
 
 

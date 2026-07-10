@@ -14,9 +14,9 @@ from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half_cell_sequence,
                                         continuity_violations, DegenerateGeometry)
 from cavsim2d.geometry.writers.multipac import writeCavityForMultipac, writeCavityForMultipac_multicell
-from cavsim2d.processes.tune import last_stage_result
 
 class EllipticalCavity(Cavity):
+    uses_cell_suffixes = True
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  cell_parameterisation='simplecell', color='k', plot_label=None):
@@ -1359,109 +1359,22 @@ class EllipticalCavity(Cavity):
                end_cell_left=self.end_cell_left, end_cell_right=self.end_cell_right,
                beampipe=self.beampipe, plot=plot)
         return file_path
-
-    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
-        """Return a fresh EllipticalCavity living in ``tuned_self_dir``.
-
-        ``tuned_parameters`` is the full suffixed parameter dict
-        (A_m, B_m, ..., A_el, ..., A_er, ...) that the tuner has updated.
-        The clone gets its own ``geometry/`` folder with a freshly written
-        geodata.geo. Result caches are empty so subsequent eigenmode /
-        wakefield runs write into the clone's own folders.
-        """
-        if beampipe is None:
-            beampipe = self.beampipe
-
-        mid = np.array([tuned_parameters[f'{n}_m'] for n in
-                        ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-        left = np.array([tuned_parameters[f'{n}_el'] for n in
-                         ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-        right = np.array([tuned_parameters[f'{n}_er'] for n in
-                          ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-
-        clone = EllipticalCavity(
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh EllipticalCavity from a suffixed parameter dict (A_m, ..., Req_er)."""
+        names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')
+        cells = [np.array([float(parameters[f'{n}_{suf}']) for n in names])
+                 for suf in ('m', 'el', 'er')]
+        return EllipticalCavity(
             n_cells=self.n_cells,
-            mid_cell=mid,
-            end_cell_left=left,
-            end_cell_right=right,
-            beampipe=beampipe,
+            mid_cell=cells[0], end_cell_left=cells[1], end_cell_right=cells[2],
+            beampipe=self.beampipe if beampipe is None else beampipe,
             name=self.name,
             cell_parameterisation=self.cell_parameterisation,
             color=self.color,
             plot_label=self.plot_label,
         )
-        clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_self_dir)
 
-        geo_dir = os.path.join(clone.self_dir, 'geometry')
-        os.makedirs(geo_dir, exist_ok=True)
-        clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
-        clone.write_geometry(clone.parameters, clone.n_cells, clone.beampipe,
-                             write=clone.geo_filepath)
 
-        clone.uq_dir = os.path.join(clone.self_dir, 'uq')
-        clone._write_geometry_snapshot()
 
-        return clone
-
-    def _load_tuned_from_disk(self, tuned_dir):
-        """Rebuild the tuned EllipticalCavity from a persisted ``tuned/`` folder.
-
-        Reads tuned parameters from ``tune_info/tune_res.json`` (if present)
-        and rebuilds the cavity. Falls back to the current cavity's shape
-        if tune_res.json is missing. The file is keyed by cell type — the
-        final stage's parameter snapshot is the cumulative tuned geometry.
-        """
-
-        tuned_dir = Path(tuned_dir)
-        tune_res_path = tuned_dir / 'tune_info' / 'tune_res.json'
-
-        tune_res = None
-        if tune_res_path.exists():
-            with open(tune_res_path, 'r') as f:
-                tune_res = json.load(f)
-            last = last_stage_result(tune_res)
-            tuned_params = (last or {}).get('parameters', {}) or {}
-        else:
-            tuned_params = {}
-
-        # Fall back to the source cavity's own parameters for any suffix that
-        # wasn't touched by this tune run (e.g. single-cell tunes only produce
-        # `_m` keys; end-cell-r may be absent when not tuned separately).
-        full_params = dict(self.parameters)
-        full_params.update(tuned_params)
-
-        mid = np.array([full_params[f'{n}_m'] for n in
-                        ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-        left = np.array([full_params[f'{n}_el'] for n in
-                         ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-        right = np.array([full_params[f'{n}_er'] for n in
-                          ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']])
-
-        clone = EllipticalCavity(
-            n_cells=self.n_cells,
-            mid_cell=mid,
-            end_cell_left=left,
-            end_cell_right=right,
-            beampipe=self.beampipe,
-            name=self.name,
-            cell_parameterisation=self.cell_parameterisation,
-            color=self.color,
-            plot_label=self.plot_label,
-        )
-        clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_dir)
-        geo_filepath = tuned_dir / 'geometry' / 'geodata.geo'
-        if geo_filepath.exists():
-            clone.geo_filepath = str(geo_filepath)
-        clone.uq_dir = str(tuned_dir / 'uq')
-
-        if tune_res is not None:
-            clone.tune_results = tune_res
-            last = last_stage_result(tune_res)
-            if last is not None and 'FREQ' in last:
-                clone.freq = last['FREQ']
-
-        return clone
 
 

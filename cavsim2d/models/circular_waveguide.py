@@ -59,7 +59,7 @@ class CircularWaveguide(Cavity):
                 .line_to(shift, 0.0, 'PEC')     # right end plane
                 .close('AXI'))
 
-    def write_geometry(self, parameters, write=None, **kwargs):
+    def write_geometry(self, parameters, n_cells=None, beampipe=None, write=None, **kwargs):
         """Write a Gmsh .geo file for the circular waveguide cavity."""
         R_m = parameters['R'] * 1e-3
         L_m = parameters['L'] * 1e-3
@@ -86,13 +86,8 @@ class CircularWaveguide(Cavity):
             cav.write("Plane Surface(1) = {1};\n")
             cav.write("Reverse Surface 1;\n")
             cav.write('Physical Surface("Domain") = {1};\n')
+    def rebuild(self, parameters, beampipe=None):
+        """A fresh CircularWaveguide from its (R, L) parameter dict."""
+        return CircularWaveguide(float(parameters['R']), float(parameters['L']))
 
-    def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
-        clone = CircularWaveguide(tuned_parameters['R'], tuned_parameters['L'], tuned_parameters.get('Ri', 1.0))
-        clone.name = self.name
-        clone.projectDir = self.projectDir
-        clone.self_dir = tuned_self_dir
-        os.makedirs(clone.self_dir, exist_ok=True)
-        clone.geo_filepath = os.path.join(clone.self_dir, 'geometry', 'geodata.geo')
-        clone.write_geometry(tuned_parameters, write=clone.geo_filepath)
-        return clone
+
