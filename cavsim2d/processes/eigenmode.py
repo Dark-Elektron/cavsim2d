@@ -8,8 +8,9 @@ from pathlib import Path
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, parse_polarisations
 from cavsim2d.solvers.eigenmode_result import pol_name
 from cavsim2d.constants import *
-from cavsim2d.processes.uq import uq_parallel, uq_parallel_multicell
+from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.utils.config_validation import require
 
 ngsolve_mevp = NGSolveMEVP()
 
@@ -58,13 +59,13 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
 
     rerun = True
     if 'rerun' in eigenmode_config:
-        assert isinstance(eigenmode_config['rerun'], bool), error('rerun must be boolean.')
+        require(isinstance(eigenmode_config['rerun'], bool), 'rerun must be boolean.')
         rerun = eigenmode_config['rerun']
 
     processes = 1
     if 'processes' in eigenmode_config:
-        assert eigenmode_config['processes'] > 0, error('Number of processes must be greater than zero.')
-        assert isinstance(eigenmode_config['processes'], int), error('Number of processes must be integer.')
+        require(eigenmode_config['processes'] > 0, 'Number of processes must be greater than zero.')
+        require(isinstance(eigenmode_config['processes'], int), 'Number of processes must be integer.')
     else:
         eigenmode_config['processes'] = processes
 
@@ -80,21 +81,10 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         cav.create()
         ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
 
-        # Run UQ if configured
+        # Run UQ if configured. With uq_config['cell_complexity'] = 'multicell',
+        # every half-cell becomes an independent random variable (subject to the
+        # equator/iris continuity constraints); uq_parallel branches on it.
         if 'uq_config' in eigenmode_config:
-            uq_config = eigenmode_config['uq_config']
-
-            uq_cell_complexity = uq_config.get('cell_complexity', 'simplecell')
-
-            if uq_cell_complexity == 'multicell':
-                # Multicell UQ was not carried through the refactor: its worker
-                # (uq_multicell_s -> cavity_multicell) still uses pre-refactor
-                # solver signatures and the flat qois layout. Fail clearly
-                # rather than crash deep in a worker process.
-                raise NotImplementedError(
-                    "Multicell UQ (uq_config['cell_complexity'] = 'multicell') is not "
-                    "supported in this release. Use 'simplecell' (the default), which runs "
-                    "UQ on the perturbed mid-cell geometry.")
             uq_parallel(cav, eigenmode_config, 'eigenmode')
 
         done(f'Done with Cavity {cav.name}. Time: {time.time() - start_time}')

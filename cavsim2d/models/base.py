@@ -1,3 +1,4 @@
+import re
 from IPython.core.display import HTML, display_html, Math
 from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
@@ -21,6 +22,11 @@ import operator as op
 import os
 import pandas as pd
 import time
+from cavsim2d.processes.tune import last_stage_result
+from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
+from cavsim2d.solvers.ABCI.abci import resolve_mrot
+from cavsim2d.solvers.solver_objects import TuneSolver, EigenmodeSolver, WakefieldSolver
+from cavsim2d.constants import SOFTWARE_DIRECTORY
 
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
@@ -156,7 +162,6 @@ class Cavity(ABC):
     def tune(self):
         """TuneSolver object for this cavity."""
         if self._tune_solver is None:
-            from cavsim2d.solvers.solver_objects import TuneSolver
             self._tune_solver = TuneSolver(self)
         return self._tune_solver
 
@@ -164,7 +169,6 @@ class Cavity(ABC):
     def eigenmode(self):
         """EigenmodeSolver object for this cavity."""
         if self._eigenmode_solver is None:
-            from cavsim2d.solvers.solver_objects import EigenmodeSolver
             self._eigenmode_solver = EigenmodeSolver(self)
         return self._eigenmode_solver
 
@@ -172,7 +176,6 @@ class Cavity(ABC):
     def wakefield(self):
         """WakefieldSolver object for this cavity."""
         if self._wakefield_solver is None:
-            from cavsim2d.solvers.solver_objects import WakefieldSolver
             self._wakefield_solver = WakefieldSolver(self)
         return self._wakefield_solver
 
@@ -237,6 +240,22 @@ class Cavity(ABC):
         Subclasses override this to build an instance of the concrete type.
         """
         return None
+
+    def half_cells(self):
+        """The per-half-cell parameter array — the canonical multicell representation.
+
+        Only the elliptical families carry independently varying cells; other
+        geometries (pillbox, gun, waveguide, spline) have no half-cell decomposition.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} has no half-cell representation; "
+            "only elliptical cavities decompose into per-cell parameters.")
+
+    def set_half_cells(self, half_cells):
+        """Install an explicit per-half-cell parameter array. See :meth:`half_cells`."""
+        raise NotImplementedError(
+            f"{type(self).__name__} has no half-cell representation; "
+            "only elliptical cavities decompose into per-cell parameters.")
 
     def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
         """Create a deep-copy cavity object representing the tuned version.
@@ -857,73 +876,10 @@ class Cavity(ABC):
         if not self.freq:
             self.freq = (c0 / 4 * self.L)
 
-    @staticmethod
-    def _run_ngsolve(name, n_cells, n_modules, shape, shape_multi, n_modes, f_shift, bc, parentDir, projectDir,
-                     sub_dir='',
-                     uq_config=None):
-        parallel = False
-        start_time = time.time()
-        # create folders for all keys
-        ngsolve_mevp.createFolder(name, projectDir, subdir=sub_dir)
-
-        if 'OC_R' in shape.keys():
-            OC_R = 'OC_R'
-        else:
-            OC_R = 'OC'
-
-        # ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-        #                     n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-        #                     parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        if shape['CELL PARAMETERISATION'] == 'flattop':
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-
-            ngsolve_mevp.cavity_flattop(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                        n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                        beampipes=shape['BP'],
-                                        parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-
-        elif shape['CELL PARAMETERISATION'] == 'multicell':
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-            ngsolve_mevp.cavity_multicell(n_cells, n_modules, shape_multi['IC'], shape_multi['OC'], shape_multi[OC_R],
-                                          n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc,
-                                          beampipes=shape['BP'],
-                                          parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-        else:
-            # write_cst_paramters(f"{key}_n{n_cell}", shape['IC'], shape['OC'], shape['OC_R'],
-            #                     projectDir=projectDir, cell_type="None", solver=select_solver.lower())
-            ngsolve_mevp.cavity(n_cells, n_modules, shape['IC'], shape['OC'], shape[OC_R],
-                                n_modes=n_modes, fid=f"{name}", f_shift=f_shift, bc=bc, beampipes=shape['BP'],
-                                parentDir=parentDir, projectDir=projectDir, subdir=sub_dir)
-
-        # run UQ
-        if uq_config:
-            objectives = uq_config['objectives']
-            solver_dict = {'eigenmode': ngsolve_mevp}
-            solver_args_dict = {'eigenmode':
-                                    {'n_cells': n_cells, 'n_modules': n_modules, 'f_shift': f_shift, 'bc': bc,
-                                     'beampipes': shape['BP']
-                                     },
-                                'parentDir': parentDir,
-                                'projectDir': projectDir,
-                                'analysis folder': 'NGSolveMEVP',
-                                'cell_type': 'mid-cell',
-                                'optimisation': False
-                                }
-
-            uq_cell_complexity = 'simplecell'
-            if 'cell_complexity' in uq_config.keys():
-                uq_cell_complexity = uq_config['cell_complexity']
-
-            if uq_cell_complexity == 'multicell':
-                shape_space = {name: shape_multi}
-                uq_parallel_multicell(shape_space, objectives, solver_dict, solver_args_dict, uq_config)
-            else:
-                shape_space = {name: shape}
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
-
-        done(f'Done with Cavity {name}. Time: {time.time() - start_time}')
+    # Cavity._run_ngsolve (a dead pre-refactor staticmethod) was removed 2026-07-09:
+    # it was never called (the live one is processes.eigenmode._run_ngsolve), it
+    # referenced an undefined bare `OC_R`, and it drove the removed
+    # uq_parallel_multicell / cavity_multicell pair.
 
     def set_wall_material(self, wm):
         self.wall_material = wm
@@ -942,7 +898,6 @@ class Cavity(ABC):
         multiple cell types were tuned the final stage's ``FREQ`` is used
         as the cavity's target frequency.
         """
-        from cavsim2d.processes.tune import last_stage_result
 
         new_path = Path(self.self_dir) / 'tuned' / 'tune_info' / 'tune_res.json'
         legacy_path = Path(self.self_dir) / 'eigenmode' / 'tune_res.json'
@@ -969,7 +924,6 @@ class Cavity(ABC):
         # Which polarisations to read: those named in the config (normalised to
         # names — a bare 'dipole'/1 or a list are all accepted), or, when no
         # config is given (e.g. the Cavities-level caller), whatever was solved.
-        from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
         raw = (config or {}).get('polarisation') if isinstance(config, dict) else None
         if raw is not None:
             if not isinstance(raw, (list, tuple, set)):
@@ -1045,7 +999,6 @@ class Cavity(ABC):
         fundamental passband; 'dipole'/'quadrupole'/… read the corresponding
         m-pole passband from ``eigenmode/<pol>/qois_all_modes.json``.
         """
-        from cavsim2d.solvers.eigenmode_result import pol_number
         if ax is None:
             fig, ax = plt.subplots()
 
@@ -1179,7 +1132,6 @@ class Cavity(ABC):
         # get neighbours and all qois
         neighbours = {}
         cavities_dir = folder
-        from cavsim2d.solvers.eigenmode_result import monopole_dir
         for dirr in os.listdir(cavities_dir):
             dirr_path = os.path.join(cavities_dir, dirr)
             if os.path.isdir(dirr_path) and 'Q' in dirr.split('_')[-1]:
@@ -1249,7 +1201,6 @@ class Cavity(ABC):
                 self.abci_data[key] = ABCIData(self.wakefield_dir, '', mrot)
 
         if not self.abci_data:
-            from cavsim2d.constants import SOFTWARE_DIRECTORY
             abci_exe = os.path.join(SOFTWARE_DIRECTORY, 'solvers', 'ABCI', 'ABCI.exe')
             if not os.path.exists(abci_exe):
                 raise FileNotFoundError(
@@ -1439,7 +1390,6 @@ class Cavity(ABC):
         written during the flat-layout refactor era live directly in
         ``eigenmode/``, so fall back to that when no monopole subfolder
         exists."""
-        from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
         m = pol_number(pol)
         if m == 0:
             return monopole_dir(os.path.join(self.self_dir, 'eigenmode'))
@@ -2001,7 +1951,6 @@ class Cavity(ABC):
             make_dirs_from_dict(wakefield_folder_structure, self.self_dir)
             folder = self.self_dir
 
-        from cavsim2d.solvers.ABCI.abci import resolve_mrot
         MROT = resolve_mrot(wakefield_config)
         if MROT == 2:
             for m in range(2):
@@ -2245,6 +2194,7 @@ class Cavity(ABC):
 
     # @abstractmethod
     def spawn(self, difference, folder):
+        # Deferred: breaks the base <-> cavities import cycle.
         from cavsim2d.cavity.cavities import Cavities
         spawn = Cavities(folder)
         for key, params_diff in difference.iterrows():

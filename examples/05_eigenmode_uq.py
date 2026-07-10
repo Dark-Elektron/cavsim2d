@@ -28,8 +28,10 @@ def main():
         'boundary_conditions': 'mm',
         'uq_config': {
             'variables': ['A', 'B', 'a', 'b'],
-            'objectives': ["Epk/Eacc []", "Bpk/Eacc [mT/MV/m]",
-                           "R/Q [Ohm]", "G [Ohm]", "freq [MHz]"],
+            # Objectives name a polarisation: monopole and m-pole results share
+            # QOI names. 'dipole:2:freq [MHz]' picks a specific 1-based mode.
+            'objectives': ["monopole:Epk/Eacc []", "monopole:Bpk/Eacc [mT/MV/m]",
+                           "monopole:R/Q [Ohm]", "monopole:G [Ohm]", "monopole:freq [MHz]"],
             'delta': [0.05, 0.05, 0.05, 0.05],   # 5% std on each variable
             'processes': 1,
             'distribution': 'gaussian',

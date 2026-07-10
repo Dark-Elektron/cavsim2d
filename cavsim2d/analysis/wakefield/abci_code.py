@@ -1,3 +1,4 @@
+import numpy as np
 from cavsim2d.utils.shared_functions import *
 
 

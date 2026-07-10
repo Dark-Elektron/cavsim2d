@@ -8,12 +8,14 @@ import time
 import numpy as np
 import pandas as pd
 import scipy.signal as sps
-from cavsim2d.analysis.wakefield.abci_geometry import ABCIGeometry
+from cavsim2d.geometry.writers.abci import ABCIGeometry
 from cavsim2d.data_module.abci_data import ABCIData
-from cavsim2d.processes.uq import uq_parallel_multicell, uq_parallel
+from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.solvers.ABCI.abci import ABCI
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.solvers.eigenmode_result import monopole_dir
+from cavsim2d.utils.config_validation import require
 
 abci = ABCI()
 abci_geom = ABCIGeometry()
@@ -61,7 +63,7 @@ def run_wakefield_parallel(cavs_dict, solver_config, subdir=''):
 def run_wakefield_s(cavs_dict, wakefield_config, subdir):
     rerun = wakefield_config.get('rerun', True)
     if 'rerun' in wakefield_config:
-        assert isinstance(wakefield_config['rerun'], bool), error('rerun must be boolean.')
+        require(isinstance(wakefield_config['rerun'], bool), 'rerun must be boolean.')
 
     operating_points = wakefield_config.get('operating_points')
     uq_config = wakefield_config.get('uq_config')
@@ -90,7 +92,6 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
 
         if operating_points:
             try:
-                from cavsim2d.solvers.eigenmode_result import monopole_dir
                 folder = os.path.join(monopole_dir(cav.eigenmode_dir), 'qois.json')
                 if os.path.exists(folder):
                     try:

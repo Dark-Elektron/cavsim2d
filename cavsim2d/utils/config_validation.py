@@ -16,6 +16,7 @@ EIGENMODE_KEYS = {
     'processes', 'rerun', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
     'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
+    'mode_of_interest',
     'opt', 'target', 'solver_save_directory',
 }
 UQ_KEYS = {
@@ -88,11 +89,36 @@ def _check_processes(cfg, context):
         require(p > 0, f"{context}: 'processes' must be greater than zero.")
 
 
+def _check_objectives(cfg, context):
+    """Eigenmode objectives must name a polarisation ('dipole:R/Q [Ohm]').
+
+    Monopole and m-pole ``qois.json`` share QOI names, so a bare name is ambiguous.
+    """
+    objectives = cfg.get('objectives')
+    if not isinstance(objectives, (list, tuple)):
+        return
+    # Deferred: breaks a real cycle — cavsim2d.solvers.objectives pulls in the
+    # cavsim2d.solvers package, whose eigen_ngsolve imports require() from here.
+    from cavsim2d.solvers.objectives import parse_objective
+
+    for obj in objectives:
+        # optimisation objectives are ['min', name] / ['equal', name, target] pairs;
+        # UQ objectives are bare names. Wakefield names (ZL/ZT) carry no polarisation.
+        name = obj[1] if isinstance(obj, (list, tuple)) and len(obj) >= 2 else obj
+        if not isinstance(name, str) or name.startswith(('ZL', 'ZT')):
+            continue
+        try:
+            parse_objective(name)
+        except ValueError as exc:
+            raise ValueError(f'{context}: {exc}') from None
+
+
 def validate_uq_config(cfg, context='uq_config'):
     validate_config(cfg, UQ_KEYS, context)
     if not isinstance(cfg, dict):
         return
     _check_processes(cfg, context)
+    _check_objectives(cfg, context)
     variables = cfg.get('variables')
     if isinstance(variables, (list, tuple)):
         for k in ('delta', 'epsilon'):
@@ -112,8 +138,44 @@ def validate_eigenmode_config(cfg):
                         f"eigenmode_config: '{key}' must be an integer.")
                 require(cfg[key] > 0,
                         f"eigenmode_config: '{key}' must be greater than zero.")
+        _check_mode_of_interest(cfg)
         if isinstance(cfg.get('uq_config'), dict):
             validate_uq_config(cfg['uq_config'])
+
+
+def _check_mode_of_interest(cfg):
+    """``mode_of_interest`` is a 1-based mode index, a list of them (a polarisation
+    may have several modes of interest), or a dict of either keyed by polarisation
+    ('monopole', 'dipole', ... or the azimuthal number)."""
+    if 'mode_of_interest' not in cfg:
+        return
+    value = cfg['mode_of_interest']
+    entries = list(value.items()) if isinstance(value, dict) else [(None, value)]
+
+    flat = []           # (pol, mode)
+    for pol, modes in entries:
+        where = f" for polarisation {pol!r}" if pol is not None else ''
+        if not isinstance(modes, (list, tuple)):
+            modes = [modes]
+        require(len(modes) > 0,
+                f"eigenmode_config: 'mode_of_interest'{where} is empty; give at least "
+                f"one 1-based mode index.")
+        for mode in modes:
+            require(isinstance(mode, int) and not isinstance(mode, bool),
+                    f"eigenmode_config: 'mode_of_interest'{where} must be an integer "
+                    f"(1-based), or a list of them, got {mode!r}.")
+            require(mode > 0,
+                    f"eigenmode_config: 'mode_of_interest'{where} is 1-based — mode 1 is "
+                    f"the lowest of the passband. Got {mode}.")
+            flat.append((pol, mode))
+
+    n_modes = cfg.get('n_modes', cfg.get('nmodes'))
+    if isinstance(n_modes, int) and not isinstance(n_modes, bool):
+        for pol, mode in flat:
+            where = f" for polarisation {pol!r}" if pol is not None else ''
+            require(mode <= n_modes,
+                    f"eigenmode_config: 'mode_of_interest'={mode}{where} exceeds "
+                    f"'n_modes'={n_modes}. Raise n_modes to at least {mode}.")
 
 
 def validate_wakefield_config(cfg):
@@ -142,5 +204,6 @@ def validate_optimisation_config(cfg):
     validate_config(cfg, OPTIMISATION_KEYS, 'optimisation_config')
     if isinstance(cfg, dict):
         _check_processes(cfg, 'optimisation_config')
+        _check_objectives(cfg, 'optimisation_config')
         if isinstance(cfg.get('tune_config'), dict):
             validate_tune_config(cfg['tune_config'])

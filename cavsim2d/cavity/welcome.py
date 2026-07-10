@@ -3,8 +3,8 @@ import base64
 
 
 def show_welcome():
-    # IPython is only needed for the Jupyter banner — import lazily so the
-    # package imports cleanly in plain-Python/headless environments.
+    # Deferred: IPython is an optional dependency, needed only for the Jupyter
+    # banner, so the package imports cleanly in plain-Python/headless environments.
     try:
         from IPython.core.display import HTML
         from IPython.core.display_functions import display

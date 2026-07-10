@@ -1,0 +1,877 @@
+"""ABCI geometry: the meridian contour rendered as an ABCI input deck.
+
+``Geometry`` holds the cell/beam-pipe parameters and mesh densities shared by the
+ABCI writers; ``ABCIGeometry`` writes the deck and drives the solver.
+"""
+import json
+import os
+from pathlib import Path
+from cavsim2d.analysis.wakefield.abci_code import ABCI, ABCI_flattop
+from cavsim2d.constants import SOFTWARE_DIRECTORY, MROT_DICT
+from cavsim2d.solvers.ABCI.abci import run_abci_exe
+from cavsim2d.utils.printing import error
+
+
+class Geometry:
+    def __init__(self):
+
+        self.WG_mesh = None
+        self.WG_R = None
+        self.WG_L = None
+        self.left_beam_pipe, self.right_beam_pipe = None, None
+        self.mid_cell, self.right_end_cell, self.left_end_cell = None, None, None
+        self.A_M, self.B_M, self.a_M, self.b_M, self.ri_M, self.L_M, self.Req_M = \
+            None, None, None, None, None, None, None
+        self.A_R, self.B_R, self.a_R, self.b_R, self.ri_R, self.L_R, self.Req_R = \
+            None, None, None, None, None, None, None
+        self.A_L, self.B_L, self.a_L, self.b_L, self.ri_L, self.L_L, self.Req_L = \
+            None, None, None, None, None, None, None
+
+        self.Rbp_L, self.at_L, self.bt_L, self.c_L, self.x_L = None, None, None, None, None
+        self.Rbp_R, self.at_R, self.bt_R, self.c_R, self.x_R = None, None, None, None, None
+
+        self.Jxy, self.Jx1, self.Jx2 = None, None, None
+        self.Jx1_bp, self.Jx2_bp = None, None
+        self.Jy0, self.Jy1, self.Jy2, self.Jy3 = None, None, None, None
+        self.Jy0_bp, self.Jy1_bp, self.Jy2_bp, self.Jy3_bp = None, None, None, None
+        self.Jxy_al, self.Jxy_bp, self.Jxy_all, self.Jxy_bp_y = None, None, None, None
+
+        self.Jxy_all_bp = None
+        self.n = None
+        self.cell_structure = None
+        self.u = None
+
+    def set_geom_parameters(self, n_cells, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None):
+
+        if l_end_cell_par is None:
+            l_end_cell_par = []
+
+        # check self.u for slans and abci
+        self.u = 1e-3
+        self.cell_structure = 2
+        self.n = n_cells
+
+        self.A_M, self.B_M, self.a_M, self.b_M, self.ri_M, self.L_M, self.Req_M = \
+            [i * self.u for i in mid_cells_par][0:7]
+        self.A_L, self.B_L, self.a_L, self.b_L, self.ri_L, self.L_L, self.Req_L = \
+            [i * self.u for i in l_end_cell_par][0:7]
+        self.A_R, self.B_R, self.a_R, self.b_R, self.ri_R, self.L_R, self.Req_R = \
+            [i * self.u for i in r_end_cell_par][0:7]
+
+        self.c_L = 0 * self.u
+        self.Rbp_L = self.Req_L
+        self.at_L, self.bt_L, self.x_L = 0, 0, 0
+        self.left_beam_pipe = [self.c_L, self.Rbp_L, self.at_L, self.bt_L, self.x_L]
+        self.right_beam_pipe = self.left_beam_pipe
+
+        # for some strange reasons, I reversed the order eesh!!!
+        self.mid_cell = [self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M]
+        self.left_end_cell = [self.Req_L, self.ri_L, self.L_L, self.A_L, self.B_L, self.a_L, self.b_L]
+        self.right_end_cell = [self.Req_R, self.ri_R, self.L_R, self.A_R, self.B_R, self.a_R, self.b_R]
+
+        # beam pipe
+        self.WG_L = 4 * self.L_M  # self.ui.dsb_Lbp_L.value()*self.u # Length of the beam pipe connecting to the cavity
+        self.WG_R = self.WG_L  # Right Waveguide
+        # self.L_all = self.WG_L + self.WG_R + self.L_L
+        # + self.L_R + 2*(self.n - 1)*self.L_M # Total length of each cavity
+
+        self.Rbp_L = self.ri_L * self.u
+        self.at_L = 0 * self.u
+        self.bt_L = 0 * self.u
+        self.c_L = 0 * self.u
+        self.x_L = 0 * (self.c_L + self.at_L)
+        # self.x_L = 230*self.u # x_L is the length of the transition from iris to beam pipe
+
+        self.Rbp_R = self.ri_R * self.u
+        self.at_R = 0 * self.u
+        self.bt_R = 0 * self.u
+        self.c_R = 0 * self.u
+        self.x_R = 0 * (self.c_L + self.at_L)
+        # self.x_R = 230*self.u
+
+        self.left_beam_pipe = [self.c_L, self.Rbp_L, self.at_L, self.bt_L, self.x_L]
+        self.right_beam_pipe = self.left_beam_pipe
+
+        # Slans mesh parameters
+        self.WG_mesh = round(self.WG_L / 5) * self.u  # /5 for ende_type 1
+        self.Jxy = 44  # 60 for end type 1
+        self.Jx1 = round((19 / 50) * self.Jxy)  # 19/50 for end_type 1
+        self.Jx2 = self.Jxy / 2 - self.Jx1
+
+        self.Jy0 = round((19 / 50) * self.Jxy)  # 18, 12,14 for end type 1
+        self.Jy1 = round((12 / 50) * self.Jxy)
+        self.Jy2 = round((13 / 50) * self.Jxy)
+        self.Jy3 = self.Jxy - self.Jy2 - self.Jy1 - self.Jy0
+        self.Jxy_all = [0, self.Jxy, self.Jx1, self.Jx2, self.Jy0, self.Jy1, self.Jy2, self.Jy3]
+
+        self.Jxy_bp = 30
+        self.Jxy_bp_y = 35
+        self.Jx1_bp = round((19 / 50) * self.Jxy_bp)
+        self.Jx2_bp = self.Jxy_bp / 2 - self.Jx1_bp
+
+        self.Jy0_bp = round((18 / 50) * self.Jxy_bp_y)
+        self.Jy1_bp = round((12 / 50) * self.Jxy_bp_y)
+        self.Jy2_bp = round((14 / 50) * self.Jxy_bp_y)
+        self.Jy3_bp = self.Jxy_bp_y - self.Jy2_bp - self.Jy1_bp - self.Jy0_bp
+        self.Jxy_all_bp = [0, self.Jxy_bp, self.Jx1_bp, self.Jx2_bp, self.Jy0_bp, self.Jy1_bp, self.Jy2_bp, self.Jy3_bp]
+
+    def set_geom_parameters_flattop(self, n_cells, mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None):
+
+        if l_end_cell_par is None:
+            l_end_cell_par = []
+
+        # check self.u for slans and abci
+        self.u = 1e-3
+        self.cell_structure = 2
+        self.n = n_cells
+
+        self.A_M, self.B_M, self.a_M, self.b_M, self.ri_M, self.L_M, self.Req_M, self.l_M = \
+            [i * self.u for i in mid_cells_par][0:8]
+        self.A_L, self.B_L, self.a_L, self.b_L, self.ri_L, self.L_L, self.Req_L, self.l_L = \
+            [i * self.u for i in l_end_cell_par][0:8]
+        self.A_R, self.B_R, self.a_R, self.b_R, self.ri_R, self.L_R, self.Req_R, self.l_R = \
+            [i * self.u for i in r_end_cell_par][0:8]
+
+        self.c_L = 0 * self.u
+        self.Rbp_L = self.Req_L
+        self.at_L, self.bt_L, self.x_L = 0, 0, 0
+        self.left_beam_pipe = [self.c_L, self.Rbp_L, self.at_L, self.bt_L, self.x_L]
+        self.right_beam_pipe = self.left_beam_pipe
+
+        # for some strange reasons, I reversed the order eesh!!!
+        self.mid_cell = [self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M, self.l_M]
+        self.left_end_cell = [self.Req_L, self.ri_L, self.L_L, self.A_L, self.B_L, self.a_L, self.b_L, self.l_L]
+        self.right_end_cell = [self.Req_R, self.ri_R, self.L_R, self.A_R, self.B_R, self.a_R, self.b_R, self.l_R]
+
+        # beam pipe
+        self.WG_L = 4 * self.L_M  # self.ui.dsb_Lbp_L.value()*self.u # Length of the beam pipe connecting to the cavity
+        self.WG_R = self.WG_L  # Right Waveguide
+        # self.L_all = self.WG_L + self.WG_R + self.L_L
+        # + self.L_R + 2*(self.n - 1)*self.L_M # Total length of each cavity
+
+        self.Rbp_L = self.ri_L * self.u
+        self.at_L = 0 * self.u
+        self.bt_L = 0 * self.u
+        self.c_L = 0 * self.u
+        self.x_L = 0 * (self.c_L + self.at_L)
+        # self.x_L = 230*self.u # x_L is the length of the transition from iris to beam pipe
+
+        self.Rbp_R = self.ri_R * self.u
+        self.at_R = 0 * self.u
+        self.bt_R = 0 * self.u
+        self.c_R = 0 * self.u
+        self.x_R = 0 * (self.c_L + self.at_L)
+        # self.x_R = 230*self.u
+
+        self.left_beam_pipe = [self.c_L, self.Rbp_L, self.at_L, self.bt_L, self.x_L]
+        self.right_beam_pipe = self.left_beam_pipe
+
+        # Slans mesh parameters
+        self.WG_mesh = round(self.WG_L / 5) * self.u  # /5 for ende_type 1
+
+    # def write_cst_paramters(self, fid):
+    #     cwd = os.getcwd()
+    #
+    #     print(path)
+    #     with open(path, 'w') as f:
+    #         name_list = ['c_L', 'Rbp_L', 'at_L', 'bt_L', 'x_L',
+    #                      'Req_L', 'ri_L', 'L_L', 'Aeq_L', 'Beq_L', 'ai_L', 'bi_L',
+    #                      'Req_M', 'ri_M', 'L_M', 'Aeq_M', 'Beq_M', 'ai_M', 'bi_M',
+    #                      'Req_R', 'ri_R', 'L_R', 'Aeq_R', 'Beq_R', 'ai_R', 'bi_R',
+    #                      'c_R', 'Rbp_R', 'at_R', 'bt_R', 'x_R']
+    #
+    #         value_list = [self.c_L, self.Rbp_L, self.at_L, self.bt_L, self.x_L,
+    #                       self.Req_L, self.ri_L, self.L_L, self.A_L, self.B_L, self.a_L, self.b_L,
+    #                       self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M,
+    #                       self.Req_R, self.ri_R, self.L_R, self.A_R, self.B_R, self.a_R, self.b_R,
+    #                       self.c_R, self.Rbp_R, self.at_R, self.bt_R, self.x_R]
+    #
+    #         for i in range(len(name_list)):
+    #             f.write("{}={}\n".format(name_list[i], value_list[i]))
+    #
+    #
+    # def write_cst_paramters_mid(self, fid):
+    #     cwd = os.getcwd()
+    #     print(cwd)
+    #
+    #     print(path)
+    #     with open(path, 'w') as f:
+    #         name_list = ['Req_M', 'ri_M', 'L_M', 'Aeq_M', 'Beq_M', 'ai_M', 'bi_M']
+    #
+    #         value_list = [self.Req_M, self.ri_M, self.L_M, self.A_M, self.B_M, self.a_M, self.b_M]
+    #
+    #         for i in range(len(name_list)):
+    #             f.write("{}={}\n".format(name_list[i], value_list[i]))
+    #
+    #     print("Writing to file complete.")
+
+
+class ABCIGeometry(Geometry):
+    def __init__(self):
+        super().__init__()
+
+        self.L_all = None
+        self.abci = None
+
+        self.fid = 0
+        # initiate codes
+
+    def cavity(self, cav, wakefield_config, MROT = 0,
+               fid="_0", WG_M=None, marker='', **kwargs):
+        no_of_cells = cav.n_cells
+        no_of_modules = 1
+        mid_cells_par = cav.shape['IC']
+        l_end_cell_par = cav.shape['OC']
+        r_end_cell_par = cav.shape['OC_R']
+        beampipes = None
+
+        # wakefield parameters
+        bunch_length = wakefield_config['beam_config']['bunch_length']
+        UBT = 10 * bunch_length * 1e-3 # wakelength
+        MT = wakefield_config['MT']
+        NFS = wakefield_config['NFS']
+        UBT = 0
+        DDZ_SIG = wakefield_config['mesh_config']['DDZ_SIG']
+        DDR_SIG = wakefield_config['mesh_config']['DDR_SIG']
+
+        parentDir = SOFTWARE_DIRECTORY
+        projectDir = cav.projectDir
+        sub_dir = f"{cav.name}"
+
+        # defaults
+        RDRIVE, ISIG = 5e-3, 5
+        LCRBW = 'F'  # counter-rotating beam
+        ZSEP = 0.0
+        BSEP = 0
+        NBUNCH = 1
+        BETA = 1
+        LMATPR = 'F'
+        LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
+        LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 40
+
+        # unpack kwargs
+        for key, value in kwargs.items():
+            if key == 'RADIAL BEAM OFFSET AT (RDRIVE)':
+                RDRIVE = value
+            if key == 'NUMBER OF WAKE POTENTIAL POINTS (NW)':
+                NW = value
+            if key == 'WAKE FOR A COUNTER-ROTATING BEAM (LCRBW)':
+                LCRBW = value
+            if key == 'VELOCITY OF THE BUNCH / C (BETA)':
+                BETA = value
+            if key == 'PRINTOUT OF CAVITY SHAPE USED (LMATPR)':
+                LMATPR = value
+            if key == 'PRINTOUT OF WAKE POTENTIALS (LPRW)':
+                LPRW = value
+            if key == 'LINE-PRINTER PLOT OF WAKE POT. (LPPW)':
+                LPPW = value
+            if key == 'SAVE WAKE POTENTIALS IN A FILE (LSVW)':
+                LSVW = value
+            if key == 'SAVE AZIMUTHAL WAKE IN A FILE (LSVWA)':
+                LSVWA = value
+            if key == 'SAVE TRANSVERSE WAKE IN A FILE (LSVWT)':
+                LSVWT = value
+            if key == 'SAVE LONGITUDINAL WAKE IN A FILE (LSVWL)':
+                LSVWL = value
+            if key == 'SAVE FFT RESULTS IN A FILE (LSVF)':
+                LSVF = value
+            if key == 'SAVE FIELDS INTO FILE (LSAV)':
+                LSAV = value
+            if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
+                LCPUTM = value
+
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
+
+                if 'wake' in value.keys():
+                    if 'counter_rotating'in value['wake'].keys():
+                        LCRBW = 'T'
+                        if 'separation' in value['wake']['counter_rotating'].keys():
+                            ZSEP = value['wake']['counter_rotating']['separation']
+
+                if 'beam' in value.keys():
+                    if 'beam_offset' in value['beam'].keys():
+                        RDRIVE = value['beam']['beam_offset']
+                    if 'nbunch' in value['beam'].keys():
+                        NBUNCH = value['beam']['nbunch']
+                    if 'separation' in value['beam'].keys():
+                        BSEP = value['beam']['separation']
+
+        # Adding parameter arguments here for testing purposes # fid, fileID
+        self.fid = f'{fid}'
+
+        # this checks whether input is from gui or from the optimisation
+        if mid_cells_par is not None:
+            self.set_geom_parameters(no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par)
+        else:
+            self.set_geom_parameters(no_of_cells)
+
+        if WG_M == '':
+            WG_M = self.WG_L
+
+        self.abci = ABCI(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
+                         self.right_beam_pipe)
+
+        # output_name = 5
+        # SIG = 0.003  # One standard deviation of bunch length
+        MROT = MROT  # MROT = 0 for monopole fields, MROT = 1 for dipole fields
+        # UBT = 0.3  # The last longitudinal coordinate relative to the head of the beam,
+        # up to which the potentials are calculated (defaults 10*Sig). The longer the better resolution of impedance
+        bunch_length = bunch_length
+        wake_offset = 5e-03
+        beam_offset = 5e-03
+        sig_var = [x * 1e-3 for x in [bunch_length]]  # bunch length converted to m
+
+        # not needed for our parametrization
+        end_type = 1  # if _type = 1 the  HALF cell is changed for tuning.
+        # If _type = 2 the WHOLE  cell is changed for tuning
+        end_L = 1  # if _L = 1 the type of  cell is type a (without iris) if _L = 2 the type of  cell is type b
+        end_R = 1
+
+        for i_out in range(1):  # check!!!
+            module_nu = no_of_modules  # Number of cavities in module
+            n = no_of_cells  # Number of cells
+            SIG = sig_var[i_out]  # One standard deviation of bunch length
+            mesh_DDR = min(self.ri_M / 10, DDR_SIG * SIG)  # /lines_per_sigma
+            mesh_DDZ = min(self.ri_M / 10, DDZ_SIG * SIG)  # /lines_per_sigma
+
+            #  mesh_DDR = 2.5*1e-3
+            #  mesh_DDZ = 2.5*1e-3
+
+            # UBT = 14*SIG
+            UBT = UBT
+
+            # # Beam pipe radius for Different type of transitions to beam pipe
+            if end_L == 1:
+                self.Rbp_L = self.ri_L
+
+            if end_R == 1:
+                self.Rbp_R = self.ri_R
+
+            # #  Ellipse conjugate points x,y
+            zr12_L, alpha_L = self.abci.rz_conjug('left')  # zr12_R first column is z , second column is r
+            zr12_R, alpha_R = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
+            zr12_M, alpha_M = self.abci.rz_conjug('mid')  # zr12_R first column is z , second column is r
+
+            if end_L == 2:
+                zr12_BPL, alpha_BPL = self.abci.rz_conjug('left')  # zr12_R first column is z , second column is r
+
+            if end_R == 2:
+                zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
+
+            # create folder for file output set
+            self.createFolder(self.fid, projectDir, sub_dir, marker)
+
+            # # write parameters to folder
+            # if self.ui.cb_Only_Mid_Cells.checkState() == 2:
+            #     self.write_cst_paramters_mid(self.fid)
+            # else:
+            #     self.write_cst_paramters(self.fid)
+
+            # change save directory
+            if sub_dir == '':
+                run_save_directory = projectDir / Path(f'{fid}/wakefield')
+            else:
+                run_save_directory = projectDir / Path(f'{sub_dir}/wakefield/{fid}')
+
+            # Create polarization subfolders
+            for m in [0, 1]:
+                os.makedirs(run_save_directory / MROT_DICT[m], exist_ok=True)
+
+            fname = Path(fr'{run_save_directory}/{MROT_DICT[marker]}/cavity.abc')
+
+            L_all_increment = 0
+            self.L_all = 0
+            with open(fname, 'w') as f:
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
+                f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
+                f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
+                f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
+                f.write(' #CAVITYSHAPE \n')
+                f.write('0. \n')
+                f.write('0.000 0.000\n')
+
+                if end_L == 2:
+                    f.write('{} 0.000\n'.format(self.Rbp_L))
+                else:
+                    f.write('{} 0.000\n'.format(self.ri_L))
+
+                if self.WG_L > 0:
+                    if end_L == 2:
+                        f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L))
+                    else:
+                        f.write('{} {} \n'.format(self.ri_L, self.WG_L))
+
+                if n == 1:
+                    for i_mode in range(1, module_nu + 1):
+                        if i_mode > 0:
+                            if self.WG_L > 0:
+                                if end_L == 2:
+                                    f.write(
+                                        '{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L + (i_mode - 1) * self.L_all))
+                                else:
+                                    f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode - 1) * self.L_all))
+
+                        if self.Req_L != self.Req_R:
+                            error('Error:: The equator radius of left and right cell are not equal')
+
+                        # if exist('L_M') != 1:
+                        #     L_M = []
+
+                        if end_L == 2:
+                            self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
+                        self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        if end_R == 2:
+                            self.abci.abci_bp_R(n, zr12_BPR, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        if self.WG_R > 0:
+                            if end_R == 2:
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L
+                                                          + self.L_R + (i_mode - 1) * self.L_all))
+                            else:
+                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
+                                                          + self.L_R + (i_mode - 1) * self.L_all))
+
+                    f.write(
+                        '0 {} \n'.format(self.WG_L + self.WG_R + self.L_L + self.L_R + (module_nu - 1) * self.L_all))
+                    f.write('0 0 \n')
+                    f.write('9999. 9999. \n')
+
+                # #  n>1 multi-cell cavity
+
+                if n > 1:
+                    for i_mode in range(1, module_nu + 1):
+
+                        # change waveguide length
+                        if module_nu == 2:
+                            if i_mode == 1:
+                                self.WG_R = WG_M
+                            if i_mode == 2:
+                                self.WG_L = WG_M
+                                self.WG_R = 4 * self.L_M
+
+                        elif module_nu > 2:
+                            if i_mode == 1:
+                                self.WG_R = WG_M
+                            elif 1 < i_mode < module_nu:
+                                self.WG_L = WG_M
+                            else:
+                                self.WG_R = 4 * self.L_M
+                        # Total length of each cavity
+                        L_all_increment = self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M
+
+                        if i_mode > 1:
+                            if self.WG_L > 0:
+                                if end_L == 2:
+                                    # f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L
+                                    # + (i_mode-1)*self.L_all))
+                                    f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L + self.L_all))
+                                else:
+                                    # f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode-1)*self.L_all))
+                                    f.write('{} {} \n'.format(self.ri_L, self.WG_L + self.L_all))
+
+                        if end_L == 2:
+                            # self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode-1)*self.L_all, f)
+                            self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + self.L_all, f)
+
+                        # self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode-1)*self.L_all, f)
+                        self.abci.abci_n1_L(n, zr12_L, self.WG_L + self.L_all, f)
+
+                        for i in range(1, n):
+                            # self.abci.abci_M(n, zr12_M, self.WG_L + (i_mode-1)*self.L_all, f, i, end_type)
+                            self.abci.abci_M(n, zr12_M, self.WG_L + self.L_all, f, i, end_type)
+
+                        # self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode-1)*self.L_all, f)
+                        self.abci.abci_n1_R(n, zr12_R, self.WG_L + self.L_all, f)
+
+                        if end_R == 2:
+                            # self.abci.abci_bp_R(n, zr12_BPR, self.WG_R + (i_mode-1)*self.L_all, f)
+                            self.abci.abci_bp_R(n, zr12_BPR, self.WG_R + self.L_all, f)
+
+                        if self.WG_R > 0:
+                            if end_R == 2:
+                                # f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R+ self.L_L + self.L_R
+                                # + 2*(n-1)*self.L_M+(i_mode-1)*self.L_all))
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L
+                                                          + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
+                            else:
+                                # f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
+                                # + self.L_R+2*(n-1)*self.L_M + (i_mode-1)*self.L_all))
+                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
+                                                          + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
+
+                        if i_mode < no_of_modules:
+                            self.L_all += L_all_increment
+
+                    # f.write('0 {} \n'.format(self.WG_L + self.WG_R+ self.L_L
+                    # + self.L_R+2*(n-1)*self.L_M+(module_nu-1)*self.L_all))
+                    f.write('0 {} \n'.format(
+                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
+                    f.write('0 0 \n')
+                    f.write('9999. 9999. \n')
+
+                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP}  &END \n')
+                # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK}, LCRBW = {LCRBW}, ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
+                # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC= F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
+                f.write('\nSTOP\n')
+
+            input_path = Path(fr'{run_save_directory}/cavity.abc')
+            run_dir = str(Path(run_save_directory))
+            exe_path = os.path.join(str(parentDir), 'solvers', 'ABCI', 'ABCI.exe')
+            run_abci_exe(exe_path, input_path, run_dir, quiet=(LCPUTM != 'T'))
+
+            # save json file
+            shape = {'IC': list(mid_cells_par),
+                     'OC': list(l_end_cell_par),
+                     'OC_R': list(r_end_cell_par)}
+
+            with open(Path(fr"{run_save_directory}/geometric_parameters.json"), 'w') as f:
+                json.dump(shape, f, indent=4, separators=(',', ': '))
+
+    def cavity_flattop(self, no_of_cells, no_of_modules,
+                       mid_cells_par=None, l_end_cell_par=None, r_end_cell_par=None,
+                       fid="_0", MROT=0, beampipes=None,
+                       bunch_length=50, MT=3, NFS=5000, UBT=0,
+                       DDZ_SIG=0.1, DDR_SIG=0.1,
+                       parentDir='', projectDir='', WG_M=None, marker='', sub_dir='', **kwargs):
+
+        # defaults
+        RDRIVE, ISIG = 5e-3, 5
+        LCRBW = 'F'
+        BETA = 1
+        LMATPR = 'F'
+        LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = 'T', 'T', 'T', 'F', 'T', 'T', 'F'
+        LSAV, LCPUTM = 'F', 'F'
+        LCBACK = 'T'
+        LPLE = 'F'
+        NSHOT = 7
+
+        # unpack kwargs
+        for key, value in kwargs.items():
+            if key == 'RADIAL BEAM OFFSET AT (RDRIVE)':
+                RDRIVE = value
+            if key == 'NUMBER OF WAKE POTENTIAL POINTS (NW)':
+                NW = value
+            if key == 'WAKE FOR A COUNTER-ROTATING BEAM (LCRBW)':
+                LCRBW = value
+            if key == 'VELOCITY OF THE BUNCH / C (BETA)':
+                BETA = value
+            if key == 'PRINTOUT OF CAVITY SHAPE USED (LMATPR)':
+                LMATPR = value
+            if key == 'PRINTOUT OF WAKE POTENTIALS (LPRW)':
+                LPRW = value
+            if key == 'LINE-PRINTER PLOT OF WAKE POT. (LPPW)':
+                LPPW = value
+            if key == 'SAVE WAKE POTENTIALS IN A FILE (LSVW)':
+                LSVW = value
+            if key == 'SAVE AZIMUTHAL WAKE IN A FILE (LSVWA)':
+                LSVWA = value
+            if key == 'SAVE TRANSVERSE WAKE IN A FILE (LSVWT)':
+                LSVWT = value
+            if key == 'SAVE LONGITUDINAL WAKE IN A FILE (LSVWL)':
+                LSVWL = value
+            if key == 'SAVE FFT RESULTS IN A FILE (LSVF)':
+                LSVF = value
+            if key == 'SAVE FIELDS INTO FILE (LSAV)':
+                LSAV = value
+            if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
+                LCPUTM = value
+
+            if key == 'wakefield_config':
+                if 'save_fields' in value.keys():
+                    LPLE, LCBACK = 'T', 'F'
+                    if isinstance(value['save_fields'], dict):
+                        if 'nshot' in value['save_fields'].keys():
+                            NSHOT = value['save_fields']['nshot']
+
+        # Adding parameter arguments here for testing purposes # fid, fileID
+        self.fid = f'{fid}'
+
+        # this checks whether input is from gui or from the optimisation
+        if mid_cells_par is not None:
+            self.set_geom_parameters_flattop(no_of_cells, mid_cells_par, l_end_cell_par, r_end_cell_par)
+        else:
+            self.set_geom_parameters_flattop(no_of_cells)
+
+        if WG_M == '':
+            WG_M = self.WG_L
+
+        self.abci = ABCI_flattop(self.left_beam_pipe, self.left_end_cell, self.mid_cell, self.right_end_cell,
+                                 self.right_beam_pipe)
+
+        # output_name = 5
+        # SIG = 0.003  # One standard deviation of bunch length
+        MROT = MROT  # MROT = 0 for monopole fields, MROT = 1 for dipole fields
+        # UBT = 0.3  # The last longitudinal coordinate relative to the head of the beam,
+        # up to which the potentials are calculated (defaults 10*Sig). The longer the better resolution of impedance
+        bunch_length = bunch_length
+        wake_offset = 5e-03
+        beam_offset = 5e-03
+        sig_var = [x * 1e-3 for x in [bunch_length]]  # bunch length converted to m
+
+        # not needed for our parametrization
+        end_type = 1  # if _type = 1 the  HALF cell is changed for tuning.
+        # If _type = 2 the WHOLE  cell is changed for tuning
+        end_L = 1  # if _L = 1 the type of  cell is type a (without iris) if _L = 2 the type of  cell is type b
+        end_R = 1
+
+        for i_out in range(1):  # check!!!
+            module_nu = no_of_modules  # Number of cavities in module
+            n = no_of_cells  # Number of cells
+            SIG = sig_var[i_out]  # One standard deviation of bunch length
+            mesh_DDR = min(self.ri_M / 10, DDR_SIG * SIG)  # /lines_per_sigma
+            mesh_DDZ = min(self.ri_M / 10, DDZ_SIG * SIG)  # /lines_per_sigma
+
+            #  mesh_DDR = 2.5*1e-3
+            #  mesh_DDZ = 2.5*1e-3
+
+            # UBT = 14*SIG
+            UBT = UBT
+
+            # # Beam pipe radius for Different type of transitions to beam pipe
+            if end_L == 1:
+                self.Rbp_L = self.ri_L
+
+            if end_R == 1:
+                self.Rbp_R = self.ri_R
+
+            # #  Ellipse conjugate points x,y
+            zr12_L, alpha_L = self.abci.rz_conjug('left')  # zr12_R first column is z , second column is r
+            zr12_R, alpha_R = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
+            zr12_M, alpha_M = self.abci.rz_conjug('mid')  # zr12_R first column is z , second column is r
+
+            if end_L == 2:
+                zr12_BPL, alpha_BPL = self.abci.rz_conjug('left')  # zr12_R first column is z , second column is r
+
+            if end_R == 2:
+                zr12_BPR, alpha_BPR = self.abci.rz_conjug('right')  # zr12_R first column is z , second column is r
+            # #  Write ABCI code
+
+            # create folder for file output set
+            self.createFolder(self.fid, projectDir, sub_dir, marker)
+
+            # # write parameters to folder
+            # if self.ui.cb_Only_Mid_Cells.checkState() == 2:
+            #     self.write_cst_paramters_mid(self.fid)
+            # else:
+            #     self.write_cst_paramters(self.fid)
+
+            # change save directory
+            if sub_dir == '':
+                run_save_directory = projectDir / f'{fid}/wakefield'
+            else:
+                run_save_directory = projectDir / f'{sub_dir}/wakefield/{fid}'
+
+            fname = fr'{run_save_directory}\cavity.abc'
+            # print('filename:: ', fname)
+
+            L_all_increment = 0
+            self.L_all = 0
+            # print(fname)
+            with open(fname, 'w') as f:
+                f.write(f' &FILE LSAV = {LSAV}, ITEST = 0, LREC = F, LCPUTM = {LCPUTM} &END \n')
+                f.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
+                f.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
+                f.write(' &MESH DDR = {}, DDZ = {} &END \n'.format(mesh_DDR, mesh_DDZ))
+                f.write(' #CAVITYSHAPE \n')
+                f.write('0. \n')
+                f.write('0.000 0.000\n')
+
+                if end_L == 2:
+                    f.write('{} 0.000\n'.format(self.Rbp_L))
+                else:
+                    f.write('{} 0.000\n'.format(self.ri_L))
+
+                if self.WG_L > 0:
+                    if end_L == 2:
+                        f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L))
+                    else:
+                        f.write('{} {} \n'.format(self.ri_L, self.WG_L))
+
+                if n == 1:
+                    for i_mode in range(1, module_nu + 1):
+                        if i_mode > 0:
+                            if self.WG_L > 0:
+                                if end_L == 2:
+                                    f.write(
+                                        '{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L + (i_mode - 1) * self.L_all))
+                                else:
+                                    f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode - 1) * self.L_all))
+
+                        if self.Req_L != self.Req_R:
+                            print('Error:: The equator radius of left and right cell are not equal')
+
+                        # if exist('L_M') != 1:
+                        #     L_M = []
+
+                        if end_L == 2:
+                            self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        # print("GUI_ABCI::It got here")
+                        self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        # add flattop
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+
+                        self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        if end_R == 2:
+                            self.abci.abci_bp_R(n, zr12_BPR, self.WG_L + (i_mode - 1) * self.L_all, f)
+
+                        if self.WG_R > 0:
+                            if end_R == 2:
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L
+                                                          + self.L_R + (i_mode - 1) * self.L_all))
+                            else:
+                                f.write('{} {} \n'.format(self.ri_R,
+                                                          self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (
+                                                                      i_mode - 1) * self.L_all))
+
+                    f.write(
+                        '0 {} \n'.format(
+                            self.WG_L + self.WG_R + self.L_L + self.l_L + self.L_R + (module_nu - 1) * self.L_all))
+                    f.write('0 0 \n')
+                    f.write('9999. 9999. \n')
+
+                # #  n>1 multi-cell cavity
+
+                if n > 1:
+                    for i_mode in range(1, module_nu + 1):
+
+                        # print("imode:", i_mode, i_mode)
+                        # change waveguide length
+                        if module_nu == 2:
+                            if i_mode == 1:
+                                self.WG_R = WG_M
+                            if i_mode == 2:
+                                self.WG_L = WG_M
+                                self.WG_R = 4 * self.L_M
+
+                        elif module_nu > 2:
+                            if i_mode == 1:
+                                self.WG_R = WG_M
+                            elif 1 < i_mode < module_nu:
+                                self.WG_L = WG_M
+                            else:
+                                self.WG_R = 4 * self.L_M
+                        # Total length of each cavity
+                        L_all_increment = self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M
+                        # print(self.WG_L, self.WG_R, WG_M, self.L_all)
+
+                        if i_mode > 1:
+                            if self.WG_L > 0:
+                                if end_L == 2:
+                                    # f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L
+                                    # + (i_mode-1)*self.L_all))
+                                    f.write('{} {} \n'.format(self.Rbp_L, self.WG_L - self.x_L + self.L_all))
+                                else:
+                                    # f.write('{} {} \n'.format(self.ri_L, self.WG_L + (i_mode-1)*self.L_all))
+                                    f.write('{} {} \n'.format(self.ri_L, self.WG_L + self.L_all))
+
+                        if end_L == 2:
+                            # self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + (i_mode-1)*self.L_all, f)
+                            self.abci.abci_bp_L(n, zr12_BPL, self.WG_L + self.L_all, f)
+
+                        # self.abci.abci_n1_L(n, zr12_L, self.WG_L + (i_mode-1)*self.L_all, f)
+                        self.abci.abci_n1_L(n, zr12_L, self.WG_L + self.L_all, f)
+
+                        # add flattop
+                        f.write(
+                            '{} {} \n'.format(self.Req_L, self.WG_L + self.L_L + self.l_L + (i_mode - 1) * self.L_all))
+
+                        for i in range(1, n):
+                            # self.abci.abci_M(n, zr12_M, self.WG_L + (i_mode-1)*self.L_all, f, i, end_type)
+                            self.abci.abci_M(n, zr12_M, self.WG_L + self.L_all, f, i, end_type)
+
+                            if i != n - 1:
+                                # add flattop
+                                f.write('{} {} \n'.format(self.Req_M,
+                                                          self.WG_L + self.L_L + 2 * i * self.L_M + self.l_L + i * self.l_M + (
+                                                                      i_mode - 1) * self.L_all))
+                            else:
+                                # add flattop
+                                f.write('{} {} \n'.format(self.Req_M, self.WG_L + self.L_L + 2 * i * self.L_M + (
+                                            i_mode - 1) * self.L_all + self.l_L + (i - 1) * self.l_M + self.l_R))
+
+                        # self.abci.abci_n1_R(n, zr12_R, self.WG_L + (i_mode-1)*self.L_all, f)
+                        self.abci.abci_n1_R(n, zr12_R, self.WG_L + self.L_all, f)
+
+                        if end_R == 2:
+                            # self.abci.abci_bp_R(n, zr12_BPR, self.WG_R + (i_mode-1)*self.L_all, f)
+                            self.abci.abci_bp_R(n, zr12_BPR, self.WG_R + self.L_all, f)
+
+                        if self.WG_R > 0:
+                            if end_R == 2:
+                                # f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R+ self.L_L + self.L_R
+                                # + 2*(n-1)*self.L_M+(i_mode-1)*self.L_all))
+                                f.write('{} {} \n'.format(self.Rbp_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
+                                                          + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
+                            else:
+                                # f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L
+                                # + self.L_R+2*(n-1)*self.L_M + (i_mode-1)*self.L_all))
+                                f.write('{} {} \n'.format(self.ri_R, self.WG_L + self.WG_R + self.L_L + self.l_L + (
+                                            n - 2) * self.l_M + self.l_R
+                                                          + self.L_R + 2 * (n - 1) * self.L_M + self.L_all))
+
+                        if i_mode < no_of_modules:
+                            self.L_all += L_all_increment
+
+                    # f.write('0 {} \n'.format(self.WG_L + self.WG_R+ self.L_L
+                    # + self.L_R+2*(n-1)*self.L_M+(module_nu-1)*self.L_all))
+                    f.write('0 {} \n'.format(
+                        self.WG_L + self.WG_R + self.L_L + self.L_R + 2 * (n - 1) * self.L_M + self.L_all + self.l_L + (
+                                    n - 2) * self.l_M + self.l_R))
+                    f.write('0 0 \n')
+                    f.write('9999. 9999. \n')
+
+                f.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}  &END \n')
+                # f.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, beam_offset))
+                f.write(f' &TIME  MT = {int(MT)}, NSHOT={NSHOT} &END \n')
+                f.write(f' &WAKE  UBT = {int(UBT)}, LCRBW = {LCRBW}, LCBACK = {LCBACK} &END \n')  # , NFS = {NFS}
+                # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
+                # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
+                f.write(f' &PLOT  LCAVIN = T, LCAVUS = F, LPLW = T, LFFT = T, LSPEC = T, '
+                        f'LINTZ = F, LPATH = T, LPLE = {LPLE}, LPLC=F &END \n')
+                f.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
+                        f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
+                f.write('\nSTOP\n')
+            input_path = Path(fr'{run_save_directory}\cavity.abc')
+            run_dir = str(Path(run_save_directory))
+            exe_path = os.path.join(str(parentDir), 'solvers', 'ABCI', 'ABCI.exe')
+            run_abci_exe(exe_path, input_path, run_dir, quiet=(LCPUTM != 'T'))
+
+            # save json file
+            shape = {'IC': list(mid_cells_par),
+                     'OC': list(l_end_cell_par),
+                     'OC_R': list(r_end_cell_par)}
+
+            with open(Path(fr"{run_save_directory}\geometric_parameters.json"), 'w') as f:
+                json.dump(shape, f, indent=4, separators=(',', ': '))
+
+    @staticmethod
+    def createFolder(fid, projectDir, subdir='', marker=''):
+        if subdir == '':
+            path = projectDir / f'{fid}{marker}/wakefield'
+            os.makedirs(path, exist_ok=True)
+        else:
+            new_path = projectDir / f'{subdir}{marker}/wakefield/{fid}'
+            os.makedirs(new_path, exist_ok=True)

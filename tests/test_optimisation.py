@@ -20,7 +20,7 @@ def test_optimisation_small_run(project_dir):
             'A': [58, 66], 'B': [62, 70], 'a': [26, 34], 'b': [20, 27],
             'Ri': [76, 84], 'L': [90, 97], 'Req': [165, 178],
         },
-        'objectives': [['min', 'freq [MHz]'], ['min', 'Epk/Eacc []']],
+        'objectives': [['min', 'monopole:freq [MHz]'], ['min', 'monopole:Epk/Eacc []']],
         'tune_config': {
             'freqs': 801.58,
             'cell_type': {'mid-cell': 'Req'},

@@ -1,11 +1,13 @@
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.geometry.contours import elliptical_profile, DegenerateGeometry
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from cavsim2d.utils.config_validation import require
 
 class EllipticalCavityFlatTop(Cavity):
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
@@ -39,19 +41,14 @@ class EllipticalCavityFlatTop(Cavity):
             mid_cell = mid_cell['IC']
 
         # Must have at least length = 8 in each cell‐parameter list
-        assert mid_cell is not None and len(mid_cell) > 7, \
-            ValueError(
-                "Flattop cavity mid‐cells require at least 8 input parameters, with the 8th representing length (l).")
+        require(mid_cell is not None and len(mid_cell) > 7,
+                'Flattop cavity mid‐cells require at least 8 input parameters, with the 8th representing length (l).')
         if end_cell_left is not None:
-            assert len(end_cell_left) > 7, \
-                ValueError(
-                    "Flattop cavity left end‐cells require at least 8 input parameters, with the 8th representing "
-                    "length (l).")
+            require(len(end_cell_left) > 7,
+                    'Flattop cavity left end‐cells require at least 8 input parameters, with the 8th representing length (l).')
         if end_cell_right is not None:
-            assert len(end_cell_right) > 7, \
-                ValueError(
-                    "Flattop cavity right end‐cells require at least 8 input parameters, with the 8th representing "
-                    "length (l).")
+            require(len(end_cell_right) > 7,
+                    'Flattop cavity right end‐cells require at least 8 input parameters, with the 8th representing length (l).')
 
         # Truncate or pad to exactly 8 elements
         self.mid_cell = np.array(mid_cell)[:8]
@@ -676,6 +673,28 @@ class EllipticalCavityFlatTop(Cavity):
 
             return ax
 
+
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` (metres) — the native
+        netgen.occ path, with exact ellipse arcs and the flat top as a straight
+        segment across the equator.
+
+        Shares the contour builder with :class:`EllipticalCavity`; the only
+        difference is the trailing flat-top length ``l`` on each cell. Returns
+        ``None`` on a degenerate parameter set so the gmsh writer reports it.
+        """
+        names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'l')
+        try:
+            cells = {suf: [float(self.parameters[f'{n}_{suf}']) * 1e-3 for n in names]
+                     for suf in ('m', 'el', 'er')}
+        except (KeyError, TypeError, ValueError):
+            return None
+        try:
+            return elliptical_profile(cells['m'], cells['el'], cells['er'],
+                                      self.n_cells, self.beampipe,
+                                      flattop=True, name='elliptical_flattop')
+        except (DegenerateGeometry, ValueError):
+            return None
 
     def get_geometric_parameters(self):
         parameter_names = ["A", "B", "a", "b", "Ri", "L", "Req", "l"]

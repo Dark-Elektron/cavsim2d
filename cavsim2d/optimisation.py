@@ -18,6 +18,12 @@ from cavsim2d.constants import *
 from cavsim2d.processes import *
 from cavsim2d.utils.printing import *
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.utils.printing import set_verbose
+from cavsim2d.processes.tune import normalize_cell_type_config
+from cavsim2d.processes.tune import last_stage_result
+from cavsim2d.solvers.objectives import (SEP, parse_objective, read_objective_values,
+                                         canonical_objective)
+from cavsim2d.utils.config_validation import require
 
 EIGENMODE_QOIS = {"Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"}
 
@@ -207,7 +213,6 @@ class Optimisation:
 
         # Global chattiness — default quiet so long optimisations only show
         # errors and the tqdm progress bar; set ``verbose: True`` to restore.
-        from cavsim2d.utils.printing import set_verbose
         set_verbose(config.get('verbose', False))
 
         # Resume support: only meaningful when an opt_solver (and therefore a
@@ -230,13 +235,15 @@ class Optimisation:
         self.hv_consecutive = config.get('hv_consecutive', 3)
         self.objectives_unprocessed = config['objectives']
         self.objectives, weights = process_objectives(config['objectives'])
+        # Canonicalise eigenmode objective names ('1:freq [MHz]' -> 'dipole:freq [MHz]')
+        # so the DataFrame columns and the uq.json keys agree. Wakefield objectives
+        # (ZL/ZT) carry no polarisation and pass through untouched.
+        self.objectives = [(o[0], canonical_objective(o[1]), *o[2:]) for o in self.objectives]
         self.objective_vars = [obj[1] for obj in self.objectives]
         if 'weights' in config:
             self.weights = config['weights']
-            assert len(self.weights) == len(weights), \
-                ("Length of delta must be equal to the length of the variables. For impedance Z entries, one less than"
-                 "the length of the interval list weights are needed. Eg. for ['min', 'ZL', [1, 2, 3]], two weights are"
-                 " required. ")
+            require(len(self.weights) == len(weights),
+                    "Length of delta must be equal to the length of the variables. For impedance Z entries, one less thanthe length of the interval list weights are needed. Eg. for ['min', 'ZL', [1, 2, 3]], two weights are required. ")
         else:
             self.weights = weights
 
@@ -245,8 +252,8 @@ class Optimisation:
             self.constraints = self.process_constraints(config['constraints'])
         self.processes_count = 1
         if 'processes' in config:
-            assert config['processes'] > 0, error('Number of processes must be greater than zero!')
-            assert isinstance(config['processes'], int), error('Number of processes must be integer!')
+            require(config['processes'] > 0, 'Number of processes must be greater than zero!')
+            require(isinstance(config['processes'], int), 'Number of processes must be integer!')
             self.processes_count = config['processes']
 
         self.method = config['method']
@@ -262,14 +269,12 @@ class Optimisation:
 
         self.tune_config = config['tune_config']
         tune_config_keys = self.tune_config.keys()
-        assert 'freqs' in tune_config_keys, error('Please enter the target tune frequency.')
-        assert ('cell_type' in tune_config_keys
-                or ('parameters' in tune_config_keys and 'cell_types' in tune_config_keys)), error(
-            "Please enter 'cell_type' (dict) in tune_config, e.g. {'mid-cell': 'Req'}.")
+        require('freqs' in tune_config_keys, 'Please enter the target tune frequency.')
+        require('cell_type' in tune_config_keys or ('parameters' in tune_config_keys and 'cell_types' in tune_config_keys),
+                "Please enter 'cell_type' (dict) in tune_config, e.g. {'mid-cell': 'Req'}.")
 
         # Normalise to the keyed form — optimisation only supports a single
         # (cell_type, tune_variable) pair per candidate run.
-        from cavsim2d.processes.tune import normalize_cell_type_config
         _ct_map = normalize_cell_type_config(self.tune_config)
         if len(_ct_map) != 1 or len(next(iter(_ct_map.values()))) != 1:
             error("Optimisation only supports a single cell_type/tune_variable pair; "
@@ -279,8 +284,8 @@ class Optimisation:
 
         ct_norm = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
         if ct_norm == 'end cell':
-            assert 'mid-cell' in config, error('end-cell optimisation requires mid-cell dimensions via "mid-cell" key.')
-            assert len(config['mid-cell']) >= 7, error('Incomplete mid cell dimension.')
+            require('mid-cell' in config, 'end-cell optimisation requires mid-cell dimensions via "mid-cell" key.')
+            require(len(config['mid-cell']) >= 7, 'Incomplete mid cell dimension.')
             self.mid_cell = config['mid-cell']
 
         self.tune_freq = self.tune_config['freqs']
@@ -290,8 +295,8 @@ class Optimisation:
                 or any(['ZT' in obj for obj in self.objective_vars])
                 or any([obj in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]'] for obj in
                         self.objective_vars])):
-            assert 'wakefield_config' in config, error('Wakefield impedance objective detected in objectives. '
-                                                       'Please include a field for wakefield_config.')
+            require('wakefield_config' in config,
+                    'Wakefield impedance objective detected in objectives. Please include a field for wakefield_config.')
             self.wakefield_config = config['wakefield_config']
 
             if 'uq_config' in self.wakefield_config:
@@ -300,8 +305,8 @@ class Optimisation:
                 self.wakefield_config['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
 
                 if self.uq_config['delta']:
-                    assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                        "The number of deltas must be equal to the number of variables.")
+                    require(len(self.uq_config['delta']) == len(self.uq_config['variables']),
+                            'The number of deltas must be equal to the number of variables.')
 
         # eigenmode_config can be at top level or nested inside tune_config
         if 'eigenmode_config' in config:
@@ -312,8 +317,8 @@ class Optimisation:
         if self.eigenmode_config and 'uq_config' in self.eigenmode_config:
             self.uq_config = self.eigenmode_config['uq_config']
             if self.uq_config['delta']:
-                assert len(self.uq_config['delta']) == len(self.uq_config['variables']), error(
-                    "The number of deltas must be equal to the number of variables.")
+                require(len(self.uq_config['delta']) == len(self.uq_config['variables']),
+                        'The number of deltas must be equal to the number of variables.')
 
         self.df = None
 
@@ -550,7 +555,6 @@ class Optimisation:
         # Get successfully tuned geometries. Post-refactor, tune artefacts
         # live at <self_dir>/tuned/tune_info/tune_res.json keyed by cell
         # type. Fall back to the legacy location for older on-disk runs.
-        from cavsim2d.processes.tune import last_stage_result
 
         processed_keys = []
         tune_result = []
@@ -579,39 +583,34 @@ class Optimisation:
         df = df.loc[processed_keys]
         df.loc[:, [self.tune_parameter, 'freq [MHz]']] = tune_result
 
-        # Eigenmode objective variables
-        intersection = set(self.objective_vars).intersection(
-            {"freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"})
+        # Eigenmode objective variables. These are polarisation-qualified
+        # ('monopole:R/Q [Ohm]', 'dipole:2:freq [MHz]'); the wakefield objectives
+        # (ZL/ZT) carry no polarisation and are handled further down.
+        eig_objectives = [v for v in self.objective_vars if isinstance(v, str) and SEP in v]
 
-        if len(intersection) > 0:
+        if eig_objectives:
             obj_result = []
             processed_keys = []
             tuned_keys = set(df.index)
             for key, scav in cavs_dict.items():
                 if key not in tuned_keys:
                     continue
-                # Post-refactor, eigenmode ran on the *tuned* cavity —
-                # qois.json lives at <self_dir>/tuned/eigenmode/monopole/qois.json
-                # (monopole_dir falls back to the flat layout for older runs).
-                # Fall back to the untuned cavity's path for older runs.
-                from cavsim2d.solvers.eigenmode_result import monopole_dir
+                # Post-refactor, eigenmode ran on the *tuned* cavity, so its results
+                # live at <self_dir>/tuned/eigenmode/<pol>/. Fall back to the untuned
+                # cavity's path for older runs.
                 tuned_cav = scav.tuned
-                if tuned_cav is not None:
-                    filename = Path(monopole_dir(tuned_cav.eigenmode_dir)) / 'qois.json'
-                    if not filename.exists():
-                        filename = Path(monopole_dir(scav.eigenmode_dir)) / 'qois.json'
-                else:
-                    filename = Path(monopole_dir(scav.eigenmode_dir)) / 'qois.json'
-                try:
-                    with open(filename, 'r') as file:
-                        qois = json.load(file)
-
-                    obj = list(
-                        {key: val for [key, val] in qois.items() if key in self.objective_vars}.values())
-                    obj_result.append(obj)
+                candidates = [tuned_cav.eigenmode_dir] if tuned_cav is not None else []
+                candidates.append(scav.eigenmode_dir)
+                for eig_dir in candidates:
+                    try:
+                        values = read_objective_values(eig_dir, eig_objectives)
+                    except (ValueError, OSError):
+                        continue
+                    # Order by the objective list, not by qois.json key order —
+                    # otherwise the values silently misalign with their names.
+                    obj_result.append([values[parse_objective(o).column] for o in eig_objectives])
                     processed_keys.append(key)
-                except FileNotFoundError:
-                    pass
+                    break
 
             if len(processed_keys) == 0:
                 error("Unfortunately, none survived. \n"
@@ -622,9 +621,9 @@ class Optimisation:
 
             df = df.loc[processed_keys]
 
-            obj_eigen = [o[1] for o in self.objectives if
-                         o[1] in {"freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]", "Q []"}]
-            df[obj_eigen] = obj_result
+            # Columns are the objectives themselves, in order — obj_result rows were
+            # built in the same order, so names and values cannot drift apart.
+            df[eig_objectives] = obj_result
 
         # Wakefield objective variables
         for o in self.objectives:
@@ -683,7 +682,7 @@ class Optimisation:
 
             df_uq = pd.DataFrame.from_dict(uq_result_dict, orient='index')
 
-            assert len(df_uq) > 0, error('Unfortunately, no geometry was returned from uq, optimisation terminated.')
+            require(len(df_uq) > 0, 'Unfortunately, no geometry was returned from uq, optimisation terminated.')
             df_uq.columns = uq_column_names
             df_uq.index.name = 'key'
             df_uq.reset_index(inplace=True)
@@ -822,13 +821,13 @@ class Optimisation:
             if ct == 'mid cell':
                 shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
             elif ct == 'end cell':
-                assert 'mid-cell' in list(self.optimisation_config.keys()), \
-                    ("end-cell optimisation requires mid-cell dimensions via 'mid-cell' key.")
-                assert len(self.optimisation_config['mid-cell']) > 6, ("Incomplete mid-cell geometry parameter. "
-                                                                       "At least 7 geometric parameters required.")
+                require('mid-cell' in list(self.optimisation_config.keys()),
+                        "end-cell optimisation requires mid-cell dimensions via 'mid-cell' key.")
+                require(len(self.optimisation_config['mid-cell']) > 6,
+                        'Incomplete mid-cell geometry parameter. At least 7 geometric parameters required.')
                 IC = self.optimisation_config['mid-cell']
                 df_check = tangent_coords(*np.array(IC)[0:8], 0)
-                assert df_check[-2] == 1, ("The mid-cell geometry dimensions given result in a degenerate geometry.")
+                require(df_check[-2] == 1, 'The mid-cell geometry dimensions given result in a degenerate geometry.')
                 shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw}
             else:
                 shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
@@ -921,13 +920,13 @@ class Optimisation:
         wakefield_config.setdefault('mesh_config', {})
 
         if 'bunch_length' in wakefield_config['beam_config']:
-            assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
-                'Bunch length must be of type integer or float.')
+            require(not isinstance(wakefield_config['beam_config']['bunch_length'], str),
+                    'Bunch length must be of type integer or float.')
         else:
             wakefield_config['beam_config']['bunch_length'] = bunch_length
         if 'wakelength' in wakefield_config['wake_config']:
-            assert not isinstance(wakefield_config['wake_config']['wakelength'], str), error(
-                'Wakelength must be of type integer or float.')
+            require(not isinstance(wakefield_config['wake_config']['wakelength'], str),
+                    'Wakelength must be of type integer or float.')
         else:
             wakefield_config['wake_config']['wakelength'] = wakelength
 
@@ -938,7 +937,7 @@ class Optimisation:
         wakefield_config['processes'] = processes
 
         if 'polarisation' in wakefield_config_keys:
-            assert wakefield_config['polarisation'] in [0, 1, 2], error('Polarisation should be 0, 1, or 2.')
+            require(wakefield_config['polarisation'] in [0, 1, 2], 'Polarisation should be 0, 1, or 2.')
         else:
             wakefield_config['polarisation'] = MROT
 

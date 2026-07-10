@@ -1,3 +1,5 @@
+import json
+import functools
 import os.path
 import pickle
 import sys
@@ -20,6 +22,8 @@ from scipy.signal import find_peaks
 from cavsim2d.utils.printing import *
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
 import gmsh
+import platform
+from cavsim2d.utils.config_validation import require
 
 mu0 = 4 * pi * 1e-7
 eps0 = 8.85418782e-12
@@ -39,14 +43,46 @@ def surface_resistance(w, conductivity=SIGMA_COPPER, rs=None):
     return np.sqrt(mu0 * w / (2 * conductivity))
 
 
+@functools.lru_cache(maxsize=None)
+def direct_solver_available(name):
+    """Whether this NGSolve build can actually factorise with backend *name*.
+
+    Which sparse direct solvers are compiled in varies by platform and by how
+    NGSolve was built (pip wheel, conda, source), so this probes a 2x2 problem
+    rather than guessing. Cached: the probe runs at most once per backend.
+    """
+    try:
+        face = WorkPlane().Rectangle(1, 1).Face()
+        mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=1.0))
+        fes = H1(mesh, order=1)
+        u, v = fes.TnT()
+        a = BilinearForm(grad(u) * grad(v) * dx + u * v * dx).Assemble()
+        a.mat.Inverse(fes.FreeDofs(), inverse=name)
+        return True
+    except Exception:
+        return False
+
+
 def default_direct_solver():
-    """Name of the sparse direct-solver backend used for the monopole
-    eigenproblem. PARDISO (fast) is only reliably present in the Windows
-    NGSolve build, so other platforms default to the always-built-in
-    ``sparsecholesky``. Override per run with
-    ``eigenmode_config['direct_solver']``."""
-    import platform
-    return 'pardiso' if platform.system() == 'Windows' else 'sparsecholesky'
+    """Name of the sparse direct-solver backend for the monopole eigenproblem.
+
+    Preference order by platform, filtered by what the build actually provides:
+
+    - Windows: ``pardiso`` (Intel MKL, shipped with the Windows NGSolve build).
+    - macOS / Linux: ``umfpack`` (SuiteSparse) first — it is the fast option on
+      those platforms, where PARDISO usually is not compiled in.
+
+    Falls back to ``sparsecholesky``, which is always built in. Override per run
+    with ``eigenmode_config['direct_solver']``.
+    """
+    if platform.system() == 'Windows':
+        preferred = ('pardiso', 'umfpack')
+    else:
+        preferred = ('umfpack', 'pardiso')
+    for name in preferred:
+        if direct_solver_available(name):
+            return name
+    return 'sparsecholesky'
 
 
 def parse_polarisations(value):
@@ -95,6 +131,72 @@ class NGSolveMEVP:
     def pinvit_n_modes(requested_n_modes):
         """PINVIT search size: always two more than requested."""
         return int(requested_n_modes) + 2
+
+    @staticmethod
+    def modes_of_interest(cav, m, eigenmode_config=None, n_modes=None):
+        """0-based indices of the modes whose QOIs are reported for polarisation *m*.
+
+        ``eigenmode_config['mode_of_interest']`` is **1-based** — mode 1 is the
+        lowest of the passband. A polarisation may have **any number** of modes of
+        interest, so each entry is an int or a list of ints of any length. The value
+        may be a single entry applied to every polarisation, or a dict keyed by
+        polarisation (name or azimuthal number)::
+
+            'mode_of_interest': 9                                    # every polarisation
+            'mode_of_interest': [1, 2, 3]                            # three, for every one
+            'mode_of_interest': {'monopole': [1, 2, 3, 4], 'dipole': 1}
+
+        Order is preserved and duplicates collapse.
+
+        The **first** mode listed is the primary one: its QOIs become
+        ``qois.json``. Every mode of interest is also written to ``qois_moi.json``,
+        keyed by its 1-based index.
+
+        Defaults, when the key is absent or a polarisation is missing from the
+        dict:
+
+        - monopole (m=0): ``n_cells`` — the pi-mode, the operating mode of an
+          accelerating structure. For a 1-cell cavity, gun or pillbox this is
+          mode 1, so the convention degrades gracefully to non-accelerator
+          geometries.
+        - m-pole (m>=1): mode 1, the lowest of the deflecting passband.
+        """
+        n_cells = int(getattr(cav, 'n_cells', 1) or 1)
+        default = n_cells if int(m) == 0 else 1
+
+        requested = (eigenmode_config or {}).get('mode_of_interest', None)
+        if isinstance(requested, dict):
+            requested = next((requested[k] for k in (pol_name(m), int(m), str(m))
+                              if k in requested), None)
+        if requested is None:
+            requested = default
+        if not isinstance(requested, (list, tuple)):
+            requested = [requested]
+        if len(requested) == 0:
+            raise ValueError(
+                f"'mode_of_interest' for polarisation {pol_name(m)!r} is empty; give at "
+                f"least one 1-based mode index.")
+
+        out = []
+        for mode in requested:
+            if isinstance(mode, bool) or not isinstance(mode, (int, np.integer)):
+                raise ValueError(
+                    f"'mode_of_interest' must be a positive integer (1-based), a list of "
+                    f"them, or a dict of either; got {mode!r} for polarisation "
+                    f"{pol_name(m)!r}.")
+            mode = int(mode)
+            if mode < 1:
+                raise ValueError(
+                    f"'mode_of_interest' is 1-based: mode 1 is the lowest of the passband. "
+                    f"Got {mode} for polarisation {pol_name(m)!r}.")
+            if n_modes is not None and mode > n_modes:
+                raise ValueError(
+                    f"'mode_of_interest'={mode} for polarisation {pol_name(m)!r} exceeds the "
+                    f"{n_modes} modes solved for. Raise eigenmode_config['n_modes'] to at "
+                    f"least {mode}.")
+            if mode - 1 not in out:
+                out.append(mode - 1)
+        return out
 
     # ──────────────────────────────────────────────────────────────────────
     # Geometry
@@ -152,6 +254,14 @@ class NGSolveMEVP:
         if profile is not None:
             return profile.mesh(maxh=maxh, order=order)
 
+        if not cav.geo_filepath:
+            raise RuntimeError(
+                f"{type(cav).__name__} {cav.name!r} has no .geo file and its profile() "
+                "returned None, so there is no geometry to mesh. A cavity with "
+                "independently varying cells (set_half_cells) is native-only: the gmsh "
+                "writer can express uniform mid-cells only, so falling back to it would "
+                "silently solve a different cavity.")
+
         step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=maxh)
         for key, bc in bcs.items():
             ngmesh.SetBCName(key - 1, bc)
@@ -191,11 +301,14 @@ class NGSolveMEVP:
         }
         make_dirs_from_dict(eigenmode_folder_structure, cav.self_dir)
 
-        mesh_h = 20
+        # mesh_config['h'] is in mm, the solver works in metres. The default has to be
+        # converted too: leaving it at 20 means a 20 m maxh, i.e. no size constraint at
+        # all, so each meshing backend silently picks its own element size.
+        mesh_h = 20 * 1e-3
         mesh_p = 3
         if eigenmode_config:
             mesh_config = eigenmode_config.get('mesh_config', {})
-            mesh_h = mesh_config.get('h', mesh_h) * 1e-3 if 'h' in mesh_config else mesh_h
+            mesh_h = mesh_config.get('h', 20) * 1e-3
             mesh_p = mesh_config.get('p', mesh_p)
 
         pols = parse_polarisations((eigenmode_config or {}).get('polarisation', 0))
@@ -222,15 +335,30 @@ class NGSolveMEVP:
             self.save_mesh(save_dir, mesh)
             freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, save_dir, mesh, mesh_p, n_modes)
 
-            # Headline QOIs are the accelerating (pi-)mode. The solver now
-            # filters the spurious gradient/DC mode, so the n-cell fundamental
-            # passband occupies indices 0..n_cells-1 and the pi-mode is the last
-            # of them (index n_cells-1).
-            qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=cav.n_cells - 1, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
-                                      conductivity=conductivity, surface_resistance_ohm=rs_ohm)
-            qois["No of DOFs"] = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
+            # Modes of interest default to the accelerating (pi-)mode. The solver
+            # filters the spurious gradient/DC mode, so the fundamental passband
+            # occupies indices 0..n_cells-1 and the pi-mode is the last of them.
+            # Override per polarisation with eigenmode_config['mode_of_interest'];
+            # a polarisation may have several, the first being the primary one.
+            moi = self.modes_of_interest(cav, 0, eigenmode_config, len(freq_fes))
+            n_dofs = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
+
+            qois_moi = {}
+            for idx in moi:
+                q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=idx, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
+                                       conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                # String, like 'polarisation': metadata, not a QOI. UQ coerces the
+                # qois table to numerics and drops text columns, so a bare int here
+                # would be "averaged" into meaningless mean/stddev statistics.
+                q['mode_of_interest'] = str(idx + 1)
+                q["No of DOFs"] = n_dofs
+                qois_moi[str(idx + 1)] = q
+
+            with open(os.path.join(save_dir, 'qois_moi.json'), "w") as f:
+                json.dump(qois_moi, f, indent=4, separators=(',', ': '))
+            # qois.json is the primary (first) mode of interest.
             with open(os.path.join(save_dir, 'qois.json'), "w") as f:
-                json.dump(qois, f, indent=4, separators=(',', ': '))
+                json.dump(qois_moi[str(moi[0] + 1)], f, indent=4, separators=(',', ': '))
 
             qois_all_modes = {}
             for ii in range(len(freq_fes)):
@@ -253,13 +381,16 @@ class NGSolveMEVP:
         e.g. ``eigenmode/dipole/`` for m=1.
         """
         m = pol_number(m)
-        assert m >= 1, error('solve_mpole is for m >= 1; use solve() for the monopole.')
+        require(m >= 1, 'solve_mpole is for m >= 1; use solve() for the monopole.')
 
-        mesh_h = 20
+        # mesh_config['h'] is in mm, the solver works in metres. The default has to be
+        # converted too: leaving it at 20 means a 20 m maxh, i.e. no size constraint at
+        # all, so each meshing backend silently picks its own element size.
+        mesh_h = 20 * 1e-3
         mesh_p = 3
         if eigenmode_config:
             mesh_config = eigenmode_config.get('mesh_config', {})
-            mesh_h = mesh_config.get('h', mesh_h) * 1e-3 if 'h' in mesh_config else mesh_h
+            mesh_h = mesh_config.get('h', 20) * 1e-3
             mesh_p = mesh_config.get('p', mesh_p)
 
         step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=mesh_h)
@@ -286,14 +417,29 @@ class NGSolveMEVP:
 
         L_norm = cav.parameters.get('L_m', 1)
 
-        qois = self.evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=0,
-                                        n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
-                                        conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+        # Modes of interest default to mode 1, the lowest of the deflecting passband
+        # (an m-pole spectrum has no spurious DC mode to skip). A polarisation may
+        # have several; the first is primary. Override with
+        # eigenmode_config['mode_of_interest'].
+        moi = self.modes_of_interest(cav, m, eigenmode_config, len(freq_fes))
         fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
         _, fes_phi = fes_rz.CreateGradient()
-        qois["No of DOFs"] = fes_rz.ndof + fes_phi.ndof
+        n_dofs = fes_rz.ndof + fes_phi.ndof
+
+        qois_moi = {}
+        for idx in moi:
+            q = self.evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=idx,
+                                         n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
+                                         conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+            q['mode_of_interest'] = str(idx + 1)        # metadata, see solve()
+            q["No of DOFs"] = n_dofs
+            qois_moi[str(idx + 1)] = q
+
+        with open(os.path.join(pol_dir, 'qois_moi.json'), "w") as f:
+            json.dump(qois_moi, f, indent=4, separators=(',', ': '))
+        # qois.json is the primary (first) mode of interest.
         with open(os.path.join(pol_dir, 'qois.json'), "w") as f:
-            json.dump(qois, f, indent=4, separators=(',', ': '))
+            json.dump(qois_moi[str(moi[0] + 1)], f, indent=4, separators=(',', ': '))
 
         qois_all_modes = {}
         for ii in range(len(freq_fes)):

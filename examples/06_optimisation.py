@@ -30,8 +30,8 @@ def main():
             'Ri': [74, 82], 'L': [90, 97], 'Req': [165, 190],
         },
         'objectives': [
-            ['min', 'Epk/Eacc []'],
-            ['min', 'Bpk/Eacc [mT/MV/m]'],
+            ['min', 'monopole:Epk/Eacc []'],
+            ['min', 'monopole:Bpk/Eacc [mT/MV/m]'],
         ],
         'tune_config': {
             'freqs': 801.58,

@@ -1,4 +1,6 @@
-from cavsim2d.cavity.base import Cavity
+import json
+from pathlib import Path
+from cavsim2d.models.base import Cavity
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 import matplotlib
@@ -6,6 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from cavsim2d.cavity.cavities import Cavities
+from cavsim2d.geometry import Profile
+from cavsim2d.geometry.tangency import tangent_coords
+from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half_cell_sequence,
+                                        continuity_violations, DegenerateGeometry)
+from cavsim2d.geometry.writers.multipac import writeCavityForMultipac, writeCavityForMultipac_multicell
+from cavsim2d.processes.tune import last_stage_result
 
 class EllipticalCavity(Cavity):
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
@@ -124,6 +133,15 @@ class EllipticalCavity(Cavity):
             os.makedirs(geo_dir, exist_ok=True)
 
             self.uq_dir = os.path.join(self.self_dir, 'uq')
+
+            if getattr(self, '_half_cells', None) is not None:
+                # Independently varying cells: only the native Profile path can express
+                # them. Write no .geo — write_geometry would emit a uniform-mid-cell
+                # contour, and a silent fallback to it would give wrong physics. With
+                # geo_filepath None, any fallback fails loudly instead.
+                self.geo_filepath = None
+                self._write_geometry_snapshot()
+                return
 
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             if mode is None:
@@ -1158,7 +1176,6 @@ class EllipticalCavity(Cavity):
 
         No project structure (cavities/Cavities/) is created.
         """
-        from cavsim2d.cavity.cavities import Cavities
 
         # Create container without project directory structure
         spawn = Cavities(folder, _skip_project_init=True)
@@ -1214,6 +1231,37 @@ class EllipticalCavity(Cavity):
         return spawn
 
 
+    def spawn_half_cells(self, perturbed, folder):
+        """Container of cavities carrying explicit per-half-cell geometry.
+
+        The multicell counterpart of :meth:`spawn`. ``perturbed`` maps a name to a
+        ``(2 * n_cells, 7)`` half-cell array. No ``.geo`` is written: only the native
+        :class:`~cavsim2d.geometry.Profile` path can express independently varying
+        cells, and ``write_geometry`` would silently emit a uniform-mid-cell contour.
+        """
+        spawn = Cavities(folder, _skip_project_init=True)
+        os.makedirs(folder, exist_ok=True)
+
+        for name, half_cells in perturbed.items():
+            scav = EllipticalCavity(self.n_cells, self.mid_cell, self.end_cell_left,
+                                    self.end_cell_right, beampipe=self.beampipe)
+            scav.name = name
+            scav.set_half_cells(half_cells)
+
+            scav.projectDir = folder
+            scav.self_dir = os.path.join(folder, str(name))
+            scav.uq_dir = os.path.join(scav.self_dir, 'uq')
+            os.makedirs(scav.self_dir, exist_ok=True)
+            os.makedirs(os.path.join(scav.self_dir, 'geometry'), exist_ok=True)
+            scav.geo_filepath = None            # native profile() only
+
+            spawn.cavities_list.append(scav)
+            spawn.cavities_dict[name] = scav
+            spawn.shape_space[name] = scav.shape
+            spawn.shape_space_multicell[name] = scav.shape_multicell
+
+        return spawn
+
     def _modify_parameters(self, columns, row, values):
 
         # Create a mapping from column name → index
@@ -1226,82 +1274,91 @@ class EllipticalCavity(Cavity):
 
         return values
 
+    HALF_CELL_VARS = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')
+
+    def half_cells(self):
+        """The ``(2 * n_cells, 7)`` half-cell parameter array, in **mm**.
+
+        This is the canonical per-cell representation: row ``2k`` is the forward
+        (left) half of cell ``k+1``, row ``2k+1`` its backward (right) half, each
+        carrying its own ``(A, B, a, b, Ri, L, Req)``. Adjacent halves share an
+        equator ``Req`` within a cell and an iris ``Ri`` across the cell boundary
+        (see :func:`~cavsim2d.geometry.contours.continuity_violations`).
+
+        Derived from ``self.parameters`` (all mid-cells identical) unless
+        :meth:`set_half_cells` has installed an explicit, independently varying set.
+        """
+        if getattr(self, '_half_cells', None) is not None:
+            return np.array(self._half_cells, dtype=float)
+        cells = {suf: [float(self.parameters[f'{n}_{suf}']) for n in self.HALF_CELL_VARS]
+                 for suf in ('m', 'el', 'er')}
+        halves = half_cell_sequence(cells['m'], cells['el'], cells['er'], self.n_cells)
+        for h in halves:
+            h[6] = cells['m'][6]                     # writers force Req = Req_m
+        return np.array(halves, dtype=float)
+
+    def set_half_cells(self, half_cells):
+        """Install an explicit per-half-cell parameter array (mm), letting every
+        cell vary independently.
+
+        Overrides ``self.parameters`` as the geometry source for :meth:`profile`.
+        The array must satisfy the equator/iris continuity constraints; pass
+        ``None`` to revert to the parameter-derived (uniform mid-cell) geometry.
+        """
+        if half_cells is None:
+            self._half_cells = None
+            self.geo_filepath = None            # let create() rewrite the uniform .geo
+            return self
+        arr = np.asarray(half_cells, dtype=float)
+        expected = (2 * self.n_cells, len(self.HALF_CELL_VARS))
+        if arr.shape != expected:
+            raise ValueError(f'half_cells must have shape {expected}, got {arr.shape}')
+        bad = continuity_violations(arr)
+        if bad:
+            raise ValueError('half-cell geometry is discontinuous:\n  ' + '\n  '.join(bad))
+        self._half_cells = arr
+        # Any .geo on disk describes the uniform-mid-cell contour and no longer
+        # matches this geometry. Drop the reference so a fallback cannot silently
+        # solve the wrong cavity (see NGSolveMEVP._build_mesh).
+        self.geo_filepath = None
+        return self
+
     def profile(self):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native
         netgen.occ geometry path, with *exact* ellipse arcs.
 
-        Ported incrementally: currently handles the symmetric single-cell case
-        (mid == end-left == end-right, beampipe both/none). Returns ``None``
-        for anything else — multicell, asymmetric end cells or one-sided
-        beampipes — so the solver transparently falls back to the gmsh ``.geo``
-        importer. Degenerate parameter sets also return ``None`` so the existing
-        writer reports them.
+        Covers every elliptical geometry: single-cell and multicell, symmetric and
+        asymmetric end cells, any beampipe configuration, and (via
+        :meth:`set_half_cells`) independently varying cells. Returns ``None`` only
+        for degenerate parameter sets, so the solver falls back to the gmsh ``.geo``
+        writer, which reports the failure.
 
         Reads ``self.parameters`` rather than ``self.mid_cell``: that dict is the
         live source of truth ``write_geometry`` uses, and the tuner mutates it in
         place while searching.
         """
-        from cavsim2d.geometry import Profile
-        from cavsim2d.utils.geometry import tangent_coords
-
-        if self.n_cells != 1:
-            return None
-
-        names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')
         try:
-            cells = {suf: np.array([float(self.parameters[f'{n}_{suf}']) for n in names])
-                     for suf in ('m', 'el', 'er')}
+            halves = self.half_cells() * 1e-3
+            L_bp = 4 * float(self.parameters['L_m']) * 1e-3
         except (KeyError, TypeError, ValueError):
             return None
-        mid = cells['m']
-        if not (np.allclose(mid, cells['el']) and np.allclose(mid, cells['er'])):
+        try:
+            return elliptical_profile_from_half_cells(halves, self.beampipe, L_bp,
+                                                      name='elliptical')
+        except (DegenerateGeometry, ValueError):
             return None
 
-        bp = self.beampipe.lower()
-        if bp not in ('both', 'none'):
-            return None                       # asymmetric beampipe: gmsh path
+    def export_multipac(self, file_path, plot=False, multicell=False):
+        """Write this cavity's contour in the Multipac input format.
 
-        A, B, a, b, Ri, L, Req = (v * 1e-3 for v in mid)
-        L_bp = 4 * L if bp == 'both' else 0.0
-        L_bp_l = L_bp_r = L_bp
-        shift = (L_bp_l + L_bp_r + 2 * L) / 2.0
-
-        try:
-            df = tangent_coords(A, B, a, b, Ri, L, Req, L_bp_l)
-        except Exception:
-            return None                       # let write_geometry report it
-        if df[-2] != 1:
-            return None                       # degenerate geometry
-        x1, y1, x2, y2 = df[0]
-
-        z_iris = L_bp_l - shift               # iris ellipse centre z
-        z_eq = L_bp_l + L - shift             # equator plane (0 for symmetric)
-
-        def mirror(z):
-            return 2.0 * z_eq - z
-
-        p = Profile('elliptical')
-        p.start(-shift, 0.0)
-        p.line_to(-shift, Ri, 'PMC')                      # left aperture
-        if L_bp_l > 0:
-            p.line_to(z_iris, Ri, 'PEC')                  # left beampipe
-        # left half-cell: iris arc -> tangent line -> equator arc
-        p.ellipse_arc_to(-shift + x1, y1, center=(z_iris, Ri + b),
-                         semi_z=a, semi_r=b, boundary='PEC')
-        p.line_to(-shift + x2, y2, 'PEC')
-        p.ellipse_arc_to(z_eq, Req, center=(z_eq, Req - B),
-                         semi_z=A, semi_r=B, boundary='PEC')
-        # right half-cell: mirror of the left about the equator plane
-        p.ellipse_arc_to(mirror(-shift + x2), y2, center=(z_eq, Req - B),
-                         semi_z=A, semi_r=B, boundary='PEC')
-        p.line_to(mirror(-shift + x1), y1, 'PEC')
-        p.ellipse_arc_to(mirror(z_iris), Ri, center=(mirror(z_iris), Ri + b),
-                         semi_z=a, semi_r=b, boundary='PEC')
-        if L_bp_r > 0:
-            p.line_to(mirror(-shift), Ri, 'PEC')          # right beampipe
-        p.line_to(mirror(-shift), 0.0, 'PMC')             # right aperture
-        p.close('AXI')
-        return p
+        ``file_path`` is the geometry *file* to write (not a directory). Set
+        ``multicell=True`` for a per-cell (non-uniform) parameterisation.
+        """
+        writer = writeCavityForMultipac_multicell if multicell else writeCavityForMultipac
+        writer(file_path, self.n_cells, self.mid_cell,
+               end_cell_left=self.end_cell_left, end_cell_right=self.end_cell_right,
+               beampipe=self.beampipe, plot=plot)
+        return file_path
 
     def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
         """Return a fresh EllipticalCavity living in ``tuned_self_dir``.
@@ -1355,7 +1412,6 @@ class EllipticalCavity(Cavity):
         if tune_res.json is missing. The file is keyed by cell type — the
         final stage's parameter snapshot is the cumulative tuned geometry.
         """
-        from cavsim2d.processes.tune import last_stage_result
 
         tuned_dir = Path(tuned_dir)
         tune_res_path = tuned_dir / 'tune_info' / 'tune_res.json'

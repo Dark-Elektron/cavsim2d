@@ -13,6 +13,8 @@ from cavsim2d.utils.printing import suppress_errors
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 import shutil
 import multiprocessing as mp
+from cavsim2d.solvers.eigenmode_result import monopole_dir
+from cavsim2d.utils.config_validation import require
 
 ngsolve_mevp = NGSolveMEVP()
 file_color = 'cyan'
@@ -242,7 +244,6 @@ class PyTuneNGSolve:
                 eigenmode_qois = json.load(json_file)
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
-            from cavsim2d.solvers.eigenmode_result import monopole_dir
             mono_dir = monopole_dir(os.path.join(self.cav.self_dir, 'eigenmode'))
             with open(os.path.join(mono_dir, 'qois.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
@@ -520,7 +521,6 @@ def run_tune_uq(cav, tune_config):
                 cav.n_cells = orig_n_cells
 
             if ok:
-                from cavsim2d.solvers.eigenmode_result import monopole_dir
                 with open(os.path.join(monopole_dir(eigenmode_dir), 'qois.json')) as f:
                     q = json.load(f)
                 freqs.append(q['freq [MHz]'])
@@ -596,7 +596,7 @@ def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict, so
     delta = uq_config['delta']
     method = uq_config['method']
     uq_vars = uq_config['variables']
-    assert len(uq_vars) == len(delta), error('Ensure number of variables equal number of deltas')
+    require(len(uq_vars) == len(delta), 'Ensure number of variables equal number of deltas')
 
     for key, shape in shape_space.items():
         uq_path = projectDir / f'{key}/eigenmode'
@@ -646,7 +646,7 @@ def uq_parallel_tuner(shape_space, objectives, solver_dict, solver_args_dict, so
         sub_dir = fr'{key}'
         proc_count = uq_config.get('processes', 1)
         if proc_count > 0:
-            assert isinstance(proc_count, int), error('Number of processes must be integer')
+            require(isinstance(proc_count, int), 'Number of processes must be integer')
         else:
             error('Number of processes must be greater than zero')
             proc_count = 1

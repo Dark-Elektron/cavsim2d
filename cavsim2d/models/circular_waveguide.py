@@ -1,5 +1,6 @@
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
 from cavsim2d.utils.shared_functions import *
+from cavsim2d.geometry import Profile
 import os
 
 class CircularWaveguide(Cavity):
@@ -35,6 +36,28 @@ class CircularWaveguide(Cavity):
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, write=self.geo_filepath)
             self._write_geometry_snapshot()
+
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` (metres) — the native
+        netgen.occ path, no ``.geo`` round-trip.
+
+        A rectangle in the (z, r) half-plane: both end planes and the barrel are
+        PEC, the axis is AXI. There is no PMC region — this matches the ``.geo``
+        writer, which tags all three walls PEC despite the class docstring.
+        """
+        try:
+            R = float(self.parameters['R']) * 1e-3
+            L = float(self.parameters['L']) * 1e-3
+        except (KeyError, TypeError, ValueError):
+            return None
+
+        shift = L / 2.0
+        return (Profile('circular_waveguide')
+                .start(-shift, 0.0)
+                .line_to(-shift, R, 'PEC')      # left end plane
+                .line_to(shift, R, 'PEC')       # barrel
+                .line_to(shift, 0.0, 'PEC')     # right end plane
+                .close('AXI'))
 
     def write_geometry(self, parameters, write=None, **kwargs):
         """Write a Gmsh .geo file for the circular waveguide cavity."""

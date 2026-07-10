@@ -20,6 +20,8 @@ Example (a box)::
     mesh = p.mesh(maxh=0.02, order=3)
 """
 import numpy as np
+from scipy.interpolate import BSpline
+from scipy.special import comb
 
 
 class Profile:
@@ -52,6 +54,23 @@ class Profile:
                            'name': boundary, 'mid': (float(through[0]), float(through[1]))})
         return self
 
+    def circle_arc_to(self, z, r, center, boundary):
+        """Circular arc from the current point to (z, r) about ``center``.
+
+        The short sweep is taken (every arc in the supported geometries is < pi).
+        Exact: the arc midpoint is placed on the circle and the segment is built
+        as a three-point ``ArcOfCircle``.
+        """
+        p0 = self._pts[-1]
+        cz, cr = float(center[0]), float(center[1])
+        radius = np.hypot(p0[0] - cz, p0[1] - cr)
+        a0 = np.arctan2(p0[1] - cr, p0[0] - cz)
+        a1 = np.arctan2(r - cr, z - cz)
+        dt = (a1 - a0 + np.pi) % (2 * np.pi) - np.pi     # short sweep, in (-pi, pi]
+        am = a0 + dt / 2.0
+        mid = (cz + radius * np.cos(am), cr + radius * np.sin(am))
+        return self.arc_to(z, r, through=mid, boundary=boundary)
+
     def ellipse_arc_to(self, z, r, center, semi_z, semi_r, boundary):
         """Exact elliptical arc from the current point to (z, r).
 
@@ -66,6 +85,90 @@ class Profile:
                            'center': (float(center[0]), float(center[1])),
                            'semi_z': float(semi_z), 'semi_r': float(semi_r)})
         return self
+
+    def spline_to(self, poles, boundary, kind='bspline', degree=3):
+        """Free-form spline from the current point through ``poles``.
+
+        ``poles`` are the *control* points after the current one; the last is the
+        segment's end point. The current point is the first pole, so the curve
+        starts and ends on the contour (both curve types are clamped) but need not
+        pass through the interior poles — the same convention as gmsh's ``BSpline``
+        and ``Bezier``. ``kind`` is ``'bspline'`` or ``'bezier'``.
+        """
+        kind = kind.lower()
+        if kind not in ('bspline', 'bezier'):
+            raise ValueError(f"spline kind must be 'bspline' or 'bezier', got {kind!r}")
+        poles = [(float(z), float(r)) for z, r in poles]
+        if len(poles) < 2:
+            raise ValueError('a spline segment needs at least two poles')
+        i0 = len(self._pts) - 1
+        self._pts.append(poles[-1])
+        self._segs.append({'kind': 'spline', 'i0': i0, 'i1': i0 + 1, 'name': boundary,
+                           'interior': poles[:-1], 'spline_kind': kind,
+                           'degree': int(degree)})
+        return self
+
+    # -- spline helpers -----------------------------------------------------
+
+    @classmethod
+    def _spline_poles(cls, seg, pts):
+        """Full control polygon: start point, interior poles, end point."""
+        return [pts[seg['i0']]] + list(seg['interior']) + [pts[seg['i1']]]
+
+    @staticmethod
+    def _clamped_uniform_knots(n_poles, degree):
+        """Knot vector of a clamped uniform B-spline (what OCC and gmsh both use)."""
+        n_internal = n_poles - degree - 1
+        internal = list(np.arange(1, n_internal + 1) / (n_internal + 1)) if n_internal > 0 else []
+        return np.array([0.0] * (degree + 1) + internal + [1.0] * (degree + 1))
+
+    @classmethod
+    def _spline_degree(cls, seg, pts):
+        return min(seg['degree'], len(cls._spline_poles(seg, pts)) - 1)
+
+    @staticmethod
+    def _insert_knot(knots, poles, degree, u):
+        """Boehm's algorithm: insert knot *u* once, leaving the curve unchanged."""
+        k = int(np.searchsorted(knots, u, side='right')) - 1
+        new = list(poles[:k - degree + 1])
+        for i in range(k - degree + 1, k + 1):
+            denom = knots[i + degree] - knots[i]
+            a = 0.0 if denom == 0 else (u - knots[i]) / denom
+            new.append((1.0 - a) * poles[i - 1] + a * poles[i])
+        new.extend(poles[k:])
+        return np.insert(knots, k + 1, u), np.array(new)
+
+    @classmethod
+    def _bspline_to_bezier(cls, poles, degree):
+        """Split a clamped uniform B-spline into its exact Bezier segments.
+
+        netgen's ``BSplineCurve`` builds an *unclamped* uniform B-spline, which
+        does not start or end at the outer poles, so it cannot be used directly.
+        Raising every internal knot to multiplicity ``degree`` (Boehm insertion)
+        decomposes the very same curve into Bezier arcs, which netgen represents
+        exactly — no approximation, and the endpoints land back on the contour.
+        """
+        poles = np.asarray(poles, dtype=float)
+        knots = cls._clamped_uniform_knots(len(poles), degree)
+        for u in sorted({float(k) for k in knots if 0.0 < k < 1.0}):
+            while int(np.sum(np.isclose(knots, u))) < degree:
+                knots, poles = cls._insert_knot(knots, poles, degree, u)
+        n_seg = (len(poles) - 1) // degree
+        return [poles[i * degree: i * degree + degree + 1] for i in range(n_seg)]
+
+    @classmethod
+    def _spline_points(cls, seg, pts, n=48):
+        """Sample points along a spline segment (for boundary matching)."""
+        poles = np.asarray(cls._spline_poles(seg, pts), dtype=float)
+        u = np.linspace(0.0, 1.0, n)
+        if seg['spline_kind'] == 'bezier':
+            m = len(poles) - 1
+            k = np.arange(m + 1)
+            basis = comb(m, k)[None, :] * (u[:, None] ** k[None, :]) * ((1 - u)[:, None] ** (m - k)[None, :])
+            return [tuple(p) for p in basis @ poles]
+        deg = cls._spline_degree(seg, pts)
+        knots = cls._clamped_uniform_knots(len(poles), deg)
+        return [tuple(p) for p in BSpline(knots, poles, deg)(u)]
 
     # -- ellipse helpers ----------------------------------------------------
 
@@ -138,6 +241,9 @@ class Profile:
         if seg['kind'] == 'ellipse':
             pts = self._ellipse_points(seg, self._pts, n=3)
             return pts[1]
+        if seg['kind'] == 'spline':
+            pts = self._spline_points(seg, self._pts, n=3)
+            return pts[1]
         return ((p0[0] + p1[0]) / 2.0, (p0[1] + p1[1]) / 2.0)
 
     def boundary_names(self):
@@ -155,12 +261,13 @@ class Profile:
         boundaries are named on the generated mesh (:meth:`_name_boundaries`),
         which is robust to that healing.
         """
-        from netgen.occ import Segment, Wire, Face, Pnt, ArcOfCircle
+        # Deferred: netgen is an optional heavy dependency. Keep `cavsim2d`
+        # importable (and Profile constructible) on installs without it.
+        from netgen.occ import (Segment, Wire, Face, Pnt, ArcOfCircle,
+                                Ellipse, gp_Ax2d, gp_Pnt2d, gp_Dir2d, BezierCurve)
 
         if len(self._segs) < 3:
             raise ValueError("A profile needs at least 3 segments to bound a face.")
-
-        from netgen.occ import Ellipse, gp_Ax2d, gp_Pnt2d, gp_Dir2d
 
         edges = []
         for s in self._segs:
@@ -175,6 +282,14 @@ class Profile:
                 c, major, minor, xdir, t_lo, t_hi = self._ellipse_span(s, self._pts)
                 ax = gp_Ax2d(gp_Pnt2d(c[0], c[1]), gp_Dir2d(xdir[0], xdir[1]))
                 edges.append(Ellipse(ax, major, minor).Trim(t_lo, t_hi).Edge())
+            elif s['kind'] == 'spline':
+                poles = self._spline_poles(s, self._pts)
+                if s['spline_kind'] == 'bezier':
+                    edges.append(BezierCurve([Pnt(z, r, 0) for z, r in poles]))
+                else:
+                    # exact Bezier decomposition; netgen's BSplineCurve is unclamped
+                    for bez in self._bspline_to_bezier(poles, self._spline_degree(s, self._pts)):
+                        edges.append(BezierCurve([Pnt(z, r, 0) for z, r in bez]))
             else:
                 edges.append(Segment(Pnt(p0[0], p0[1], 0), Pnt(p1[0], p1[1], 0)))
         face = Face(Wire(edges))
@@ -202,7 +317,10 @@ class Profile:
             m = s['mid']
             return min(self._point_segment_distance(q, p0, m),
                        self._point_segment_distance(q, m, p1))
-        pts = self._ellipse_points(s, self._pts, n=32)
+        if s['kind'] == 'spline':
+            pts = self._spline_points(s, self._pts, n=64)
+        else:
+            pts = self._ellipse_points(s, self._pts, n=32)
         return min(self._point_segment_distance(q, pts[i], pts[i + 1])
                    for i in range(len(pts) - 1))
 
@@ -219,6 +337,7 @@ class Profile:
         """Assign boundary names on *mesh* by matching each boundary region to
         the profile segment its elements lie on (works regardless of whether
         OCC preserved the edge names)."""
+        # Deferred: ngsolve is an optional heavy dependency.
         from ngsolve import BND
         index_name = {}
         for el in mesh.Elements(BND):
@@ -231,14 +350,75 @@ class Profile:
         for idx, name in index_name.items():
             mesh.ngmesh.SetBCName(idx, name)
 
+    @classmethod
+    def _spline_speed(cls, seg, pts, u):
+        """|dC/du| of a spline segment at parameters ``u``."""
+        poles = np.asarray(cls._spline_poles(seg, pts), dtype=float)
+        if seg['spline_kind'] == 'bezier':
+            m = len(poles) - 1
+            dpoles = m * np.diff(poles, axis=0)          # derivative is a degree m-1 Bezier
+            k = np.arange(m)
+            basis = comb(m - 1, k)[None, :] * (u[:, None] ** k[None, :]) \
+                * ((1 - u)[:, None] ** (m - 1 - k)[None, :])
+            d = basis @ dpoles
+        else:
+            deg = cls._spline_degree(seg, pts)
+            knots = cls._clamped_uniform_knots(len(poles), deg)
+            d = BSpline(knots, poles, deg).derivative()(u)
+        return np.linalg.norm(d, axis=1)
+
+    def _stationary_corners(self, rtol=1e-6):
+        """Contour points where the tangent vanishes (``|dC/du| = 0``).
+
+        Only spline segments can have these: a control polygon that reverses on
+        itself — e.g. the iris of a multicell B-spline built by repeating the
+        polygon — gives a vanishing tangent exactly at a knot. netgen's high-order
+        curving fails on small elements there.
+        """
+        corners = []
+        for s in self._segs:
+            if s['kind'] != 'spline':
+                continue
+            u = np.linspace(0.0, 1.0, 1025)
+            speed = self._spline_speed(s, self._pts, u)
+            scale = speed.max()
+            if scale <= 0:
+                continue
+            interior = np.flatnonzero(speed[1:-1] < rtol * scale) + 1
+            pts = np.asarray(self._spline_points(s, self._pts, n=1025))
+            for i in interior:
+                p = tuple(pts[i])
+                if not any(np.hypot(p[0] - c[0], p[1] - c[1]) < 1e-9 for c in corners):
+                    corners.append(p)
+        return corners
+
     def mesh(self, maxh, order=1):
         """Return a boundary-tagged NGSolve mesh of the profile."""
+        # Deferred: netgen/ngsolve are optional heavy dependencies.
         from netgen.occ import OCCGeometry
         from ngsolve import Mesh
         mesh = Mesh(OCCGeometry(self.to_occ_face(), dim=2).GenerateMesh(maxh=maxh))
         self._name_boundaries(mesh)
         if order and order > 1:
-            mesh.Curve(order)
+            try:
+                mesh.Curve(order)
+            except Exception as exc:
+                corners = self._stationary_corners()
+                if not corners:
+                    raise
+                where = ', '.join('(%.6g, %.6g)' % c for c in corners[:3])
+                raise RuntimeError(
+                    f"netgen could not build the order-{order} curved mesh at maxh={maxh:g} "
+                    f"for profile {self.name!r}.\n"
+                    f"The contour has {len(corners)} stationary corner(s) - points where the "
+                    f"spline's tangent vanishes — near {where}.\n"
+                    "This happens when a control polygon reverses on itself, e.g. the iris of a "
+                    "multicell B-spline built by repeating the polygon. The corner is real "
+                    "geometry (gmsh only survives it by rounding it off), but netgen's high-order "
+                    "curving fails on small elements there.\n"
+                    "Workarounds: use kind='Bezier' (one curve per cell, no stationary corner), "
+                    "coarsen maxh, or lower the mesh order."
+                ) from exc
         return mesh
 
 

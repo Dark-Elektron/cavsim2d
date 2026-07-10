@@ -342,11 +342,59 @@ cavs.plot_compare_hom_bar('Z_SR_4.32mm')
 
 ---
 
+## Objective names
+
+Monopole and m-pole results share QOI key names — `freq [MHz]`, `R/Q [Ohm]`,
+`G [Ohm]` and 15 others appear in every polarisation's `qois.json`. So every UQ
+and optimisation objective must say which polarisation it means:
+
+```text
+monopole:R/Q [Ohm]              # the polarisation's primary mode of interest
+dipole:R/Q_t [Ohm/m^(2(m-1))]   # a dipole-only QOI
+dipole:2:freq [MHz]             # dipole, mode 2 (1-based)
+1:freq [MHz]                    # azimuthal number instead of a name
+```
+
+The separator is `:`; no QOI name contains one, and only the first two fields
+are split, so the QOI itself may contain anything. A bare `'freq [MHz]'` is
+**rejected** — it used to silently mean *the monopole's*, which becomes a wrong
+answer the moment a second polarisation is solved. An objective naming a QOI or
+mode that does not exist raises a `ValueError` listing what is available;
+previously it was dropped without a word and the statistics were quietly
+computed over whichever objectives happened to match.
+
+Naming a polarisation in an objective is enough — the UQ run adds it to
+`eigenmode_config['polarisation']` automatically. Wakefield objectives (`ZL`,
+`ZT`) carry no polarisation and are written as before.
+
+### Which mode is reported: `mode_of_interest`
+
+`eigenmode_config['mode_of_interest']` selects the modes whose QOIs are reported.
+It is **1-based** (mode 1 is the lowest of the passband) and may be an int, a list
+of **any length**, or a dict keyed by polarisation — each polarisation may carry a
+different number of modes. Order is preserved and duplicates collapse. The
+**first** mode listed is the primary one and lands in `qois.json`; all of them are
+written to `qois_moi.json` keyed by 1-based mode, and each is addressable as an
+objective (`monopole:4:freq [MHz]`).
+
+```python
+'mode_of_interest': 9                                        # every polarisation
+'mode_of_interest': [1, 2, 3]                                # three, for every one
+'mode_of_interest': {'monopole': [1, 2, 3, 4], 'dipole': 1}  # different counts
+```
+
+Defaults: **monopole → `n_cells`**, the π-mode — the operating mode of an
+accelerating structure. A 1-cell cavity, gun or pillbox therefore gets mode 1,
+so the convention degrades gracefully to non-accelerator geometries. **m-pole →
+mode 1**, the lowest of the deflecting passband (an m-pole spectrum has no
+spurious DC mode to skip).
+
 ## Uncertainty quantification
 
 Any analysis can carry uncertainty quantification by adding a `uq_config`. It
 propagates geometry uncertainties through the solve and reports the mean and
-standard deviation of each objective.
+standard deviation of each objective. Result keys are the canonical objective
+names, e.g. `uq.json['dipole:freq [MHz]']['expe'][0]`.
 
 ```python
 cavs.run_eigenmode({
@@ -355,8 +403,9 @@ cavs.run_eigenmode({
     'boundary_conditions': 'mm',
     'uq_config': {
         'variables': ['A', 'B', 'a', 'b'],           # varied parameters
-        'objectives': ["freq [MHz]", "R/Q [Ohm]", "Epk/Eacc []",
-                       "Bpk/Eacc [mT/MV/m]", "G [Ohm]"],
+        # Objectives must name a polarisation (see "Objective names" below)
+        'objectives': ["monopole:freq [MHz]", "monopole:R/Q [Ohm]", "monopole:Epk/Eacc []",
+                       "monopole:Bpk/Eacc [mT/MV/m]", "monopole:G [Ohm]"],
         'delta': [0.05, 0.05, 0.05, 0.05],           # 5% std on each
         'processes': 1,
         'distribution': 'gaussian',
@@ -394,9 +443,10 @@ optimisation_config = {
         'Ri': [33, 37], 'L': [57.7, 57.7], 'Req': [100, 106],
     },
     'objectives': [
-        ['min', 'Epk/Eacc []'],
-        ['min', 'Bpk/Eacc [mT/MV/m]'],
-        # ['max', 'R/Q [Ohm]'],
+        ['min', 'monopole:Epk/Eacc []'],
+        ['min', 'monopole:Bpk/Eacc [mT/MV/m]'],
+        # ['max', 'monopole:R/Q [Ohm]'],
+        # ['min', 'dipole:R/Q_t [Ohm/m^(2(m-1))]'],   # deflecting-mode impedance
         # ['min', 'ZL', [1, 2, 5]],   # impedance peak in a frequency window (needs wakefield)
     ],
     'tune_config': {

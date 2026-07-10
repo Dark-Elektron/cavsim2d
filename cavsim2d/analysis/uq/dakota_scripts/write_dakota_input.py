@@ -2,6 +2,7 @@ import os
 import subprocess
 
 from cavsim2d.utils.shared_functions import error
+from cavsim2d.utils.config_validation import require
 
 
 class Dakota:
@@ -68,19 +69,20 @@ class Dakota:
         f.write("\tdescriptors       =   " + '\t\t\t'.join(['"'+descriptor+'"' for descriptor in descriptors]) + '\n')
 
         if 'means' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['means'])
+            require(len(descriptors) == len(kwargs['means']), 'len(descriptors) must equal len(means).')
             f.write("\tmeans      =   " + '\t\t\t'.join([str(mean) for mean in kwargs['means']]) + '\n')
 
         if 'std_deviations' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['std_deviations'])
+            require(len(descriptors) == len(kwargs['std_deviations']),
+                    'len(descriptors) must equal len(std_deviations).')
             f.write("\tstd_deviations      =   " + '\t\t\t'.join([str(std) for std in kwargs['std_deviations']]) + '\n')
 
         if 'lower_bounds' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['lower_bounds'])
+            require(len(descriptors) == len(kwargs['lower_bounds']), 'len(descriptors) must equal len(lower_bounds).')
             f.write("\tlower_bounds      =   " + '\t\t\t'.join([str(lb) for lb in kwargs['lower_bounds']]) + '\n')
 
         if 'upper_bounds' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['upper_bounds'])
+            require(len(descriptors) == len(kwargs['upper_bounds']), 'len(descriptors) must equal len(upper_bounds).')
             f.write("\tupper_bounds      =   " + '\t\t\t'.join([str(ub) for ub in kwargs['upper_bounds']]) + '\n')
 
         f.write('\n')

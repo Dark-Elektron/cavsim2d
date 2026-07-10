@@ -15,6 +15,11 @@ import matplotlib.pyplot as plt
 from cavsim2d.solvers.eigenmode_result import (EigenmodeResult, pol_name,
                                                pol_number, monopole_dir)
 from cavsim2d.utils.printing import done, error, info, suppress_errors
+from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
+from cavsim2d.data_module.abci_data import ABCIData
+from cavsim2d.processes.wakefield import run_wakefield_parallel, run_wakefield_s
+from itertools import combinations
+from cavsim2d.utils.printing import warning
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +93,7 @@ class TuneSolver:
 
     def run(self, tune_config):
         """Run frequency tuning. Delegates to processes/tune.py."""
+        # Deferred: breaks the solver_objects <-> processes.tune import cycle.
         from cavsim2d.processes.tune import run_tune_parallel
 
         self.folder.mkdir(parents=True, exist_ok=True)
@@ -257,7 +263,6 @@ class EigenmodeSolver:
 
     def run(self, eigenmode_config=None):
         """Run eigenmode analysis. Delegates to processes/eigenmode.py."""
-        from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
 
         if eigenmode_config is None:
             eigenmode_config = {}
@@ -344,7 +349,6 @@ class WakefieldSolver:
         """Load one ABCI polarisation into a DataFrame with the impedance
         spectrum and the wake potential. Returns an empty frame if the ABCI
         output for this cavity is missing."""
-        from cavsim2d.data_module.abci_data import ABCIData
         try:
             d = ABCIData(str(self.folder), '', mrot)
             f, z, _ = d.get_data(impedance_key)          # f in GHz, |Z|
@@ -383,7 +387,6 @@ class WakefieldSolver:
 
     def run(self, wakefield_config):
         """Run wakefield analysis. Delegates to processes/wakefield.py."""
-        from cavsim2d.processes.wakefield import run_wakefield_parallel, run_wakefield_s
 
         self.folder.mkdir(parents=True, exist_ok=True)
 
@@ -516,6 +519,7 @@ class OptimisationSolver:
     def cavities(self):
         """Returns a Cavities object of the optimised candidates."""
         if self._cavities is None:
+            # Deferred: breaks the solver_objects <-> cavity.cavities import cycle.
             from cavsim2d.cavity.cavities import Cavities
             cands = self.candidates_folder
             if cands.exists():
@@ -546,6 +550,7 @@ class OptimisationSolver:
             new one — mismatched fields trigger a warning but the run still
             proceeds using the caller-supplied config.
         """
+        # Deferred: breaks the solver_objects <-> optimisation import cycle.
         from cavsim2d.optimisation import Optimisation
 
         self.folder.mkdir(parents=True, exist_ok=True)
@@ -565,7 +570,6 @@ class OptimisationSolver:
                 diffs = [k for k in key_fields
                          if prev_cfg.get(k) != config.get(k)]
                 if diffs:
-                    from cavsim2d.utils.printing import warning
                     warning(f'Resume: config differs from saved run in {diffs}. '
                             f'Continuing with new config — results may diverge.')
             except Exception:
@@ -600,7 +604,8 @@ class OptimisationSolver:
                     mid_cell_params.append(defaults.get(name, 50))
 
         # Determine cavity type and create template
-        from cavsim2d.cavity.elliptical import EllipticalCavity
+        # Deferred: breaks the solver_objects <-> models.elliptical import cycle.
+        from cavsim2d.models.elliptical import EllipticalCavity
 
         tune_config = config.get('tune_config', {})
         eigenmode_config = tune_config.get('eigenmode_config', {})
@@ -753,7 +758,6 @@ class OptimisationSolver:
         -------
         (fig, axes_dict) — axes_dict maps ``'label_i vs label_j'`` to axes.
         """
-        from itertools import combinations
 
         df = self.pareto_history
         if df.empty or 'generation' not in df.columns:

@@ -1,11 +1,17 @@
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
+from cavsim2d.geometry import Profile
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 import numpy as np
 import os
 
 class SplineCavity(Cavity):
-    def __init__(self, shape, name='SplineCavity', kind='Berzier'):
+    # 'Berzier' was the historical (misspelt) default. It matched neither branch of
+    # write_geometry, so the .geo came out with no cavity wall at all — a degenerate
+    # triangle. Accept it as an alias for 'Bezier' rather than silently mis-meshing.
+    _KIND_ALIASES = {'bspline': 'bspline', 'bezier': 'bezier', 'berzier': 'bezier'}
+
+    def __init__(self, shape, name='SplineCavity', kind='Bezier'):
         # self.shape_space = {
         #     'IC': [L, Req, Ri, S, L_bp],
         #     'BP': beampipe
@@ -65,6 +71,55 @@ class SplineCavity(Cavity):
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']
 
+    def spline_kind(self):
+        """Normalised curve type: ``'bspline'`` or ``'bezier'`` (None if unknown)."""
+        return self._KIND_ALIASES.get(str(self.kind).lower())
+
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` (metres) — the native
+        netgen.occ path, with the cavity wall as an exact spline.
+
+        The contour is: axis -> first control point (PMC aperture), the spline wall
+        (PEC), down to the axis (PMC aperture), then back along the axis (AXI).
+        Control-point semantics match the ``.geo`` writer: for ``'bezier'`` one
+        curve per cell, for ``'bspline'`` a single curve through every cell's poles.
+        """
+        kind = self.spline_kind()
+        if kind is None:
+            return None
+        try:
+            poles = np.array(list(self.parameters.values()), dtype=float) * 1e-3
+        except (TypeError, ValueError):
+            return None
+        if poles.ndim != 2 or poles.shape[0] < 3 or poles.shape[1] != 2:
+            return None
+
+        prof = Profile('spline')
+        prof.start(0.0, 0.0)
+        prof.line_to(poles[0][0], poles[0][1], 'PMC')       # left aperture
+
+        # Cells repeat the control polygon, each shifted by the running last-z, which
+        # is exactly what add_bspline / write_geometry do (the shift compounds).
+        rest = poles[1:].copy()
+        if kind == 'bspline':
+            all_poles = []
+            for i in range(self.n_cells):
+                all_poles.extend(rest.tolist())
+                if i < self.n_cells - 1:
+                    rest = rest + np.array([rest[-1][0], 0.0])
+            prof.spline_to(all_poles, 'PEC', kind='bspline', degree=3)
+            z_end = all_poles[-1][0]
+        else:
+            for i in range(self.n_cells):
+                prof.spline_to(rest.tolist(), 'PEC', kind='bezier')
+                if i < self.n_cells - 1:
+                    rest = rest + np.array([rest[-1][0], 0.0])
+            z_end = rest[-1][0]
+
+        prof.line_to(z_end, 0.0, 'PMC')                     # right aperture
+        prof.close('AXI')
+        return prof
+
     def write_geometry(self, parameters, n_cells=1, beampipe='none', write=None):
         """
         Plot cavity geometry
@@ -119,10 +174,14 @@ class SplineCavity(Cavity):
             curve.append(curve_indx)
 
             # cavity cell surface
-            if self.kind == 'BSpline':
+            kind = self.spline_kind()
+            if kind is None:
+                raise ValueError(f"unknown spline kind {self.kind!r}; "
+                                 "expected 'BSpline' or 'Bezier'")
+            if kind == 'bspline':
                 pt_indx, curve_indx = add_bspline(cav, pt_indx, curve_indx, parameters[1:], n_cells)
                 curve.append(curve_indx)
-            if self.kind == 'Bezier':
+            if kind == 'bezier':
                 for i in range(n_cells):
                     pt_indx, curve_indx = add_bezierspline(cav, pt_indx, curve_indx, parameters[1:])
                     curve.append(curve_indx)

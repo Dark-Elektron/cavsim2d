@@ -1,4 +1,5 @@
 """Quadrature, sampling, and statistical weight utilities."""
+import math
 import numpy as np
 from scipy.stats import qmc
 from numpy.polynomial.legendre import leggauss

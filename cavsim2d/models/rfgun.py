@@ -1,4 +1,5 @@
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
+from cavsim2d.geometry import Profile
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 from scipy.signal import find_peaks
@@ -57,6 +58,95 @@ class RFGun(Cavity):
 
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']
+
+    @staticmethod
+    def _r9(p):
+        """Radius of the arc that closes the gun contour, fixed by the others."""
+        y1, R2, T2, L3, R4, L5, R6, R8, T9 = (p['y1'], p['R2'], p['T2'], p['L3'],
+                                              p['R4'], p['L5'], p['R6'], p['R8'], p['T9'])
+        R10, T10, L11, R12, L13, R14, x = (p['R10'], p['T10'], p['L11'], p['R12'],
+                                           p['L13'], p['R14'], p['x'])
+        return (((y1 + R2 * np.sin(T2) + L3 * np.cos(T2) + R4 * np.sin(T2) + L5 + R6) -
+                 (R14 + L13 + R12 * np.sin(T10) + L11 * np.cos(T10) + R10 * np.sin(T10)
+                  + x + R8 * (1 - np.sin(T9))))) / np.sin(T9)
+
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` — the native netgen.occ
+        path, with exact circular arcs.
+
+        Mirrors :meth:`write_geometry` primitive for primitive. Gun parameters are
+        already in metres, so no unit conversion. Boundary tags follow the ``.geo``
+        writer: the cathode plane (first segment) and the exit aperture (last
+        segment) are PMC, the axis is AXI, every wall in between is PEC.
+        """
+        p = self.parameters
+        try:
+            y1, R2, T2, L3, R4, L5, R6, L7, R8, T9, R10, T10, L11, R12, L13, R14, x = (
+                float(p[n]) for n in ('y1', 'R2', 'T2', 'L3', 'R4', 'L5', 'R6', 'L7',
+                                      'R8', 'T9', 'R10', 'T10', 'L11', 'R12', 'L13',
+                                      'R14', 'x'))
+            R9 = self._r9(p)
+        except (KeyError, TypeError, ValueError, ZeroDivisionError):
+            return None
+
+        prof = Profile('rfgun')
+        prof.start(0.0, 0.0)
+        prof.line_to(0.0, y1, 'PMC')                                  # cathode plane
+        z, r = 0.0, y1
+
+        z, r = R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)
+        prof.circle_arc_to(z, r, center=(-R2, y1), boundary='PEC')
+
+        z, r = z - L3 * np.cos(T2), r + L3 * np.sin(T2)
+        prof.line_to(z, r, 'PEC')
+
+        c = (z + R4 * np.cos(T2), r + R4 * np.sin(T2))
+        z, r = z - (R4 - R4 * np.cos(T2)), r + R4 * np.sin(T2)
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        z, r = z, r + L5
+        prof.line_to(z, r, 'PEC')
+
+        c = (z + R6, r)
+        z, r = z + R6, r + R6
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        z, r = z + L7, r
+        prof.line_to(z, r, 'PEC')
+
+        c = (z, r - R8)
+        z, r = z + R8 * np.cos(T9), r - (R8 - R8 * np.sin(T9))
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        c = (z - R9 * np.cos(T9), r - R9 * np.sin(T9))
+        z, r = z + (R9 - R9 * np.cos(T9)), r - R9 * np.sin(T9)
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        c = (z - R10, r)
+        z, r = z - (R10 - R10 * np.cos(T10)), r - R10 * np.sin(T10)
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        z, r = z - L11 * np.sin(T10), r - L11 * np.cos(T10)
+        prof.line_to(z, r, 'PEC')
+
+        c = (z + R12 * np.cos(T10), r - R12 * np.sin(T10))
+        z, r = z - (R12 - R12 * np.cos(T10)), r - R12 * np.sin(T10)
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        z, r = z, r - L13
+        prof.line_to(z, r, 'PEC')
+
+        c = (z + R14, r)
+        z, r = z + R14, r - R14
+        prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+        z, r = z + 10 * y1, r
+        prof.line_to(z, r, 'PEC')
+
+        z, r = z, r - x
+        prof.line_to(z, r, 'PMC')                                     # exit aperture
+        prof.close('AXI')
+        return prof
 
     def write_geometry(self, parameters, write=None):
         names = [

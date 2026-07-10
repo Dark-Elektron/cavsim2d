@@ -12,6 +12,7 @@ from cavsim2d.constants import *
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s  # noqa: F401 — used by multicell path
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.utils.printing import suppress_errors
+from cavsim2d.utils.config_validation import require
 
 tuner = Tuner()
 
@@ -172,11 +173,11 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
     tune_config_keys = tune_config.keys()
     if 'processes' in tune_config_keys:
         processes = tune_config['processes']
-        assert processes > 0, error('Number of processes must be greater than zero.')
+        require(processes > 0, 'Number of processes must be greater than zero.')
     else:
         processes = 1
 
-    assert 'freqs' in tune_config_keys, error('Please enter the target tune "freqs" in tune_config.')
+    require('freqs' in tune_config_keys, 'Please enter the target tune "freqs" in tune_config.')
 
     # Canonicalise cell_type config (handles legacy parameters+cell_types).
     cell_type_config = normalize_cell_type_config(tune_config)
@@ -187,8 +188,7 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
     if isinstance(freqs, (float, int)):
         freqs = np.array([freqs for _ in range(len(cavs_dict))], dtype=float)
     else:
-        assert len(freqs) == len(cavs_dict), error(
-            'Number of target frequencies must correspond to the number of cavities')
+        require(len(freqs) == len(cavs_dict), 'Number of target frequencies must correspond to the number of cavities')
         freqs = np.asarray(freqs, dtype=float)
     tune_config['freqs'] = freqs
 

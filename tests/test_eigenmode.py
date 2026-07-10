@@ -242,3 +242,117 @@ def test_legacy_flat_layout_fallback(project_dir):
     cavs.add_cavity([cav2], ['CAV'])
     cav2.get_eigenmode_qois()      # reads via fallback, must not raise
     assert cav2.freq > 0
+
+
+# --- mode_of_interest: which eigenmode becomes the headline qois.json ---------
+
+def test_modes_of_interest_resolution():
+    """1-based in config, 0-based internally, and a polarisation may have several.
+    Defaults: monopole -> n_cells (the pi-mode), m-pole -> 1."""
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+
+    class Cav:
+        n_cells = 9
+
+    moi = NGSolveMEVP.modes_of_interest
+    assert moi(Cav(), 0) == [8]                     # default monopole = n_cells = 9
+    assert moi(Cav(), 1) == [0]                     # default dipole = 1
+    assert moi(Cav(), 0, {'mode_of_interest': 1}) == [0]
+    # a plain int applies to every polarisation
+    assert moi(Cav(), 2, {'mode_of_interest': 4}) == [3]
+    # any number of modes of interest for one polarisation; the first is primary,
+    # order is preserved and duplicates collapse. Nothing is capped at two.
+    assert moi(Cav(), 1, {'mode_of_interest': [1, 3]}) == [0, 2]
+    assert moi(Cav(), 1, {'mode_of_interest': [3, 1]}) == [2, 0]
+    assert moi(Cav(), 1, {'mode_of_interest': [2, 2]}) == [1]        # deduplicated
+    assert moi(Cav(), 1, {'mode_of_interest': [1, 2, 3, 4, 5]}) == [0, 1, 2, 3, 4]
+    assert moi(Cav(), 1, {'mode_of_interest': [5, 1, 9, 3]}) == [4, 0, 8, 2]
+    assert moi(Cav(), 0, {'mode_of_interest': list(range(1, 8))}) == list(range(7))
+    # polarisations may each carry a different number of them
+    cfg_n = {'mode_of_interest': {'monopole': [1, 2, 3, 4], 'dipole': 4, 'quadrupole': [2, 3, 4]}}
+    assert moi(Cav(), 0, cfg_n) == [0, 1, 2, 3]
+    assert moi(Cav(), 1, cfg_n) == [3]
+    assert moi(Cav(), 2, cfg_n) == [1, 2, 3]
+    # dict keyed by name or by azimuthal number
+    cfg = {'mode_of_interest': {'monopole': 9, 'dipole': [1, 2]}}
+    assert moi(Cav(), 0, cfg) == [8]
+    assert moi(Cav(), 1, cfg) == [0, 1]
+    assert moi(Cav(), 2, cfg) == [0]                # absent -> m-pole default
+    assert moi(Cav(), 1, {'mode_of_interest': {1: 3}}) == [2]
+
+    class One:
+        n_cells = 1
+    assert moi(One(), 0) == [0]                     # 1-cell cavity/gun/pillbox
+
+    with pytest.raises(ValueError, match='1-based'):
+        moi(Cav(), 0, {'mode_of_interest': 0})
+    with pytest.raises(ValueError, match='must be a positive integer'):
+        moi(Cav(), 0, {'mode_of_interest': 2.5})
+    with pytest.raises(ValueError, match='empty'):
+        moi(Cav(), 0, {'mode_of_interest': []})
+    with pytest.raises(ValueError, match='exceeds'):
+        moi(Cav(), 0, {'mode_of_interest': 12}, n_modes=5)
+
+
+def test_mode_of_interest_selects_the_headline_mode(project_dir):
+    """Default picks the pi-mode; an override picks the requested passband mode."""
+    import json
+    from cavsim2d.cavity import Cavities, EllipticalCavity
+    tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+
+    def run(tag, extra):
+        cav = EllipticalCavity(3, tesla, tesla, tesla, beampipe='both')
+        cavs = Cavities(os.path.join(project_dir, tag))
+        cavs.add_cavity([cav], [tag])
+        cfg = {'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'}
+        cfg.update(extra)
+        cavs.run_eigenmode(cfg)
+        cav.get_eigenmode_qois()
+        with open(os.path.join(cav.self_dir, 'eigenmode', 'monopole',
+                               'qois_all_modes.json')) as fh:
+            all_modes = json.load(fh)
+        return cav.eigenmode_qois, [all_modes[str(i)]['freq [MHz]'] for i in range(3)]
+
+    qois, freqs = run('default', {})
+    assert freqs[0] < freqs[1] < freqs[2]                 # a rising passband
+    assert qois['mode_of_interest'] == '3'                # n_cells, the pi-mode
+    assert qois['freq [MHz]'] == pytest.approx(freqs[2], abs=1e-6)
+
+    qois1, freqs1 = run('mode1', {'mode_of_interest': 1})
+    assert qois1['mode_of_interest'] == '1'
+    assert qois1['freq [MHz]'] == pytest.approx(freqs1[0], abs=1e-6)
+
+    qois2, freqs2 = run('dict', {'mode_of_interest': {'monopole': 2}})
+    assert qois2['freq [MHz]'] == pytest.approx(freqs2[1], abs=1e-6)
+
+
+def test_mode_of_interest_is_metadata_not_a_qoi(project_dir):
+    """Stored as a string so UQ's numeric coercion drops it, like 'polarisation'."""
+    from cavsim2d.cavity import Cavities, EllipticalCavity
+    tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+    cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
+    cavs = Cavities(project_dir)
+    cavs.add_cavity([cav], ['C'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
+    cav.get_eigenmode_qois()
+    assert isinstance(cav.eigenmode_qois['mode_of_interest'], str)
+
+
+def test_direct_solver_probe_and_default():
+    """The default backend is whatever this NGSolve build actually provides:
+    pardiso on Windows, umfpack on mac/linux, sparsecholesky as the fallback."""
+    import platform
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import (default_direct_solver,
+                                                        direct_solver_available)
+    assert direct_solver_available('sparsecholesky')      # always built in
+    assert direct_solver_available('a-backend-that-does-not-exist') is False
+
+    chosen = default_direct_solver()
+    assert direct_solver_available(chosen)
+    preferred = ('pardiso', 'umfpack') if platform.system() == 'Windows' else ('umfpack', 'pardiso')
+    for name in preferred:
+        if direct_solver_available(name):
+            assert chosen == name
+            break
+    else:
+        assert chosen == 'sparsecholesky'

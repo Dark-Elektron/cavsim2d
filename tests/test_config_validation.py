@@ -68,3 +68,53 @@ def test_nested_config_validated():
         'uq_config': {'variables': ['A'], 'objctives': ['R/Q [Ohm]']},
     })
     assert any("objctives" in m for m in msgs)
+
+
+def test_mode_of_interest_validation():
+    from cavsim2d.utils.config_validation import validate_eigenmode_config
+
+    validate_eigenmode_config({'mode_of_interest': 9})
+    validate_eigenmode_config({'mode_of_interest': {'monopole': 9, 'dipole': 1}})
+    validate_eigenmode_config({'mode_of_interest': 5, 'n_modes': 5})
+
+    with pytest.raises(ValueError, match='1-based'):
+        validate_eigenmode_config({'mode_of_interest': 0})
+    with pytest.raises(ValueError, match='must be an integer'):
+        validate_eigenmode_config({'mode_of_interest': 1.5})
+    with pytest.raises(ValueError, match='must be an integer'):
+        validate_eigenmode_config({'mode_of_interest': {'monopole': 'pi'}})
+    with pytest.raises(ValueError, match='exceeds'):
+        validate_eigenmode_config({'mode_of_interest': 9, 'n_modes': 5})
+    with pytest.raises(ValueError, match='exceeds'):
+        validate_eigenmode_config({'mode_of_interest': {'dipole': 7}, 'n_modes': 5})
+    # a typo warns (non-fatal) and suggests the right key
+    with pytest.warns(UserWarning, match="Did you mean 'mode_of_interest'"):
+        validate_eigenmode_config({'mode_of_intrest': 9})
+
+
+def test_mode_of_interest_accepts_several_modes_per_polarisation():
+    from cavsim2d.utils.config_validation import validate_eigenmode_config
+    validate_eigenmode_config({'mode_of_interest': [1, 3]})
+    validate_eigenmode_config({'mode_of_interest': {'monopole': 9, 'dipole': [1, 2]}})
+    with pytest.raises(ValueError, match='empty'):
+        validate_eigenmode_config({'mode_of_interest': []})
+    with pytest.raises(ValueError, match='exceeds'):
+        validate_eigenmode_config({'mode_of_interest': {'dipole': [1, 7]}, 'n_modes': 5})
+
+
+def test_objectives_must_name_a_polarisation():
+    from cavsim2d.utils.config_validation import validate_uq_config, validate_optimisation_config
+
+    validate_uq_config({'objectives': ['monopole:R/Q [Ohm]', 'dipole:2:freq [MHz]']})
+    with pytest.raises(ValueError, match='does not name a polarisation'):
+        validate_uq_config({'objectives': ['R/Q [Ohm]']})
+    with pytest.raises(ValueError, match='unknown polarisation'):
+        validate_uq_config({'objectives': ['octopole:R/Q [Ohm]']})
+
+    # optimisation objectives are ['sense', name] pairs
+    validate_optimisation_config({'objectives': [['min', 'monopole:freq [MHz]'],
+                                                 ['max', 'dipole:R/Q [Ohm]']]})
+    with pytest.raises(ValueError, match='does not name a polarisation'):
+        validate_optimisation_config({'objectives': [['min', 'freq [MHz]']]})
+    # wakefield objectives carry no polarisation and are left alone
+    validate_optimisation_config({'objectives': [['min', 'ZL', [1, 2]], ['min', 'ZT']]})

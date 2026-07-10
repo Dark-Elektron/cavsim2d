@@ -8,6 +8,7 @@ import pandas as pd
 import math
 import warnings
 from cavsim2d.utils.quadrature import stroud3_nodes_and_weights
+from cavsim2d.utils.config_validation import require
 
 class SampleGenerator:
     def __init__(self):
@@ -352,9 +353,7 @@ class SampleGenerator:
         elif skip_values == 0:
             print("Duplicate samples will be taken as no points are skipped.")
         else:
-            assert (
-                    isinstance(skip_values, int) and skip_values >= 0
-            ), "`skip_values` must be a positive integer."
+            require(isinstance(skip_values, int) and skip_values >= 0, '`skip_values` must be a positive integer.')
 
         D = problem["num_vars"]
         groups = self._check_groups(problem)

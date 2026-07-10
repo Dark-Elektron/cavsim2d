@@ -5,6 +5,7 @@
    assumes an external Dakota/CST toolchain with absolute-path conventions. Not
    part of the stable cavsim2d API.
 """
+import re
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 import matplotlib
@@ -13,13 +14,14 @@ import numpy as np
 import os
 import pandas as pd
 import subprocess
+from cavsim2d.utils.config_validation import require
 
 class Dakota:
     def __init__(self, folder, name, scripts_folder=None):
         self.nodes = None
         self.sim_results = None
 
-        assert f'/' in folder, error('Please ensure directory paths use forward slashes.')
+        require(f'/' in folder, 'Please ensure directory paths use forward slashes.')
         self.projectDir = folder
         if scripts_folder is None:
             self.scripts_folder = r'D:/Dropbox/CavityDesignHub/analysis_modules/uq/dakota_scripts'
@@ -29,9 +31,9 @@ class Dakota:
 
     def write_input_file(self, **kwargs):
         keys = kwargs.keys()
-        assert 'variables_config' in keys, error('please enter keyword "variables config"')
-        assert 'interface_config' in keys, error('please enter keyword "interface config"')
-        assert 'method_config' in keys, error('please enter keyword "method config"')
+        require('variables_config' in keys, 'please enter keyword "variables config"')
+        require('interface_config' in keys, 'please enter keyword "interface config"')
+        require('method_config' in keys, 'please enter keyword "method config"')
 
         variables_config = kwargs['variables_config']
         interface_config = kwargs['interface_config']
@@ -61,7 +63,7 @@ class Dakota:
 
     def method(self, f, **kwargs):
         keys = kwargs.keys()
-        assert 'method' in keys, error('Please enter "method" in "method config".')
+        require('method' in keys, 'Please enter "method" in "method config".')
         method = kwargs['method']
 
         f.write('method\n')
@@ -95,21 +97,21 @@ class Dakota:
         """
 
         keys = kwargs.keys()
-        assert 'kind' in keys, error('Please enter "kind"')
-        assert 'lower_bounds' in keys, error('Please enter keyword "lower_bounds"')
-        assert 'upper_bounds' in keys, error('Please enter keyword "upper bounds"')
+        require('kind' in keys, 'Please enter "kind"')
+        require('lower_bounds' in keys, 'Please enter keyword "lower_bounds"')
+        require('upper_bounds' in keys, 'Please enter keyword "upper bounds"')
         kind = kwargs['kind']
         upper_bounds = kwargs['upper_bounds']
         lower_bounds = kwargs['lower_bounds']
 
-        assert len(upper_bounds) == len(lower_bounds), error("Length of upper and lower bounds must be equal.")
+        require(len(upper_bounds) == len(lower_bounds), 'Length of upper and lower bounds must be equal.')
 
         if "descriptors" in keys:
             descriptors = kwargs['descriptors']
         else:
             info('"descriptors" not entered. Using default parameter labelling.')
             descriptors = [f'p{n}' for n in range(len(upper_bounds))]
-        assert len(descriptors) == len(kwargs['upper_bounds'])
+        require(len(descriptors) == len(kwargs['upper_bounds']), 'len(descriptors) must equal len(upper_bounds).')
 
         f.write("variables\n")
         f.write(f"\t{kind} = {len(descriptors)}\n")
@@ -117,11 +119,12 @@ class Dakota:
             "\tdescriptors       =   " + '\t\t\t'.join(['"' + descriptor + '"' for descriptor in descriptors]) + '\n')
 
         if 'means' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['means'])
+            require(len(descriptors) == len(kwargs['means']), 'len(descriptors) must equal len(means).')
             f.write("\tmeans      =   " + '\t\t\t'.join([str(mean) for mean in kwargs['means']]) + '\n')
 
         if 'std_deviations' in kwargs.keys():
-            assert len(descriptors) == len(kwargs['std_deviations'])
+            require(len(descriptors) == len(kwargs['std_deviations']),
+                    'len(descriptors) must equal len(std_deviations).')
             f.write("\tstd_deviations      =   " + '\t\t\t'.join([str(std) for std in kwargs['std_deviations']]) + '\n')
 
         if 'lower_bounds' in kwargs.keys():
@@ -135,8 +138,8 @@ class Dakota:
     def interface(self, f, **kwargs):
 
         keys = kwargs.keys()
-        assert 'analysis_driver' in keys, error('please enter keyword "analysis driver"')
-        assert 'responses' in keys, error('Please enter "responses"')
+        require('analysis_driver' in keys, 'please enter keyword "analysis driver"')
+        require('responses' in keys, 'Please enter "responses"')
 
         analysis_driver = kwargs['analysis_driver']
         responses = kwargs['responses']

@@ -24,15 +24,22 @@ def test_pillbox_eigenmode(project_dir):
 
 @requires_abci
 def test_pillbox_wakefield(project_dir):
-    """Pillbox wakefield runs and writes both ABCI polarisations."""
+    """Pillbox wakefield runs and writes both ABCI polarisations.
+
+    ABCI needs beam pipes at both ends (>= 5 mesh lengths), so the pillbox needs a
+    non-zero L_bp. This test used to run with beampipe='none' and L_bp=0, which
+    ABCI silently refused: it left 0-byte cavity.top files, and the old
+    `os.path.exists` assertions passed on them regardless.
+    """
     cavs = Cavities(project_dir)
-    pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
+    pb = Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')
     cavs.add_cavity([pb], ['PB'])
     cavs.run_wakefield({'processes': 1, 'rerun': True,
                         'wakelength': 3, 'bunch_length': 25})
     wf = os.path.join(pb.self_dir, 'wakefield')
-    assert os.path.exists(os.path.join(wf, 'longitudinal', 'cavity.top'))
-    assert os.path.exists(os.path.join(wf, 'transversal', 'cavity.top'))
+    for pol in ('longitudinal', 'transversal'):
+        top = os.path.join(wf, pol, 'cavity.top')
+        assert os.path.getsize(top) > 0, f'{pol}: ABCI produced no wake data'
 
 
 def test_pillbox_tuning(project_dir):

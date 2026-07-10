@@ -5,6 +5,7 @@
    during development; they are not part of the stable cavsim2d API and may
    change or be removed.
 """
+import numpy as np
 from scipy.special import *
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.constants import *

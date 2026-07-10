@@ -2,7 +2,7 @@ from IPython.core.display import HTML, display_html, Math
 from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
 from pathlib import Path
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
 from cavsim2d.constants import *
 from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
@@ -17,6 +17,15 @@ import os
 import pandas as pd
 import scipy.interpolate as sci
 import scipy.io as spio
+from cavsim2d.processes.tune import normalize_cell_type_config
+from cavsim2d.utils.config_validation import validate_tune_config
+from cavsim2d.utils.config_validation import validate_eigenmode_config
+from cavsim2d.utils.config_validation import validate_wakefield_config
+from cavsim2d.utils.config_validation import validate_optimisation_config
+import re
+from cavsim2d.solvers.ABCI.abci import resolve_mrot
+from cavsim2d.solvers.solver_objects import OptimisationSolver
+from cavsim2d.utils.config_validation import require
 
 class Cavities:
     """
@@ -161,12 +170,12 @@ class Cavities:
 
         else:
             if names is not None:
-                assert len(cavs) == len(names), "Number of cavities does not correspond to number of names."
+                require(len(cavs) == len(names), 'Number of cavities does not correspond to number of names.')
             else:
                 names = [f'cav_{ii}' for ii in range(len(self.cavities_list))]
 
             if plot_labels is not None:
-                assert len(cavs) == len(plot_labels), "Number of cavities does not correspond to number of labels."
+                require(len(cavs) == len(plot_labels), 'Number of cavities does not correspond to number of labels.')
             else:
                 plot_labels = names
 
@@ -506,7 +515,6 @@ class Cavities:
         -------
 
         """
-        from cavsim2d.processes.tune import normalize_cell_type_config
 
         if tune_config is None:
             tune_config = {
@@ -515,7 +523,6 @@ class Cavities:
             }
             info(f'Tune variable and frequency not entered, defaulting to {json.dumps(tune_config, indent=4)}')
 
-        from cavsim2d.utils.config_validation import validate_tune_config
         validate_tune_config(tune_config)
 
         if 'freqs' not in tune_config.keys():
@@ -533,15 +540,6 @@ class Cavities:
 
         if 'uq_config' in tune_config.keys():
             uq_config = tune_config['uq_config']
-            if 'delta' in uq_config.keys():
-                assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                                     "be equal to the number of "
-                                                                                     "variables.")
-            if 'epsilon' in uq_config.keys():
-                assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
-                    "The number of epsilons must "
-                    "be equal to the number of "
-                    "variables.")
 
             if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
                 info('epsilon and delta are both entered. Epsilon is preferred.')
@@ -551,16 +549,6 @@ class Cavities:
 
             if 'uq_config' in eigenmode_config.keys():
                 uq_config_eig = eigenmode_config['uq_config']
-                if 'delta' in uq_config_eig.keys():
-                    assert len(uq_config_eig['delta']) == len(uq_config_eig['variables']), error(
-                        "The number of deltas must "
-                        "be equal to the number of "
-                        "variables.")
-                if 'epsilon' in uq_config_eig.keys():
-                    assert len(uq_config_eig['epsilon']) == len(uq_config_eig['variables']), error(
-                        "The number of epsilons must "
-                        "be equal to the number of "
-                        "variables.")
 
                 if 'epsilon' in uq_config_eig.keys() and 'uq_config' in uq_config_eig.keys():
                     info('epsilon and delta are both entered. Epsilon is preferred.')
@@ -658,7 +646,6 @@ class Cavities:
         if eigenmode_config is None:
             eigenmode_config = {}
 
-        from cavsim2d.utils.config_validation import validate_eigenmode_config
         validate_eigenmode_config(eigenmode_config)
 
         eigenmode_config['target'] = run_eigenmode_s
@@ -672,16 +659,7 @@ class Cavities:
         if 'uq_config' in eigenmode_config.keys():
             uq_config = eigenmode_config['uq_config']
             if uq_config:
-                if 'delta' in uq_config.keys():
-                    assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                                         "be equal to the number of "
-                                                                                         "variables.")
 
-                if 'epsilon' in uq_config.keys():
-                    assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
-                        "The number of epsilons must "
-                        "be equal to the number of "
-                        "variables.")
 
                 if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
                     info('Epsilon and delta are both entered. Epsilon is preferred.')
@@ -765,7 +743,6 @@ class Cavities:
         if wakefield_config is None:
             wakefield_config = {}
 
-        from cavsim2d.utils.config_validation import validate_wakefield_config
         validate_wakefield_config(wakefield_config)
 
         wakefield_config['target'] = run_wakefield_s
@@ -785,21 +762,12 @@ class Cavities:
         uq_config = {}
         if 'uq_config' in wakefield_config_keys:
 
-            if 'delta' in uq_config.keys():
-                assert len(uq_config['delta']) == len(uq_config['variables']), error("The number of deltas must "
-                                                                                     "be equal to the number of "
-                                                                                     "variables.")
 
-            if 'epsilon' in uq_config.keys():
-                assert len(uq_config['epsilon']) == len(uq_config['variables']), error(
-                    "The number of epsilons must "
-                    "be equal to the number of "
-                    "variables.")
 
             if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
                 info('epsilon and delta are both entered. Epsilon is preferred.')
 
-            assert 'objectives' in wakefield_config['uq_config'].keys(), error('Please enter objectives in uq_config.')
+            require('objectives' in wakefield_config['uq_config'].keys(), 'Please enter objectives in uq_config.')
 
             objectives_unprocessed = []
             # adjust objectives to match signature with optimisation
@@ -825,18 +793,15 @@ class Cavities:
             DDR_SIG = 0.1
             DDZ_SIG = 0.1
 
-            processes = 1
-            if 'processes' in wakefield_config.keys():
-                assert wakefield_config['processes'] > 0, error('Number of proceses must be greater than zero.')
-                processes = wakefield_config['processes']
-            else:
-                wakefield_config['processes'] = processes
+            # `processes` was already type- and range-checked by
+            # validate_wakefield_config above; only the default is needed here.
+            wakefield_config.setdefault('processes', 1)
+            processes = wakefield_config['processes']
 
             # MROT is the canonical key (0 longitudinal, 1 transverse, 2 both);
             # names and the deprecated 'polarisation' alias are also accepted.
             # Note: for wakefield this is the ABCI beam mode, not the eigenmode
             # azimuthal order that 'polarisation' means in eigenmode_config.
-            from cavsim2d.solvers.ABCI.abci import resolve_mrot
             if 'polarisation' in wakefield_config_keys and 'MROT' not in wakefield_config_keys:
                 info("wakefield_config['polarisation'] is deprecated; use 'MROT' "
                      "(0=longitudinal, 1=transverse, 2=both).")
@@ -844,17 +809,9 @@ class Cavities:
             wakefield_config['MROT'] = resolved_mrot
             wakefield_config['polarisation'] = resolved_mrot  # back-compat for downstream reads
 
-            if 'MT' in wakefield_config_keys:
-                assert isinstance(wakefield_config['MT'], int), error(
-                    'MT must be integer between 4 and 20, with 4 and 20 '
-                    'included.')
-            else:
-                wakefield_config['MT'] = MT
-
-            if 'NFS' in wakefield_config_keys:
-                assert isinstance(wakefield_config['NFS'], int), error('NFS must be integer.')
-            else:
-                wakefield_config['NFS'] = NFS
+            # MT / NFS were already type-checked by validate_wakefield_config above.
+            wakefield_config.setdefault('MT', MT)
+            wakefield_config.setdefault('NFS', NFS)
 
             # check input configs
 
@@ -870,15 +827,14 @@ class Cavities:
                 wakefield_config['mesh_config'] = mesh_config
 
             if 'bunch_length' in beam_config.keys():
-                assert not isinstance(wakefield_config['beam_config']['bunch_length'], str), error(
-                    'Bunch length must be of type integer or float.')
+                require(not isinstance(wakefield_config['beam_config']['bunch_length'], str),
+                        'Bunch length must be of type integer or float.')
             else:
                 beam_config['bunch_length'] = bunch_length
 
             # wake config
             if 'wakelength' in wake_config.keys():
-                assert not isinstance(wake_config['wakelength'], str), error(
-                    'Wakelength must be of type integer or float.')
+                require(not isinstance(wake_config['wakelength'], str), 'Wakelength must be of type integer or float.')
             else:
                 wake_config['wakelength'] = wakelength
 
@@ -926,7 +882,6 @@ class Cavities:
     def optimisation(self):
         """OptimisationSolver object for this cavity collection."""
         if self._optimisation_solver is None:
-            from cavsim2d.solvers.solver_objects import OptimisationSolver
             self._optimisation_solver = OptimisationSolver(self)
         return self._optimisation_solver
 
@@ -938,7 +893,6 @@ class Cavities:
         ``<project>/optimisation/generations/`` and reuses any candidate
         simulation results already written to disk.
         """
-        from cavsim2d.utils.config_validation import validate_optimisation_config
         validate_optimisation_config(optimisation_config)
         self.optimisation.run(optimisation_config, resume=resume)
 
@@ -952,8 +906,8 @@ class Cavities:
                     scale_x = [1 for _ in self.cavities_list]
                 else:
                     if isinstance(scale_x, list):
-                        assert len(scale_x) == len(self.cavities_list), error(
-                            'Length of scale_x must be same as number of Cavity objects.')
+                        require(len(scale_x) == len(self.cavities_list),
+                                'Length of scale_x must be same as number of Cavity objects.')
                     else:
                         scale_x = [scale_x for _ in self.cavities_list]
 
@@ -969,8 +923,8 @@ class Cavities:
                     scale_x = [1 for _ in self.cavities_list]
                 else:
                     if isinstance(scale_x, list):
-                        assert len(scale_x) == len(self.cavities_list), error(
-                            'Length of scale_x must be same as number of Cavity objects.')
+                        require(len(scale_x) == len(self.cavities_list),
+                                'Length of scale_x must be same as number of Cavity objects.')
                     else:
                         scale_x = [scale_x for _ in self.cavities_list]
 
@@ -986,8 +940,8 @@ class Cavities:
                     scale_x = [1 for _ in self.cavities_list]
                 else:
                     if isinstance(scale_x, list):
-                        assert len(scale_x) == len(self.cavities_list), error(
-                            'Length of scale_x must be same as number of Cavity objects.')
+                        require(len(scale_x) == len(self.cavities_list),
+                                'Length of scale_x must be same as number of Cavity objects.')
                     else:
                         scale_x = [scale_x for _ in self.cavities_list]
 
@@ -1003,8 +957,8 @@ class Cavities:
                     scale_x = [1 for _ in self.cavities_list]
                 else:
                     if isinstance(scale_x, list):
-                        assert len(scale_x) == len(self.cavities_list), error(
-                            'Length of scale_x must be same as number of Cavity objects.')
+                        require(len(scale_x) == len(self.cavities_list),
+                                'Length of scale_x must be same as number of Cavity objects.')
                     else:
                         scale_x = [scale_x for _ in self.cavities_list]
 
@@ -1309,7 +1263,6 @@ class Cavities:
         self.save_all_plots(f"{fname}_power_comparison.png")
 
     def _resolve_qoi_keys(self, qois, df_columns):
-        import re
         def normalize(s):
             s = s.lower()
             s = s.replace(r'\mathrm', '').replace(r'\epk', 'epk').replace(r'\bpk', 'bpk')
@@ -1412,18 +1365,16 @@ class Cavities:
 
         self.rf_config = rf_config
 
-        assert len(rf_config['Q0 []']) == len(self.cavities_list), error(
-            'Lengh of Q0 [] must equal number of Cavity objects.')
-        assert len(rf_config['inv_eta []']) == len(self.cavities_list), error(
-            'Lengh of inv_eta [] must equal number of Cavity objects.')
+        require(len(rf_config['Q0 []']) == len(self.cavities_list),
+                'Lengh of Q0 [] must equal number of Cavity objects.')
+        require(len(rf_config['inv_eta []']) == len(self.cavities_list),
+                'Lengh of inv_eta [] must equal number of Cavity objects.')
         if 'Eacc [MV/m]' in rf_config.keys():
-            assert len(rf_config['Eacc [MV/m]']) == len(self.cavities_list), error('length of accelerating field '
-                                                                                   'Eacc [MV/m] must equal number '
-                                                                                   'of Cavity objects in Cavities.')
+            require(len(rf_config['Eacc [MV/m]']) == len(self.cavities_list),
+                    'length of accelerating field Eacc [MV/m] must equal number of Cavity objects in Cavities.')
         if 'V [GV]' in rf_config.keys():
-            assert len(rf_config['V [GV]']) == len(op_points_list), error('length of RF Voltage '
-                                                                          'V [GV] must equal number '
-                                                                          'of operating points.')
+            require(len(rf_config['V [GV]']) == len(op_points_list),
+                    'length of RF Voltage V [GV] must equal number of operating points.')
 
         if isinstance(op_points_list, str):
             op_points_list = [op_points_list]

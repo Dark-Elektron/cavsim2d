@@ -76,6 +76,33 @@ def run_abci_exe(exe_path, input_path, run_dir, quiet=False):
     if quiet:
         kwargs.update(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.call(cmd, **kwargs)
+    _raise_if_abci_aborted(run_dir)
+
+
+def _raise_if_abci_aborted(run_dir):
+    """Turn an ABCI abort into an exception.
+
+    ABCI exits 0 even when it refuses to run — it writes ``*** STOP ***`` into
+    ``cavity.out`` and leaves ``cavity.pot``/``cavity.top`` empty. Without this
+    check the wakefield run reports success and the caller silently gets no wake
+    data (e.g. a pillbox declared ``beampipe='both'`` but with ``L_bp = 0``:
+    "THE BEAM PIPES AT BOTH ENDS ARE TOO SHORT").
+    """
+    out_path = os.path.join(str(run_dir), 'cavity.out')
+    if not os.path.exists(out_path):
+        return
+    with open(out_path, 'r', errors='replace') as fh:
+        try:
+            fh.seek(max(0, os.path.getsize(out_path) - 4000))
+        except OSError:
+            pass
+        tail = fh.read()
+    if '*** STOP ***' not in tail:
+        return
+    lines = [ln.strip() for ln in tail.split('\n')]
+    start = next(i for i, ln in enumerate(lines) if '*** STOP ***' in ln)
+    reason = '\n  '.join(ln for ln in lines[start:] if ln)
+    raise RuntimeError(f"ABCI refused to run and produced no wake data:\n  {reason}")
 
 
 class ABCI:

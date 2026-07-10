@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from cavsim2d.cavity.base import Cavity
+from cavsim2d.models.base import Cavity
 from cavsim2d.constants import *
 from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.utils.shared_functions import *
@@ -8,6 +8,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from cavsim2d.geometry import Profile
+from cavsim2d.processes.tune import last_stage_result
 
 class Pillbox(Cavity):
     def __init__(self, n_cells, dims, beampipe='none'):
@@ -52,6 +54,48 @@ class Pillbox(Cavity):
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, n_cells, beampipe, write=self.geo_filepath)
             self._write_geometry_snapshot()
+
+    def profile(self):
+        """Meridian boundary as a unified :class:`Profile` (metres) — the native
+        netgen.occ geometry path, no ``.geo`` round-trip.
+
+        Reads ``self.parameters`` (the live dict ``write_geometry`` uses and the
+        tuner mutates in place), never the values captured at ``__init__``.
+        """
+
+        names = ('L', 'Req', 'Ri', 'S', 'L_bp')
+        try:
+            L, Req, Ri, S, L_bp = (float(self.parameters[n]) * 1e-3 for n in names)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+        n = self.n_cells
+        bp = self.beampipe.lower()
+        L_bp_l = L_bp if bp in ('both', 'left') else 0.0
+        L_bp_r = L_bp if bp in ('both', 'right') else 0.0
+        shift = (L_bp_l + L_bp_r + n * L + (n - 1) * S) / 2.0
+
+        p = Profile('pillbox')
+        z = -shift
+        p.start(z, 0.0)
+        p.line_to(z, Ri, 'PMC')                  # left aperture
+        if L_bp_l > 0:
+            z += L_bp_l
+            p.line_to(z, Ri, 'PEC')              # left beampipe
+        for cell in range(1, n + 1):
+            if cell > 1:                         # inter-cell drift of length S
+                z += S
+                p.line_to(z, Ri, 'PEC')
+            p.line_to(z, Req, 'PEC')             # up the end plate
+            z += L
+            p.line_to(z, Req, 'PEC')             # along the barrel
+            p.line_to(z, Ri, 'PEC')              # down the end plate
+        if L_bp_r > 0:
+            z += L_bp_r
+            p.line_to(z, Ri, 'PEC')              # right beampipe
+        p.line_to(z, 0.0, 'PMC')                 # right aperture
+        p.close('AXI')
+        return p
 
     def write_geometry(self, parameters, n_cells, beampipe='none', write=None, plot=False, **kwargs):
         """
@@ -262,7 +306,6 @@ class Pillbox(Cavity):
     def _load_tuned_from_disk(self, tuned_dir):
         """Rebuild the tuned Pillbox from a persisted ``tuned/`` folder,
         reading the tuned (unsuffixed) parameters from tune_res.json."""
-        from cavsim2d.processes.tune import last_stage_result
 
         params = dict(self.parameters)
         tune_res_path = os.path.join(str(tuned_dir), 'tune_info', 'tune_res.json')

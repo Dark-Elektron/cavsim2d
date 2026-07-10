@@ -14,6 +14,8 @@ from cavsim2d.utils.printing import *
 from cavsim2d.utils.sensitivity import Sobol
 from cavsim2d.utils.surrogate import PCE
 from cavsim2d.utils.cubature import Data
+import copy
+from numpy.polynomial.legendre import leggauss
 
 
 
@@ -248,10 +250,6 @@ def get_wakefield_data(file_path):
     return data
 
 
-import numpy as np
-import copy
-import re
-from numpy.polynomial.legendre import leggauss
 
 # Ordered parameter names
 VAR_NAMES = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req', 'alpha']
