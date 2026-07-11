@@ -351,15 +351,26 @@ ax = tesla.plot('zt', ax)        # transverse impedance |Z_T| on the same axes
 tesla.plot('wpl'); tesla.plot('wpt')             # wake potentials
 
 # Or via the solver-object API, which returns DataFrames:
-tesla.wakefield.wake_z           # f [MHz], |Z| [Ohm], s [m], W [V/pC]
+tesla.wakefield.wake_z           # f [MHz], |Z|, Re(Z), Im(Z), s [m], W
 tesla.wakefield.plot_z(quantity='impedance')
 tesla.wakefield.plot_t(quantity='wake')
+
+# The main run always reports the loss/kick factors:
+tesla.wakefield.qois             # {'|k_loss| [V/pC]', 'k_FM [V/pC]',
+                                 #  'k_loss_HOM [V/pC]', '|k_kick| [V/pC/m]'}
 ```
+
+Any wakefield solver plugs in behind `cav.wakefield` — ABCI is the default
+backend, selected by `wakefield_config['solver']` (`'abci'`). The results above
+are read through a normalised schema, so nothing above changes when the solver
+does.
 
 ### Loss/kick factors and HOM power at operating points
 
-Pass an `operating_points` dictionary to compute loss/kick factors and
-higher-order-mode power (requires R/Q from a prior eigenmode run):
+The main run's loss/kick factors are always in `cav.wakefield.qois`. To also get
+higher-order-mode *power* at machine operating points, pass an `operating_points`
+dictionary (this re-runs per bunch length and needs R/Q from a prior eigenmode
+run); those results are reported separately in `cav.wakefield.qois_op`:
 
 ```python
 op_points = {

@@ -513,3 +513,35 @@ def test_direct_solver_probe_and_default():
             break
     else:
         assert chosen == 'sparsecholesky'
+
+
+def test_compare_scatter_marker_colours_match_the_legend(project_dir):
+    """plot_compare drew the whole column once per cavity, so every marker took
+    the last cavity's colour while the legend kept per-cavity colours. Each
+    cavity must plot only its own point, in a warm house-palette colour."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+    from cavsim2d.utils.style import WARM
+
+    cavs = Cavities(project_dir)
+    a = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both'); a.plot_label = 'A'
+    b = EllipticalCavity(1, [x * 1.02 for x in MIDCELL], [x * 1.02 for x in MIDCELL],
+                         [x * 1.02 for x in MIDCELL], beampipe='both'); b.plot_label = 'B'
+    cavs.add_cavity([a, b], ['A', 'B'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
+
+    plt.close('all')
+    cavs.plot_compare_eigenmode()
+    fig = plt.gcf()
+    leg = fig.legends[0]
+    leg_colors = [mcolors.to_hex(h.get_facecolor()[0]) for h in leg.legend_handles]
+    assert len(set(leg_colors)) == 2                       # two distinct cavities
+    assert all(c in [w.lower() for w in WARM] for c in leg_colors)   # warm palette
+
+    # the two markers in the first subplot carry those same two colours
+    marker_colors = sorted(mcolors.to_hex(coll.get_facecolor()[0])
+                           for coll in fig.axes[0].collections)
+    assert marker_colors == sorted(leg_colors)
+    plt.close('all')

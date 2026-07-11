@@ -251,8 +251,13 @@ def test_run_writes_the_normalised_schema(project_dir):
     assert os.path.exists(ljson)
     with open(ljson) as fh:
         assert '|k_loss| [V/pC]' in json.load(fh)
+    # the main run's loss/kick factors are always reported (merged qois.json)
+    assert os.path.exists(os.path.join(cav.self_dir, 'wakefield', 'qois.json'))
     q = cav.wakefield.qois
     assert q['|k_loss| [V/pC]'] != 0 and '|k_kick| [V/pC/m]' in q
+    # no operating points -> no qois_op
+    assert not os.path.exists(os.path.join(cav.self_dir, 'wakefield', 'qois_op.json'))
+    assert cav.wakefield.qois_op == {}
 
 
 class _DummyWakefield:

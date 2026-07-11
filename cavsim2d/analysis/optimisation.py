@@ -19,7 +19,7 @@ from cavsim2d.processes import *
 from cavsim2d.utils.printing import *
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.utils.printing import set_verbose
-from cavsim2d.processes.tune import normalize_cell_type_config
+from cavsim2d.processes.tune import normalize_cell_type_config, _resolve_suffixed_var
 from cavsim2d.processes.tune import last_stage_result
 from cavsim2d.solvers.objectives import (SEP, parse_objective, read_objective_values,
                                          canonical_objective)
@@ -536,15 +536,12 @@ class Optimisation:
         else:
             spawn_folder = str(Path(self.cav.self_dir) / 'optimisation')
 
-        # Map short bounds names (A, B, ...) to spawn column convention (A_m, B_m, ...)
-        ct = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
-        param_map = {'A': 'A_m', 'B': 'B_m', 'a': 'a_m', 'b': 'b_m',
-                     'Ri': 'Ri_m', 'L': 'L_m', 'Req': 'Req_m'}
-        if ct in ('end cell', 'single cell'):
-            # Optimising end cell params: map to end-cell-left columns
-            param_map = {'A': 'A_el', 'B': 'B_el', 'a': 'a_el', 'b': 'b_el',
-                         'Ri': 'Ri_el', 'L': 'L_el', 'Req': 'Req_el'}
-
+        # Map each bounds name to *this model's* parameter key, via the same
+        # resolver the tuner uses: A -> A_m (elliptical mid-cell), A -> A_el
+        # (end cell), Ri -> Ri (pillbox), R6 -> R6 (gun). So optimisation is
+        # driven by the model's own tune variables, not a hardcoded A..Req list.
+        param_map = {v: _resolve_suffixed_var(v, self.cell_type, self.cav)
+                     for v in self.bounds.keys()}
         df_spawn = df.rename(columns={k: v for k, v in param_map.items() if k in df.columns})
         cavs_object = self.cav.spawn(df_spawn, spawn_folder)
         cavs_dict = cavs_object.cavities_dict

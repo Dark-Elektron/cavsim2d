@@ -19,17 +19,25 @@ class SplineCavity(Cavity):
         shape : dict
             Geometry description with these keys:
 
-            - ``'geometry'`` (**required**) : dict of control points, each a
-              ``[z, r]`` coordinate pair in **millimetres**, keyed ``'p0'``,
-              ``'p1'``, … in order along the wall. The points run from the axis
-              on the upstream side (``r = 0``), up and over the cavity wall, and
-              back down to the axis downstream. For ``kind='bezier'`` the points
-              are the Bézier control polygon (one curve per cell); for
-              ``kind='bspline'`` they are the B-spline poles of a single curve
-              through every cell.
+            - ``'geometry'`` (**required**) : the control points, each a
+              ``[z, r]`` pair in **millimetres**, keyed ``'p0'``, ``'p1'``, … in
+              order along the wall (from the axis upstream, up and over the wall,
+              back to the axis). For ``kind='bezier'`` they are the Bézier control
+              polygon (one curve per cell); for ``kind='bspline'`` the poles.
+
+              Two forms, mirroring :class:`EllipticalCavity`:
+
+              * a single control-point dict used for every cell; or
+              * per-cell dicts under ``'mid_cell'`` / ``'end_cell_left'`` /
+                ``'end_cell_right'`` (aliases ``'mid'`` / ``'end cell left'`` /
+                ``'end cell right'``, or ``'IC'`` / ``'OC'`` / ``'OC_R'``). Each
+                end cell defaults to the mid cell when omitted, and the mid cell
+                falls back to whichever end cell is given.
             - ``'n_cells'`` (optional, default 1) : number of cells.
             - ``'beampipe'`` (optional, default ``'none'``) : ``'none'``,
               ``'left'``, ``'right'`` or ``'both'``.
+            - ``'beampipe_length'`` (optional, mm) : straight-pipe length; defaults
+              to one cell width.
         name : str
             Cavity name (used for its output folder).
         kind : {'Bezier', 'bspline'}
@@ -39,7 +47,10 @@ class SplineCavity(Cavity):
         --------
         >>> geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
         ...         'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
-        >>> cav = SplineCavity({'geometry': geom}, kind='Bezier')
+        >>> cav = SplineCavity({'geometry': geom, 'n_cells': 9}, kind='Bezier')
+        >>> # or distinct end cells:
+        >>> SplineCavity({'geometry': {'mid_cell': geom, 'end_cell_left': geom},
+        ...               'n_cells': 9, 'beampipe': 'both'})
         """
         super().__init__(name)
         self.self_dir = None
@@ -84,9 +95,17 @@ class SplineCavity(Cavity):
 
             self.uq_dir = os.path.join(self.self_dir, 'uq')
 
-            self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
-            self.write_geometry(self.parameters, n_cells, beampipe,
-                                write=self.geo_filepath)
+            # Meshing and the ABCI deck both come from the native profile(); the
+            # legacy .geo writer only understands a single flat control polygon.
+            # For per-cell (nested) geometry, stay native-only (geo_filepath =
+            # None), as multicell elliptical cavities do.
+            nested = any(isinstance(v, dict) for v in (self.parameters or {}).values())
+            if nested:
+                self.geo_filepath = None
+            else:
+                self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+                self.write_geometry(self.parameters, n_cells, beampipe,
+                                    write=self.geo_filepath)
 
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']
@@ -130,35 +149,100 @@ class SplineCavity(Cavity):
         """Normalised curve type: ``'bspline'`` or ``'bezier'`` (None if unknown)."""
         return self._KIND_ALIASES.get(str(self.kind).lower())
 
+    # geometry keys accepted for per-cell control points (elliptical-style).
+    _CELL_ALIASES = {
+        'mid_cell': 'mid_cell', 'mid': 'mid_cell', 'mid cell': 'mid_cell', 'ic': 'mid_cell',
+        'end_cell_left': 'end_cell_left', 'end cell left': 'end_cell_left',
+        'end_cell': 'end_cell_left', 'end cell': 'end_cell_left',
+        'left': 'end_cell_left', 'oc': 'end_cell_left',
+        'end_cell_right': 'end_cell_right', 'end cell right': 'end_cell_right',
+        'right': 'end_cell_right', 'oc_r': 'end_cell_right',
+    }
+
+    @staticmethod
+    def _poly(cell):
+        """Control polygon ``(N, 2)`` array from a ``{p0:[z,r], ...}`` dict,
+        ordered by point index."""
+        keys = sorted(cell, key=lambda s: int(''.join(c for c in str(s) if c.isdigit()) or 0))
+        return np.array([cell[k] for k in keys], dtype=float)
+
+    def _cell_length_m(self):
+        """Mid-cell axial width (iris to iris) in metres, for the dispersion light
+        line — the z-span of the mid-cell control polygon."""
+        cells = self._cell_polys()
+        if not cells:
+            return None
+        mid = cells[len(cells) // 2]              # an interior cell for a multicell
+        width = float(mid[-1][0] - mid[0][0])     # mm
+        return width * 1e-3 if width > 0 else None
+
+    def _cell_polys(self):
+        """The ``n_cells`` control polygons in cell order (end-left, mid…, end-right).
+
+        The ``geometry`` may be a bare ``{p0:…, p5:…}`` dict (one control polygon,
+        used for every cell), or give per-cell polygons under ``mid_cell`` /
+        ``end_cell_left`` / ``end_cell_right`` (aliases ``mid``/``end cell
+        left``/``end cell right``, or ``IC``/``OC``/``OC_R``). Following the
+        elliptical rules, each end cell defaults to the mid cell when omitted, and
+        the mid cell falls back to whichever end cell is given."""
+        geom = self.parameters or {}
+        if not geom:
+            return None
+        nested = any(isinstance(v, dict) for v in geom.values())
+        if not nested:
+            mid = self._poly(geom)
+            left = right = mid
+        else:
+            norm = {self._CELL_ALIASES.get(str(k).lower().strip(), str(k).lower()): v
+                    for k, v in geom.items()}
+            mid_src = norm.get('mid_cell') or norm.get('end_cell_left') or norm.get('end_cell_right')
+            if mid_src is None:
+                return None
+            mid = self._poly(mid_src)
+            left = self._poly(norm['end_cell_left']) if 'end_cell_left' in norm else mid
+            right = self._poly(norm['end_cell_right']) if 'end_cell_right' in norm else mid
+        n = max(1, int(self.n_cells))
+        if n == 1:
+            return [mid]
+        return [left] + [mid] * (n - 2) + [right]
+
     def profile(self):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native
         netgen.occ path, with the cavity wall as an exact spline.
 
         The contour is: axis -> first control point (PMC aperture), the spline wall
         (PEC), down to the axis (PMC aperture), then back along the axis (AXI).
-        Control-point semantics match the ``.geo`` writer: for ``'bezier'`` one
-        curve per cell, for ``'bspline'`` a single curve through every cell's poles.
+        For ``'bezier'`` one curve per cell; for ``'bspline'`` a single curve
+        through every cell's poles. Cells may differ (mid vs end cells) — see
+        :meth:`_cell_polys`.
         """
         kind = self.spline_kind()
         if kind is None:
             return None
+        cells = self._cell_polys()
+        if cells is None:
+            return None
         try:
-            poles = np.array(list(self.parameters.values()), dtype=float) * 1e-3
+            cells = [np.asarray(c, dtype=float) * 1e-3 for c in cells]
         except (TypeError, ValueError):
             return None
-        if poles.ndim != 2 or poles.shape[0] < 3 or poles.shape[1] != 2:
+        if any(c.ndim != 2 or c.shape[0] < 3 or c.shape[1] != 2 for c in cells):
             return None
 
-        rest0 = poles[1:]                          # control polygon of one cell
-        # Each successive cell is shifted so its first pole meets the previous
-        # cell's last pole. That shift is a *constant* cell width; the old code
-        # shifted by the running last-z, which compounds and left a growing gap
-        # between cells (the third cell of a 3-cell spline flew off to the right).
-        step = np.array([poles[-1][0] - poles[0][0], 0.0])
+        # Place each cell after the previous: shift so its first pole sits at the
+        # running z cursor. Cells connect because the spline interpolates its
+        # endpoints and adjacent apertures share the iris radius.
+        placed, z_cursor = [], 0.0
+        for c in cells:
+            s = c.copy()
+            s[:, 0] += z_cursor - c[0][0]
+            placed.append(s)
+            z_cursor += c[-1][0] - c[0][0]         # this cell's z width
 
         bp = (self.beampipe or 'none').lower()
-        r_ap_l = float(poles[0][1])                # left aperture radius (p0)
-        default_bp = float(step[0])                # one cell width
+        r_ap_l = float(placed[0][0][1])            # left aperture radius (p0)
+        r_ap_r = float(placed[-1][-1][1])          # right aperture radius (last p)
+        default_bp = float(placed[0][-1][0] - placed[0][0][0])   # first cell width
         L_bp = (self.beampipe_length * 1e-3) if self.beampipe_length else default_bp
         L_bp_l = L_bp if bp in ('both', 'left') else 0.0
         L_bp_r = L_bp if bp in ('both', 'right') else 0.0
@@ -168,23 +252,20 @@ class SplineCavity(Cavity):
         prof.start(z0, 0.0)
         prof.line_to(z0, r_ap_l, 'PMC')            # left aperture
         if L_bp_l > 0:
-            prof.line_to(0.0, r_ap_l, 'PEC')       # left beam pipe up to p0
+            prof.line_to(0.0, r_ap_l, 'PEC')       # left beam pipe up to the first cell
 
-        rest = rest0.copy()
+        # Each cell contributes its poles after the first: the previous point
+        # (the aperture, or the previous cell's last pole) already supplies p0.
         if kind == 'bspline':
             all_poles = []
-            for _ in range(self.n_cells):
-                all_poles.extend(rest.tolist())
-                rest = rest + step
+            for s in placed:
+                all_poles.extend(s[1:].tolist())
             prof.spline_to(all_poles, 'PEC', kind='bspline', degree=3)
-            z_end, r_ap_r = all_poles[-1][0], all_poles[-1][1]
         else:
-            for _ in range(self.n_cells):
-                prof.spline_to(rest.tolist(), 'PEC', kind='bezier')
-                rest = rest + step
-            last = rest - step                     # poles of the final cell drawn
-            z_end, r_ap_r = float(last[-1][0]), float(last[-1][1])
+            for s in placed:
+                prof.spline_to(s[1:].tolist(), 'PEC', kind='bezier')
 
+        z_end = float(placed[-1][-1][0])
         if L_bp_r > 0:
             z_end += L_bp_r
             prof.line_to(z_end, r_ap_r, 'PEC')     # right beam pipe

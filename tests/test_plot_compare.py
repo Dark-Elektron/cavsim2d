@@ -3,7 +3,7 @@ import pytest
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from cavsim2d.cavity.cavities import Cavities
+from cavsim2d.study import Study, Cavities
 
 class DummyCavity:
     def __init__(self, name, plot_label, color, freq, e, b, k_cc, R_Q, G, GR_Q):

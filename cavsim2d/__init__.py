@@ -16,6 +16,7 @@ Solver objects (attached as lazy properties on Cavity/Cavities):
     cavs.optimisation  - OptimisationSolver
 """
 from cavsim2d.cavity import (
+    Study,
     Cavities,
     Cavity,
     EllipticalCavity,
@@ -40,6 +41,7 @@ from cavsim2d.solvers import (
 from cavsim2d.utils.style import apply_style, house_style, WARM
 
 __all__ = [
+    'Study',
     'Cavities',
     'Cavity',
     'EllipticalCavity',

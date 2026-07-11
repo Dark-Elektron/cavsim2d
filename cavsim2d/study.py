@@ -26,10 +26,16 @@ import re
 from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import OptimisationSolver
 from cavsim2d.utils.config_validation import require
+from cavsim2d.utils.style import house_style, WARM
 
-class Cavities:
-    """
-    Cavities object is an object containing several Cavity objects.
+class Study:
+    """A study: a manager over several RF-device simulations (cavities, guns, …).
+
+    Groups devices under one project folder to run and compare analyses across
+    them. A single device can also be analysed on its own without a ``Study`` —
+    see :meth:`Cavity.set_workspace` / :meth:`Cavity.save`.
+
+    ``Cavities`` is a backward-compatible alias for this class.
     """
 
     def __init__(self, folder, name=None, cavities_list=None, names_list=None, overwrite=False,
@@ -85,7 +91,8 @@ class Cavities:
         self.sweep_results = None
         self.eigenmode_qois = {}
         self.eigenmode_qois_all_modes = {}
-        self.wakefield_qois = {}
+        self.wakefield_qois = {}       # main run: per-cavity loss/kick factors
+        self.wakefield_qois_op = {}    # per-cavity operating-point QOIs (P_HOM, ...)
         self.tune_results = {}
 
         self.uq_fm_results = {}
@@ -126,8 +133,8 @@ class Cavities:
             warning('No cavities in this Cavities have a tuned version yet. '
                     'Run run_tune(...) first.')
             return None
-        view = Cavities(self.projectDir, name=f'{self.name}_tuned',
-                        _skip_project_init=True)
+        view = Study(self.projectDir, name=f'{self.name}_tuned',
+                     _skip_project_init=True)
         for tc, nm in zip(tuned_cavs, tuned_names):
             view.add_cavity(tc, nm)
         return view
@@ -950,8 +957,11 @@ class Cavities:
     def get_wakefield_qois(self, uq_config):
         for key, cav in self.cavities_dict.items():
             # try:
+            # main run loss/kick factors — always reported now
+            self.wakefield_qois[cav.name] = cav.wakefield.qois
+            # operating-point QOIs (P_HOM, ...) — only when op-points were given
             cav.get_wakefield_qois(self.wakefield_config)
-            self.wakefield_qois[cav.name] = cav.wakefield_qois
+            self.wakefield_qois_op[cav.name] = cav.wakefield_qois
             if uq_config:
                 cav.get_uq_hom_results(os.path.join(self.projectDir, "wakefield", "ABCI", cav.name, "uq.json"))
                 cav_uq_hom_results = cav.uq_hom_results
@@ -1755,7 +1765,7 @@ class Cavities:
 
                 # get nominal qois
                 dd_nominal = {}
-                for cav, ops_id in self.wakefield_qois.items():
+                for cav, ops_id in self.wakefield_qois_op.items():
                     for kk, vv in ops_id.items():
                         if fr'{opt}_SR' in kk:
                             dd_nominal[cav] = vv
@@ -1883,7 +1893,7 @@ class Cavities:
 
                 # get nominal qois
                 dd_nominal = {}
-                for cav, ops_id in self.wakefield_qois.items():
+                for cav, ops_id in self.wakefield_qois_op.items():
                     for kk, vv in ops_id.items():
                         if fr'{opt}_SR' in kk:
                             dd_nominal[cav] = vv
@@ -2045,6 +2055,16 @@ class Cavities:
 
         return axd
 
+    def _compare_colors(self):
+        """One distinct warm colour per cavity for the comparison plots — the
+        cavity's own ``color`` when set to something other than the default black,
+        otherwise the house WARM palette by position."""
+        out = []
+        for i, cav in enumerate(self.cavities_list):
+            c = getattr(cav, 'color', None)
+            out.append(c if c and c not in ('k', 'black', '#000000') else WARM[i % len(WARM)])
+        return out
+
     def plot_compare_fm_scatter(self, ncols=3, uq=False, qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
@@ -2109,20 +2129,25 @@ class Cavities:
                 raise ValueError("None of the specified qois are present in the fundamental mode results.")
             df = df[selected_qois]
 
-            fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained', figsize=(3 * len(df.columns), 3))
-
             labels = [cav.plot_label for cav in self.cavities_list]
-            colors = matplotlib.colormaps['Set2'].colors[:len(labels)]  # Ensure unique colors
+            colors = self._compare_colors()
 
-            # Plot each column in a separate subplot
-            for key, ax in axd.items():
-                for i, label in enumerate(labels):
-                    ax.scatter(df.index, df[key], color=colors[i], label=label)
-                ax.set_xticklabels([])
-                ax.set_xticks([])
-                ax.set_ylabel(LABELS[key])
+            with house_style():
+                fig, axd = plt.subplot_mosaic([list(df.columns)], layout='constrained',
+                                              figsize=(3 * len(df.columns), 3))
+                # Each cavity is one point per subplot; plot only *its own* row so
+                # the marker colour matches its legend entry. (The old code drew
+                # the whole column once per cavity, so every point took the last
+                # cavity's colour while the legend kept per-cavity colours.)
+                for key, ax in axd.items():
+                    for i, label in enumerate(labels):
+                        ax.scatter(df.index[i], df[key].iloc[i], color=colors[i],
+                                   edgecolors='k', linewidths=0.8, label=label, zorder=3)
+                    ax.set_xticklabels([])
+                    ax.set_xticks([])
+                    ax.set_ylabel(LABELS[key])
 
-            h, l = ax.get_legend_handles_labels()
+                h, l = ax.get_legend_handles_labels()
         else:
             df_nominal = pd.DataFrame.from_dict(self.eigenmode_qois).T
 
@@ -2140,7 +2165,7 @@ class Cavities:
             df = pd.DataFrame(rows)
 
             labels = [cav.plot_label for cav in self.cavities_list]
-            colors = [cav.color for cav in self.cavities_list]
+            colors = self._compare_colors()
 
             # Step 2: Create a Mosaic Plot
             metrics = df['metric'].unique()
@@ -2225,7 +2250,7 @@ class Cavities:
         else:
             # get nominal qois
             dd_nominal = {}
-            for cav, ops_id in self.wakefield_qois.items():
+            for cav, ops_id in self.wakefield_qois_op.items():
                 for kk, vv in ops_id.items():
                     if fr'{opt}_SR' in kk:
                         dd_nominal[cav] = vv
@@ -3915,5 +3940,9 @@ class Cavities:
                 error('Invalid key. Cavities does not contain a Cavity named {key}.')
         else:
             raise TypeError("Invalid argument type. Must be int or str.")
+
+
+# Backward-compatible alias: the manager was renamed Cavities -> Study.
+Cavities = Study
 
 

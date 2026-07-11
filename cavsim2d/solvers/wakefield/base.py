@@ -66,11 +66,13 @@ class WakefieldBackend(ABC):
         return Path(cav.self_dir) / 'wakefield'
 
     def write_qois(self, cav, result=None):
-        """Persist the normalised scalars to ``wakefield/<pol>/qois.json`` so
-        ``cav.wakefield.qois`` can be read back without re-solving. Each
-        polarisation folder gets only the keys that belong to it (see
-        :data:`POL_QOI_KEYS`) and only when that folder exists (i.e. that
-        polarisation was actually run."""
+        """Persist the normalised main-run scalars.
+
+        Each polarisation folder gets the keys that belong to it
+        (``wakefield/<pol>/qois.json``, see :data:`POL_QOI_KEYS`), and a merged
+        ``wakefield/qois.json`` holds all of them for reporting — this is the
+        main run's always-reported loss/kick factors. (The operating-point
+        analysis writes a separate ``wakefield/qois_op.json``.)"""
         if result is None:
             result = self.read(cav)
         base = self.wakefield_dir(cav)
@@ -82,12 +84,20 @@ class WakefieldBackend(ABC):
             if subset:
                 with open(pol_dir / 'qois.json', 'w') as f:
                     json.dump(subset, f, indent=2)
+        if result.qois:
+            with open(base / 'qois.json', 'w') as f:
+                json.dump(result.qois, f, indent=2)
 
     @classmethod
     def read_qois(cls, cav):
-        """Merge the persisted ``wakefield/<pol>/qois.json`` scalars into one
-        dict (solver-agnostic; used by ``cav.wakefield.qois``)."""
+        """The main-run normalised scalars (solver-agnostic; ``cav.wakefield.qois``).
+        Prefers the merged ``wakefield/qois.json``, falling back to merging the
+        per-polarisation files."""
         base = Path(cav.self_dir) / 'wakefield'
+        merged_path = base / 'qois.json'
+        if merged_path.exists():
+            with open(merged_path) as f:
+                return json.load(f)
         merged = {}
         for pol in POL_QOI_KEYS:
             path = base / pol / 'qois.json'
@@ -95,3 +105,13 @@ class WakefieldBackend(ABC):
                 with open(path) as f:
                     merged.update(json.load(f))
         return merged
+
+    @staticmethod
+    def read_qois_op(cav):
+        """The operating-point QOIs from ``wakefield/qois_op.json`` (empty dict if
+        no operating-point analysis was run). Used by ``cav.wakefield.qois_op``."""
+        path = Path(cav.self_dir) / 'wakefield' / 'qois_op.json'
+        if path.exists():
+            with open(path) as f:
+                return json.load(f)
+        return {}

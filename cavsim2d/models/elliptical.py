@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
-from cavsim2d.cavity.cavities import Cavities
+from cavsim2d.study import Cavities
 from cavsim2d.geometry import Profile
 from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half_cell_sequence,

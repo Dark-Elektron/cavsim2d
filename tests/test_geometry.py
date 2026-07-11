@@ -551,3 +551,66 @@ def test_spline_multicell_tiles_without_gaps_and_honours_beampipe():
     # rebuild keeps the settings
     clone = sc.rebuild(sc.parameters)
     assert clone.n_cells == 3 and clone.beampipe == 'both'
+
+
+def test_spline_mid_and_end_cells_follow_elliptical_rules():
+    """SplineCavity 'geometry' may give per-cell control points under
+    mid_cell/end_cell_left/end_cell_right, with elliptical-style defaults; a bare
+    control-point dict still means 'this cell everywhere'."""
+    import numpy as np
+    from cavsim2d.cavity import SplineCavity
+    mid = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+           'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
+    endl = {'p0': [0, 39], 'p1': [0, 70], 'p2': [28, 98],
+            'p3': [87, 98], 'p4': [115, 70], 'p5': [115, 39]}
+
+    # flat form: every cell identical (backward compatible)
+    flat = SplineCavity({'geometry': dict(mid), 'n_cells': 3})._cell_polys()
+    assert len(flat) == 3 and all(np.allclose(c, flat[0]) for c in flat)
+
+    # nested: end cells given, mid in the middle; ends default to mid when omitted
+    nested = SplineCavity({'geometry': {'mid_cell': dict(mid), 'end_cell_left': dict(endl)},
+                           'n_cells': 5})
+    cp = nested._cell_polys()
+    assert len(cp) == 5
+    assert cp[0][0][1] == 39            # end-left cell used at the left
+    assert cp[2][0][1] == 35            # mid cell in the interior
+    assert cp[4][0][1] == 35            # end-right omitted -> defaults to mid
+    assert nested.profile() is not None
+
+    # only a mid cell, under an alias -> all cells equal
+    alias = SplineCavity({'geometry': {'IC': dict(mid)}, 'n_cells': 4})._cell_polys()
+    assert len(alias) == 4 and all(np.allclose(c, alias[0]) for c in alias)
+
+
+def test_nested_spline_create_is_native_only_and_arbitrary_point_count(project_dir):
+    """A nested-geometry SplineCavity must not crash in create() (the legacy .geo
+    writer only handles a single flat polygon); it stays native-only. Control
+    polygons are not restricted to 6 points."""
+    from cavsim2d.cavity import Cavities, SplineCavity
+    mid = {'p0': [0, 35], 'p1': [43, 51], 'p2': [-52, 136],
+           'p3': [167, 136], 'p4': [72, 51], 'p5': [115, 35]}
+    oc = {'p0': [0, 35], 'p1': [40, 63], 'p2': [-45, 130],
+          'p3': [156, 130], 'p4': [71, 63], 'p5': [111, 35]}
+    sc = SplineCavity({'geometry': {'IC': mid, 'OC': oc}, 'n_cells': 9, 'beampipe': 'both'})
+    cavs = Cavities(project_dir)
+    cavs.add_cavity([sc], ['S'])                 # used to raise TypeError in write_geometry
+    assert sc.geo_filepath is None               # native-only for per-cell geometry
+    assert sc.profile() is not None and len(sc._cell_polys()) == 9
+
+    # 5 and 8 control points also build a valid wall (degree = #points - 1 for bezier)
+    p5 = {'p0': [0, 35], 'p1': [0, 90], 'p2': [57, 103], 'p3': [115, 90], 'p4': [115, 35]}
+    p8 = {f'p{i}': v for i, v in enumerate(
+        [[0, 35], [0, 60], [10, 95], [40, 103], [75, 103], [105, 95], [115, 60], [115, 35]])}
+    assert SplineCavity({'geometry': p5, 'n_cells': 2}).profile() is not None
+    assert SplineCavity({'geometry': p8, 'n_cells': 2}).profile() is not None
+
+
+def test_spline_reports_a_dispersion_cell_length():
+    """SplineCavity defines a cell period, so the dispersion light line is drawn
+    for it too (base _cell_length_m returns None -> no light line)."""
+    from cavsim2d.cavity import SplineCavity
+    mid = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+           'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
+    sc = SplineCavity({'geometry': dict(mid), 'n_cells': 9})
+    assert sc._cell_length_m() == pytest.approx(0.115, abs=1e-4)   # mid-cell width, m

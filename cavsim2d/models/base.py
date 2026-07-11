@@ -20,6 +20,7 @@ import numpy as np
 import operator as op
 import os
 import pandas as pd
+import shutil
 import time
 from cavsim2d.processes.tune import last_stage_result
 from cavsim2d.geometry.beampipes import abci_shape
@@ -662,18 +663,59 @@ class Cavity(ABC):
         self.shape['BP'] = bp
         self.to_multicell()
 
-    def load(self):
-        """
-        Load existing cavity project folder
+    # ─── Standalone workspace ────────────────────────────────────────────
+    # A cavity can be analysed on its own, without a Study: the first analysis
+    # provisions a workspace folder (named after the cavity, in the CWD) and the
+    # per-cavity solvers (cav.eigenmode/tune/wakefield) write there. save()/load()
+    # relocate or reopen it.
 
-        Parameters
-        ----------
+    def set_workspace(self, folder):
+        """Use *folder* as this cavity's results directory and write its geometry.
 
-        Returns
-        -------
+        This is what ``Study.add_cavity`` does under the hood; call it directly to
+        analyse a cavity standalone (``cav.set_workspace('runs/tesla')``)."""
+        folder = str(folder)
+        self.projectDir = str(Path(folder).parent)
+        self.name = Path(folder).name
+        self.self_dir = folder
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        self.create()
+        return self
 
-        """
-        pass
+    def _ensure_workspace(self):
+        """Provision a default workspace (``./<name>/``) if none is set, so a
+        standalone cavity can be analysed without a Study. No-op once ``self_dir``
+        exists (the Study path sets it first)."""
+        if not self.self_dir:
+            self.set_workspace(os.path.join(os.getcwd(), self.name))
+        return self.self_dir
+
+    def save(self, folder, overwrite=False):
+        """Copy this cavity's workspace (geometry + all results) to *folder* and
+        continue writing there. Persists a standalone run to a chosen location."""
+        self._ensure_workspace()
+        dst = str(folder)
+        if os.path.abspath(dst) == os.path.abspath(self.self_dir):
+            return self
+        if os.path.exists(dst):
+            if not overwrite:
+                error(f"{dst} already exists — pass overwrite=True to replace it.")
+                return self
+            shutil.rmtree(dst)
+        shutil.copytree(self.self_dir, dst)
+        self.set_workspace(dst)
+        return self
+
+    def load(self, folder):
+        """Reopen a previously-saved cavity workspace: point this cavity at
+        *folder* so ``cav.eigenmode.qois`` etc. read the results already there."""
+        folder = str(folder)
+        if not os.path.isdir(folder):
+            raise FileNotFoundError(f"No cavity workspace at {folder}.")
+        self.projectDir = str(Path(folder).parent)
+        self.name = Path(folder).name
+        self.self_dir = folder
+        return self
 
     def load_shape_space(self, filepath):
         """
@@ -1125,14 +1167,34 @@ class Cavity(ABC):
     @staticmethod
     def _phase_advance_label(j, n):
         """Tick label for a phase advance of ``j*pi/n`` as a reduced fraction of
-        pi, rendered with mathtext (no LaTeX install needed): ``pi/2``, ``2pi/3``,
-        ``pi``.
+        pi, rendered with mathtext (no LaTeX install needed): ``0``, ``pi/2``,
+        ``2pi/3``, ``pi``.
         """
+        if j == 0:
+            return r'$0$'
         f = Fraction(j, n)
         if f == 1:
             return r'$\pi$'
         num = '' if f.numerator == 1 else str(f.numerator)
         return rf'$\dfrac{{{num}\pi}}{{{f.denominator}}}$'
+
+    @staticmethod
+    def _phase_advances(n):
+        """The per-cell phase advances of an ``n``-cell fundamental passband:
+        ``mu_q = q*pi/(n-1)`` for ``q = 0..n-1`` — the standing-wave modes from the
+        0-mode (``mu = 0``) to the pi-mode (``mu = pi``). A single cell has only
+        the pi-mode. Returns ``(mu array, tick-label list)``.
+
+        This is the textbook convention for a well-ordered passband; it assigns
+        each mode by frequency order (the accelerating pi-mode at the high end).
+        The fully general value would come from each mode's on-axis field node
+        count, which is monopole-specific — see SHIPPING_ACTION_PLAN.md.
+        """
+        if n <= 1:
+            return np.array([np.pi]), [r'$\pi$']
+        mu = np.linspace(0.0, np.pi, n)
+        labels = [Cavity._phase_advance_label(q, n - 1) for q in range(n)]
+        return mu, labels
 
     @staticmethod
     def _resolve_bands(bands, pols):
@@ -1207,7 +1269,7 @@ class Cavity(ABC):
                          f"(only {n_passbands} available).")
                     continue
                 seg = freqs[(b - 1) * n:b * n]
-                k = np.linspace(np.pi / n, np.pi, n, endpoint=True)[:len(seg)]
+                k = self._phase_advances(n)[0][:len(seg)]
                 if label is not None:
                     lbl = label
                 elif n_passbands == 1:
@@ -1285,8 +1347,7 @@ class Cavity(ABC):
             if not series:
                 return ax
             yvals = np.concatenate([s['y'] for s in series])
-            ticks = np.linspace(np.pi / n, np.pi, n, endpoint=True)
-            ticklabels = [Cavity._phase_advance_label(j + 1, n) for j in range(n)]
+            ticks, ticklabels = Cavity._phase_advances(n)
 
             def draw(a):
                 for s in series:
@@ -1579,22 +1640,17 @@ class Cavity(ABC):
             self.uq_hom_results = json.load(json_file)
 
     def get_wakefield_qois(self, wakefield_config):
+        """Load the operating-point wakefield QOIs (P_HOM, per-operating-point
+        loss/kick) from ``wakefield/qois_op.json``.
+
+        The main run's loss/kick factors are ``cav.wakefield.qois`` (always
+        written); this operating-point set is only produced when
+        ``operating_points`` were given, because those need the machine
+        parameters and per-bunch-length re-runs.
         """
-        Get the quantities of interest written by the ABCI code
-
-        Parameters
-        ----------
-        opt: {'SR', 'BS'}
-            SR - Synchrotron radiation bunch length
-            BS - Bremsstrahlung
-
-        Returns
-        -------
-
-        """
-
-        if os.path.exists(os.path.join(self.self_dir, 'wakefield', 'qois.json')):
-            with open(os.path.join(self.self_dir, 'wakefield', 'qois.json')) as json_file:
+        op_path = os.path.join(self.self_dir, 'wakefield', 'qois_op.json')
+        if os.path.exists(op_path):
+            with open(op_path) as json_file:
                 all_wakefield_qois = json.load(json_file)
 
         # get only keys in op_points
@@ -1811,6 +1867,8 @@ class Cavity(ABC):
                 _, ax = plt.subplots(figsize=(8, 3))
             pts = np.asarray(profile.contour_points(3e-4, skip=('AXI',)), dtype=float)
             z, r = pts[:, 0] * 1e3, pts[:, 1] * 1e3          # metres -> mm
+            z = z - z.min()                                  # start every cavity at z = 0,
+            #                                                  so different types align when compared
             color = kwargs.pop('color', None) or getattr(self, 'color', None) or WARM[1]
             lw = kwargs.pop('lw', kwargs.pop('linewidth', 1.8))
             label = kwargs.pop('label', self.name)
@@ -2674,7 +2732,7 @@ class Cavity(ABC):
         ``TypeError: Pillbox.__init__() got an unexpected keyword argument 'name'``.)
         """
         # Deferred: breaks the base <-> cavities import cycle.
-        from cavsim2d.cavity.cavities import Cavities
+        from cavsim2d.study import Cavities
         spawn = Cavities(folder, _skip_project_init=True)
         os.makedirs(folder, exist_ok=True)
 

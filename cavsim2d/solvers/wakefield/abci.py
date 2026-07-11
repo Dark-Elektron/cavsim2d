@@ -96,7 +96,9 @@ class ABCIWakefield(WakefieldBackend):
                 q['|k_loss| [V/pC]'] = k_loss
                 try:
                     d.get_data('Real Part of Longitudinal Impedance')
-                    d.get_data('Loss Factor Spectrum Integrated up to F')
+                    # ABCI titles this 'upto' (no space); the space form silently
+                    # fails to parse and leaves k_FM missing.
+                    d.get_data('Loss Factor Spectrum Integrated upto F')
                     k_fm = float(d.y_peaks[0])
                     q['k_FM [V/pC]'] = k_fm
                     q['k_loss_HOM [V/pC]'] = k_loss - k_fm

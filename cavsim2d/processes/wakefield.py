@@ -137,8 +137,10 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                             d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, cav.n_cells)
 
                     print(d)
+                    # Operating-point results go to qois_op.json; the main run's
+                    # loss/kick factors are the (always-written) wakefield/qois.json.
                     run_save_directory = os.path.join(cav.wakefield_dir)
-                    with open(os.path.join(run_save_directory, "qois.json"), "w") as f:
+                    with open(os.path.join(run_save_directory, "qois_op.json"), "w") as f:
                         json.dump(d, f, indent=4, separators=(',', ': '))
 
                     done("Done with the secondary analysis for working points")

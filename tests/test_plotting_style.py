@@ -109,3 +109,16 @@ def test_manual_breaks_place_the_splits_by_hand():
     assert len(three) == 3
     with pytest.raises(ValueError, match='low, high'):
         Cavity._clusters_from_breaks(vals, [1500])          # not a (low, high) pair
+
+
+def test_phase_advances_span_zero_to_pi():
+    """The passband phase advances run 0 (0-mode) to pi (pi-mode) at q*pi/(n-1),
+    not the old j*pi/n that omitted the 0-mode."""
+    pytest.importorskip('ngsolve')
+    import numpy as np
+    from cavsim2d.models.base import Cavity
+    mu, labels = Cavity._phase_advances(9)
+    assert mu[0] == 0.0 and mu[-1] == pytest.approx(np.pi)
+    assert labels[0] == r'$0$' and labels[-1] == r'$\pi$'
+    assert labels[4] == r'$\dfrac{\pi}{2}$'          # q=4 of 8 -> pi/2
+    assert Cavity._phase_advances(1)[1] == [r'$\pi$']   # single cell -> pi-mode

@@ -1,24 +1,22 @@
-"""Cavity package — the public façade, plus the pieces that are not models.
+"""Backward-compatibility façade — prefer ``from cavsim2d import ...``.
 
-The cavity *models* themselves (``Cavity`` and its subclasses) now live in
-:mod:`cavsim2d.models`. What remains here is everything that is not a model:
-
-- :class:`Cavities` — the container that runs a study over several cavities
-- :class:`Dakota` — the Dakota optimisation driver
-- :class:`OperationPoints` — operating-point tables
-
-Every model is re-exported below, so ``from cavsim2d.cavity import EllipticalCavity``
-continues to work unchanged.
+Everything now lives at its natural home: the *models* (``Cavity`` and subclasses)
+in :mod:`cavsim2d.models`, the multi-device manager :class:`Study` in
+:mod:`cavsim2d.study` (``Cavities`` is a deprecated alias), operating-point tables
+in :mod:`cavsim2d.data_module`, the Dakota driver in :mod:`cavsim2d.analysis.uq`,
+the banner in :mod:`cavsim2d.utils`. This module just re-exports them so existing
+``from cavsim2d.cavity import EllipticalCavity`` / ``Cavities`` imports keep working.
 """
 from cavsim2d.models import (Cavity, EllipticalCavity, EllipticalCavityFlatTop,
                              SplineCavity, RFGun, Pillbox, CircularWaveguide)
-from cavsim2d.cavity.cavities import Cavities
-from cavsim2d.cavity.dakota import Dakota
-from cavsim2d.cavity.operating_points import OperationPoints
-from cavsim2d.cavity.welcome import show_welcome
+from cavsim2d.study import Study, Cavities
+from cavsim2d.analysis.uq.dakota import Dakota
+from cavsim2d.data_module.operating_points import OperationPoints
+from cavsim2d.utils.welcome import show_welcome
 
 __all__ = [
     'Cavity',
+    'Study',
     'Cavities',
     'EllipticalCavity',
     'SplineCavity',

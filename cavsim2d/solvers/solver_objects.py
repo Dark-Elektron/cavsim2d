@@ -96,6 +96,7 @@ class TuneSolver:
         # Deferred: breaks the solver_objects <-> processes.tune import cycle.
         from cavsim2d.processes.tune import run_tune_parallel
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         # Save config first so it's available even if tuning crashes
@@ -267,6 +268,7 @@ class EigenmodeSolver:
         if eigenmode_config is None:
             eigenmode_config = {}
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         # Save config
@@ -372,17 +374,26 @@ class WakefieldSolver:
 
     @property
     def qois(self):
-        """Normalised scalar QOIs (``|k_loss| [V/pC]``, ``k_FM [V/pC]``,
-        ``|k_kick| [V/pC/m]``, …), read from ``wakefield/<pol>/qois.json``."""
+        """The main run's normalised scalar QOIs — always reported: loss/kick
+        factors ``|k_loss| [V/pC]``, ``k_FM [V/pC]``, ``k_loss_HOM [V/pC]``,
+        ``|k_kick| [V/pC/m]``."""
         if self._qois is None:
             self._qois = self.backend.read_qois(self.cavity)
         return self._qois
+
+    @property
+    def qois_op(self):
+        """The operating-point QOIs (per operating point / bunch length: P_HOM,
+        loss/kick, …), produced only when ``operating_points`` were given. Empty
+        dict otherwise. Distinct from :attr:`qois`, the main-run factors."""
+        return self.backend.read_qois_op(self.cavity)
 
     # -- Actions ------------------------------------------------------------
 
     def run(self, wakefield_config):
         """Run wakefield analysis. Delegates to processes/wakefield.py."""
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         with open(self.folder / 'config.json', 'w') as f:
@@ -514,8 +525,8 @@ class OptimisationSolver:
     def cavities(self):
         """Returns a Cavities object of the optimised candidates."""
         if self._cavities is None:
-            # Deferred: breaks the solver_objects <-> cavity.cavities import cycle.
-            from cavsim2d.cavity.cavities import Cavities
+            # Deferred: breaks the solver_objects <-> study import cycle.
+            from cavsim2d.study import Cavities
             cands = self.candidates_folder
             if cands.exists():
                 # Load existing candidate cavities
@@ -546,7 +557,7 @@ class OptimisationSolver:
             proceeds using the caller-supplied config.
         """
         # Deferred: breaks the solver_objects <-> optimisation import cycle.
-        from cavsim2d.optimisation import Optimisation
+        from cavsim2d.analysis.optimisation import Optimisation
 
         self.folder.mkdir(parents=True, exist_ok=True)
         self.candidates_folder.mkdir(parents=True, exist_ok=True)

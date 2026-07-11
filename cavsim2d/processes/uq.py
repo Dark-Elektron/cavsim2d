@@ -10,15 +10,11 @@ from scipy.stats import qmc
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.solvers.objectives import objective_polarisations, read_objective_values
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import parse_polarisations
-from cavsim2d.geometry.writers.abci import ABCIGeometry
-from cavsim2d.solvers.ABCI.abci import ABCI
 from cavsim2d.utils.shapes import perturb_half_cells, half_cells_to_dataframe
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 
 ngsolve_mevp = NGSolveMEVP()
-abci = ABCI()
-abci_geom = ABCIGeometry()
 
 def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
     """
