@@ -8,18 +8,18 @@ TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
 DIMENSION_FACTOR = {'mm': 1, 'cm': 1e-1, 'm': 1e-3}
 BOUNDARY_CONDITIONS_DICT = {'ee': 11, 'em': 13, 'me': 31, 'mm': 33}
-LABELS = {'freq [MHz]': r'$f$ [MHz]', 'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
+LABELS = {'freq [MHz]': r'$f$ [MHz]', r'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
           "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",
-          "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", "Q []": r'$Q$ []',
-          'kcc [%]': r'$k_\mathrm{cc}$ [%]', 'GR/Q [Ohm^2]': r'$G \cdot R/Q \mathrm{[\Omega^2]}$',
+          "G [Ohm]": r"$G ~\mathrm{[\Omega]}$", r"Q []": r'$Q$ []',
+          'kcc [%]': r'$k_\mathrm{cc}$ [%]', r'GR/Q [Ohm^2]': r'$G \cdot R/Q \mathrm{[\Omega^2]}$',
           'ff [%]': r'$\eta_ff$ [%]',
           'k_FM [V/pC]': r"$|k_\mathrm{FM}| ~\mathrm{[V/pC]}$",
           '|k_loss| [V/pC]': r"$|k_\parallel| ~\mathrm{[V/pC]}$",
           '|k_kick| [V/pC/m]': r"$|k_\perp| ~\mathrm{[V/pC/m]}$",
           'P_HOM [kW]': r"$P_\mathrm{HOM}/\mathrm{cav} ~\mathrm{[kW]}$",
-          'Z_2023': 'Z', 'W_2023': 'W', r'H_2023': 'H', 'ttbar_2023': r'$\mathrm{t \bar t}$',
-          'Z_b_2024': r'Z$_\mathrm{b}$', r'W_b_2024': 'W$_\mathrm{b}$',
+          'Z_2023': 'Z', 'W_2023': 'W', r'H_2023': 'H', r'ttbar_2023': r'$\mathrm{t \bar t}$',
+          'Z_b_2024': r'Z$_\mathrm{b}$', r'W_b_2024': r'W$_\mathrm{b}$',
           'H_b_2024': r'H$_\mathrm{b}$', r'ttbar_b_2024': r'$\mathrm{t \bar t}_\mathrm{b}$',
           'Z_b_2024_FB': r'Z$_\mathrm{b}$[FB]', r'W_b_2024_FB': r'W$_\mathrm{b}$[FB]',
           'H_b_2024_FB': r'H$_\mathrm{b}$[FB]', r'ttbar_b_2024_FB': r'$\mathrm{t \bar t}_\mathrm{b}$[FB]',
