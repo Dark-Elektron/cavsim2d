@@ -16,8 +16,8 @@ from cavsim2d.solvers.eigenmode_result import (EigenmodeResult, pol_name,
                                                pol_number, monopole_dir)
 from cavsim2d.utils.printing import done, error, info, suppress_errors
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
-from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.processes.wakefield import run_wakefield_parallel, run_wakefield_s
+from cavsim2d.solvers.wakefield import get_backend
 from itertools import combinations
 from cavsim2d.utils.printing import warning
 
@@ -327,8 +327,8 @@ class WakefieldSolver:
     def __init__(self, cavity):
         self.cavity = cavity
         self._config = None
-        self._wake_z = None
-        self._wake_t = None
+        self._result = None
+        self._qois = None
 
     @property
     def folder(self):
@@ -337,51 +337,46 @@ class WakefieldSolver:
     @property
     def config(self):
         if self._config is None:
-            cfg_path = self.folder / 'config.json'
-            if cfg_path.exists():
-                with open(cfg_path, 'r') as f:
-                    self._config = json.load(f)
-            else:
-                self._config = {}
+            self._config = {}
+            if self.cavity.self_dir:
+                cfg_path = self.folder / 'config.json'
+                if cfg_path.exists():
+                    with open(cfg_path, 'r') as f:
+                        self._config = json.load(f)
         return self._config
 
-    def _abci_frame(self, mrot, impedance_key):
-        """Load one ABCI polarisation into a DataFrame with the impedance
-        spectrum and the wake potential. Returns an empty frame if the ABCI
-        output for this cavity is missing."""
-        try:
-            d = ABCIData(str(self.folder), '', mrot)
-            f, z, _ = d.get_data(impedance_key)          # f in GHz, |Z|
-            s, w, _ = d.get_data('Wake Potentials')      # s in m, W
-        except (FileNotFoundError, KeyError, IndexError):
-            return pd.DataFrame()
-        # Impedance and wake are sampled on different grids; keep both as
-        # separate column pairs padded to equal length.
-        n = max(len(f), len(s))
+    @property
+    def backend(self):
+        """The wakefield backend for this cavity (from ``config['solver']``,
+        default ``'abci'``). All reads go through it, so the result schema is the
+        same whatever solver produced it."""
+        return get_backend(self.config.get('solver', 'abci'))
 
-        def _pad(a):
-            a = list(a)
-            return a + [np.nan] * (n - len(a))
-        return pd.DataFrame({
-            'f [MHz]': _pad(np.asarray(f) * 1e3),
-            '|Z| [Ohm]' if mrot == 0 else '|Z| [Ohm/m]': _pad(z),
-            's [m]': _pad(s),
-            'W [V/pC]' if mrot == 0 else 'W [V/pC/m]': _pad(w),
-        })
+    @property
+    def result(self):
+        """The normalised :class:`WakefieldResult` (frames + qois), read via the
+        backend and cached."""
+        if self._result is None:
+            self._result = self.backend.read(self.cavity)
+        return self._result
 
     @property
     def wake_z(self):
         """Longitudinal impedance spectrum + wake potential as a DataFrame."""
-        if self._wake_z is None:
-            self._wake_z = self._abci_frame(0, 'Longitudinal Impedance Magnitude')
-        return self._wake_z
+        return self.result.wake_z
 
     @property
     def wake_t(self):
         """Transverse impedance spectrum + wake potential as a DataFrame."""
-        if self._wake_t is None:
-            self._wake_t = self._abci_frame(1, 'Transversal Impedance Magnitude')
-        return self._wake_t
+        return self.result.wake_t
+
+    @property
+    def qois(self):
+        """Normalised scalar QOIs (``|k_loss| [V/pC]``, ``k_FM [V/pC]``,
+        ``|k_kick| [V/pC/m]``, …), read from ``wakefield/<pol>/qois.json``."""
+        if self._qois is None:
+            self._qois = self.backend.read_qois(self.cavity)
+        return self._qois
 
     # -- Actions ------------------------------------------------------------
 
@@ -404,8 +399,8 @@ class WakefieldSolver:
         self._invalidate()
 
     def _invalidate(self):
-        self._wake_z = None
-        self._wake_t = None
+        self._result = None
+        self._qois = None
 
     # -- Visualisation ------------------------------------------------------
 

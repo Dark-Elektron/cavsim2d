@@ -37,6 +37,8 @@ from cavsim2d.solvers import (
     EigenmodeResult,
 )
 
+from cavsim2d.utils.style import apply_style, house_style, WARM
+
 __all__ = [
     'Cavities',
     'Cavity',
@@ -54,4 +56,7 @@ __all__ = [
     'WakefieldSolver',
     'OptimisationSolver',
     'EigenmodeResult',
+    'apply_style',
+    'house_style',
+    'WARM',
 ]

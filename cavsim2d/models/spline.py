@@ -12,37 +12,57 @@ class SplineCavity(Cavity):
     _KIND_ALIASES = {'bspline': 'bspline', 'bezier': 'bezier', 'berzier': 'bezier'}
 
     def __init__(self, shape, name='SplineCavity', kind='Bezier'):
-        # self.shape_space = {
-        #     'IC': [L, Req, Ri, S, L_bp],
-        #     'BP': beampipe
-        # }
+        """A cavity whose wall is a spline through control points.
+
+        Parameters
+        ----------
+        shape : dict
+            Geometry description with these keys:
+
+            - ``'geometry'`` (**required**) : dict of control points, each a
+              ``[z, r]`` coordinate pair in **millimetres**, keyed ``'p0'``,
+              ``'p1'``, … in order along the wall. The points run from the axis
+              on the upstream side (``r = 0``), up and over the cavity wall, and
+              back down to the axis downstream. For ``kind='bezier'`` the points
+              are the Bézier control polygon (one curve per cell); for
+              ``kind='bspline'`` they are the B-spline poles of a single curve
+              through every cell.
+            - ``'n_cells'`` (optional, default 1) : number of cells.
+            - ``'beampipe'`` (optional, default ``'none'``) : ``'none'``,
+              ``'left'``, ``'right'`` or ``'both'``.
+        name : str
+            Cavity name (used for its output folder).
+        kind : {'Bezier', 'bspline'}
+            Spline type for the wall. ``'berzier'`` is accepted as a legacy alias.
+
+        Examples
+        --------
+        >>> geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+        ...         'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
+        >>> cav = SplineCavity({'geometry': geom}, kind='Bezier')
+        """
         super().__init__(name)
         self.self_dir = None
         self.cell_parameterisation = 'simplecell'  # consider removing
         self.name = name
 
-        if 'n_cells' in shape.keys():
-            n_cells = shape['n_cells']
-        else:
-            self.n_cells = 1
-
-        if 'beampipe' in shape.keys():
-            beampipe = shape['beampipe']
-        else:
-            self.beampipe = 'none'
+        # These were previously written to *local* variables (not self.*), so
+        # `n_cells` and `beampipe` from the shape dict were silently dropped.
+        self.n_cells = shape.get('n_cells', 1)
+        self.beampipe = shape.get('beampipe', 'none')
+        # Optional straight beam-pipe length (mm); None -> default (one cell
+        # width) when a beam pipe is requested. See profile().
+        self.beampipe_length = shape.get('beampipe_length', None)
 
         self.n_modes = 1
         self.axis_field = None
         self.bc = 'mm'
         self.projectDir = None
         self.kind = kind
-        self.n_cells = 1
-        if 'n_cells' in shape.keys():
-            self.n_cells = shape['n_cells']
 
         self.shape = {
             "geometry": shape['geometry'],
-            'BP': 'none',
+            'BP': self.beampipe,
             'CELL PARAMETERISATION': self.cell_parameterisation,
             'kind': self.kind}
 
@@ -129,29 +149,46 @@ class SplineCavity(Cavity):
         if poles.ndim != 2 or poles.shape[0] < 3 or poles.shape[1] != 2:
             return None
 
-        prof = Profile('spline')
-        prof.start(0.0, 0.0)
-        prof.line_to(poles[0][0], poles[0][1], 'PMC')       # left aperture
+        rest0 = poles[1:]                          # control polygon of one cell
+        # Each successive cell is shifted so its first pole meets the previous
+        # cell's last pole. That shift is a *constant* cell width; the old code
+        # shifted by the running last-z, which compounds and left a growing gap
+        # between cells (the third cell of a 3-cell spline flew off to the right).
+        step = np.array([poles[-1][0] - poles[0][0], 0.0])
 
-        # Cells repeat the control polygon, each shifted by the running last-z, which
-        # is exactly what add_bspline / write_geometry do (the shift compounds).
-        rest = poles[1:].copy()
+        bp = (self.beampipe or 'none').lower()
+        r_ap_l = float(poles[0][1])                # left aperture radius (p0)
+        default_bp = float(step[0])                # one cell width
+        L_bp = (self.beampipe_length * 1e-3) if self.beampipe_length else default_bp
+        L_bp_l = L_bp if bp in ('both', 'left') else 0.0
+        L_bp_r = L_bp if bp in ('both', 'right') else 0.0
+
+        prof = Profile('spline')
+        z0 = -L_bp_l
+        prof.start(z0, 0.0)
+        prof.line_to(z0, r_ap_l, 'PMC')            # left aperture
+        if L_bp_l > 0:
+            prof.line_to(0.0, r_ap_l, 'PEC')       # left beam pipe up to p0
+
+        rest = rest0.copy()
         if kind == 'bspline':
             all_poles = []
-            for i in range(self.n_cells):
+            for _ in range(self.n_cells):
                 all_poles.extend(rest.tolist())
-                if i < self.n_cells - 1:
-                    rest = rest + np.array([rest[-1][0], 0.0])
+                rest = rest + step
             prof.spline_to(all_poles, 'PEC', kind='bspline', degree=3)
-            z_end = all_poles[-1][0]
+            z_end, r_ap_r = all_poles[-1][0], all_poles[-1][1]
         else:
-            for i in range(self.n_cells):
+            for _ in range(self.n_cells):
                 prof.spline_to(rest.tolist(), 'PEC', kind='bezier')
-                if i < self.n_cells - 1:
-                    rest = rest + np.array([rest[-1][0], 0.0])
-            z_end = rest[-1][0]
+                rest = rest + step
+            last = rest - step                     # poles of the final cell drawn
+            z_end, r_ap_r = float(last[-1][0]), float(last[-1][1])
 
-        prof.line_to(z_end, 0.0, 'PMC')                     # right aperture
+        if L_bp_r > 0:
+            z_end += L_bp_r
+            prof.line_to(z_end, r_ap_r, 'PEC')     # right beam pipe
+        prof.line_to(z_end, 0.0, 'PMC')            # right aperture
         prof.close('AXI')
         return prof
 
@@ -426,8 +463,11 @@ class SplineCavity(Cavity):
             cav.write(f'\nPhysical Surface("Domain") = {1};')
     def rebuild(self, parameters, beampipe=None):
         """A fresh SplineCavity from its control-point dict."""
-        return SplineCavity({'geometry': dict(parameters), 'n_cells': self.n_cells},
-                            name=self.name, kind=self.kind)
+        return SplineCavity(
+            {'geometry': dict(parameters), 'n_cells': self.n_cells,
+             'beampipe': beampipe if beampipe is not None else self.beampipe,
+             'beampipe_length': self.beampipe_length},
+            name=self.name, kind=self.kind)
 
 
 

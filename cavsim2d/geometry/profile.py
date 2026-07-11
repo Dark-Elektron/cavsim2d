@@ -208,7 +208,7 @@ class Profile:
 
     @classmethod
     def _ellipse_points(cls, seg, pts, n=24):
-        """Sample points along an ellipse segment (for boundary matching)."""
+        """Sample points along an ellipse segment, ordered from ``i0`` to ``i1``."""
         c, major, minor, xdir, t_lo, t_hi = cls._ellipse_span(seg, pts)
         ux, uy = xdir
         vx, vy = -uy, ux
@@ -217,6 +217,13 @@ class Profile:
             ct, st = np.cos(t), np.sin(t)
             out.append((c[0] + major * ct * ux + minor * st * vx,
                         c[1] + major * ct * uy + minor * st * vy))
+        # _ellipse_span sorts (t_lo, t_hi), which reverses the sweep when it runs
+        # in the decreasing-parameter direction. Order from i0 so that a walk over
+        # consecutive segments (contour_points) stays continuous.
+        p0 = pts[seg['i0']]
+        if (np.hypot(out[0][0] - p0[0], out[0][1] - p0[1])
+                > np.hypot(out[-1][0] - p0[0], out[-1][1] - p0[1])):
+            out.reverse()
         return out
 
     def close(self, boundary):

@@ -215,7 +215,23 @@ cavs['TESLA'].plot_axis_field()                  # on-axis Ez and field flatness
 ```
 
 All `plot*` methods return a `matplotlib` axes/figure so you can restyle or save
-them. For multi-cell cavities, `plot_dispersion()` shows the passband.
+them, and share one warm-cast, publication-oriented palette and font (STIX;
+`cavsim2d.utils.style`, `apply_style()` to make it your session default). For
+multi-cell cavities, `plot_dispersion()` draws the Brillouin diagram: it overlays
+every computed polarisation, colour-coded, and shows all modes (grouped into
+passbands of `n_cells`). Options:
+
+- `pol=` — a name ('dipole'), a list, or `None` for all computed polarisations;
+- `bands=` — 1-based passband selection; a flat `[1, 2]` for all polarisations or
+  a nested `[[1, 2], [1]]` for one selection per polarisation;
+- `break_axis=` (default `True`) — splits the y-axis where passbands are far
+  apart so the empty space between them is not wasted; the split points are found
+  automatically from the frequency grouping. Pass `breaks=[(1350, 1600), (1900,
+  2350)]` to place them by hand (each is an approximate `(low, high)` gap).
+- `light_line=` (default `True`) — overlays the speed-of-light line `f = c·μ/(2π·d)`.
+  Because the diagram is a reduced (folded) zone, it appears as a triangle wave
+  crossing every band; the accelerating π-mode sits on it. Skipped for geometries
+  with no defined cell period.
 
 ---
 

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from cavsim2d.models.base import Cavity
 from cavsim2d.constants import *
-from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.utils.shared_functions import *
 import json
 import matplotlib
@@ -12,6 +11,28 @@ from cavsim2d.geometry import Profile
 
 class Pillbox(Cavity):
     def __init__(self, n_cells, dims, beampipe='none'):
+        """A right-cylinder (pillbox) cavity, optionally multi-cell.
+
+        Parameters
+        ----------
+        n_cells : int
+            Number of cells (barrels).
+        dims : sequence of 5 floats ``[L, Req, Ri, S, L_bp]``, all in **mm**
+            - ``L``    : cell (barrel) length along the axis.
+            - ``Req``  : cavity radius (the barrel / equator radius).
+            - ``Ri``   : iris/aperture radius, i.e. the beam-pipe radius.
+            - ``S``    : inter-cell drift length — the straight gap between
+              adjacent cells at radius ``Ri`` (0 for a single cell, or to butt
+              cells directly together).
+            - ``L_bp`` : beam-pipe length added at each end selected by
+              ``beampipe``.
+        beampipe : {'none', 'left', 'right', 'both'}
+            Which ends carry a beam pipe of length ``L_bp``.
+
+        Examples
+        --------
+        >>> Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')  # L=Req=100 mm
+        """
         super().__init__(n_cells, beampipe)
 
         L, Req, Ri, S, L_bp = dims
@@ -283,37 +304,10 @@ class Pillbox(Cavity):
 
 
     def plot(self, what, ax=None, **kwargs):
-        if what.lower() == 'geometry':
-            ax = plot_pillbox_geometry(self.n_cells, self.L, self.Req, self.Ri, self.S, self.L_bp, self.beampipe)
-            ax.set_xlabel('$z$ [m]')
-            ax.set_ylabel(r"$r$ [m]")
-            return ax
-
-        if what.lower() == 'zl':
-            if ax:
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
-            return ax
-        if what.lower() == 'zt':
-            if ax:
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
-            return ax
+        if what.lower() in ('geometry', 'zl', 'zt', 'wpl', 'wpt'):
+            # Geometry from the Profile; wakefield curves from the normalised
+            # frames — both via the geometry/solver-independent base plotter.
+            return super().plot(what, ax=ax, **kwargs)
 
         if what.lower() == 'convergence':
             try:

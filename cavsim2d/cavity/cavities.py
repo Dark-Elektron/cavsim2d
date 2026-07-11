@@ -473,14 +473,30 @@ class Cavities:
     # the manual workaround). This wrapper is kept so the API shape is stable
     # once sweep is ported.
 
-    def plot_dispersion(self, pol='monopole', ax=None, **kwargs):
-        """Overlay each cavity's passband. ``pol`` selects the polarisation
-        ('monopole', 'dipole', 'quadrupole', ...)."""
+    def plot_dispersion(self, pol=None, bands=None, ax=None, break_axis=True,
+                        breaks=None, light_line=True, **kwargs):
+        """Overlay each cavity's dispersion diagram. ``pol`` selects the
+        polarisation(s): ``None`` (default) shows every computed polarisation,
+        or name one ('monopole', 'dipole', ...) or a list. ``bands`` selects
+        passbands; ``break_axis`` splits the y-axis where passbands are far apart,
+        ``breaks`` places those splits by hand, and ``light_line`` overlays the
+        speed-of-light line (see :meth:`Cavity.plot_dispersion`)."""
+        if not self.cavities_list:
+            return ax
+        # Gather every cavity's series first, then render once, so the broken
+        # axis is computed over all the data at once.
+        series, n, light_lines = [], None, []
         for cav in self.cavities_list:
-            ax = cav.plot_dispersion(ax=ax, pol=pol, **kwargs)
-        if ax is not None:
-            ax.legend()
-        return ax
+            cav_series, cav_n = cav._dispersion_series(pol=pol, bands=bands)
+            series.extend(cav_series)
+            n = n or cav_n
+            d = cav._cell_length_m() if light_line else None
+            if d and not any(abs(d - ll['d']) < 1e-9 for ll in light_lines):
+                lbl = 'light line' if len(self.cavities_list) == 1 else f'light line ({cav.name})'
+                light_lines.append({'d': d, 'label': lbl})
+        return Cavity._render_dispersion(series, n, ax=ax, break_axis=break_axis,
+                                         breaks=breaks, light_lines=light_lines or None,
+                                         **kwargs)
 
     def run_tune(self, tune_config=None):
         """
@@ -510,6 +526,28 @@ class Cavities:
 
             The legacy ``'parameters'``/``'cell_types'`` pair is still
             accepted (with a deprecation warning).
+
+        Recognised keys
+        ---------------
+        freqs (alias ``freq``) : float | list
+            Target frequency in MHz (a scalar for all cavities, or one per cavity).
+        cell_type : dict
+            ``{cell type: tune variable(s)}`` as above. A tune variable is any
+            name the model exposes via ``cav.tune_variables()`` (e.g. ``'Req'``,
+            ``'L'`` for elliptical, ``'R6'`` for the gun, ``'p3_r'`` for a spline).
+        processes : int
+            Number of parallel worker processes (default 1).
+        rerun : bool
+            Recompute even if a tuned result exists (default True).
+        tolerance (alias ``tol``) : float
+            Convergence tolerance on the frequency.
+        maxiter : int
+            Maximum secant iterations per stage.
+        eigenmode_config : dict
+            Eigenmode sub-config used for each tuning solve (see
+            :meth:`run_eigenmode` keys).
+        uq_config : dict
+            Optional UQ-averaged tuning (see :meth:`run_uq` keys).
 
         Returns
         -------
@@ -637,6 +675,35 @@ class Cavities:
                     }
                 }
 
+        Recognised keys
+        ---------------
+        processes : int
+            Number of parallel worker processes (default 1).
+        rerun : bool
+            Recompute even if results already exist (default True).
+        boundary_conditions : str
+            Two-character wall condition, e.g. ``'mm'`` (magnetic-magnetic),
+            ``'ee'``, ``'me'``.
+        polarisation : str | int | list
+            Azimuthal mode(s) to solve: ``'monopole'``/0, ``'dipole'``/1,
+            ``'quadrupole'``/2, … or a list of them.
+        n_modes (alias ``nmodes``) : int
+            Number of eigenmodes to compute.
+        mode_of_interest : int | list | dict
+            1-based index (or list, or per-polarisation dict) of the mode(s) the
+            reported QOIs refer to. Defaults to the accelerating pi-mode.
+        f_shift : float
+            Frequency shift for the shift-invert eigensolver.
+        direct_solver : str
+            Linear solver: ``'pardiso'``/``'umfpack'``/``'sparsecholesky'``
+            (defaults per platform).
+        mesh_config : dict
+            Mesh controls, e.g. ``{'h': <element size mm>}``.
+        conductivity, surface_resistance, normalization_length : float
+            Material/normalisation parameters for the loss-derived QOIs.
+        uq_config : dict
+            Uncertainty-quantification sub-config (see :meth:`run_uq` keys).
+
         Returns
         -------
         None
@@ -734,6 +801,37 @@ class Cavities:
                     'rerun': True,
                     'operating_points': op_points,
                 }
+
+        Recognised keys
+        ---------------
+        MROT : {0, 1, 2} or str
+            Beam mode: 0/``'monopole'``/``'longitudinal'``,
+            1/``'dipole'``/``'transverse'``, 2/``'both'``. (``'polarisation'`` is
+            a deprecated alias.)
+        wakelength : float
+            Wake length to compute, in metres.
+        bunch_length : float
+            RMS bunch length, in mm.
+        processes : int
+            Number of parallel worker processes (default 1).
+        rerun : bool
+            Recompute even if results exist (default True).
+        MT, NFS : int
+            Number of mesh lines / frequency samples for the solver.
+        DDR_SIG, DDZ_SIG : float
+            Radial / longitudinal mesh density (mesh lines per sigma).
+        mesh_config : dict
+            Mesh controls, e.g. ``{'DDR': ..., 'DDZ': ...}`` (metres).
+        contour_ds : float
+            Wall sampling spacing for the geometry deck (metres).
+        beampipe_length : float
+            Override the auto beam-pipe length (metres). ABCI requires a pipe at
+            each end; one is added (3x the device length) where missing.
+        operating_points : dict
+            Machine/beam parameters for the derived power/HOM quantities
+            (see the ``op_points`` example above).
+        uq_config : dict
+            Uncertainty-quantification sub-config (see :meth:`run_uq` keys).
 
         Returns
         -------
@@ -852,7 +950,6 @@ class Cavities:
     def get_wakefield_qois(self, uq_config):
         for key, cav in self.cavities_dict.items():
             # try:
-            cav.get_abci_data()
             cav.get_wakefield_qois(self.wakefield_config)
             self.wakefield_qois[cav.name] = cav.wakefield_qois
             if uq_config:
@@ -886,12 +983,39 @@ class Cavities:
         return self._optimisation_solver
 
     def run_optimisation(self, optimisation_config, resume=False):
-        """Run optimisation using the OptimisationSolver.
+        """Run a multi-objective shape optimisation.
 
         Pass ``resume=True`` to continue an interrupted run: the solver
         picks up from the last completed generation table under
         ``<project>/optimisation/generations/`` and reuses any candidate
         simulation results already written to disk.
+
+        Recognised keys of ``optimisation_config``
+        ------------------------------------------
+        bounds : dict
+            ``{variable: [min, max]}`` search box for each free variable (mm).
+        objectives : list
+            Each objective is ``['min'|'max', name]`` or ``['equal', name,
+            target]``. Names are polarisation-qualified, e.g.
+            ``'monopole:R/Q [Ohm]'``, or wakefield peaks ``'ZL'``/``'ZT'`` with a
+            ``[low, ..., high]`` frequency window as a third element.
+        initial_points : int
+            Size of the initial population.
+        no_of_generations (alias ``no_of_generation``) : int
+            Number of generations to evolve.
+        method : str
+            Optimiser, e.g. ``'DE'`` (differential evolution), ``'NSGA2'``.
+        mutation_factor, crossover_factor, elites_for_crossover, chaos_factor,
+        mutation_sigma, eta_sbx : float
+            Evolutionary-operator controls.
+        weights : list
+            Per-objective weights.
+        seed : int
+            RNG seed for reproducibility.
+        tune_config : dict
+            Optional per-candidate tuning (see :meth:`run_tune` keys).
+        resume : bool
+            Same as the ``resume`` argument.
         """
         validate_optimisation_config(optimisation_config)
         self.optimisation.run(optimisation_config, resume=resume)

@@ -24,10 +24,11 @@ def test_wakefield_runs_and_writes_output(project_dir):
     assert os.path.exists(os.path.join(wf, 'longitudinal', 'cavity.top'))
     assert os.path.exists(os.path.join(wf, 'transversal', 'cavity.top'))
 
-    # impedance data loads and plots without error
-    cav.get_abci_data()
+    # normalised impedance loads and plots without error, via cav.wakefield
+    assert not cav.wakefield.wake_z.empty
     ax = cav.plot('zl')
     assert ax is not None
+    assert cav.wakefield.qois['|k_loss| [V/pC]'] != 0
 
 
 @requires_abci
@@ -40,8 +41,8 @@ def test_pillbox_wakefield_end_to_end(project_dir):
     cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 10})
     top = os.path.join(pb.self_dir, 'wakefield', 'longitudinal', 'cavity.top')
     assert os.path.getsize(top) > 0
-    pb.get_abci_data()
-    assert 'Long' in pb.abci_data
+    assert not pb.wakefield.wake_z.empty
+    assert pb.wakefield.qois['|k_loss| [V/pC]'] != 0
 
 
 def test_abci_abort_raises_instead_of_silently_producing_nothing(tmp_path):
@@ -165,11 +166,10 @@ def test_wakefield_matches_the_legacy_geo_path(project_dir):
             EllipticalCavity.profile = lambda self: None
         try:
             cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 3})
-            cav.get_abci_data()
             top = os.path.join(cav.self_dir, 'wakefield', 'longitudinal', 'cavity.top')
             with open(top, errors='replace') as fh:
                 assert 'NaN' not in fh.read()
-            return cav.abci_data['Long'].loss_factor['Longitudinal']
+            return cav.wakefield.qois['|k_loss| [V/pC]']
         finally:
             EllipticalCavity.profile = original
 
@@ -205,8 +205,7 @@ def test_wakefield_runs_for_every_cavity_type(project_dir):
         assert os.path.getsize(top) > 0
         with open(top, errors='replace') as fh:
             assert 'NaN' not in fh.read(), name + ': ABCI produced NaN wake potentials'
-        cav.get_abci_data()
-        assert cav.abci_data['Long'].loss_factor['Longitudinal'] != 0
+        assert cav.wakefield.qois['|k_loss| [V/pC]'] != 0
 
 
 @requires_abci
@@ -221,7 +220,116 @@ def test_added_beampipes_do_not_change_the_cavity_wake(project_dir):
         cavs = Cavities(os.path.join(project_dir, tag))
         cavs.add_cavity([cav], [tag])
         cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 3})
-        cav.get_abci_data()
-        return cav.abci_data['Long'].loss_factor['Longitudinal']
+        return cav.wakefield.qois['|k_loss| [V/pC]']
 
     assert k('both', 'both') == pytest.approx(k('none', 'none'), rel=2e-3)
+
+
+# --- the wakefield seam is solver-agnostic ----------------------------------
+
+def test_backend_registry():
+    from cavsim2d.solvers.wakefield import get_backend, BACKENDS
+    assert 'abci' in BACKENDS
+    assert get_backend('abci').name == 'abci'
+    assert get_backend(None).name == 'abci'          # default
+    with pytest.raises(ValueError, match='Unknown wakefield solver'):
+        get_backend('does-not-exist')
+
+
+@requires_abci
+def test_run_writes_the_normalised_schema(project_dir):
+    """A run persists wakefield/<pol>/qois.json, read back via cav.wakefield.qois."""
+    import json
+    from cavsim2d.cavity import Cavities, EllipticalCavity
+    tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+    cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
+    cavs = Cavities(project_dir)
+    cavs.add_cavity([cav], ['C'])
+    cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 2, 'wakelength': 3})
+
+    ljson = os.path.join(cav.self_dir, 'wakefield', 'longitudinal', 'qois.json')
+    assert os.path.exists(ljson)
+    with open(ljson) as fh:
+        assert '|k_loss| [V/pC]' in json.load(fh)
+    q = cav.wakefield.qois
+    assert q['|k_loss| [V/pC]'] != 0 and '|k_kick| [V/pC/m]' in q
+
+
+class _DummyWakefield:
+    """A canned backend that produces the normalised schema without any solver —
+    used to prove the seam is genuinely solver-agnostic."""
+    name = 'dummy'
+
+    @staticmethod
+    def wakefield_dir(cav):
+        from pathlib import Path
+        return Path(cav.self_dir) / 'wakefield'
+
+    def run(self, cav, config, subdir=''):
+        base = self.wakefield_dir(cav)
+        if subdir:
+            base = base / subdir
+        for pol in ('longitudinal', 'transversal'):
+            (base / pol).mkdir(parents=True, exist_ok=True)
+
+    def read(self, cav):
+        return self.read_dir(str(self.wakefield_dir(cav)))
+
+    def read_dir(self, folder):
+        import numpy as np
+        import pandas as pd
+        from cavsim2d.solvers.wakefield import WakefieldResult
+        f = np.linspace(100.0, 2000.0, 60)          # MHz
+        z = np.abs(np.sin(f / 180.0)) * 1000.0
+        wz = pd.DataFrame({'f [MHz]': f, '|Z| [Ohm]': z, 'Re(Z) [Ohm]': z,
+                           'Im(Z) [Ohm]': z * 0.1,
+                           's [m]': np.linspace(0, 3, 60), 'W [V/pC]': -z})
+        wt = wz.rename(columns=lambda c: c.replace('Ohm', 'Ohm/m').replace('V/pC', 'V/pC/m'))
+        qois = {'|k_loss| [V/pC]': 0.42, 'k_FM [V/pC]': 0.10,
+                'k_loss_HOM [V/pC]': 0.32, '|k_kick| [V/pC/m]': 1.5}
+        return WakefieldResult(wz, wt, qois)
+
+    def write_qois(self, cav, result=None):
+        from cavsim2d.solvers.wakefield.base import WakefieldBackend
+        WakefieldBackend.write_qois(self, cav, result if result is not None else self.read(cav))
+
+    @classmethod
+    def read_qois(cls, cav):
+        from cavsim2d.solvers.wakefield.base import WakefieldBackend
+        return WakefieldBackend.read_qois(cav)
+
+
+def test_wakefield_backend_is_swappable(project_dir):
+    """Swap ABCI for a canned backend via wakefield_config['solver']: the run,
+    cav.wakefield.qois, plot('zl') and a ZL objective all work through it — no
+    ABCI, proving nothing downstream is tied to a specific solver."""
+    import matplotlib
+    matplotlib.use('Agg')
+    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d.solvers.wakefield import register_backend, BACKENDS
+    from cavsim2d.processes.wakefield import get_wakefield_objectives_value
+
+    register_backend(_DummyWakefield())
+    try:
+        tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+        cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
+        cavs = Cavities(project_dir)
+        cavs.add_cavity([cav], ['D'])
+        cavs.run_wakefield({'solver': 'dummy', 'processes': 1, 'rerun': True})
+
+        # normalised schema written and read back
+        assert os.path.exists(os.path.join(cav.self_dir, 'wakefield',
+                                           'longitudinal', 'qois.json'))
+        assert cav.wakefield.qois['|k_loss| [V/pC]'] == 0.42
+
+        # plotting reads the normalised frames, not any ABCI object
+        ax = cav.plot('zl')
+        assert ax is not None and ax.lines
+
+        # a ZL objective computes through the same frames
+        df_wake, keys = get_wakefield_objectives_value(
+            {cav.name: cav}, [['min', 'ZL', [0.1, 0.5, 1.0]]],
+            project_dir, solver='dummy')
+        assert not df_wake.empty
+    finally:
+        BACKENDS.pop('dummy', None)

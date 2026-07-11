@@ -4,7 +4,6 @@ from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
 from pathlib import Path
 from cavsim2d.constants import *
-from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
 from distutils import dir_util
@@ -28,6 +27,8 @@ from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
 from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import TuneSolver, EigenmodeSolver, WakefieldSolver
 from cavsim2d.constants import SOFTWARE_DIRECTORY
+from cavsim2d.utils.style import house_style, polarisation_color, shades, WARM
+from fractions import Fraction
 
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
@@ -987,10 +988,9 @@ class Cavity(ABC):
         self.wakefield.run(config)
 
         try:
-            self.get_abci_data()
             self.get_wakefield_qois(config)
         except FileNotFoundError:
-            error("Could not find the abci wakefield results. Please rerun wakefield analysis.")
+            error("Could not find the wakefield results. Please rerun wakefield analysis.")
 
     def calc_op_freq(self):
         """
@@ -1122,48 +1122,338 @@ class Cavity(ABC):
             self.Epk_Eacc = self.e
             self.Bpk_Eacc = self.b
 
-    def plot_dispersion(self, ax=None, show_continuous=True, pol='monopole', **kwargs):
-        """Plot the n-cell passband (frequency vs cell phase advance).
-
-        ``pol`` selects the polarisation: 'monopole' (default) reads the
-        fundamental passband; 'dipole'/'quadrupole'/… read the corresponding
-        m-pole passband from ``eigenmode/<pol>/qois_all_modes.json``.
+    @staticmethod
+    def _phase_advance_label(j, n):
+        """Tick label for a phase advance of ``j*pi/n`` as a reduced fraction of
+        pi, rendered with mathtext (no LaTeX install needed): ``pi/2``, ``2pi/3``,
+        ``pi``.
         """
-        if ax is None:
-            fig, ax = plt.subplots()
+        f = Fraction(j, n)
+        if f == 1:
+            return r'$\pi$'
+        num = '' if f.numerator == 1 else str(f.numerator)
+        return rf'$\dfrac{{{num}\pi}}{{{f.denominator}}}$'
 
-        if pol_number(pol) == 0:
-            all_modes = self.eigenmode.mpole_qois('monopole')  # {idx: qois}
+    @staticmethod
+    def _resolve_bands(bands, pols):
+        """Normalise the ``bands`` argument to one 1-based list per polarisation.
+
+        - ``None`` -> ``None`` for every polarisation (all computed passbands).
+        - a flat list like ``[1, 2]`` -> the same selection for every polarisation.
+        - a nested list like ``[[1, 2], [1]]`` -> one selection per polarisation,
+          and its length must match ``pols``.
+        """
+        if bands is None:
+            return [None] * len(pols)
+        if not isinstance(bands, (list, tuple)):
+            raise TypeError("'bands' must be a list of passband numbers, or a "
+                            "list of such lists (one per polarisation).")
+        nested = [b for b in bands if isinstance(b, (list, tuple))]
+        if nested:
+            if len(nested) != len(bands):
+                raise ValueError("'bands' mixes plain numbers and per-polarisation "
+                                 "lists; use either [1, 2] or [[1, 2], [1]].")
+            if len(bands) != len(pols):
+                raise ValueError(f"'bands' has {len(bands)} per-polarisation lists "
+                                 f"but there are {len(pols)} polarisation(s).")
+            return [list(b) for b in bands]
+        return [list(bands)] * len(pols)          # one flat list, shared
+
+    def _cell_length_m(self):
+        """Axial length of one (mid-)cell in metres, for the dispersion light
+        line. Returns None when the period is not defined for this geometry, in
+        which case the light line is skipped. Overridden by the cavity types
+        that have a periodic cell."""
+        return None
+
+    def _dispersion_series(self, pol=None, bands=None, color=None, label=None):
+        """Collect the dispersion curves as a list of ``dict(x, y, color, label)``,
+        one per (polarisation, passband). Shared by the single-cavity and the
+        ``Cavities`` overlay plotters so both render identically."""
+        if pol is None:
+            pols = self._available_polarisations() or ['monopole']
+        elif isinstance(pol, (str, int)):
+            pols = [pol]
         else:
-            all_modes = self.eigenmode.mpole_qois(pol)          # {idx: qois}
-        # The solver filters the spurious gradient/DC mode for every
-        # polarisation, so the n-cell passband is simply indices 0..n_cells-1.
-        lo, hi = 0, self.n_cells
+            pols = list(pol)
 
-        df = pd.DataFrame.from_dict(all_modes, orient='index')
-        if df.empty or 'freq [MHz]' not in df:
-            info(f"No {pol} passband data — run eigenmode with that polarisation first.")
-            return ax
-        freqs = df['freq [MHz]'].iloc[lo:hi]
+        band_selection = self._resolve_bands(bands, pols)
+        n = self.n_cells
+        series = []
 
-        k = np.linspace(np.pi / self.n_cells, np.pi, self.n_cells, endpoint=True)[:len(freqs)]
-        axis_label = ['$' + f'({i + 1}/{self.n_cells})' + r'\pi$' if i - 1 != self.n_cells else r'$\pi$' for i in
-                      range(self.n_cells)]
-        label = kwargs.pop('label', f'{self.name} ({pol})')
-        ax.plot(k, freqs, marker='o', mec='k', label=label, **kwargs)
-        ax.set_xticks(k)
-        ax.set_xticklabels(axis_label[:len(freqs)])
-        ax.set_ylabel('$f$ [MHz]')
-        ax.set_xlabel('$k$')
+        for pol_i, want_bands in zip(pols, band_selection):
+            all_modes = self.eigenmode.mpole_qois(pol_i)   # {idx: qois}
+            df = pd.DataFrame.from_dict(all_modes, orient='index')
+            if df.empty or 'freq [MHz]' not in df:
+                info(f"No {pol_name(pol_number(pol_i))} passband data — run "
+                     f"eigenmode with that polarisation first.")
+                continue
+            df = df.loc[sorted(df.index, key=lambda s: int(s))]
+            freqs = df['freq [MHz]'].to_numpy()
 
-        # if show_continuous:
-        #     # calculate continuous
-        #     k = np.linspace(0, np.pi, 100, endpoint=True)
-        #     f_pi_over_2 = (freqs[0] + freqs[-1])/2
-        #     freq_c = np.sqrt(freqs[0]**2 + freqs[-1]**2 - 2*freqs[0]*freqs[-1]*np.cos(k))
-        #     ax.plot(k, freq_c, c='k', lw=2)
+            n_passbands = int(np.ceil(len(freqs) / n))
+            hue = color or polarisation_color(pol_i)
+            # colour by absolute band index, so passband 2 keeps its shade
+            # whether or not passband 1 is also drawn
+            band_colors = shades(hue, n_passbands)
+            pretty = pol_name(pol_number(pol_i))
+            chosen = range(1, n_passbands + 1) if want_bands is None else want_bands
 
-        return ax
+            for b in chosen:
+                if not isinstance(b, int) or isinstance(b, bool) or b < 1:
+                    raise ValueError(f"passband numbers are 1-based integers; got {b!r}.")
+                if b > n_passbands:
+                    info(f"{pretty}: passband {b} was not computed "
+                         f"(only {n_passbands} available).")
+                    continue
+                seg = freqs[(b - 1) * n:b * n]
+                k = np.linspace(np.pi / n, np.pi, n, endpoint=True)[:len(seg)]
+                if label is not None:
+                    lbl = label
+                elif n_passbands == 1:
+                    lbl = f'{self.name} ({pretty})'
+                else:
+                    lbl = f'{self.name} ({pretty}, passband {b})'
+                series.append({'x': k, 'y': seg, 'color': band_colors[b - 1], 'label': lbl})
+        return series, n
+
+    @staticmethod
+    def _frequency_clusters(values, gap_factor=4.0, min_rel_gap=0.12):
+        """Group *values* into clusters split at large vertical gaps.
+
+        A gap becomes a break only when it is both several times the typical
+        within-cluster spacing (``gap_factor``) and a real fraction of the total
+        span (``min_rel_gap``) — so a broken axis appears only when passbands are
+        genuinely far apart, not for ordinary spread.
+        Returns a list of ``(low, high)`` ranges, ascending.
+        """
+        vals = np.unique(np.asarray(values, dtype=float))
+        if len(vals) < 2:
+            v = float(vals[0]) if len(vals) else 0.0
+            return [(v, v)]
+        diffs = np.diff(vals)
+        span = vals[-1] - vals[0]
+        typical = float(np.median(diffs)) or float(diffs.min())
+        clusters, start, prev = [], vals[0], vals[0]
+        for v, d in zip(vals[1:], diffs):
+            if d > gap_factor * typical and d > min_rel_gap * span:
+                clusters.append((float(start), float(prev)))
+                start = v
+            prev = v
+        clusters.append((float(start), float(prev)))
+        return clusters
+
+    @staticmethod
+    def _clusters_from_breaks(values, breaks):
+        """Cluster *values* at explicit gap ranges. Each break is a ``(low, high)``
+        frequency gap to cut, e.g. ``[(1350, 1600), (1900, 2350)]``; the split
+        falls between the two data points that straddle the gap's midpoint, so the
+        gap bounds only need to be approximate. Returns ``(low, high)`` ranges."""
+        vals = np.unique(np.asarray(values, dtype=float))
+        if len(vals) < 2:
+            v = float(vals[0]) if len(vals) else 0.0
+            return [(v, v)]
+        mids = []
+        for b in breaks:
+            if not (isinstance(b, (list, tuple)) and len(b) == 2):
+                raise ValueError("each entry in 'breaks' must be a (low, high) "
+                                 f"frequency gap, e.g. (1350, 1600); got {b!r}.")
+            lo, hi = sorted(float(x) for x in b)
+            mids.append(0.5 * (lo + hi))
+        mids.sort()
+        clusters, start, prev = [], vals[0], vals[0]
+        for v in vals[1:]:
+            if any(prev < m <= v for m in mids):
+                clusters.append((float(start), float(prev)))
+                start = v
+            prev = v
+        clusters.append((float(start), float(prev)))
+        return clusters
+
+    @staticmethod
+    def _render_dispersion(series, n, ax=None, break_axis=True, breaks=None,
+                           light_lines=None, **plot_kw):
+        """Draw collected dispersion *series*, optionally on a broken y-axis.
+
+        Breaks are chosen automatically from the frequency grouping unless
+        *breaks* gives explicit ``(low, high)`` gap ranges. *light_lines* is a
+        list of ``dict(d=cell_length_m, label=...)`` speed-of-light reference
+        lines. Returns the (top) axis; when broken, the stacked sub-axes are
+        reachable via ``ax.figure.axes``.
+        """
+        with house_style():
+            if not series:
+                return ax
+            yvals = np.concatenate([s['y'] for s in series])
+            ticks = np.linspace(np.pi / n, np.pi, n, endpoint=True)
+            ticklabels = [Cavity._phase_advance_label(j + 1, n) for j in range(n)]
+
+            def draw(a):
+                for s in series:
+                    a.plot(s['x'], s['y'], marker='o', mec='k', mew=0.6,
+                           color=s['color'], label=s['label'], **plot_kw)
+
+            def draw_light(a, add_label):
+                # Light line f = c*phi / (2*pi*d) (phase velocity = c). The diagram
+                # is a reduced (folded) zone, so every band is folded into
+                # mu in [0, pi] and the light line becomes a triangle wave: for
+                # band m the extended-zone phase is (m-1)*pi + mu (odd m, rising)
+                # or m*pi - mu (even m, reflected). One segment per band covers the
+                # plotted frequencies; drawn on every panel and clipped by y-limits.
+                mu = np.linspace(ticks[0], np.pi, 80)
+                for ll in (light_lines or []):
+                    d = ll['d']
+                    step = c0 / (2 * d) / 1e6                 # MHz gained per band
+                    n_bands = max(1, int(np.ceil(yvals.max() / step)))
+                    labelled = False
+                    for m in range(1, n_bands + 1):
+                        phi = (m - 1) * np.pi + mu if m % 2 else m * np.pi - mu
+                        f = c0 * phi / (2 * np.pi * d) / 1e6
+                        lab = ll['label'] if (add_label and not labelled) else '_nolegend_'
+                        a.plot(mu, f, ls='--', lw=1.3, color='0.35', zorder=1, label=lab)
+                        labelled = True
+
+            def draw_single(a):
+                draw(a)
+                # clip to the data band before the light line, so its full
+                # triangle wave does not stretch the y-axis
+                pad = 0.05 * (float(yvals.max() - yvals.min()) or 1.0)
+                a.set_ylim(yvals.min() - pad, yvals.max() + pad)
+                draw_light(a, add_label=True)
+                a.set_xticks(ticks)
+                a.set_xticklabels(ticklabels)
+                a.set_xlabel('phase advance per cell')
+                a.set_ylabel(r'$f$ [MHz]')
+                a.legend()
+                return a
+
+            if not break_axis:
+                clusters = [(float(yvals.min()), float(yvals.max()))]
+            elif breaks is not None:
+                clusters = Cavity._clusters_from_breaks(yvals, breaks)
+            else:
+                clusters = Cavity._frequency_clusters(yvals)
+
+            # A single cluster needs no break.
+            if len(clusters) <= 1:
+                if ax is None:
+                    _, ax = plt.subplots()
+                return draw_single(ax)
+
+            # Broken axis: highest-frequency cluster on top. Each sub-axis gets
+            # height proportional to its own data span, so the empty gaps vanish.
+            clusters_desc = clusters[::-1]
+            spans = [hi - lo for lo, hi in clusters_desc]
+            max_span = max(spans) or 1.0
+            ratios = [max(s, 0.25 * max_span) for s in spans]
+            global_range = float(yvals.max() - yvals.min()) or 1.0
+            k = len(clusters_desc)
+
+            # Build the stack of sub-axes. When the caller passed an axis we
+            # subdivide *its* grid slot in place (so it works inside a mosaic or
+            # a subplot grid); a free-floating axis with no slot can't be split,
+            # so fall back to drawing it on one axis.
+            owns_figure = ax is None
+            if owns_figure:
+                fig = plt.figure(figsize=(7, 6))
+                axes = list(np.atleast_1d(fig.subplots(
+                    k, 1, sharex=True,
+                    gridspec_kw={'height_ratios': ratios, 'hspace': 0.07})))
+            else:
+                spec = ax.get_subplotspec()
+                if spec is None:
+                    return draw_single(ax)
+                fig = ax.figure
+                ax.remove()
+                subspec = spec.subgridspec(k, 1, height_ratios=ratios, hspace=0.07)
+                axes = [fig.add_subplot(subspec[i]) for i in range(k)]
+                for a in axes[1:]:
+                    a.sharex(axes[0])
+
+            for a in axes:
+                draw(a)
+                a.grid(True)
+            # light line on every panel (clipped to each band); label it once
+            for i, a in enumerate(axes):
+                draw_light(a, add_label=(i == 0))
+            for a, (lo, hi) in zip(axes, clusters_desc):
+                pad = max(0.12 * (hi - lo), 0.02 * global_range)
+                a.set_ylim(lo - pad, hi + pad)
+
+            # diagonal break marks; hide the spines that face the gap
+            mark = dict(marker=[(-1, -0.6), (1, 0.6)], markersize=9, linestyle='none',
+                        color='#333333', mec='#333333', mew=1, clip_on=False)
+            for upper, lower in zip(axes[:-1], axes[1:]):
+                upper.spines['bottom'].set_visible(False)
+                lower.spines['top'].set_visible(False)
+                upper.tick_params(labelbottom=False, bottom=False)
+                upper.plot([0, 1], [0, 0], transform=upper.transAxes, **mark)
+                lower.plot([0, 1], [1, 1], transform=lower.transAxes, **mark)
+
+            axes[-1].set_xticks(ticks)
+            axes[-1].set_xticklabels(ticklabels)
+            axes[-1].set_xlabel('phase advance per cell')
+            axes[0].legend()
+            # y-label: supylabel centres it on the whole figure (fine when we own
+            # it); inside someone's mosaic, label the middle panel instead so we
+            # don't relabel their other axes.
+            if owns_figure:
+                fig.supylabel(r'$f$ [MHz]')
+            else:
+                axes[k // 2].set_ylabel(r'$f$ [MHz]')
+            return axes[0]
+
+    def plot_dispersion(self, ax=None, pol=None, bands=None, break_axis=True,
+                        breaks=None, light_line=True, **kwargs):
+        """Plot the Brillouin (dispersion) diagram: frequency vs per-cell phase
+        advance.
+
+        ``pol`` selects the polarisation(s):
+
+        - ``None`` (default) overlays every polarisation that has results
+          (monopole, dipole, …);
+        - a name or azimuthal number ('dipole', 1) plots just that one;
+        - a list plots the given subset.
+
+        ``bands`` selects which passbands to show (1-based; passband 1 is the
+        fundamental). By default every computed passband is drawn.
+
+        - a flat list, e.g. ``bands=[1, 2]``, applies to every polarisation;
+        - a nested list, e.g. ``bands=[[1, 2], [1]]`` with
+          ``pol=['monopole', 'dipole']``, selects the first two passbands for the
+          monopole and only the first for the dipole (one inner list per
+          polarisation, in order).
+
+        ``break_axis`` (default ``True``) splits the y-axis where passbands are
+        far apart, so the empty space between them is not wasted. The breaks are
+        found automatically from the frequency grouping; pass ``breaks`` to place
+        them by hand as ``(low, high)`` gap ranges, e.g.
+        ``breaks=[(1350, 1600), (1900, 2350)]`` (the bounds are approximate — the
+        split falls between the data points straddling each gap). Set
+        ``break_axis=False`` for a single axis. Breaking needs this call to own
+        the figure (``ax=None``); pass an ``ax`` to draw on one existing axis.
+
+        ``light_line`` (default ``True``) overlays the speed-of-light line
+        ``f = c*mu / (2*pi*d)`` (``d`` the cell length), the synchronism line the
+        accelerating pi-mode sits on. It is skipped for geometries whose cell
+        period is undefined.
+
+        Each polarisation gets a hue from the house palette; its passbands share
+        the hue and shade, so a whole polarisation reads as one colour family.
+        """
+        color = kwargs.pop('color', None)
+        label = kwargs.pop('label', None)
+        series, n = self._dispersion_series(pol=pol, bands=bands, color=color, label=label)
+        light_lines = None
+        if light_line:
+            d = self._cell_length_m()
+            if d:
+                light_lines = [{'d': d, 'label': 'light line'}]
+            else:
+                info(f"No light line: cell period is undefined for "
+                     f"{type(self).__name__}.")
+        return self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
+                                       breaks=breaks, light_lines=light_lines, **kwargs)
 
     def plot_axis_field(self, show_min_max=True):
         fig, ax = plt.subplots(figsize=(12, 3))
@@ -1320,26 +1610,6 @@ class Cavity(ABC):
                 self.k_kick[key] = val['|k_kick| [V/pC/m]']
                 self.phom[key] = val['P_HOM [kW]']
                 self.I0[key] = val['I0 [mA]']
-
-    def get_abci_data(self):
-        # Load only the polarisations that were actually run (MROT=0 writes
-        # longitudinal/, MROT=1 transversal/, MROT=2 both) so single-mode runs
-        # don't fail looking for the other one.
-        self.abci_data = {}
-        for key, mrot, sub in (('Long', 0, 'longitudinal'), ('Trans', 1, 'transversal')):
-            if os.path.exists(os.path.join(self.wakefield_dir, sub, 'cavity.top')):
-                self.abci_data[key] = ABCIData(self.wakefield_dir, '', mrot)
-
-        if not self.abci_data:
-            abci_exe = os.path.join(SOFTWARE_DIRECTORY, 'solvers', 'ABCI', 'ABCI.exe')
-            if not os.path.exists(abci_exe):
-                raise FileNotFoundError(
-                    f"ABCI solver output not found under {self.wakefield_dir}\n"
-                    f"ABCI.exe is missing from: {abci_exe}\n"
-                    f"Please install ABCI.exe to run wakefield analysis.")
-            raise FileNotFoundError(
-                f"No ABCI wakefield output found under {self.wakefield_dir}. "
-                f"Run cav.wakefield.run(...) first.")
 
     def plot_animate_wakefield(self, save=False):
         def plot_contour_for_frame(data, frame_key, ax):
@@ -1529,6 +1799,47 @@ class Cavity(ABC):
         gfu_E, gfu_H = ngsolve_mevp.load_fields(self._eigenmode_pol_dir(pol), mode)
         return gfu_E, gfu_H
 
+    def _plot_profile(self, profile, ax=None, mirror=True, fill=True, **kwargs):
+        """Draw a cavity's meridian outline straight from its :class:`Profile`.
+
+        Geometry-independent: works for every model, since each builds a Profile.
+        The wall is drawn in mm; ``mirror`` reflects it about the axis for the full
+        cross-section and ``fill`` shades the interior.
+        """
+        with house_style():
+            if ax is None:
+                _, ax = plt.subplots(figsize=(8, 3))
+            pts = np.asarray(profile.contour_points(3e-4, skip=('AXI',)), dtype=float)
+            z, r = pts[:, 0] * 1e3, pts[:, 1] * 1e3          # metres -> mm
+            color = kwargs.pop('color', None) or getattr(self, 'color', None) or WARM[1]
+            lw = kwargs.pop('lw', kwargs.pop('linewidth', 1.8))
+            label = kwargs.pop('label', self.name)
+            if fill:
+                poly_z = np.concatenate([z, z[::-1]])
+                poly_r = np.concatenate([r, -r[::-1] if mirror else np.zeros_like(r)])
+                ax.fill(poly_z, poly_r, color=color, alpha=0.12, lw=0)
+            ax.plot(z, r, color=color, lw=lw, label=label, **kwargs)
+            if mirror:
+                ax.plot(z, -r, color=color, lw=lw, **kwargs)
+            ax.set_aspect('equal')
+            ax.set_xlabel('$z$ [mm]')
+            ax.set_ylabel(r'$r$ [mm]')
+            return ax
+
+    def _wake_xy(self, pol, kind):
+        """``(x, y)`` for a wake plot, read from the normalised wakefield frame
+        (solver-agnostic; ``pol`` is ``'z'``/``'t'``, ``kind`` is ``'impedance'``
+        or ``'wake'``). Empty arrays when there is no result yet."""
+        df = self.wakefield.wake_z if pol == 'z' else self.wakefield.wake_t
+        if df is None or df.empty:
+            return np.array([]), np.array([])
+        if kind == 'impedance':
+            cols = ['f [MHz]', '|Z| [Ohm]' if pol == 'z' else '|Z| [Ohm/m]']
+        else:
+            cols = ['s [m]', 'W [V/pC]' if pol == 'z' else 'W [V/pC/m]']
+        sub = df[cols].dropna()
+        return sub[cols[0]].to_numpy(), sub[cols[1]].to_numpy()
+
     def plot(self, what, ax=None, scale_x=1, **kwargs):
         if what.lower() == 'geometry':
             # Opt-in: `tuned=True` routes the plot to self.tuned when it
@@ -1549,98 +1860,82 @@ class Cavity(ABC):
             # borderline input instead of bailing on the tangent check —
             # the caller wants to *see* the geometry, even if it would
             # fail a strict mesh check.
-            common_kwargs = dict(scale=1, ax=ax, plot=True, ignore_degenerate=True)
-            if 'mid_cell' in kwargs.keys():
-                new_kwargs = {key: val for key, val in kwargs.items() if key != 'mid_cell'}
-                ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.mid_cell, target.mid_cell,
-                                                       'none', 1, **common_kwargs, **new_kwargs)
-            elif 'end_cell_left' in kwargs.keys():
-                ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_left, target.end_cell_left, target.end_cell_left,
-                                                       'left', 1, **common_kwargs, **kwargs)
-            elif 'end_cell_right' in kwargs.keys():
-                ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_right, target.end_cell_right, target.end_cell_right,
-                                                       'right', 1, **common_kwargs, **kwargs)
-            else:
-                ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.end_cell_left, target.end_cell_right,
-                                                       target.beampipe, target.n_cells, **common_kwargs, **kwargs)
+            # Single-cell elliptical views (mid_cell / end_cell_*) keep the
+            # cell-list drawer, which only the elliptical family carries.
+            cell_kwargs = ('mid_cell', 'end_cell_left', 'end_cell_right')
+            if any(k in kwargs for k in cell_kwargs) and hasattr(target, 'mid_cell'):
+                common_kwargs = dict(scale=1, ax=ax, plot=True, ignore_degenerate=True)
+                if 'mid_cell' in kwargs:
+                    kw = {k: v for k, v in kwargs.items() if k != 'mid_cell'}
+                    ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.mid_cell,
+                                                           target.mid_cell, 'none', 1,
+                                                           **common_kwargs, **kw)
+                elif 'end_cell_left' in kwargs:
+                    ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_left, target.end_cell_left,
+                                                           target.end_cell_left, 'left', 1,
+                                                           **common_kwargs, **kwargs)
+                else:
+                    ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_right, target.end_cell_right,
+                                                           target.end_cell_right, 'right', 1,
+                                                           **common_kwargs, **kwargs)
+                if ax is None:
+                    return None
+                ax.set_xlabel('$z$ [mm]')
+                ax.set_ylabel(r"$r$ [mm]")
+                return ax
+
+            # General path: every model builds a Profile, so draw that directly.
+            # This is geometry-independent — the spline, gun and pillbox all work,
+            # not just the elliptical family (whose mid_cell/end_cell lists the
+            # old drawer required).
+            maker = getattr(target, 'profile', None)
+            profile = maker() if callable(maker) else None
+            if profile is not None:
+                return target._plot_profile(profile, ax=ax, **kwargs)
+
+            # Fallback for a cavity imported from a .geo/CAD file (no profile):
+            # the elliptical cell-list drawer, if this type carries the lists.
+            if hasattr(target, 'mid_cell'):
+                ax = write_cavity_geometry_cli_wo_gmsh(
+                    target.mid_cell, target.end_cell_left, target.end_cell_right,
+                    target.beampipe, target.n_cells,
+                    scale=1, ax=ax, plot=True, ignore_degenerate=True, **kwargs)
+                if ax is None:
+                    return None
+                ax.set_xlabel('$z$ [mm]')
+                ax.set_ylabel(r"$r$ [mm]")
+                return ax
+
+            error(f"{type(target).__name__} has no profile() and no cell lists to "
+                  f"plot its geometry.")
+            return None
+
+        wake_specs = {
+            'zl': ('z', 'impedance', scale_x, 'Wake. Long.', 'f [MHz]',
+                   r"$Z_{\parallel} ~[\mathrm{k\Omega}]$", 1.8),
+            'zt': ('t', 'impedance', scale_x, 'Wake. Trans.', 'f [MHz]',
+                   r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$", 1.8),
+            'wpl': ('z', 'wake', 1.0, 'Longitudinal wake potentials',
+                    'Distance from Bunch Head S [m]',
+                    r"Scaled Wake Potentials $W (S)$ [V/pC]", 1.8),
+            'wpt': ('t', 'wake', 1.0, 'Transversal wake potentials',
+                    'Distance from Bunch Head S [m]',
+                    r"Scaled Wake Potentials $W (S)$ [V/pC/m]", 3),
+        }
+        if what.lower() in wake_specs:
+            pol, kind, sx, tag, xlabel, ylabel, lw = wake_specs[what.lower()]
+            x, y = self._wake_xy(pol, kind)
+            if len(x) == 0:
+                info("No wakefield data — run cav.wakefield.run(...) first.")
+                return ax
             if ax is None:
-                return None
-            ax.set_xlabel('$z$ [mm]')
-            ax.set_ylabel(r"$r$ [mm]")
-            return ax
-
-        if what.lower() == 'zl':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
-            else:
                 fig, ax = plt.subplots(figsize=(12, 4))
                 ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Long.)', **kwargs)
-
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
-            return ax
-        if what.lower() == 'zt':
-            if ax:
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * scale_x * 1e3, y, label=fr'{self.name} (Wake. Trans.)', **kwargs)
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
-            return ax
-
-        if what.lower() == 'wpl':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Long'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Longitudinal wake potentials)', **kwargs)
-
-            ax.set_xlabel('Distance from Bunch Head S [m]')
-            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC]")
-            return ax
-        if what.lower() == 'wpt':
-            if ax:
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-
-                if 'c' not in kwargs.keys():
-                    kwargs['c'] = self.color
-
-                x, y, _ = self.abci_data['Trans'].get_data('Wake Potentials')
-                ax.plot(x, y, label=fr'{self.name} (Transversal wake potentials)', lw=3, **kwargs)
-            ax.set_xlabel('Distance from Bunch Head S [m]')
-            ax.set_ylabel(r"Scaled Wake Potentials $W (S)$ [V/pC/m]")
+            kwargs.setdefault('c', self.color)
+            kwargs.setdefault('lw', lw)
+            ax.plot(x * sx, y, label=fr'{self.name} ({tag})', **kwargs)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
             return ax
 
         if what.lower() == 'convergence':

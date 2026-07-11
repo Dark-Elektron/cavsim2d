@@ -181,8 +181,46 @@ def test_mpole_only_results_do_not_crash_qoi_read(project_dir):
 
 
 def test_mpole_dispersion_plot(project_dir):
-    """plot_dispersion(pol='dipole') plots the dipole passband of a 2-cell
-    cavity (distinct from, and above, the monopole passband)."""
+    """The dispersion diagram overlays every polarisation and shows *all*
+    computed modes (grouped into passbands of n_cells), not just the
+    fundamental. The dipole fundamental sits above the monopole fundamental."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['D'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole', 'dipole'], 'n_modes': 4})
+    cav.get_eigenmode_qois()
+
+    n_mono = len(cav.eigenmode.mpole_qois('monopole'))
+    n_dip = len(cav.eigenmode.mpole_qois('dipole'))
+
+    plt.close('all')
+    # break_axis=False keeps every series on one axis; light_line=False so the
+    # only lines are the data series we want to count
+    ax = cav.plot_dispersion(break_axis=False, light_line=False)
+    # one line per passband; passbands = ceil(modes / n_cells) per polarisation
+    import math
+    expected = math.ceil(n_mono / 2) + math.ceil(n_dip / 2)
+    assert len(ax.lines) == expected
+    # every computed mode is plotted (not just the fundamental two)
+    assert sum(len(ln.get_ydata()) for ln in ax.lines) == n_mono + n_dip
+
+    mono_fund = next(ln for ln in ax.lines if 'monopole' in ln.get_label())
+    dip_fund = next(ln for ln in ax.lines if 'dipole' in ln.get_label())
+    assert min(dip_fund.get_ydata()) > min(mono_fund.get_ydata())
+    # monopole and dipole are drawn in different (warm) hues
+    assert mono_fund.get_color() != dip_fund.get_color()
+    # last x tick is pi, not the unreduced (n/n)*pi
+    assert ax.get_xticklabels()[-1].get_text() == r'$\pi$'
+    plt.close('all')
+
+
+def test_dispersion_single_polarisation_still_works(project_dir):
+    """A named polarisation plots just that one (backward compatible)."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -195,13 +233,132 @@ def test_mpole_dispersion_plot(project_dir):
     cav.get_eigenmode_qois()
 
     plt.close('all')
-    ax = cav.plot_dispersion(pol='monopole')
-    ax = cav.plot_dispersion(pol='dipole', ax=ax)
-    # both passbands drawn (2 lines), dipole above monopole
-    assert len(ax.lines) == 2
-    mono_y = ax.lines[0].get_ydata()
-    dip_y = ax.lines[1].get_ydata()
-    assert min(dip_y) > min(mono_y)
+    ax = cav.plot_dispersion(pol='dipole', break_axis=False, light_line=False)
+    assert ax.lines and all('dipole' in ln.get_label() for ln in ax.lines)
+    plt.close('all')
+
+
+def test_dispersion_light_line_is_the_folded_speed_of_light(project_dir):
+    """The light line f = c*mu/(2*pi*d) is folded into the reduced zone, so it is
+    a triangle wave spanning every band; for TESLA it meets the pi-mode near the
+    design 1300 MHz."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from cavsim2d.constants import c0
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(9, MIDCELL, MIDCELL, MIDCELL, beampipe='none')
+    cavs.add_cavity([cav], ['T'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole'], 'n_modes': 12})
+    cav.get_eigenmode_qois()
+
+    d = cav._cell_length_m()
+    assert d == pytest.approx(2 * MIDCELL[5] * 1e-3)          # 2 * L
+    # the zone-boundary value is c/(2d) by construction, and passes near the
+    # accelerating pi-mode (exact synchronism is design-dependent, so allow 5%)
+    mono = cav.eigenmode.mpole_qois('monopole')
+    fundamental = sorted(q['freq [MHz]'] for q in mono.values())[:cav.n_cells]
+    pi_mode = fundamental[-1]
+    assert c0 / (2 * d) / 1e6 == pytest.approx(pi_mode, rel=0.05)
+
+    plt.close('all')
+    ax = cav.plot_dispersion(pol='monopole')                  # light_line default True
+    fig = ax.figure
+    light = [ln for a in fig.axes for ln in a.lines if ln.get_linestyle() == '--']
+    assert light                                              # the light line is drawn
+    # it is folded: at least one segment falls (even band) and one rises (odd band)
+    slopes = [ln.get_ydata()[-1] - ln.get_ydata()[0] for ln in light]
+    assert any(s > 0 for s in slopes) and any(s < 0 for s in slopes)
+    # exactly one legend entry for it
+    labels = [ln.get_label() for a in fig.axes for ln in a.lines]
+    assert labels.count('light line') == 1
+
+    # a geometry with no defined cell period skips it without error
+    from cavsim2d.cavity import Pillbox
+    assert Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')._cell_length_m() is None
+    plt.close('all')
+
+
+def test_dispersion_break_axis_splits_far_apart_passbands(project_dir):
+    """With break_axis=True (default) the y-axis splits into stacked sub-axes
+    where passbands are far apart, and each series is drawn on every sub-axis."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['D'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole', 'dipole'], 'n_modes': 4})
+    cav.get_eigenmode_qois()
+
+    series_labels = {s['label'] for s in cav._dispersion_series()[0]}
+
+    plt.close('all')
+    ax = cav.plot_dispersion()                      # break_axis defaults True
+    fig_axes = ax.figure.axes
+    assert len(fig_axes) > 1                         # broken into stacked sub-axes
+    # every sub-axis carries the full set of data series (the extra Line2D
+    # artists are the diagonal break marks, whose labels start with '_')
+    for a in fig_axes:
+        drawn = {ln.get_label() for ln in a.lines}
+        assert series_labels <= drawn
+    # the sub-axes cover disjoint frequency bands (broken, not overlapping)
+    ylims = sorted(a.get_ylim() for a in fig_axes)
+    for (lo1, hi1), (lo2, hi2) in zip(ylims, ylims[1:]):
+        assert hi1 <= lo2 + 1e-6
+    # turning it off gives a single axis
+    plt.close('all')
+    ax = cav.plot_dispersion(break_axis=False)
+    assert len(ax.figure.axes) == 1
+    plt.close('all')
+
+
+def test_dispersion_breaks_a_passed_subplot_axis_in_place(project_dir):
+    """Passing an ax (e.g. a mosaic slot) must still break: the slot is
+    subdivided into stacked panels rather than drawn as one squashed axis."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['D'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole', 'dipole'], 'n_modes': 4})
+    cav.get_eigenmode_qois()
+
+    plt.close('all')
+    fig, ax = plt.subplot_mosaic([[1]], figsize=(5, 10))
+    top = cav.plot_dispersion(ax=ax[1])            # break_axis defaults True
+    assert len(fig.axes) > 1                        # the slot was subdivided
+    assert top.figure is fig                        # broke in place, same figure
+    plt.close('all')
+
+
+def test_dispersion_uses_the_house_font(project_dir):
+    """Legend, tick labels and the mathtext fraction ticks share the house font
+    (STIX): the tick labels are mathtext, so the mathtext set must be 'stix'."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from cavsim2d.utils.style import house_style
+
+    cavs = Cavities(project_dir)
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['D'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
+                        'polarisation': ['monopole'], 'n_modes': 2})
+    cav.get_eigenmode_qois()
+
+    plt.close('all')
+    with house_style():
+        assert matplotlib.rcParams['mathtext.fontset'] == 'stix'
+        assert 'STIXGeneral' in matplotlib.rcParams['font.serif']
     plt.close('all')
 
 

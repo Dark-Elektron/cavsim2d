@@ -29,7 +29,7 @@ WAKEFIELD_KEYS = {
     'MT', 'NFS', 'DDR_SIG', 'DDZ_SIG', 'operating_points', 'uq_config',
     'beam_config', 'wake_config', 'mesh_config', 'target', 'LCPUTM',
     'save_fields', 'objectives', 'opt', 'solver_save_directory',
-    'contour_ds', 'beampipe_length',
+    'contour_ds', 'beampipe_length', 'solver',
 }
 TUNE_KEYS = {
     'freqs', 'freq', 'cell_type', 'cell_types', 'parameters', 'processes',

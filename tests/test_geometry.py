@@ -454,3 +454,100 @@ def test_independent_cells_change_the_eigenmode(project_dir):
     f1, rq1 = freq_rq('percell', narrow_middle_irises)
     assert f1 < f0 - 1.0
     assert rq1 > rq0 + 1.0
+
+
+def test_ellipse_segment_points_run_from_i0_to_i1():
+    """`_ellipse_points` sorts its parameter span, which reversed the sweep when
+    it ran in the decreasing-parameter direction. The output must start at the
+    segment's i0 endpoint, or a walk over consecutive segments jumps."""
+    import numpy as np
+    # a quarter ellipse whose endpoint parametrisation decreases along i0->i1
+    p = Profile().start(0.0, 0.03)
+    p.ellipse_arc_to(0.05, 0.0, center=(0.0, 0.0), semi_z=0.05, semi_r=0.03, boundary='PEC')
+    p.line_to(0.0, 0.0, 'AXI')
+    p.close('PMC')
+    seg = next(s for s in p._segs if s['kind'] == 'ellipse')
+    pts = p._ellipse_points(seg, p._pts, n=20)
+    assert np.allclose(pts[0], p._pts[seg['i0']], atol=1e-9)
+    assert np.allclose(pts[-1], p._pts[seg['i1']], atol=1e-9)
+
+
+def test_elliptical_contour_is_a_continuous_path():
+    """contour_points must trace an unbroken polyline; a reversed ellipse segment
+    left a chord-length jump that showed up as a diagonal across each cell dome."""
+    import numpy as np
+    from cavsim2d.cavity import EllipticalCavity
+    tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+    cav = EllipticalCavity(2, tesla, tesla, tesla, beampipe='none')
+    pts = np.asarray(cav.profile().contour_points(2e-3, skip=('AXI',)))
+    steps = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+    # the longest real segment drawn with two points is the iris aperture (Ri);
+    # any bigger step is a discontinuity (the equator chord is ~0.08 m)
+    assert steps.max() < 0.04, f'contour jump of {steps.max()*1e3:.1f} mm'
+
+
+def test_plot_geometry_works_for_every_cavity_type():
+    """plot('geometry') is geometry-independent: it draws each model's Profile,
+    not just the elliptical cell lists (SplineCavity has no `mid_cell`)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+                                 RFGun, SplineCavity)
+    tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+    geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+            'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
+    gun = {'geometry': {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
+                        'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
+                        'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
+                        'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
+    cavs = [EllipticalCavity(2, tesla, tesla, tesla, beampipe='both'),
+            EllipticalCavityFlatTop(1, tesla + [20], tesla + [20], tesla + [20], beampipe='both'),
+            Pillbox(1, [100, 100, 20, 0, 50], beampipe='both'),
+            RFGun(gun),
+            SplineCavity({'geometry': dict(geom)}, kind='Bezier')]
+    for cav in cavs:
+        plt.close('all')
+        ax = cav.plot('geometry')
+        assert ax is not None and ax.lines, type(cav).__name__
+        assert ax.get_xlabel() == '$z$ [mm]'
+    plt.close('all')
+
+
+def test_spline_multicell_tiles_without_gaps_and_honours_beampipe():
+    """SplineCavity multicell + beampipe regressions:
+    - the constructor dropped `n_cells`/`beampipe` (written to locals, not self);
+    - the per-cell shift compounded (used the running last-z), so the 3rd cell of
+      a 3-cell spline flew off to the right leaving a gap;
+    - profile() ignored the beampipe entirely.
+    """
+    import numpy as np
+    from cavsim2d.cavity import SplineCavity
+    geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+            'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
+    cell_w = 0.115                                   # one cell spans 115 mm
+
+    sc = SplineCavity({'geometry': dict(geom), 'n_cells': 3, 'beampipe': 'both'})
+    assert sc.n_cells == 3 and sc.beampipe == 'both'   # constructor kept them
+
+    # the three wall splines tile contiguously: 0->115->230->345 mm
+    walls = [s for s in sc.profile()._segs if s['kind'] == 'spline']
+    assert len(walls) == 3
+    pts = sc.profile()._pts
+    for k, s in enumerate(walls):
+        assert pts[s['i0']][0] == pytest.approx(k * cell_w, abs=1e-6)
+        assert pts[s['i1']][0] == pytest.approx((k + 1) * cell_w, abs=1e-6)
+
+    # beampipe='both' extends the wall past the cells on both ends...
+    zmin = min(z for z, _ in sc.profile().contour_points(2e-3, skip=('AXI',)))
+    zmax = max(z for z, _ in sc.profile().contour_points(2e-3, skip=('AXI',)))
+    assert zmin < 0 and zmax > 3 * cell_w
+    # ...and 'none' does not
+    sc_none = SplineCavity({'geometry': dict(geom), 'n_cells': 3, 'beampipe': 'none'})
+    zs = [z for z, _ in sc_none.profile().contour_points(2e-3, skip=('AXI',))]
+    assert min(zs) == pytest.approx(0.0, abs=1e-6)
+    assert max(zs) == pytest.approx(3 * cell_w, abs=1e-6)
+
+    # rebuild keeps the settings
+    clone = sc.rebuild(sc.parameters)
+    assert clone.n_cells == 3 and clone.beampipe == 'both'

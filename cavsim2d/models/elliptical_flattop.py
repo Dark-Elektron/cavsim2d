@@ -14,9 +14,27 @@ class EllipticalCavityFlatTop(Cavity):
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  color='k', plot_label=None):
-        """
-        All of the old “dimension‐based” logic has been moved here.
-        Assumes self.kind, self.name, self.color, etc. are already set.
+        """An elliptical cavity with a flat top (straight section) at the equator.
+
+        Parameters
+        ----------
+        n_cells : int
+            Number of cells.
+        mid_cell, end_cell_left, end_cell_right : sequence of floats, **mm**
+            The eight half-cell parameters ``[A, B, a, b, Ri, L, Req, l]`` — the
+            same seven as :class:`EllipticalCavity` plus:
+
+            - ``l`` : flat-top length, a straight segment inserted at the equator.
+              The full cell length becomes ``2*L + l``.
+        beampipe : {'none', 'left', 'right', 'both'}
+            Which ends carry a beam pipe.
+        name : str
+            Cavity name (used for its output folder).
+
+        Examples
+        --------
+        >>> ft = [42, 42, 12, 19, 35, 57.7, 103.353, 20]   # 20 mm flat top
+        >>> EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='both')
         """
         super().__init__()
 
@@ -684,6 +702,11 @@ class EllipticalCavityFlatTop(Cavity):
 
             return ax
 
+
+    def _cell_length_m(self):
+        """Mid-cell axial length, metres: the half-cell plus the flat top,
+        ``2*L_m + l_m``."""
+        return (2 * self.parameters['L_m'] + self.parameters['l_m']) * 1e-3
 
     def profile(self):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native

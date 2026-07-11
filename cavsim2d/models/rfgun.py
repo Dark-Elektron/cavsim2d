@@ -12,10 +12,36 @@ import pandas as pd
 
 class RFGun(Cavity):
     def __init__(self, shape, name='gun'):
-        # self.shape_space = {
-        #     'IC': [L, Req, Ri, S, L_bp],
-        #     'BP': beampipe
-        # }
+        """A VHF-type RF gun, its wall a chain of arcs and straight segments.
+
+        Parameters
+        ----------
+        shape : dict
+            ``{'geometry': {...}}``. The ``'geometry'`` dict describes the
+            meridian wall as an ordered chain of primitives, running from the
+            cathode plane out to the exit aperture. Unlike the other cavity
+            types, **gun parameters are in metres (SI), and angles in radians**.
+            The keys, in wall order:
+
+            - ``y1``  : cathode-plane aperture radius.
+            - ``R2``  : radius of the first (cathode-nose) arc; ``T2`` its angle.
+            - ``L3``  : straight length after that arc (at angle ``T2``).
+            - ``R4``  : blend-arc radius; ``L5`` the following straight length.
+            - ``R6``  : radius of the arc into the barrel; ``L7`` the barrel length.
+            - ``R8``  : nose-cone entry-arc radius; ``T9`` its angle (``R9`` is
+              derived internally so the wall stays tangent).
+            - ``R10`` : exit-nose arc radius; ``T10`` its angle.
+            - ``L11`` : straight length after the nose; ``R12`` the next arc radius.
+            - ``L13`` : straight length to the exit; ``R14`` the exit-aperture arc.
+            - ``x``   : downstream drift-tube length to the exit aperture.
+        name : str
+            Cavity name (used for its output folder).
+
+        Notes
+        -----
+        The gun already ships with a downstream drift tube (``x``), so a wakefield
+        run adds a beam pipe only on the cathode side.
+        """
         super().__init__(name)
         self.self_dir = None
         self.cell_parameterisation = 'simplecell'  # consider removing
@@ -442,37 +468,10 @@ class RFGun(Cavity):
         # return plt.gca()
 
     def plot(self, what, ax=None, **kwargs):
-        if what.lower() == 'geometry':
-            ax = self.write_geometry(self.parameters)
-            ax.set_xlabel('$z$ [m]')
-            ax.set_ylabel(r"$r$ [m]")
-            return ax
-
-        if what.lower() == 'zl':
-            if ax:
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Long'].get_data('Longitudinal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\parallel} ~[\mathrm{k\Omega}]$")
-            return ax
-        if what.lower() == 'zt':
-            if ax:
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            else:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-                x, y, _ = self.abci_data['Trans'].get_data('Transversal Impedance Magnitude')
-                ax.plot(x * 1e3, y)
-            ax.set_xlabel('f [MHz]')
-            ax.set_ylabel(r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$")
-            return ax
+        if what.lower() in ('geometry', 'zl', 'zt', 'wpl', 'wpt'):
+            # Geometry from the Profile; wakefield curves from the normalised
+            # frames — both via the geometry/solver-independent base plotter.
+            return super().plot(what, ax=ax, **kwargs)
 
         if what.lower() == 'convergence':
             try:

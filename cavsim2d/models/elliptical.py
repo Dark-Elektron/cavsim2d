@@ -20,9 +20,37 @@ class EllipticalCavity(Cavity):
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  cell_parameterisation='simplecell', color='k', plot_label=None):
-        """
-        All of the old “dimension‐based” logic has been moved here.
-        Assumes self.kind, self.name, self.color, etc. are already set.
+        """A multi-cell elliptical cavity.
+
+        Parameters
+        ----------
+        n_cells : int
+            Number of cells.
+        mid_cell, end_cell_left, end_cell_right : sequence of floats, **mm**
+            The seven half-cell parameters ``[A, B, a, b, Ri, L, Req]`` (an
+            optional 8th slot ``alpha`` is accepted and ignored on input):
+
+            - ``A``, ``B`` : semi-axes (z, r) of the **equator** ellipse.
+            - ``a``, ``b`` : semi-axes (z, r) of the **iris** ellipse.
+            - ``Ri``       : iris (aperture / beam-pipe) radius.
+            - ``L``        : half-cell length (iris plane to equator plane); the
+              full cell length is ``2*L``.
+            - ``Req``      : equator radius.
+
+            ``mid_cell`` sets the interior cells; ``end_cell_left`` /
+            ``end_cell_right`` set the two ends (default to ``mid_cell``). A
+            dict ``{'IC': mid, 'OC': left, 'OC_R': right}`` is also accepted.
+        beampipe : {'none', 'left', 'right', 'both'}
+            Which ends carry a beam pipe.
+        name : str
+            Cavity name (used for its output folder).
+        color, plot_label : optional
+            Styling for overlay plots.
+
+        Examples
+        --------
+        >>> tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
+        >>> EllipticalCavity(9, tesla, tesla, tesla, beampipe='both')
         """
         super().__init__()
 
@@ -1322,6 +1350,10 @@ class EllipticalCavity(Cavity):
         # solve the wrong cavity (see NGSolveMEVP._build_mesh).
         self.geo_filepath = None
         return self
+
+    def _cell_length_m(self):
+        """Mid-cell axial length (iris to iris), metres: twice the half-cell L."""
+        return 2 * self.parameters['L_m'] * 1e-3
 
     def profile(self):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native

@@ -1,6 +1,9 @@
-"""Parallel wakefield analysis process functions."""
+"""Parallel wakefield analysis process functions.
+
+Solving and reading go through a :class:`WakefieldBackend` (ABCI by default),
+selected from ``wakefield_config['solver']`` — no ABCI reader is touched here.
+"""
 import multiprocessing as mp
-import math
 import json
 import os.path
 import shutil
@@ -8,17 +11,12 @@ import time
 import numpy as np
 import pandas as pd
 import scipy.signal as sps
-from cavsim2d.geometry.writers.abci import ABCIGeometry
-from cavsim2d.data_module.abci_data import ABCIData
 from cavsim2d.processes.uq import uq_parallel
-from cavsim2d.solvers.ABCI.abci import ABCI
+from cavsim2d.solvers.wakefield import get_backend
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.solvers.eigenmode_result import monopole_dir
 from cavsim2d.utils.config_validation import require
-
-abci = ABCI()
-abci_geom = ABCIGeometry()
 
 
 def run_wakefield_parallel(cavs_dict, solver_config, subdir=''):
@@ -73,8 +71,18 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
         R_Q = 0
         start_time = time.time()
 
-        cav.geo_to_abc(wakefield_config)
-        abci.solve(cav, wakefield_config)
+        # Run the solve through the selected backend (ABCI by default), then
+        # persist the normalised wakefield/<pol>/qois.json so cav.wakefield.qois
+        # is readable without re-solving. Swapping the solver is one config key.
+        backend = get_backend(wakefield_config.get('solver', 'abci'))
+        backend.run(cav, wakefield_config)
+        backend.write_qois(cav)
+        # Persist the config (incl. 'solver') so cav.wakefield resolves the same
+        # backend when reading results back, whichever run path was used.
+        os.makedirs(cav.wakefield_dir, exist_ok=True)
+        with open(os.path.join(cav.wakefield_dir, 'config.json'), 'w') as cf:
+            json.dump({k: v for k, v in wakefield_config.items() if k != 'target'},
+                      cf, indent=2, default=str)
         done(f'Cavity {cav.name}. Time: {time.time() - start_time}')
 
         # Truthy check (not just presence): ``Cavities.run_wakefield``
@@ -117,12 +125,14 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                             wakefield_folder_structure = {fid: {'wakefield': {'longitudinal': None, 'transversal': None}}}
                             make_dirs_from_dict(wakefield_folder_structure, os.path.join(cav.self_dir, 'wakefield'))
 
-                            cav.geo_to_abc(wakefield_config, os.path.join(cav.self_dir, 'wakefield', fid))
-                            abci.solve(cav, wakefield_config, os.path.join(fid, 'wakefield'))
-
-                            dirc = os.path.join(cav.self_dir, "wakefield")
-                            k_loss = abs(ABCIData(dirc, os.path.join(fid, 'wakefield'), 0).loss_factor['Longitudinal'])
-                            k_kick = abs(ABCIData(dirc, os.path.join(fid, 'wakefield'), 1).loss_factor['Transverse'])
+                            # This op-point/bunch-length sub-run and its read
+                            # both go through the backend, so the loss/kick
+                            # factors are read from the normalised schema.
+                            backend.run(cav, wakefield_config, subdir=fid)
+                            fid_qois = backend.read_dir(
+                                os.path.join(cav.self_dir, 'wakefield', fid, 'wakefield')).qois
+                            k_loss = fid_qois.get('|k_loss| [V/pC]')
+                            k_kick = fid_qois.get('|k_kick| [V/pC/m]')
 
                             d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, cav.n_cells)
 
@@ -162,12 +172,14 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
             _run_abci(cav, wakefield_config)
 
 
-def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key_subdir=''):
-    """Read ABCI results and compute wakefield objectives.
+def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir,
+                                   key_subdir='', solver='abci'):
+    """Compute the ZL/ZT wakefield objectives from the normalised backend frames.
 
     ``key_subdir`` is inserted between <key> and 'wakefield' when building the
-    ABCI fid path. Pass ``'tuned'`` when the wakefield ran on the tuned
-    cavity (results live at <projectDir>/<key>/tuned/wakefield/).
+    result path. Pass ``'tuned'`` when the wakefield ran on the tuned cavity
+    (results live at <projectDir>/<key>/tuned/wakefield/). ``solver`` selects the
+    wakefield backend (default ``'abci'``), so objectives are solver-agnostic.
     """
     k_loss_array_transverse = []
     k_loss_array_longitudinal = []
@@ -185,31 +197,23 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key
             return os.path.join(key, key_subdir, 'wakefield')
         return os.path.join(key, 'wakefield')
 
-    def calc_k_loss():
-        for key, value in d.items():
-            fid = _fid(key)
-            abci_data_long = ABCIData(abci_data_dir, fid, 0)
-            abci_data_trans = ABCIData(abci_data_dir, fid, 1)
+    backend = get_backend(solver)       # objectives read through the backend
 
-            x, y, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-            k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-            if math.isnan(k_loss_trans):
-                error(f"Encountered an exception: Check shape {key}")
-                continue
-
-            x, y, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-            abci_data_long.get_data('Loss Factor Spectrum Integrated up to F')
-
-            k_M0 = abci_data_long.y_peaks[0]
-            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-            k_loss_HOM = k_loss_long - k_M0
-
-            k_loss_M0.append(k_M0)
-            k_loss_array_longitudinal.append(k_loss_HOM)
-            k_loss_array_transverse.append(k_loss_trans)
-
-        return [k_loss_M0, k_loss_array_longitudinal, k_loss_array_transverse]
+    def _impedance(key, longitudinal):
+        """``(f [GHz], Re(Z), Im(Z))`` for one key/polarisation from the backend's
+        normalised frame, or None if the result is missing. Frequency is returned
+        in GHz to match the objective's window bounds."""
+        res = backend.read_dir(os.path.join(abci_data_dir, _fid(key)))
+        frame = res.wake_z if longitudinal else res.wake_t
+        if frame is None or frame.empty:
+            return None
+        re_col = next((c for c in frame.columns if c.startswith('Re(Z)')), None)
+        im_col = next((c for c in frame.columns if c.startswith('Im(Z)')), None)
+        if re_col is None or im_col is None:
+            return None
+        sub = frame[['f [MHz]', re_col, im_col]].dropna()
+        return (sub['f [MHz]'].to_numpy() / 1e3,
+                sub[re_col].to_numpy(), sub[im_col].to_numpy())
 
     def get_Zmax_L(mon_interval=None):
         if mon_interval is None:
@@ -217,19 +221,18 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key
 
         for key, value in d.items():
             try:
-                fid = _fid(key)
-                abci_data_mon = ABCIData(abci_data_dir, fid, 0)
-
-                xr_mon, yr_mon, _ = abci_data_mon.get_data('Real Part of Longitudinal Impedance')
-                xi_mon, yi_mon, _ = abci_data_mon.get_data('Imaginary Part of Longitudinal Impedance')
+                imp = _impedance(key, longitudinal=True)
+                if imp is None:
+                    raise ValueError('no longitudinal impedance')
+                xr_mon, yr_mon, yi_mon = imp
 
                 if mon_interval is None:
                     mon_interval = [[0.0, 10]]
 
-                ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
+                ymag_mon = np.hypot(yr_mon, yi_mon)
 
                 peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-                xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
+                xp_mon, yp_mon = np.asarray(xr_mon)[peaks_mon], np.asarray(ymag_mon)[peaks_mon]
 
                 for i, z_bound in enumerate(mon_interval):
                     msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
@@ -255,19 +258,18 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key
 
         for key, value in d.items():
             try:
-                fid = _fid(key)
-                abci_data_dip = ABCIData(abci_data_dir, fid, 1)
-
-                xr_dip, yr_dip, _ = abci_data_dip.get_data('Real Part of Transverse Impedance')
-                xi_dip, yi_dip, _ = abci_data_dip.get_data('Imaginary Part of Transverse Impedance')
+                imp = _impedance(key, longitudinal=False)
+                if imp is None:
+                    raise ValueError('no transverse impedance')
+                xr_dip, yr_dip, yi_dip = imp
 
                 if dip_interval is None:
                     dip_interval = [[0.0, 10]]
 
-                ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
+                ymag_dip = np.hypot(yr_dip, yi_dip)
 
                 peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-                xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
+                xp_dip, yp_dip = np.asarray(xr_dip)[peaks_dip], np.asarray(ymag_dip)[peaks_dip]
 
                 for i, z_bound in enumerate(dip_interval):
                     msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
@@ -286,73 +288,6 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir, key
                 error("skipped, yp_dip = []")
 
         return Zmax_dip_list
-
-    def all(mon_interval, dip_interval):
-        for key, value in d.items():
-            fid = _fid(key)
-            abci_data_long = ABCIData(abci_data_dir, fid, 0)
-            abci_data_trans = ABCIData(abci_data_dir, fid, 1)
-
-            xr_mon, yr_mon, _ = abci_data_long.get_data('Real Part of Longitudinal Impedance')
-            xi_mon, yi_mon, _ = abci_data_long.get_data('Imaginary Part of Longitudinal Impedance')
-
-            xr_dip, yr_dip, _ = abci_data_trans.get_data('Real Part of Transverse Impedance')
-            xi_dip, yi_dip, _ = abci_data_trans.get_data('Imaginary Part of Transverse Impedance')
-
-            k_loss_trans = abci_data_trans.loss_factor['Transverse']
-
-            if math.isnan(k_loss_trans):
-                error(f"Encountered an exception: Check shape {key}")
-                continue
-
-            abci_data_long.get_data('Loss Factor Spectrum Integrated upto F')
-
-            k_M0 = abci_data_long.y_peaks[0]
-            k_loss_long = abs(abci_data_long.loss_factor['Longitudinal'])
-            k_loss_HOM = k_loss_long - k_M0
-
-            ymag_mon = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_mon, yi_mon)]
-            ymag_dip = [(a ** 2 + b ** 2) ** 0.5 for a, b in zip(yr_dip, yi_dip)]
-
-            peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-            xp_mon, yp_mon = np.array(xr_mon)[peaks_mon], np.array(ymag_mon)[peaks_mon]
-
-            peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-            xp_dip, yp_dip = np.array(xr_dip)[peaks_dip], np.array(ymag_dip)[peaks_dip]
-
-            for i, z_bound in enumerate(mon_interval):
-                msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                if len(yp_mon[msk_mon]) != 0:
-                    Zmax_mon = max(yp_mon[msk_mon])
-                    xmax_mon = xp_mon[np.where(yp_mon == Zmax_mon)][0]
-
-                    Zmax_mon_list[i].append(Zmax_mon)
-                    xmax_mon_list[i].append(xmax_mon)
-                elif len(yp_mon) != 0:
-                    Zmax_mon_list[i].append(0.0)
-                    xmax_mon_list[i].append(0.0)
-                else:
-                    continue
-
-            for i, z_bound in enumerate(dip_interval):
-                msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                if len(yp_dip[msk_dip]) != 0:
-                    Zmax_dip = max(yp_dip[msk_dip])
-                    xmax_dip = xp_dip[np.where(yp_dip == Zmax_dip)][0]
-
-                    Zmax_dip_list[i].append(Zmax_dip)
-                    xmax_dip_list[i].append(xmax_dip)
-                elif len(yp_dip) != 0:
-                    Zmax_dip_list[i].append(0.0)
-                    xmax_dip_list[i].append(0.0)
-                else:
-                    continue
-
-            k_loss_M0.append(k_M0)
-            k_loss_array_longitudinal.append(k_loss_HOM)
-            k_loss_array_transverse.append(k_loss_trans)
 
     ZL, ZT = [], []
     df_ZL, df_ZT = pd.DataFrame(), pd.DataFrame()
