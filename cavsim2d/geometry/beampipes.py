@@ -114,7 +114,7 @@ def _arc_centre(p0, pm, p1):
           + (cx ** 2 + cy ** 2) * (ay - by)) / d
     uy = ((ax ** 2 + ay ** 2) * (cx - bx) + (bx ** 2 + by ** 2) * (ax - cx)
           + (cx ** 2 + cy ** 2) * (bx - ax)) / d
-    return (ux, uy)
+    return ux, uy
 
 
 def abci_shape(profile, ds, min_pipe_length, pipe_length=None):

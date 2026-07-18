@@ -1,8 +1,11 @@
 import json
 import functools
+import gc
 import os.path
 import pickle
 import sys
+import time
+import warnings
 
 from matplotlib import tri
 from cavsim2d.utils.shared_functions import *
@@ -23,13 +26,37 @@ from cavsim2d.utils.printing import *
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
 import gmsh
 import platform
-from cavsim2d.utils.config_validation import require
 
 mu0 = 4 * pi * 1e-7
 eps0 = 8.85418782e-12
 c0 = 299792458
 SIGMA_COPPER = 5.96e7  # electrical conductivity of copper [S/m]
 DEFAULT_N_MODES = 10
+# Radius [m] below which a point counts as "on the axis". The 1/r weights in the
+# azimuthal field are singular there but the fields are defined by their limit,
+# so the weight is clamped rather than evaluated (the axis is measure-zero in
+# every integral that uses it).
+AXIS_EPS = 1e-9
+
+
+def mesh_h_metres(mesh_config, default=20):
+    """``mesh_config['h']`` (mm) -> metres, trapping the classic units slip.
+
+    ``h`` is in **millimetres**. Passing metres — e.g. ``h=25e-3`` intending
+    "25 mm" — asks for 25-*micron* elements: the mesher then grinds on millions
+    of elements and the run looks hung. Warn loudly instead of silently melting
+    the machine.
+    """
+    h = (mesh_config or {}).get('h', default)
+    if h < 0.5:
+        # warnings.warn (not the verbosity-gated warning()): a silent units
+        # slip just looks like a hung run.
+        warnings.warn(
+            f"mesh_config['h'] is in MILLIMETRES: h={h:g} requests {h:g} mm "
+            f"({h * 1e-3:.1e} m) elements — meshing will be extremely slow. "
+            f"If you meant {h * 1e3:g} mm, pass h={h * 1e3:g}.",
+            UserWarning, stacklevel=3)
+    return h * 1e-3
 
 
 def surface_resistance(w, conductivity=SIGMA_COPPER, rs=None):
@@ -104,6 +131,7 @@ class NGSolveMEVP:
         self.step = None
         self.mesh = None
         self.fields = None
+        self._last_adaptive_history = None
 
     @staticmethod
     def requested_n_modes(cav=None, eigenmode_config=None, n_modes=None):
@@ -304,134 +332,79 @@ class NGSolveMEVP:
         # mesh_config['h'] is in mm, the solver works in metres. The default has to be
         # converted too: leaving it at 20 means a 20 m maxh, i.e. no size constraint at
         # all, so each meshing backend silently picks its own element size.
-        mesh_h = 20 * 1e-3
-        mesh_p = 3
-        if eigenmode_config:
-            mesh_config = eigenmode_config.get('mesh_config', {})
-            mesh_h = mesh_config.get('h', 20) * 1e-3
-            mesh_p = mesh_config.get('p', mesh_p)
+        mesh_config = (eigenmode_config or {}).get('mesh_config', {})
+        mesh_h = mesh_h_metres(mesh_config)
+        mesh_p = mesh_config.get('p', 3)
+        # Opt-in adaptive (error-driven) h-refinement — applied to EVERY
+        # requested polarisation (the recovery-error estimator is m-agnostic).
+        adaptive = self._parse_adaptive(mesh_config)
 
         pols = parse_polarisations((eigenmode_config or {}).get('polarisation', 0))
-        n_modes = self.requested_n_modes(cav, eigenmode_config)
 
-        # Wall material for Q / Ploss / Rsh / G (default copper normal
-        # conductor; pass 'surface_resistance' for a fixed Rs, e.g. SRF).
-        conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
-        rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
-
-        mesh = self._build_mesh(cav, mesh_h, mesh_p)
-
-        # Half-cell length (mm) for the Eacc normalisation. Elliptical cavities
-        # store it as 'L_m'; guns/pillboxes have no 'L_m', so allow an explicit
-        # 'normalization_length' override and otherwise let evaluate_qois fall
-        # back to the on-axis field extent (L_norm=None).
-        L_norm = cav.parameters.get('L_m', None)
-        if L_norm is None:
-            L_norm = (eigenmode_config or {}).get('normalization_length', None)
-
-        if 0 in pols:
-            save_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(0))
-            os.makedirs(save_dir, exist_ok=True)
-            self.save_mesh(save_dir, mesh)
-            freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, save_dir, mesh, mesh_p, n_modes)
-
-            # Modes of interest default to the accelerating (pi-)mode. The solver
-            # filters the spurious gradient/DC mode, so the fundamental passband
-            # occupies indices 0..n_cells-1 and the pi-mode is the last of them.
-            # Override per polarisation with eigenmode_config['mode_of_interest'];
-            # a polarisation may have several, the first being the primary one.
-            moi = self.modes_of_interest(cav, 0, eigenmode_config, len(freq_fes))
-            n_dofs = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
-
-            qois_moi = {}
-            for idx in moi:
-                q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=idx, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
-                                       conductivity=conductivity, surface_resistance_ohm=rs_ohm)
-                # String, like 'polarisation': metadata, not a QOI. UQ coerces the
-                # qois table to numerics and drops text columns, so a bare int here
-                # would be "averaged" into meaningless mean/stddev statistics.
-                q['mode_of_interest'] = str(idx + 1)
-                q["No of DOFs"] = n_dofs
-                qois_moi[str(idx + 1)] = q
-
-            with open(os.path.join(save_dir, 'qois_moi.json'), "w") as f:
-                json.dump(qois_moi, f, indent=4, separators=(',', ': '))
-            # qois.json is the primary (first) mode of interest.
-            with open(os.path.join(save_dir, 'qois.json'), "w") as f:
-                json.dump(qois_moi[str(moi[0] + 1)], f, indent=4, separators=(',', ': '))
-
-            qois_all_modes = {}
-            for ii in range(len(freq_fes)):
-                qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii, n_cells=cav.n_cells, L=L_norm, save_dir=save_dir,
-                                                        conductivity=conductivity, surface_resistance_ohm=rs_ohm)
-
-            with open(os.path.join(save_dir, 'qois_all_modes.json'), "w") as f:
-                json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
-
-        for m_pol in [p for p in pols if p > 0]:
-            self._solve_mpole_on_mesh(cav, m_pol, mesh, mesh_p, eigenmode_config)
-
+        # One solve path for every polarisation, each on its OWN mesh: with
+        # adaptive on, m >= 1 refines to resolve its own deflecting field just
+        # as the monopole does, so the meshes (and per-mode convergence) are
+        # independent per polarisation.
+        for m in sorted(pols):
+            self._solve_pol(cav, m, mesh_h, mesh_p, eigenmode_config, adaptive=adaptive)
         return True
 
-    def solve_mpole(self, cav, m=1, eigenmode_config=None):
-        """Mesh *cav* and solve the m-pole (m >= 1) eigenproblem only.
+    def _solve_pol(self, cav, m, mesh_h, mesh_p, eigenmode_config=None, adaptive=None):
+        """Build a mesh for *cav* and solve azimuthal order *m* on it, writing
+        all results to ``<cavity>/eigenmode/<pol name>/``.
 
-        Results (mesh, fields, qois.json, qois_all_modes.json, off-axis
-        field profiles) are written to ``<cavity>/eigenmode/<pol name>/``,
-        e.g. ``eigenmode/dipole/`` for m=1.
+        ONE path for every polarisation: the eigenproblem (:meth:`_build_system`),
+        the recovery-error estimator (:meth:`_error_fields`) and the QOIs
+        (:meth:`evaluate_qois`) are all m-agnostic, so this — including the
+        adaptive h-refinement — runs identically for the monopole and every
+        m-pole. Each polarisation gets its OWN mesh (so its refinement is driven
+        by its own field error), built native (``profile()``) or from the
+        ``.geo`` file.
         """
-        m = pol_number(m)
-        require(m >= 1, 'solve_mpole is for m >= 1; use solve() for the monopole.')
-
-        # mesh_config['h'] is in mm, the solver works in metres. The default has to be
-        # converted too: leaving it at 20 means a 20 m maxh, i.e. no size constraint at
-        # all, so each meshing backend silently picks its own element size.
-        mesh_h = 20 * 1e-3
-        mesh_p = 3
-        if eigenmode_config:
-            mesh_config = eigenmode_config.get('mesh_config', {})
-            mesh_h = mesh_config.get('h', 20) * 1e-3
-            mesh_p = mesh_config.get('p', mesh_p)
-
-        step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=mesh_h)
-        for key, bc in bcs.items():
-            ngmesh.SetBCName(key - 1, bc)
-
-        mesh = Mesh(ngmesh)
-        mesh.Curve(mesh_p)
-
-        self._solve_mpole_on_mesh(cav, m, mesh, mesh_p, eigenmode_config)
-        return True
-
-    def _solve_mpole_on_mesh(self, cav, m, mesh, mesh_p, eigenmode_config=None):
-        """Solve azimuthal order *m* on an existing mesh and save all results
-        to ``<cavity>/eigenmode/<pol name>/``."""
         pol_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(m))
         os.makedirs(pol_dir, exist_ok=True)
-        self.save_mesh(pol_dir, mesh)
 
         n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
         rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
-        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem_mpole(mesh, mesh_p, m, n_modes, save_dir=pol_dir)
 
-        L_norm = cav.parameters.get('L_m', 1)
+        # Active-length normalisation. Elliptical cavities store the half-cell
+        # length as 'L_m'; otherwise take an explicit 'normalization_length'
+        # (monopole) and finally let evaluate_qois fall back to the on-axis
+        # field extent (L=None).
+        L_norm = cav.parameters.get('L_m', None)
+        if L_norm is None:
+            L_norm = (eigenmode_config or {}).get('normalization_length', None) if m == 0 else 1
 
-        # Modes of interest default to mode 1, the lowest of the deflecting passband
-        # (an m-pole spectrum has no spurious DC mode to skip). A polarisation may
-        # have several; the first is primary. Override with
-        # eigenmode_config['mode_of_interest'].
+        # Solve on this polarisation's own mesh; adaptive refines it in place to
+        # resolve *this* polarisation's modes (adaptive=None -> single solve).
+        mesh = self._build_mesh(cav, mesh_h, mesh_p)
+        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, pol_dir, mesh, mesh_p,
+                                                          n_modes, m=m, adaptive=adaptive)
+        # Save after solving: adaptive refinement mutates *mesh* in place, so
+        # this persists the finest mesh actually used for the QOIs.
+        self.save_mesh(pol_dir, mesh)
+
+        # Modes of interest: the pi-mode for the monopole passband, mode 1 (the
+        # lowest of the deflecting passband) for m >= 1 — see
+        # :meth:`modes_of_interest`. The first listed is primary (-> qois.json).
         moi = self.modes_of_interest(cav, m, eigenmode_config, len(freq_fes))
-        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
-        _, fes_phi = fes_rz.CreateGradient()
-        n_dofs = fes_rz.ndof + fes_phi.ndof
+        if m == 0:
+            n_dofs = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
+        else:
+            fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
+            _, fes_phi = fes_rz.CreateGradient()
+            n_dofs = fes_rz.ndof + fes_phi.ndof
 
         qois_moi = {}
         for idx in moi:
-            q = self.evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=idx,
-                                         n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
-                                         conductivity=conductivity, surface_resistance_ohm=rs_ohm)
-            q['mode_of_interest'] = str(idx + 1)        # metadata, see solve()
+            q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=idx,
+                                   n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
+                                   conductivity=conductivity, surface_resistance_ohm=rs_ohm,
+                                   write_axis=(idx == moi[0]))
+            # String metadata (UQ coerces the qois table to numerics and drops
+            # text columns; a bare int would be averaged into nonsense stats).
+            q['mode_of_interest'] = str(idx + 1)
             q["No of DOFs"] = n_dofs
             qois_moi[str(idx + 1)] = q
 
@@ -443,9 +416,9 @@ class NGSolveMEVP:
 
         qois_all_modes = {}
         for ii in range(len(freq_fes)):
-            qois_all_modes[ii] = self.evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=ii,
-                                                          n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
-                                                          conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=ii,
+                                                    n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
+                                                    conductivity=conductivity, surface_resistance_ohm=rs_ohm)
 
         with open(os.path.join(pol_dir, 'qois_all_modes.json'), "w") as f:
             json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
@@ -506,7 +479,7 @@ class NGSolveMEVP:
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(run_save_directory, run_save_directory, mesh, mesh_p, n_modes)
 
         qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=no_of_cells - 1, n_cells=no_of_cells,
-                                  L=L, save_dir=run_save_directory)
+                                  L=L, save_dir=run_save_directory, write_axis=True)
 
         with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
             json.dump(qois, f, indent=4, separators=(',', ': '))
@@ -520,47 +493,120 @@ class NGSolveMEVP:
 
         return True
 
-    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None):
-        """Assemble and solve the Maxwell eigenvalue problem. Returns (freqs, E_fields, H_fields)."""
-        n_modes = self.requested_n_modes(cav, n_modes=n_modes)
-        fes = HCurl(mesh, order=mesh_p, dirichlet="PEC")
-        u, v = fes.TnT()
+    @staticmethod
+    def _parse_adaptive(mesh_config):
+        """Normalise ``mesh_config['adaptive']`` to a settings dict, or None if off.
 
-        f_shift = 0
-        direct_solver = default_direct_solver()
-        pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
-        if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
-            f_shift = cav.eigenmode_config.get('f_shift', 0)
-            direct_solver = cav.eigenmode_config.get('direct_solver', direct_solver)
-            pinvit_maxit = int(cav.eigenmode_config.get('pinvit_maxit', pinvit_maxit))
-        elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
-             f_shift = cav['f_shift']
+        Adaptive mesh refinement is opt-in: pass ``True`` to enable it with the
+        defaults, or a dict to override them::
 
-        # Support searching around frequency if shift provided
+            'adaptive': True
+            'adaptive': {'tol': 1e-12, 'max_refinements': 8, 'max_ndof': 100000,
+                         'theta': 0.25}
+
+        - ``tol``: error tolerance. Refinement stops once **every** solved
+          mode's recovery ``max_err`` has fallen below this (default 1e-12).
+        - ``theta``: Doerfler marking fraction — elements with error above
+          ``theta * max_error`` are refined.
+        - ``max_ndof`` / ``max_refinements``: hard caps; stop once either is
+          reached even if the tolerance is not met.
+        """
+        a = (mesh_config or {}).get('adaptive', None)
+        if a is None or a is False:
+            return None
+        cfg = dict(a) if isinstance(a, dict) else {}
+        cfg.setdefault('tol', 1e-12)
+        cfg.setdefault('theta', 0.25)
+        cfg.setdefault('max_ndof', 100000)
+        cfg.setdefault('max_refinements', 8)
+        return cfg
+
+    def _build_system(self, mesh, mesh_p, m_pol, f_shift=0, direct_solver=None):
+        """Build the reusable space, forms and preconditioner for azimuthal order
+        *m_pol* — the single formulation used for **every** polarisation.
+
+        The field ansatz is E = (E_r, E_z) cos(m phi) + E_phi sin(m phi) e_phi
+        with the scaled azimuthal unknown ``u_phi = r * E_phi``, discretised on
+        the product space ``HCurl x H1``. Two details make it valid for all m:
+
+        - ``fes_phi`` is an H1 space of order ``mesh_p + 1`` that is **zero on
+          the axis** (``dirichlet="PEC|AXI"``), not the space returned by
+          ``CreateGradient``. The CreateGradient space (same ndof, PEC-only
+          dirichlet) is used solely for the gradient-kernel projector.
+        - the kernel (u, u_phi) = (grad psi, m psi) is removed with a
+          b-orthogonal projector built from ``G = embU @ Grz - m * embPhi``.
+
+        At **m = 0** the two blocks decouple: the HCurl block gives the monopole
+        TM modes and the H1 block the monopole **TE** modes — which an HCurl-only
+        formulation cannot represent at all. Validated against the analytical
+        pillbox spectrum (TM and TE) for m = 0..8.
+
+        The space and forms are created **once** and reused across adaptive
+        refinements (each pass calls ``fes.Update()`` and reassembles). Creating
+        a fresh space per pass instead leaves stale spaces registered on the
+        mesh, and netgen's ``Refine()`` then updates them onto freed memory —
+        an access violation on the second refinement.
+        """
+        if direct_solver is None:
+            direct_solver = default_direct_solver()
+        r = y
+        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
+        fes_phi = H1(mesh, order=mesh_p + 1, dirichlet="PEC|AXI")
+        fes = fes_rz * fes_phi
+        (u, u_phi), (v, v_phi) = fes.TnT()
+
+        stiff = (r * curl(u) * curl(v)
+                 + 1 / r * (m_pol**2 * u * v
+                            + m_pol * u * grad(v_phi)
+                            + m_pol * grad(u_phi) * v
+                            + grad(u_phi) * grad(v_phi))) * dx
+        mass = (r * u * v + 1 / r * u_phi * v_phi) * dx
+
+        # Search around a frequency if a shift is provided
         if f_shift and f_shift != 'default':
             shift_lam = (2 * pi * f_shift * 1e6 / c0)**2
-            a = BilinearForm(y * curl(u) * curl(v) * dx - shift_lam * y * u * v * dx)
+            a = BilinearForm(stiff - shift_lam * mass)
         else:
-            a = BilinearForm(y * curl(u) * curl(v) * dx)
+            a = BilinearForm(stiff)
+        b = BilinearForm(mass)
 
-        m = BilinearForm(y * u * v * dx)
-        apre = BilinearForm(y * curl(u) * curl(v) * dx + y * u * v * dx)
-        pre = Preconditioner(apre, "direct", inverse=direct_solver)
+        return {'fes': fes, 'fes_rz': fes_rz, 'fes_phi': fes_phi,
+                'a': a, 'b': b, 'm': m_pol,
+                'f_shift': f_shift, 'direct_solver': direct_solver}
+
+    def _solve_system(self, system, n_modes, pinvit_maxit=20):
+        """Update, assemble and solve the reusable *system* on its (possibly
+        just-refined) mesh. Returns ``(freq_fes, gfu_E, gfu_H)`` where each
+        ``gfu_E`` entry is a product-space GridFunction (components: in-plane
+        (E_z, E_r), u_phi = r*E_phi) and each ``gfu_H`` entry is a pair
+        ``(H_inplane_cf, H_phi_cf)`` of azimuthal envelope coefficient
+        functions. The representation is the same for every m."""
+        fes, fes_rz = system['fes'], system['fes_rz']
+        a, b, m_pol = system['a'], system['b'], system['m']
+        f_shift, direct_solver = system['f_shift'], system['direct_solver']
+        r = y
 
         with TaskManager():
+            fes.Update()
             a.Assemble()
-            m.Assemble()
-            apre.Assemble()
+            b.Assemble()
 
-            gradmat, fesh1 = fes.CreateGradient()
-            gradmattrans = gradmat.CreateTranspose()
-            math1 = gradmattrans @ m.mat @ gradmat
-            invh1 = math1.Inverse(inverse=direct_solver, freedofs=fesh1.FreeDofs())
+            pre = (a.mat + b.mat).CreateSparseMatrix().Inverse(fes.FreeDofs())
 
-            proj = IdentityMatrix() - gradmat @ invh1 @ gradmattrans @ m.mat
-            projpre = proj @ pre.mat
-            evals_, evecs_ = solvers.PINVIT(a.mat, m.mat, pre=projpre, num=self.pinvit_n_modes(n_modes),
-                                          maxit=pinvit_maxit, printrates=False)
+            # Remove the gradient kernel (u, u_phi) = (grad psi, m psi). The
+            # potential space comes from CreateGradient (PEC-only dirichlet);
+            # it has the same ndof as fes_phi, so the two embeddings combine.
+            Grz, fes_pot = fes_rz.CreateGradient()
+            embU, embPhi = fes.embeddings
+            G = (embU @ Grz - m_pol * embPhi).CreateSparseMatrix()
+            GT = G.CreateTranspose()
+            invh1 = (GT @ b.mat @ G).Inverse(inverse=direct_solver,
+                                             freedofs=fes_pot.FreeDofs())
+            projpre = (IdentityMatrix(fes.ndof) - G @ invh1 @ GT @ b.mat) @ pre
+
+            evals_, evecs_ = solvers.PINVIT(a.mat, b.mat, pre=projpre,
+                                            num=self.pinvit_n_modes(n_modes),
+                                            maxit=pinvit_maxit, printrates=False)
             mask_ = np.array(evals_) > 1
             evals = np.array(evals_)[mask_]
             evecs = np.array(evecs_)[mask_]
@@ -571,69 +617,10 @@ class NGSolveMEVP:
             else:
                 freq_fes = [c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6 for lam in evals]
 
-            gfu_E = []
-            gfu_H = []
-            for i in range(len(evecs)):
-                w = 2 * pi * freq_fes[i] * 1e6
-                gfu = GridFunction(fes)
-                gfu.vec.data = evecs[i]
-                gfu_E.append(gfu)
-                gfu_H.append(1j / (mu0 * w) * curl(gfu))
-
-            self.save_fields(save_dir, gfu_E, gfu_H)
-
-        return freq_fes, gfu_E, gfu_H
-
-    def _solve_eigenproblem_mpole(self, mesh, mesh_p, m, n_modes, save_dir=None):
-        """Solve the Maxwell eigenvalue problem for azimuthal order m >= 1.
-
-        The field ansatz is E = (E_r, E_z) cos(m phi) + E_phi sin(m phi) e_phi
-        with the scaled azimuthal unknown u_phi = r * E_phi, discretised on
-        the product space HCurl x H1 (H1 from ``CreateGradient`` so that the
-        gradient kernel (u, u_phi) = (-grad psi, m psi) is exactly
-        representable). That kernel is removed from the PINVIT iteration with
-        a b-orthogonal projector, mirroring the monopole gradient projection,
-        so only ``n_modes + 2`` eigenpairs are computed for ``n_modes``
-        requested physical modes.
-
-        Returns (freqs [MHz], gfu_E, gfu_H) where each gfu_E entry is a
-        product-space GridFunction (components: in-plane (E_x, E_y), u_phi)
-        and each gfu_H entry is a pair (H_inplane_cf, H_phi_cf) of azimuthal
-        envelope coefficient functions.
-        """
-        n_modes = self.requested_n_modes(n_modes=n_modes)
-        r = y
-        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
-        Grz, fes_phi = fes_rz.CreateGradient()
-        fes = fes_rz * fes_phi
-        (u, u_phi), (v, v_phi) = fes.TnT()
-
-        with TaskManager():
-            a = BilinearForm((r*curl(u)*curl(v) + 1/r * (m**2*u*v + m*u*grad(v_phi) + m*grad(u_phi)*v + grad(u_phi)*grad(v_phi)))*dx).Assemble()
-            b = BilinearForm((r*u*v + 1/r * u_phi*v_phi)*dx).Assemble()
-            
-            sum_mat = (a.mat+b.mat).CreateSparseMatrix()    # also works for different graphs
-            pre = sum_mat.Inverse(fes.FreeDofs())
-
-            # Build projector
-            embU, embPhi = fes.embeddings
-            G  = (embU @ Grz - m * embPhi).CreateSparseMatrix()
-
-            GT = G.CreateTranspose()
-            math1 = GT @ b.mat @ G
-            invh1 = math1.Inverse(inverse='pardiso', freedofs=fes_phi.FreeDofs())
-
-            proj = IdentityMatrix(fes.ndof) - G @ invh1 @ GT @ b.mat
-            projpre = proj @ pre
-
-            evals_, evecs_ = solvers.PINVIT(
-                a.mat, b.mat, pre=projpre, num=self.pinvit_n_modes(n_modes),
-                maxit=10, printrates=False)
-
-            evals = np.array(evals_)[np.array(evals_) > 1]
-            evecs = np.array(evecs_)[np.array(evals_) > 1]
-
-            freq_fes = [c0 * np.sqrt(np.abs(lam)) / (2 * np.pi) * 1e-6 for lam in evals]
+            # 1/r is singular on the axis; H_inplane there is defined by its
+            # limit, so clamp the weight instead of dividing by zero (the axis
+            # is a measure-zero set in every integral that uses it).
+            inv_r = IfPos(r - AXIS_EPS, 1 / r, 0)
 
             gfu_E = []
             gfu_H = []
@@ -646,212 +633,397 @@ class NGSolveMEVP:
                 u_gf, uphi_gf = gfu.components
                 # Azimuthal envelopes of H = curl(E) / (-i mu0 w); the phase
                 # factor is dropped since only magnitudes enter the QOIs.
-                H_inplane = 1 / (mu0 * w * r) * (m * u_gf + grad(uphi_gf))
+                H_inplane = inv_r / (mu0 * w) * (m_pol * u_gf + grad(uphi_gf))
                 H_phi = 1 / (mu0 * w) * curl(u_gf)
                 gfu_H.append((H_inplane, H_phi))
 
-            if save_dir:
-                self.save_fields(save_dir, gfu_E, gfu_H)
-
         return freq_fes, gfu_E, gfu_H
+
+    def _solve_modes(self, mesh, mesh_p, m_pol, n_modes, save_dir=None,
+                     f_shift=0, direct_solver=None, pinvit_maxit=20):
+        """Solve the Maxwell eigenproblem for a single azimuthal order *m_pol*.
+
+        The one entry point for every polarisation (m = 0 monopole included);
+        builds a fresh system and solves it. See :meth:`_build_system`.
+        """
+        n_modes = self.requested_n_modes(n_modes=n_modes)
+        system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver)
+        freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+        if save_dir:
+            self.save_fields(save_dir, gfu_E, gfu_H)
+        return freq_fes, gfu_E, gfu_H
+
+    @staticmethod
+    def _mode_error_field(mesh, gfu, fes_rec, fes_rec_vec):
+        """Per-element Zienkiewicz-Zhu recovery error field for a single mode.
+
+        Both halves of the product-space solution are covered, so the estimator
+        sees every mode:
+
+        - the in-plane part through ``curl(u)`` (the azimuthal H) recovered into
+          the continuous scalar space *fes_rec* — this is the whole error for a
+          TM mode;
+        - the azimuthal part through ``grad(u_phi)`` recovered into the vector
+          space *fes_rec_vec* — this is the whole error for a **TE** mode, whose
+          ``u`` (and hence ``curl(u)``) is identically zero.
+
+        Each recovery gap is integrated element-wise as ``integral r*(f - proj)^2``
+        and the two are summed. Returns a per-element numpy array (non-negative).
+        """
+        u, uphi = gfu.components
+        h = curl(u)
+        hstar = GridFunction(fes_rec)
+        hstar.Set(h)
+        err = np.abs(Integrate(y * (h - hstar) * (h - hstar), mesh, VOL,
+                               element_wise=True).NumPy())
+
+        g = grad(uphi)
+        gstar = GridFunction(fes_rec_vec)
+        gstar.Set(g)
+        err = err + np.abs(Integrate(y * InnerProduct(g - gstar, g - gstar), mesh, VOL,
+                                     element_wise=True).NumPy())
+        return err
+
+    def _error_fields(self, mesh, fes_rz, gfu_list):
+        """Per-mode recovery error field for every mode in *gfu_list*.
+
+        Returns a list of per-element numpy arrays (one per mode). Callers pass
+        them to :meth:`_refinement_driver` for the marking field and take each
+        one's max for the per-mode convergence tolerance.
+        """
+        _, fes_rec = fes_rz.CreateGradient()
+        fes_rec_vec = VectorH1(mesh, order=fes_rz.globalorder)
+        return [self._mode_error_field(mesh, g, fes_rec, fes_rec_vec) for g in gfu_list]
+
+    @staticmethod
+    def _refinement_driver(fields):
+        """Marking field for a mesh that has to resolve several modes at once.
+
+        Each mode's error field is normalised by its **own** peak before the
+        modes are combined (element-wise max). Combining the *raw* fields
+        instead lets the high modes dominate — their errors are orders of
+        magnitude larger — so a low mode's worst element never clears
+        ``theta * max``, is never refined, and its error freezes at exactly the
+        same value level after level (a flat step in an error-vs-DOF plot).
+
+        Normalised, every mode's worst element scores 1.0 and is always marked,
+        so no mode can stall. Returns a per-element array in [0, 1] (peak 1),
+        which makes ``theta`` a fraction of *each mode's own* peak. None if
+        there is no error to act on.
+        """
+        driver = None
+        for f in fields:
+            fmax = float(f.max()) if len(f) else 0.0
+            if fmax <= 0:
+                continue
+            fn = f / fmax
+            driver = fn if driver is None else np.maximum(driver, fn)
+        return driver
+
+    def _adaptive_refine_hcurl(self, mesh, mesh_p, n_modes, pinvit_maxit,
+                               system, adaptive, first, save_dir=None):
+        """Error-driven h-refinement of *mesh* (refined in place).
+
+        Reuses the *system* (space + forms) built by :meth:`_build_system`
+        so only one space is ever registered on the mesh. Starting from the
+        *first* solve, mark-and-refine until every mode's recovery ``max_err``
+        is below ``tol`` (or a DOF/refinement cap is hit), then return the
+        solution on the finest mesh. Every level is recorded — DOF count,
+        element count, the frequencies and the per-mode ``max_err`` — so a
+        convergence study can plot error vs DOFs along the refinement path.
+        """
+        theta = float(adaptive['theta'])
+        max_ndof = int(adaptive['max_ndof'])
+        max_ref = int(adaptive['max_refinements'])
+        tol = float(adaptive['tol'])
+        fes, fes_rz = system['fes'], system['fes_rz']
+
+        freq_fes, gfu_E, gfu_H = first
+        history = []
+        for step in range(max_ref + 1):
+            fields = self._error_fields(mesh, fes_rz, gfu_E)
+            per_mode_max = [float(f.max()) if len(f) else 0.0 for f in fields]
+            # Drive and gate on the requested physical modes only. PINVIT solves
+            # n_modes + 2 for accuracy; the top padding modes are barely converged
+            # (huge, noisy error) and would otherwise hijack the refinement and
+            # make the tolerance unreachable.
+            n_use = min(n_modes, len(fields))
+            gate_max = max(per_mode_max[:n_use]) if n_use else 0.0
+
+            history.append({
+                'refinement': step,
+                'No of DOFs': int(fes.ndof),
+                'No of Mesh Elements': int(mesh.GetNE(VorB.VOL)),
+                'freq [MHz]': [float(f) for f in freq_fes],
+                'max_err': per_mode_max,
+            })
+
+            # Stop once every requested mode is converged to tol, or a cap is hit.
+            if fes.ndof >= max_ndof or step >= max_ref or gate_max < tol:
+                break
+
+            driver = self._refinement_driver(fields[:n_use])
+            if driver is None:
+                break
+            # driver is normalised to peak 1 per mode, so theta is a fraction of
+            # each mode's own peak — no mode can be crowded out of the marking.
+            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta)
+            del gfu_E, gfu_H, fields, driver
+            gc.collect()
+            mesh.Refine()
+            mesh.Curve(mesh_p)
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+
+        self._last_adaptive_history = history
+        if save_dir:
+            with open(os.path.join(save_dir, 'adaptive_history.json'), 'w') as f:
+                json.dump(history, f, indent=4, separators=(',', ': '))
+        return freq_fes, gfu_E, gfu_H
+
+    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None, m=0, adaptive=None):
+        """Assemble and solve the Maxwell eigenvalue problem for azimuthal order
+        *m*. Returns (freqs, E_fields, H_fields).
+
+        When *adaptive* is a settings dict (see :meth:`_parse_adaptive`) the
+        mesh is refined in place to resolve the requested modes — the recovery
+        error estimator is polarisation-agnostic, so this drives refinement for
+        any *m* — and the returned fields are those of the finest refinement.
+        """
+        n_modes = self.requested_n_modes(cav, n_modes=n_modes)
+
+        f_shift = 0
+        direct_solver = default_direct_solver()
+        pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
+        if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
+            f_shift = cav.eigenmode_config.get('f_shift', 0)
+            direct_solver = cav.eigenmode_config.get('direct_solver', direct_solver)
+            pinvit_maxit = int(cav.eigenmode_config.get('pinvit_maxit', pinvit_maxit))
+        elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
+             f_shift = cav['f_shift']
+
+        system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver)
+        freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+
+        self._last_adaptive_history = None
+        if adaptive:
+            freq_fes, gfu_E, gfu_H = self._adaptive_refine_hcurl(
+                mesh, mesh_p, n_modes, pinvit_maxit, system,
+                adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
+
+        self.save_fields(save_dir, gfu_E, gfu_H)
+        return freq_fes, gfu_E, gfu_H
+
+    def solve_convergence(self, cav, eigenmode_config=None):
+        """Adaptive-h convergence data: the full per-mode QOIs at every level.
+
+        The mesh is refined adaptively (monopole-error driven, see
+        :meth:`_parse_adaptive`). At **each** refinement level every requested
+        polarisation is solved on the current mesh and the full QOIs of all its
+        modes are evaluated — the same rich per-mode records
+        :meth:`evaluate_qois` produces for a normal
+        run. Each record is tagged with the refinement level (``h_pass``), the
+        monopole DOF count at that level (``No of DOFs``) and the level solve
+        time (``time [s]``). Returns a flat list of QOI dicts; nothing is
+        written to disk.
+
+        Only the *mesh* refinement is adaptive/monopole-driven; the m-pole
+        solves reuse that mesh. Their fresh product spaces are released before
+        each ``Refine()`` — leaving them registered makes netgen update stale
+        spaces onto freed memory (an access violation).
+        """
+        eigenmode_config = eigenmode_config or {}
+        mesh_config = eigenmode_config.get('mesh_config', {})
+        mesh_h = mesh_h_metres(mesh_config)
+        mesh_p = mesh_config.get('p', 3)
+        adaptive = self._parse_adaptive(mesh_config) or self._parse_adaptive({'adaptive': True})
+        theta = float(adaptive['theta'])
+        max_ndof = int(adaptive['max_ndof'])
+        max_ref = int(adaptive['max_refinements'])
+        tol = float(adaptive['tol'])
+
+        pols = parse_polarisations(eigenmode_config.get('polarisation', 0))
+        n_modes = self.requested_n_modes(cav, eigenmode_config)
+        conductivity = eigenmode_config.get('conductivity', SIGMA_COPPER)
+        rs_ohm = eigenmode_config.get('surface_resistance', None)
+        L_mono = cav.parameters.get('L_m', None)
+        if L_mono is None:
+            L_mono = eigenmode_config.get('normalization_length', None)
+        L_mpole = cav.parameters.get('L_m', 1)
+
+        f_shift = eigenmode_config.get('f_shift', 0)
+        direct_solver = eigenmode_config.get('direct_solver', default_direct_solver())
+        pinvit_maxit = int(eigenmode_config.get('pinvit_maxit', 20))
+
+        mesh = self._build_mesh(cav, mesh_h, mesh_p)
+        system = self._build_system(mesh, mesh_p, 0, f_shift, direct_solver)
+
+        rows = []
+        for level in range(max_ref + 1):
+            t0 = time.perf_counter()
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+            ndof_level = int(system['fes'].ndof)
+
+            # Per-mode recovery error fields: each mode gets its OWN 'max_err' so
+            # its convergence can be plotted individually. The refinement is
+            # driven by (and the tolerance gates on) the requested physical
+            # monopole modes only — the top PINVIT padding modes are barely
+            # converged and would otherwise hijack the refinement.
+            mono_err = self._error_fields(mesh, system['fes_rz'], gfu_E)
+            n_use = min(n_modes, len(mono_err))
+            driver = self._refinement_driver(mono_err[:n_use])
+            gate_max = max((float(f.max()) for f in mono_err[:n_use]), default=0.0)
+
+            level_rows = []
+            if 0 in pols:
+                for ii in range(len(freq_fes)):
+                    q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii,
+                                           n_cells=cav.n_cells, L=L_mono,
+                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                    # composite key '<m>-<mode>' — polarisation then mode index,
+                    # e.g. '0-0' monopole mode 0, '1-0' dipole mode 0.
+                    q['mode_index'] = f"{q['m']}-{ii}"
+                    q['max_err'] = float(mono_err[ii].max()) if len(mono_err[ii]) else 0.0
+                    level_rows.append(q)
+
+            mpole_spaces = []
+            for m_pol in [pp for pp in pols if pp > 0]:
+                fr_m, gE_m, gH_m = self._solve_modes(mesh, mesh_p, m_pol, n_modes)
+                m_err = self._error_fields(mesh, gE_m[0].components[0].space, gE_m) if gE_m else []
+                for ii in range(len(fr_m)):
+                    q = self.evaluate_qois(mesh, gE_m, gH_m, fr_m, m_pol, mode_idx=ii,
+                                           n_cells=cav.n_cells, L=L_mpole,
+                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                    q['mode_index'] = f"{q['m']}-{ii}"
+                    q['max_err'] = float(m_err[ii].max()) if len(m_err[ii]) else 0.0
+                    level_rows.append(q)
+                mpole_spaces.append((gE_m, gH_m))
+
+            elapsed = time.perf_counter() - t0
+            for q in level_rows:
+                q['h_pass'] = level
+                q['No of DOFs'] = ndof_level
+                q['time [s]'] = elapsed
+            rows.extend(level_rows)
+
+            # stop once every requested monopole mode's max_err is below tol, or
+            # a hard cap is hit (DOF count / refinement passes).
+            if ndof_level >= max_ndof or level >= max_ref or gate_max < tol:
+                break
+            if driver is None:
+                break
+            # driver is normalised to peak 1 per mode, so theta is a fraction of
+            # each mode's own peak — no mode can be crowded out of the marking.
+            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta)
+            # Release this level's fresh (m-pole + monopole) grid functions so no
+            # stale space is updated onto freed memory by Refine().
+            del gfu_E, gfu_H, mpole_spaces, level_rows, mono_err, driver
+            gc.collect()
+            mesh.Refine()
+            mesh.Curve(mesh_p)
+
+        return rows
 
     # ──────────────────────────────────────────────────────────────────────
     # QOI evaluation
     # ──────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, beta=1, save_dir=None, mode_idx=1, n_cells=1, L=1,
-                      conductivity=SIGMA_COPPER, surface_resistance_ohm=None):
-        """Compute cavity figures of merit for mode *mode_idx*.
+    def evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m=0, beta=1, save_dir=None, mode_idx=1,
+                      n_cells=1, L=1, conductivity=SIGMA_COPPER, surface_resistance_ohm=None,
+                      write_axis=False):
+        """Cavity figures of merit for azimuthal order *m*, mode *mode_idx*.
 
-        Works for both standard cavities and RF guns - the only difference
-        is whether axis nodes come from a linspace or directly from the mesh.
+        One evaluator for every polarisation — the eigenproblem is the unified
+        product space (``u = (E_z, E_r)``, ``u_phi = r*E_phi``) for all m, and so
+        are the QOIs here. Only the **voltage-derived** quantities branch on m:
 
-        The wall material enters Q, Ploss, Rsh and G through the surface
-        resistance: by default a copper normal conductor (*conductivity* in
-        S/m); pass *surface_resistance_ohm* for a fixed Rs (e.g. an SRF
-        niobium cavity). The geometric factor G is material-independent.
-        """
+        - m = 0 (monopole): the accelerating voltage is the on-axis integral of
+          E_z and R/Q is longitudinal; the azimuthal integral gives 2*pi. TM
+          modes (u_phi = 0) accelerate; TE modes (u = 0) get zero Vacc/R/Q.
+        - m >= 1 (deflecting): E_z ~ r^m vanishes on axis, so the voltage is
+          taken along an off-axis line r0 = aperture/2 and converted to the
+          transverse kick by Panofsky-Wenzel, V_t = m V_z(r0)/(k r0); R/Q is
+          transverse and 'R/Q_t' is normalised by r0^(2(m-1)) (r0-independent).
+          The azimuthal integral gives pi.
 
-        w = 2 * pi * freq_fes[mode_idx] * 1e6
-
-        # Active length for the Eacc normalisation. For elliptical cavities L is
-        # the half-cell length so the active length is 2*L*n_cells. When L is
-        # unknown (guns/pillboxes have no 'L_m'), fall back to the on-axis field
-        # extent so Eacc is still a sensible average gradient.
-        if L is None:
-            axis_pts = np.array(list(get_boundary_nodes(mesh, 'AXI')))
-            active_length_m = axis_pts[:, 0].max() - axis_pts[:, 0].min()
-            L = active_length_m * 1e3 / (2 * n_cells)  # -> 2*L*n_cells*1e-3 == active length [m]
-
-        # Accelerating voltage and gradient
-        Vacc = abs(Integrate(gfu_E[mode_idx][0] * exp(1j * w / (beta * c0) * x), mesh,
-                             definedon=mesh.Boundaries('AXI')))
-        Eacc = Vacc / (n_cells * L * 1e-3 * 2) # Divisor is ActiveLength = n_cells * L_cell (Note: L is half-cell length)
-
-        # Stored energy and R/Q
-        U = 2 * pi * 0.5 * eps0 * Integrate(y * InnerProduct(gfu_E[mode_idx], Conj(gfu_E[mode_idx])), mesh)
-        RoQ = Vacc ** 2 / (w * U)
-
-        # Peak surface fields (pointwise maxima over the surface nodes)
-        xpnts_surf = get_boundary_nodes(mesh, 'PEC')
-        Esurf = [Norm(gfu_E[mode_idx])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
-        Hsurf = [Norm(gfu_H[mode_idx])(mesh(xi, yi)) for (xi, yi) in xpnts_surf]
-        Epk = max(Esurf)
-        Hpk = max(Hsurf)
-
-        # Surface power loss: exact boundary integral of |H|^2 over the PEC
-        # wall (2*pi from the azimuthal revolution, 0.5 from time averaging).
-        # NB: integrate the field over the boundary — sampling |H| at the
-        # surface nodes and wrapping the list in CF(...) builds a constant
-        # vector, which makes the result scale with the mesh node count.
-        # NGSolve cannot SIMD-evaluate curl(GridFunction) directly on a
-        # boundary, so the azimuthal H = curl(E)/(mu0 w) is first projected
-        # into a continuous H1 field whose boundary trace integrates cleanly.
-        Rs = surface_resistance(w, conductivity, surface_resistance_ohm)
-        H1_space = H1(mesh, order=gfu_E[mode_idx].space.globalorder, complex=True)
-        Hphi = GridFunction(H1_space)
-        Hphi.Set(1j / (mu0 * w) * curl(gfu_E[mode_idx]))
-        Ploss = 2 * pi * 0.5 * Rs * Integrate(
-            y * (Hphi * Conj(Hphi)), mesh,
-            definedon=mesh.Boundaries('PEC')).real
-
-        # Cell-to-cell coupling: pi-mode vs the 0-mode (lowest passband mode,
-        # index 0 now that the spurious mode is filtered out).
-        f_diff = freq_fes[mode_idx] - freq_fes[0]
-        f_add = freq_fes[mode_idx] + freq_fes[0]
-        kcc = 2 * f_diff / f_add * 100
-
-        Q = w * U / Ploss
-        G = Q * Rs
-
-        # Axis field and field flatness
-        axis_nodes = np.array(list(get_boundary_nodes(mesh, 'AXI')))
-        minz, maxz = axis_nodes[:, 0].min(), axis_nodes[:, 0].max()
-        n_ax_pts = int(5000 * (maxz - minz))
-        xpnts_ax = np.linspace(minz, maxz, n_ax_pts)
-        Ez_0_abs = np.array([Norm(gfu_E[mode_idx])(mesh(xi, 0.0)) for xi in xpnts_ax])
-
-        peaks, _ = find_peaks(Ez_0_abs, distance=n_ax_pts // 100, width=100)
-        Ez_0_abs_peaks = Ez_0_abs[peaks]
-        try:
-            ff = min(Ez_0_abs_peaks) / max(Ez_0_abs_peaks) * 100
-        except ValueError:
-            ff = 0
-
-        qois = {
-            'm': 0,
-            'polarisation': 'monopole',
-            "Normalization Length [mm]": 2 * L,
-            "N Cells": n_cells,
-            "freq [MHz]": freq_fes[mode_idx],
-            "Q []": Q,
-            "Vacc [MV]": Vacc * 1e-6,
-            "Eacc [MV/m]": Eacc * 1e-6,
-            "Epk [MV/m]": Epk * 1e-6,
-            "Hpk [A/m]": Hpk,
-            "Bpk [mT]": mu0 * Hpk * 1e3,
-            "kcc [%]": kcc,
-            "ff [%]": ff,
-            "Rsh [MOhm]": RoQ * Q * 1e-6,
-            "R/Q [Ohm]": RoQ,
-            "Epk/Eacc []": Epk / Eacc,
-            "Bpk/Eacc [mT/MV/m]": mu0 * Hpk * 1e9 / Eacc,
-            "G [Ohm]": G,
-            "GR/Q [Ohm^2]": G * RoQ,
-            "No of Mesh Elements": mesh.GetNE(VorB.VOL)
-        }
-
-        if save_dir:
-            Ez_0_abs_df = pd.DataFrame({'z(0, 0)': xpnts_ax, '|Ez(0, 0)|': Ez_0_abs})
-            Ez_0_abs_df.to_csv(os.path.join(save_dir, 'Ez_0_abs.csv'),
-                               index=False, sep='\t', float_format='%.32f')
-
-        return qois
-
-    @staticmethod
-    def evaluate_qois_mpole(mesh, gfu_E, gfu_H, freq_fes, m, beta=1, save_dir=None,
-                            mode_idx=0, n_cells=1, L=1,
-                            conductivity=SIGMA_COPPER, surface_resistance_ohm=None):
-        """Compute figures of merit for m-pole (m >= 1) mode *mode_idx*.
-
-        Same quantities as :meth:`evaluate_qois`, with the voltage-derived
-        ones generalised to deflecting modes: the longitudinal voltage is
-        integrated along an off-axis line r0 (half the smallest wall radius,
-        since E_z ~ r^m vanishes on axis) and converted to the transverse
-        kick voltage via Panofsky-Wenzel, V_t = m V_z(r0) / (k r0). The keys
-        'Vacc'/'Eacc'/'R/Q' therefore hold the transverse analogues, and
-        'R/Q_t [Ohm/m^(2(m-1))]' is additionally normalised by r0^(2(m-1))
-        so it is independent of the choice of r0 (equal to 'R/Q [Ohm]' for
-        the dipole). Peak surface fields are exact maxima over the azimuth,
-        max(|E_inplane|, |E_phi|), because the two groups are 90 degrees
-        out of phase in phi.
+        Everything else — stored energy, peak surface fields, the H1-projected
+        surface-loss integral, Q, G, k_cc — is one expression with the
+        polarisation's azimuthal factor. The wall material enters Q/Ploss/Rsh/G
+        through the surface resistance (copper by default; pass
+        *surface_resistance_ohm* for a fixed Rs, e.g. SRF niobium); G is
+        material-independent.
         """
         w = 2 * pi * freq_fes[mode_idx] * 1e6
         k_wave = w / (beta * c0)
-
         u_gf, uphi_gf = gfu_E[mode_idx].components
         H_inplane, H_phi = gfu_H[mode_idx]
+        az = 2 * pi if m == 0 else pi          # azimuthal integral factor
 
-        # Off-axis evaluation radius from the smallest wall (aperture) radius
-        xpnts_surf = np.array(list(get_boundary_nodes(mesh, 'PEC')))
-        r_aperture = xpnts_surf[:, 1][xpnts_surf[:, 1] > 1e-9].min()
-        r0 = 0.5 * r_aperture
-
-        # Longitudinal voltage along the line r = r0 and Panofsky-Wenzel kick
+        # Active length for the Eacc normalisation. Elliptical cavities pass L
+        # (half-cell length, so the active length is 2*L*n_cells); guns/pillboxes
+        # pass L=None, so fall back to the on-axis field extent.
         axis_nodes = np.array(list(get_boundary_nodes(mesh, 'AXI')))
         minz, maxz = axis_nodes[:, 0].min(), axis_nodes[:, 0].max()
+        if L is None:
+            L = (maxz - minz) * 1e3 / (2 * n_cells)  # -> 2*L*n_cells*1e-3 == active length [m]
+
+        # Stored energy. |E|^2 = |E_inplane|^2 + |E_phi|^2 with E_phi = u_phi/r,
+        # so r*|E|^2 = r*|u|^2 + |u_phi|^2/r. The phi integral gives 2*pi (m=0)
+        # or pi (m>=1, cos^2/sin^2 average).
+        U = az * 0.5 * eps0 * Integrate(
+            y * InnerProduct(u_gf, Conj(u_gf)) + 1 / y * uphi_gf * Conj(uphi_gf), mesh).real
+
+        norm_u = Norm(u_gf)
+        xpnts_surf = np.array(list(get_boundary_nodes(mesh, 'PEC')))
+        r0 = 0.5 * xpnts_surf[:, 1][xpnts_surf[:, 1] > AXIS_EPS].min()   # aperture/2 (m>=1)
         n_ax_pts = int(5000 * (maxz - minz))
         xpnts_ax = np.linspace(minz, maxz, n_ax_pts)
-        Ez_r0 = np.array([u_gf(mesh(xi, r0))[0] for xi in xpnts_ax])
 
-        trapz = getattr(np, 'trapezoid', np.trapz)
-        Vz_r0 = abs(trapz(Ez_r0 * np.exp(1j * k_wave * xpnts_ax), xpnts_ax))
-        Vt = m * Vz_r0 / (k_wave * r0)
-        Et = Vt / (n_cells * L * 1e-3 * 2)
+        # --- Voltage / gradient / R-over-Q: the only physics that branches -----
+        if m == 0:
+            # On-axis E_z; a TE mode has no E_z, so its Vacc is zero.
+            Vout = abs(Integrate(u_gf[0] * exp(1j * k_wave * x), mesh,
+                                 definedon=mesh.Boundaries('AXI')))
+            RoQ_norm = RoQ = Vout ** 2 / (w * U)
+            Ez_axis = np.array([norm_u(mesh(xi, 0.0)) for xi in xpnts_ax])   # |E| on axis
+        else:
+            # Off-axis line r0 + Panofsky-Wenzel kick (E_z ~ r^m vanishes on axis).
+            Ez_r0 = np.array([u_gf(mesh(xi, r0))[0] for xi in xpnts_ax])
+            trapz = getattr(np, 'trapezoid', np.trapz)
+            Vz = abs(trapz(Ez_r0 * np.exp(1j * k_wave * xpnts_ax), xpnts_ax))
+            Vout = m * Vz / (k_wave * r0)
+            RoQ = Vout ** 2 / (w * U)
+            RoQ_norm = RoQ / r0 ** (2 * (m - 1))
+            Ez_axis = np.abs(Ez_r0)
+        Eout = Vout / (n_cells * L * 1e-3 * 2)   # active length = 2*L*n_cells
 
-        # Stored energy (phi integral of cos^2/sin^2 gives pi for m >= 1)
-        U = pi * 0.5 * eps0 * Integrate(
-            y * InnerProduct(u_gf, Conj(u_gf)) + 1 / y * uphi_gf * Conj(uphi_gf), mesh).real
-        RoQ = Vt ** 2 / (w * U)
-        RoQ_norm = RoQ / r0 ** (2 * (m - 1))
-
-        # Peak surface fields: exact azimuthal maxima
-        norm_u = Norm(u_gf)
-        norm_H_inplane = Norm(H_inplane)
-        norm_H_phi = Norm(H_phi)
-        Esurf, Hsurf2 = [], []
+        # --- Peak surface fields (pointwise maxima over the azimuth) -----------
+        norm_H_in, norm_H_phi = Norm(H_inplane), Norm(H_phi)
+        Esurf, Hsurf = [], []
         for (xi, yi) in xpnts_surf:
             mip = mesh(xi, yi)
-            e_in = norm_u(mip)
-            e_phi = abs(uphi_gf(mip)) / yi if yi > 1e-9 else 0.0
-            h_in = norm_H_inplane(mip) if yi > 1e-9 else 0.0
-            h_phi = norm_H_phi(mip)
-            Esurf.append(max(e_in, e_phi))
-            Hsurf2.append((h_in, h_phi))
+            e_phi = abs(uphi_gf(mip)) / yi if yi > AXIS_EPS else 0.0
+            Esurf.append(max(norm_u(mip), e_phi))
+            Hsurf.append(max(norm_H_in(mip), norm_H_phi(mip)))
         Epk = max(Esurf)
-        Hpk = max(max(h) for h in Hsurf2)
+        Hpk = max(Hsurf)
 
-        # Surface power loss: segment-wise line integral over the PEC wall,
-        # pi factor from the azimuthal average of cos^2/sin^2
+        # --- Surface power loss: H1-projected boundary integral (all m) --------
+        # H = curl(E)/(mu0 w) cannot be SIMD-evaluated as a GridFunction curl on
+        # a boundary, so it is projected into continuous H1 fields whose traces
+        # integrate cleanly — mesh-convergent and higher-order than sampling |H|
+        # at the element endpoints. 0.5 = time averaging, az = azimuth.
         Rs = surface_resistance(w, conductivity, surface_resistance_ohm)
-        Ploss = 0.0
-        for el in mesh.Elements(BND):
-            if el.mat != 'PEC':
-                continue
-            p1, p2 = [mesh[vtx].point for vtx in el.vertices]
-            dl = np.hypot(p2[0] - p1[0], p2[1] - p1[1])
-            seg = 0.0
-            for (xi, yi) in (p1, p2):
-                mip = mesh(xi, yi)
-                h_in = norm_H_inplane(mip) if yi > 1e-9 else 0.0
-                h_phi = norm_H_phi(mip)
-                seg += 0.5 * (h_in ** 2 + h_phi ** 2) * yi
-            Ploss += seg * dl
-        Ploss *= pi * 0.5 * Rs
+        order_ = u_gf.space.globalorder
+        Hphi_gf = GridFunction(H1(mesh, order=order_, complex=True))
+        Hphi_gf.Set(H_phi)
+        Hin_gf = GridFunction(VectorH1(mesh, order=order_, complex=True))
+        Hin_gf.Set(H_inplane)
+        Ploss = az * 0.5 * Rs * Integrate(
+            y * (Hphi_gf * Conj(Hphi_gf) + InnerProduct(Hin_gf, Conj(Hin_gf))), mesh,
+            definedon=mesh.Boundaries('PEC')).real
 
-        # Cell-to-cell coupling (same convention as the monopole passband:
-        # pi-mode vs the index-0 lowest passband mode)
+        # Cell-to-cell coupling: mode vs the lowest passband mode (index 0).
         if len(freq_fes) > 1:
             kcc = 2 * (freq_fes[mode_idx] - freq_fes[0]) / (freq_fes[mode_idx] + freq_fes[0]) * 100
         else:
@@ -860,27 +1032,22 @@ class NGSolveMEVP:
         Q = w * U / Ploss
         G = Q * Rs
 
-        # Off-axis field profile and field flatness
-        Ez_r0_abs = np.abs(Ez_r0)
-        peaks, _ = find_peaks(Ez_r0_abs, distance=n_ax_pts // 100, width=100)
-        Ez_r0_abs_peaks = Ez_r0_abs[peaks]
+        # Axis field flatness (min/max of the on-axis |E| peaks)
+        peaks, _ = find_peaks(Ez_axis, distance=n_ax_pts // 100, width=100)
         try:
-            ff = min(Ez_r0_abs_peaks) / max(Ez_r0_abs_peaks) * 100
+            ff = min(Ez_axis[peaks]) / max(Ez_axis[peaks]) * 100
         except ValueError:
             ff = 0
 
         qois = {
             "m": m,
             "polarisation": pol_name(m),
-            "r0 [mm]": r0 * 1e3,
             "Normalization Length [mm]": 2 * L,
             "N Cells": n_cells,
             "freq [MHz]": freq_fes[mode_idx],
             "Q []": Q,
-            "Vacc [MV]": Vt * 1e-6,
-            "Vt [MV]": Vt * 1e-6,
-            "Eacc [MV/m]": Et * 1e-6,
-            "Et [MV/m]": Et * 1e-6,
+            "Vacc [MV]": Vout * 1e-6,
+            "Eacc [MV/m]": Eout * 1e-6,
             "Epk [MV/m]": Epk * 1e-6,
             "Hpk [A/m]": Hpk,
             "Bpk [mT]": mu0 * Hpk * 1e3,
@@ -888,18 +1055,33 @@ class NGSolveMEVP:
             "ff [%]": ff,
             "Rsh [MOhm]": RoQ * Q * 1e-6,
             "R/Q [Ohm]": RoQ,
-            "R/Q_t [Ohm/m^(2(m-1))]": RoQ_norm,
-            "Epk/Eacc []": Epk / Et,
-            "Bpk/Eacc [mT/MV/m]": mu0 * Hpk * 1e9 / Et,
+            "Epk/Eacc []": Epk / Eout,
+            "Bpk/Eacc [mT/MV/m]": mu0 * Hpk * 1e9 / Eout,
             "G [Ohm]": G,
             "GR/Q [Ohm^2]": G * RoQ,
-            "No of Mesh Elements": mesh.GetNE(VorB.VOL)
+            "No of Mesh Elements": mesh.GetNE(VorB.VOL),
         }
+        if m >= 1:
+            # Transverse-specific keys (the shared Vacc/Eacc/R-Q above already
+            # hold the transverse analogues for m>=1).
+            qois["r0 [mm]"] = r0 * 1e3
+            qois["Vt [MV]"] = Vout * 1e-6
+            qois["Et [MV/m]"] = Eout * 1e-6
+            qois["R/Q_t [Ohm/m^(2(m-1))]"] = RoQ_norm
 
-        if save_dir:
-            Ez_r0_abs_df = pd.DataFrame({'z': xpnts_ax, '|Ez(r0)|': Ez_r0_abs})
-            Ez_r0_abs_df.to_csv(os.path.join(save_dir, f'Ez_r0_abs_mode_{mode_idx}.csv'),
-                                index=False, sep='\t', float_format='%.32f')
+        # Only the PRIMARY mode of interest owns the axis-field CSV the plots
+        # read; without the write_axis gate the all-modes loop clobbered it
+        # (the LAST mode won), so a single-cell fundamental's plot showed a
+        # higher mode (a node at the centre instead of the accelerating peak).
+        if save_dir and write_axis:
+            if m == 0:
+                pd.DataFrame({'z(0, 0)': xpnts_ax, '|Ez(0, 0)|': Ez_axis}).to_csv(
+                    os.path.join(save_dir, 'Ez_0_abs.csv'),
+                    index=False, sep='\t', float_format='%.32f')
+            else:
+                pd.DataFrame({'z': xpnts_ax, '|Ez(r0)|': Ez_axis}).to_csv(
+                    os.path.join(save_dir, f'Ez_r0_abs_mode_{mode_idx}.csv'),
+                    index=False, sep='\t', float_format='%.32f')
 
         return qois
 
@@ -936,25 +1118,28 @@ class NGSolveMEVP:
 
     @staticmethod
     def _field_cf(gfu_e, gfu_h, which):
-        """Magnitude coefficient function for plotting; understands both the
-        monopole HCurl fields and the m-pole product-space fields, where
-        *which* may additionally be 'Ephi' or 'Hphi' for the azimuthal
-        envelopes."""
-        comps = getattr(gfu_e, 'components', ())
-        which = which.lower()
-        if len(comps) == 2:  # m-pole HCurl x H1 solution
-            u_gf, uphi_gf = comps
-            H_inplane, H_phi = gfu_h
-            if which in ('ephi', 'e_phi'):
-                return Norm(uphi_gf / y)
-            if which == 'h':
-                return Norm(H_inplane)
-            if which in ('hphi', 'h_phi'):
-                return Norm(H_phi)
-            return Norm(u_gf)
-        return Norm(gfu_e) if which == 'e' else Norm(gfu_h)
+        """Magnitude coefficient function for plotting the product-space fields
+        (every polarisation, monopole included).
 
-    def plot_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
+        'E'/'H' give the total magnitude of the azimuthal envelope, combining
+        the in-plane and azimuthal groups; 'Ephi'/'Hphi' isolate the azimuthal
+        component. For a TM mode the azimuthal E vanishes and the in-plane H
+        vanishes, so 'E' reduces to |E_inplane| and 'H' to |H_phi| — the same
+        fields the HCurl-only monopole formulation used to plot.
+        """
+        u_gf, uphi_gf = gfu_e.components
+        H_inplane, H_phi = gfu_h
+        which = which.lower()
+        e_phi = uphi_gf * IfPos(y - AXIS_EPS, 1 / y, 0)   # E_phi = u_phi / r
+        if which in ('ephi', 'e_phi'):
+            return Norm(e_phi)
+        if which in ('hphi', 'h_phi'):
+            return Norm(H_phi)
+        if which == 'h':
+            return sqrt(Norm(H_inplane) ** 2 + Norm(H_phi) ** 2)
+        return sqrt(Norm(u_gf) ** 2 + Norm(e_phi) ** 2)
+
+    def show_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
         mesh = self.load_mesh(folder)
         gfu_E, gfu_H = self.load_fields(folder, mode)
         field_cf = self._field_cf(gfu_E[mode], gfu_H[mode], which)
@@ -962,15 +1147,24 @@ class NGSolveMEVP:
         if plotter == 'matplotlib':
             self._plot_field_matplotlib(mesh, field_cf)
         else:
-            Draw(field_cf, mesh, order=2, settings={'Objects': {'Wireframe': False}})
+            return Draw(field_cf, mesh, order=2, settings={'Objects': {'Wireframe': False}})
 
-    def plot_mesh(self, folder, plotter='ngsolve'):
+    def show_mesh(self, folder, plotter='ngsolve'):
         mesh = self.load_mesh(folder)
 
         if plotter == 'matplotlib':
             self._plot_mesh_matplotlib(mesh)
         else:
-            Draw(mesh)
+            return Draw(mesh)
+
+    def show_geometry(self, cav, maxh=20e-3, order=1, plotter='ngsolve'):
+        """Draw the cavity's meshed geometry *without* needing a prior run — a
+        coarse mesh is built on the fly just to preview the analysed domain."""
+        mesh = self._build_mesh(cav, maxh, order)
+        if plotter == 'matplotlib':
+            self._plot_mesh_matplotlib(mesh)
+        else:
+            return Draw(mesh)
 
     @staticmethod
     def _mesh_points_and_triangles(mesh, subdivide=0):

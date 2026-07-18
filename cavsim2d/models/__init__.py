@@ -3,11 +3,13 @@
 Each model owns its geometry (a :class:`~cavsim2d.geometry.Profile`, or a gmsh
 ``.geo`` writer) and inherits the run/tune/plot machinery from :class:`Cavity`.
 
-This package holds *only* models. The container (:class:`~cavsim2d.cavity.Cavities`),
-the Dakota driver and the operating-point tables live in :mod:`cavsim2d.cavity`.
+This package holds *only* models. The multi-device manager
+(:class:`~cavsim2d.study.Study`) lives in :mod:`cavsim2d.study`, the Dakota
+driver in :mod:`cavsim2d.analysis.uq`, and the operating-point tables in
+:mod:`cavsim2d.data_module`.
 
-Models are re-exported from :mod:`cavsim2d.cavity` too, so
-``from cavsim2d.cavity import EllipticalCavity`` keeps working.
+The public entry point is the top-level package, so
+``from cavsim2d import EllipticalCavity, Study`` is the supported import.
 """
 from cavsim2d.models.base import Cavity
 from cavsim2d.models.elliptical import EllipticalCavity

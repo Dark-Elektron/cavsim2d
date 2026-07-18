@@ -357,7 +357,9 @@ class Profile:
         segments with different tags — e.g. a pillbox end plane, whose beam
         aperture and metal plate are collinear but PMC vs PEC. Instead the
         boundaries are named on the generated mesh (:meth:`_name_boundaries`),
-        which is robust to that healing.
+        which is robust to that healing. (Per-edge ``maxh`` hints are stripped by
+        the same healing, so local refinement is done with ``RestrictH`` size
+        points in :meth:`mesh`, not on the OCC edges.)
         """
         # Deferred: netgen is an optional heavy dependency. Keep `cavsim2d`
         # importable (and Profile constructible) on installs without it.
@@ -490,12 +492,47 @@ class Profile:
                     corners.append(p)
         return corners
 
-    def mesh(self, maxh, order=1):
-        """Return a boundary-tagged NGSolve mesh of the profile."""
+    def mesh(self, maxh, order=1, edge_maxh=None):
+        """Return a boundary-tagged NGSolve mesh of the profile.
+
+        ``edge_maxh`` (boundary name -> local maxh, metres) refines specific
+        boundaries below the global ``maxh`` — e.g. ``{'PEC': 1e-3}`` resolves
+        the near-wall field for multipacting while the interior stays coarse.
+        Implemented with ``RestrictH`` mesh-size points sampled along the named
+        boundary at its target size (per-edge OCC ``maxh`` hints do not survive
+        the shape-healing that :meth:`to_occ_face` relies on).
+        """
         # Deferred: netgen/ngsolve are optional heavy dependencies.
         from netgen.occ import OCCGeometry
         from ngsolve import Mesh
-        mesh = Mesh(OCCGeometry(self.to_occ_face(), dim=2).GenerateMesh(maxh=maxh))
+        from netgen.meshing import MeshingParameters
+
+        geo = OCCGeometry(self.to_occ_face(), dim=2)
+        if edge_maxh:
+            all_names = {s['name'] for s in self._segs}
+            mp = MeshingParameters(maxh=maxh)
+            for name, h in edge_maxh.items():
+                if name not in all_names:
+                    raise ValueError(f"edge_maxh: no boundary named {name!r} in this "
+                                     f"profile (has {sorted(all_names)}).")
+                skip = tuple(all_names - {name})
+                # contour_points densifies curved segments at ~h but keeps only
+                # the two endpoints of straight ones, so a flat/tangent wall
+                # section would get no interior size points and stay coarse.
+                # Subdivide every polyline gap wider than h so the refinement
+                # is uniform along the whole boundary.
+                pts = np.asarray(self.contour_points(float(h), skip=skip), dtype=float)
+                dense = [pts[0]]
+                for a, b in zip(pts[:-1], pts[1:]):
+                    d = float(np.hypot(*(b - a)))
+                    n_sub = max(1, int(np.ceil(d / float(h))))
+                    for k in range(1, n_sub + 1):
+                        dense.append(a + (b - a) * (k / n_sub))
+                for z, r in dense:
+                    mp.RestrictH(x=float(z), y=float(r), z=0, h=float(h))
+            mesh = Mesh(geo.GenerateMesh(mp=mp))
+        else:
+            mesh = Mesh(geo.GenerateMesh(maxh=maxh))
         self._name_boundaries(mesh)
         if order and order > 1:
             try:

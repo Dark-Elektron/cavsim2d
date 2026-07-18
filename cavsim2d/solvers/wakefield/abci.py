@@ -12,15 +12,22 @@ from cavsim2d.solvers.ABCI.abci import ABCI
 from cavsim2d.solvers.wakefield.base import WakefieldBackend, WakefieldResult
 
 # Per-polarisation ABCI curve titles and result units.
+# ABCI quotes its impedance in **kOhm** (kOhm/m transverse), so that is what the
+# numbers in these frames are. They used to be labelled [Ohm], which made a
+# wakefield spectrum sit a factor of 1000 below an eigenmode-reconstructed one
+# plotted beside it. Only the label was wrong — the values are ABCI's, untouched.
+# Use WakefieldSolver.impedance(unit=...) to get them in Ohm/MOhm instead.
 _CURVES = {
     0: {'mag': 'Longitudinal Impedance Magnitude',
         're': 'Real Part of Longitudinal Impedance',
         'im': 'Imaginary Part of Longitudinal Impedance',
-        'z': 'Ohm', 'w': 'V/pC', 'loss': 'Longitudinal'},
+        'z': 'kOhm', 'w': 'V/pC', 'loss': 'Longitudinal',
+        'kname': 'k_loss(f)', 'ku': 'V/pC'},
     1: {'mag': 'Transversal Impedance Magnitude',
         're': 'Real Part of Transverse Impedance',
         'im': 'Imaginary Part of Transverse Impedance',
-        'z': 'Ohm/m', 'w': 'V/pC/m', 'loss': 'Transverse'},
+        'z': 'kOhm/m', 'w': 'V/pC/m', 'loss': 'Transverse',
+        'kname': 'k_kick(f)', 'ku': 'V/pC/m'},
 }
 
 
@@ -54,7 +61,8 @@ class ABCIWakefield(WakefieldBackend):
 
     @staticmethod
     def _frame(folder, mrot):
-        """One polarisation's impedance spectrum + wake potential as a frame."""
+        """One polarisation's impedance spectrum + wake potential + cumulative
+        loss/kick-factor spectrum as a frame."""
         c = _CURVES[mrot]
         try:
             d = ABCIData(folder, '', mrot)
@@ -64,21 +72,37 @@ class ABCIWakefield(WakefieldBackend):
             s, w, _ = d.get_data('Wake Potentials')
         except (FileNotFoundError, KeyError, IndexError):
             return pd.DataFrame()
-        n = max(len(f), len(s))
+
+        # Cumulative loss/kick factor k(F) vs frequency — ABCI's 'Loss Factor
+        # Spectrum Integrated upto F' (kick factor for the transverse run). Its
+        # own frequency grid, so it is padded like the wake columns; absent on
+        # some runs, in which case those columns are simply omitted.
+        fk, kcum = None, None
+        try:
+            fk, kcum, _ = d.get_data('Loss Factor Spectrum Integrated upto F')
+        except (KeyError, IndexError):
+            pass
+
+        lengths = [len(f), len(s)] + ([len(fk)] if fk is not None else [])
+        n = max(lengths)
 
         def pad(a):
             a = list(a)
             return a + [np.nan] * (n - len(a))
 
         zu, wu = c['z'], c['w']
-        return pd.DataFrame({
+        cols = {
             'f [MHz]': pad(np.asarray(f) * 1e3),        # ABCI f is GHz
             f'|Z| [{zu}]': pad(zmag),
             f'Re(Z) [{zu}]': pad(zre),
             f'Im(Z) [{zu}]': pad(zim),
             's [m]': pad(s),
             f'W [{wu}]': pad(w),
-        })
+        }
+        if fk is not None:
+            cols['fk [MHz]'] = pad(np.asarray(fk) * 1e3)
+            cols[f"{c['kname']} [{c['ku']}]"] = pad(kcum)
+        return pd.DataFrame(cols)
 
     @staticmethod
     def _qois(folder):

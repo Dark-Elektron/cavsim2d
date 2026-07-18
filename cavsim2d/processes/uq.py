@@ -264,8 +264,12 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
 
         spawn_names = [cav_.name for cav_ in cavs_object.cavities_list]
         d = {name: None for name in spawn_names}
+        # Read objectives through the SAME backend the perturbed variants were
+        # solved with (default 'abci'); otherwise a non-ABCI solver's frames are
+        # unreadable and every objective comes back empty.
         df_wake, _ = get_wakefield_objectives_value(
-            d, norm_objs, Path(cavs_object.projectDir))
+            d, norm_objs, Path(cavs_object.projectDir),
+            solver=wakefield_config.get('solver', 'abci'))
 
         if 'key' in df_wake.columns:
             df_wake = df_wake.set_index('key')
@@ -301,9 +305,13 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                 'kurtosis': [kurtosis_obj[i]],
             }
 
-        # The optimiser reads this from ``<cav>/wakefield/uq.json`` (via the
-        # ``tuned_abci`` / ``legacy_abci`` paths in ``Optimisation._evaluate_generation``).
-        with open(os.path.join(cav.wakefield_dir, 'uq.json'), 'w') as f:
+        # Write to ``<cav>/uq/uq.json`` — the same file the eigenmode branch
+        # writes and the exact file the optimiser reads back
+        # (``filename_abci = uq_json`` -> ``<cav>/uq/uq.json`` in
+        # ``Optimisation._evaluate_generation``) and the QOI-spread plots load.
+        # ``cav.uq_dir`` is created above; ``cav.wakefield_dir`` (the old target)
+        # need not exist here, which is why this used to raise FileNotFoundError.
+        with open(os.path.join(cav.uq_dir, 'uq.json'), 'w') as f:
             json.dump(result_dict_wake, f, indent=4, separators=(',', ': '))
 
 

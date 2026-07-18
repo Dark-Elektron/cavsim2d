@@ -304,9 +304,8 @@ class Pillbox(Cavity):
 
 
     def plot(self, what, ax=None, **kwargs):
-        if what.lower() in ('geometry', 'zl', 'zt', 'wpl', 'wpt'):
-            # Geometry from the Profile; wakefield curves from the normalised
-            # frames — both via the geometry/solver-independent base plotter.
+        if what.lower() == 'geometry':
+            # Geometry from the Profile via the model-independent base plotter.
             return super().plot(what, ax=ax, **kwargs)
 
         if what.lower() == 'convergence':

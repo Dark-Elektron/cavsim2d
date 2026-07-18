@@ -1,7 +1,7 @@
 """Solver-agnostic wakefield backend protocol.
 
 A backend runs a wakefield / impedance solve and reads the result into one
-normalised schema, so callers (``cav.wakefield``, ``plot('zl')``, the ZL/ZT
+normalised schema, so callers (``cav.wakefield``, the ZL/ZT
 objectives) never touch a solver-specific reader. ABCI is one backend; the
 planned in-house NGSolve time-domain solver will be another — swapping them
 changes only ``wakefield_config['solver']``.
@@ -27,7 +27,8 @@ class WakefieldResult:
     """Normalised wakefield result, independent of the solver that produced it.
 
     ``wake_z`` / ``wake_t`` are DataFrames with columns ``f [MHz]``, ``|Z|``,
-    ``Re(Z)``, ``Im(Z)`` (units ``[Ohm]`` longitudinal, ``[Ohm/m]`` transverse)
+    ``Re(Z)``, ``Im(Z)`` (in the backend's native unit — ABCI's ``[kOhm]``
+    longitudinal, ``[kOhm/m]`` transverse; the label carries the prefix)
     and ``s [m]``, ``W`` (``[V/pC]`` / ``[V/pC/m]``). The impedance columns share
     the frequency grid; the wake columns share the ``s`` grid; the two grids are
     padded to equal length with NaN. ``qois`` is a flat dict of scalars

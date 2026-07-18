@@ -8,7 +8,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d.cavity import EllipticalCavity
+from cavsim2d import EllipticalCavity
 
 
 def test_standalone_eigenmode_and_save_load(tmp_path, monkeypatch):

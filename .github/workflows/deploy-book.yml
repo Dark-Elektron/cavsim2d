@@ -1,9 +1,23 @@
-name: Deploy Jupyter Book
+name: Deploy docs
+
+# The docs are a Sphinx project (docs/source/conf.py, sphinx-immaterial theme),
+# NOT a Jupyter Book: there is no docs/_config.yml or docs/_toc.yml, so the old
+# `jupyter-book build` step could never have built them. Build with sphinx.
+#
+# Example notebooks under docs/source/examples/ are committed WITH their outputs
+# and are not executed here (nb_execution_mode = 'off' in conf.py): they need
+# NGSolve + gmsh and one of them solves 900 eigenmodes. Re-run them locally and
+# commit the result when the library changes.
 
 on:
   push:
     branches:
-      - main
+      - master
+  # allow a manual run from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-and-deploy:
@@ -17,24 +31,16 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      - name: Install the package and its docs dependencies
+        # autodoc imports cavsim2d, so the runtime deps must be installed too.
+        run: pip install ".[docs]"
 
-      - name: Install Jupyter Book and the package
-        # The book's autodoc and executed notebooks import cavsim2d, so its
-        # runtime dependencies (from pyproject.toml) must be installed too —
-        # otherwise the build fails with ModuleNotFoundError (e.g. termcolor).
-        run: |
-          pip install "jupyter-book>=1"
-          pip install .
-
-      - name: Build the book
-        working-directory: docs
-        run: jupyter-book build --html
+      - name: Build the docs
+        run: sphinx-build -b html docs/source docs/_build/html --keep-going
 
       - name: Deploy to GitHub Pages
+        # only publish from the default branch, not from manual test runs on forks
+        if: github.ref == 'refs/heads/master'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

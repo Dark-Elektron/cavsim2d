@@ -16,11 +16,44 @@ from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half
 from cavsim2d.geometry.writers.multipac import writeCavityForMultipac, writeCavityForMultipac_multicell
 
 class EllipticalCavity(Cavity):
+    """Multi-cell elliptical RF cavity.
+
+    Each half-cell is parameterised by ``[A, B, a, b, Ri, L, Req]`` (mm). See the
+    :meth:`__init__` docstring for the labelled geometry sketch — i.e.
+    ``help(EllipticalCavity)`` prints the parameterisation.
+    """
     uses_cell_suffixes = True
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  cell_parameterisation='simplecell', color='k', plot_label=None):
-        """A multi-cell elliptical cavity.
+        r"""A multi-cell elliptical cavity.
+
+        Geometry / parameterisation
+        ---------------------------
+        A half-cell is one quarter of the meridian outline: an **iris** ellipse
+        near the aperture, joined by a straight wall segment to an **equator**
+        ellipse at the outer wall. The seven parameters ``[A, B, a, b, Ri, L,
+        Req]`` (all in **mm**) fix it::
+
+            r
+            ^                        equator ellipse
+          Req |- - - - - - - - - .--''''''--.   (z semi-axis A, r semi-axis B)
+              |                ,-'            \
+              |              /                 |
+              |            /  <- wall, angle alpha to the z-axis
+              |          ,'                    |
+              |    _..--'   iris ellipse       |
+           Ri |--''         (z semi-axis a,    |
+              |              r semi-axis b)     |
+              +----------------------------------------> z
+              |<--------------- L -------------->|
+                       (half-cell length; full cell = 2 L)
+
+        The full cell mirrors this quarter about the equator plane (z = L) and
+        the axis (r = 0); a multi-cell cavity chains ``n_cells`` of them. Only the
+        upper half (r >= 0) is the analysed axisymmetric domain — that is what
+        ``cav.plot('geometry')`` draws. See the figure ``docs/images/cavity.jpg``
+        and the :doc:`Eigenmode <eigenmode>` guide for the labelled parameters.
 
         Parameters
         ----------
@@ -36,6 +69,8 @@ class EllipticalCavity(Cavity):
             - ``L``        : half-cell length (iris plane to equator plane); the
               full cell length is ``2*L``.
             - ``Req``      : equator radius.
+            - ``alpha``    : wall inclination angle [deg], derived from the above
+              (the optional 8th slot); it is a computed result, not an input.
 
             ``mid_cell`` sets the interior cells; ``end_cell_left`` /
             ``end_cell_right`` set the two ends (default to ``mid_cell``). A
@@ -1391,6 +1426,7 @@ class EllipticalCavity(Cavity):
                end_cell_left=self.end_cell_left, end_cell_right=self.end_cell_right,
                beampipe=self.beampipe, plot=plot)
         return file_path
+    
     def rebuild(self, parameters, beampipe=None):
         """A fresh EllipticalCavity from a suffixed parameter dict (A_m, ..., Req_er)."""
         names = ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')

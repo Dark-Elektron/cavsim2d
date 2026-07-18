@@ -9,7 +9,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d.cavity import Cavities, EllipticalCavity
+from cavsim2d import Cavities, EllipticalCavity
 from cavsim2d.models.base import Cavity
 
 
@@ -100,7 +100,7 @@ def test_require_raises_with_a_message_and_survives_O():
 
 def test_config_errors_reach_the_user(project_dir):
     """A user mistake raises ValueError with the real message, not AssertionError: None."""
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     cavs = Cavities(project_dir)
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     with pytest.raises(ValueError, match='number of names'):

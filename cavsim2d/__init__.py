@@ -15,20 +15,19 @@ Solver objects (attached as lazy properties on Cavity/Cavities):
     cav.wakefield      - WakefieldSolver
     cavs.optimisation  - OptimisationSolver
 """
-from cavsim2d.cavity import (
-    Study,
-    Cavities,
+from cavsim2d.models import (
     Cavity,
     EllipticalCavity,
     EllipticalCavityFlatTop,
     SplineCavity,
     RFGun,
     Pillbox,
-    Dakota,
-    OperationPoints,
-    show_welcome,
     CircularWaveguide,
 )
+from cavsim2d.study import Study, Cavities
+from cavsim2d.analysis.uq.dakota import Dakota
+from cavsim2d.data_module.operating_points import OperationPoints
+from cavsim2d.utils.welcome import show_welcome
 
 from cavsim2d.solvers import (
     TuneSolver,

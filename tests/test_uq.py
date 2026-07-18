@@ -9,7 +9,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d.cavity import Cavities, EllipticalCavity
+from cavsim2d import Cavities, EllipticalCavity
 
 
 def _cavs(project_dir):
@@ -109,7 +109,7 @@ def test_half_cell_free_variables_respect_continuity():
 
 
 def test_perturb_half_cells_preserves_continuity(project_dir):
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     from cavsim2d.utils.shapes import perturb_half_cells, half_cells_to_dataframe
     from cavsim2d.geometry.contours import continuity_violations
 
@@ -137,7 +137,7 @@ def test_perturb_half_cells_preserves_continuity(project_dir):
 def test_half_cell_cavity_never_falls_back_to_gmsh(project_dir):
     """Installing half-cells drops the .geo: a fallback would solve a *different*
     cavity, because write_geometry can only express uniform mid-cells."""
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 
     cavs = Cavities(project_dir)
@@ -165,7 +165,7 @@ def test_half_cell_cavity_never_falls_back_to_gmsh(project_dir):
 
 
 def test_multicell_uq_runs_end_to_end(project_dir):
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
 
     cavs = Cavities(project_dir)
     cav = EllipticalCavity(2, MC_TESLA, MC_TESLA, MC_TESLA, beampipe='both')
@@ -198,7 +198,7 @@ def test_uq_works_for_every_cavity_type(project_dir):
     because base.spawn called `type(self)(name=..., geo_filepath=...)`.
     """
     import numpy as np
-    from cavsim2d.cavity import Cavities, Pillbox, EllipticalCavityFlatTop, RFGun
+    from cavsim2d import Cavities, Pillbox, EllipticalCavityFlatTop, RFGun
 
     ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
     gun = {'geometry': {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,

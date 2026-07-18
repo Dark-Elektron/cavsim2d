@@ -84,7 +84,10 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         # Run UQ if configured. With uq_config['cell_complexity'] = 'multicell',
         # every half-cell becomes an independent random variable (subject to the
         # equator/iris continuity constraints); uq_parallel branches on it.
-        if 'uq_config' in eigenmode_config:
+        # Truthy check (not just presence): the complete saved config always
+        # carries 'uq_config' (None when disabled), so a bare `in` check would
+        # send every run down the UQ path.
+        if eigenmode_config.get('uq_config'):
             uq_parallel(cav, eigenmode_config, 'eigenmode')
 
         done(f'Done with Cavity {cav.name}. Time: {time.time() - start_time}')

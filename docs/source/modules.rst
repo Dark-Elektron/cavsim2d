@@ -5,4 +5,4 @@ cavsim2d
    :maxdepth: 4
 
    cavsim2d
-   setup
+

@@ -59,14 +59,14 @@ def assert_meshes_natively(cav, maxh=0.02, order=2, boundaries=('AXI', 'PEC', 'P
 
 
 def test_pillbox_meshes_natively():
-    from cavsim2d.cavity import Pillbox
+    from cavsim2d import Pillbox
     assert_meshes_natively(Pillbox(1, [100, 100, 20, 0, 0], beampipe='none'))
     assert_meshes_natively(Pillbox(2, [100, 100, 20, 20, 30], beampipe='both'))
 
 
 def test_pillbox_profile_native_matches_gmsh(project_dir):
     """The native-profile pillbox eigenmode matches the gmsh-path result."""
-    from cavsim2d.cavity import Cavities, Pillbox
+    from cavsim2d import Cavities, Pillbox
     cavs = Cavities(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     assert pb.profile() is not None          # else this silently tests gmsh
@@ -83,7 +83,7 @@ TESLA = [42, 42, 12, 19, 35, 57.7, 103.353]
 def test_elliptical_profile_exact_ellipse_arcs():
     """A symmetric single-cell elliptical cavity builds a native profile whose
     iris/equator arcs are exact conics, and meshes with its tags intact."""
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     cav = EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='none')
     prof = cav.profile()
     assert prof is not None
@@ -94,7 +94,7 @@ def test_elliptical_profile_exact_ellipse_arcs():
 
 def test_elliptical_profile_covers_multicell_and_asymmetric():
     """Multicell, asymmetric end cells and one-sided beampipes are all native now."""
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     end = list(TESLA)
     end[5] = 60.0                                    # different half-cell length
     for n, mid, el, er, bp in [(2, TESLA, TESLA, TESLA, 'both'),
@@ -115,20 +115,20 @@ def test_elliptical_profile_returns_none_when_degenerate():
     converge). Physically silly but solvable sets — e.g. Req < Ri — still return a
     contour; the profile layer does not validate them.
     """
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     bad = [200, 42, 12, 19, 35, 57.7, 103.353]       # equator semi-axis A far too large
     assert EllipticalCavity(1, bad, bad, bad, beampipe='none').profile() is None
 
 
 def test_elliptical_meshes_natively():
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     assert_meshes_natively(EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='none'))
     assert_meshes_natively(EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='both'))
 
 
 def test_elliptical_profile_native_matches_gmsh(project_dir):
     """Native exact-ellipse TESLA 1-cell reproduces the gmsh-path eigenmode."""
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     cavs = Cavities(project_dir)
     cav = EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='none')
     assert cav.profile() is not None          # else this silently tests gmsh
@@ -143,7 +143,7 @@ def test_elliptical_profile_native_matches_gmsh(project_dir):
 
 def test_multipac_export_writes_contour(tmp_path):
     """The Multipac exporter is reachable from the public API and emits a contour."""
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     cav = EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='both')
     out = tmp_path / 'geodata.n'
     cav.export_multipac(str(out), plot=False)
@@ -184,7 +184,7 @@ GUN_SHAPE = {'geometry': {
 
 
 def test_flattop_meshes_natively():
-    from cavsim2d.cavity import EllipticalCavityFlatTop
+    from cavsim2d import EllipticalCavityFlatTop
     for n, bp in ((1, 'both'), (1, 'none'), (2, 'both'), (3, 'left')):
         assert_meshes_natively(EllipticalCavityFlatTop(n, FLATTOP, FLATTOP, FLATTOP, beampipe=bp))
 
@@ -195,7 +195,7 @@ def test_flattop_with_zero_flat_equals_elliptical(project_dir):
     This is the flat top's only ground truth: its `.geo` writer emits no file at
     all, so there is no gmsh path to compare against.
     """
-    from cavsim2d.cavity import Cavities, EllipticalCavity, EllipticalCavityFlatTop
+    from cavsim2d import Cavities, EllipticalCavity, EllipticalCavityFlatTop
     base = FLATTOP[:7]
 
     def freq(cav, tag):
@@ -211,7 +211,7 @@ def test_flattop_with_zero_flat_equals_elliptical(project_dir):
 
 
 def test_flattop_frequency_falls_as_flat_lengthens(project_dir):
-    from cavsim2d.cavity import Cavities, EllipticalCavityFlatTop
+    from cavsim2d import Cavities, EllipticalCavityFlatTop
     base = FLATTOP[:7]
     freqs = []
     for l in (0, 20, 40):
@@ -225,7 +225,7 @@ def test_flattop_frequency_falls_as_flat_lengthens(project_dir):
 
 
 def test_rfgun_meshes_natively_with_exact_circular_arcs():
-    from cavsim2d.cavity import RFGun
+    from cavsim2d import RFGun
     gun = RFGun(GUN_SHAPE)
     prof = gun.profile()
     assert prof is not None
@@ -236,13 +236,13 @@ def test_rfgun_meshes_natively_with_exact_circular_arcs():
 
 def test_circular_waveguide_meshes_natively():
     """The waveguide has no PMC region — all three walls are PEC, per its .geo."""
-    from cavsim2d.cavity import CircularWaveguide
+    from cavsim2d import CircularWaveguide
     assert_meshes_natively(CircularWaveguide(100.0, 150.0), boundaries=('AXI', 'PEC'))
 
 
 def test_circular_waveguide_matches_analytic_tm010(project_dir):
     from scipy.special import jn_zeros
-    from cavsim2d.cavity import Cavities, CircularWaveguide
+    from cavsim2d import Cavities, CircularWaveguide
     R = 100.0
     cw = CircularWaveguide(R, 150.0)
     assert cw.profile() is not None          # else this silently tests gmsh
@@ -259,7 +259,7 @@ SPLINE_GEOM = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
 
 
 def test_spline_to_bezier_and_bspline_mesh_natively():
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     for kind in ('BSpline', 'Bezier'):
         cav = SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind=kind)
         assert_meshes_natively(cav)
@@ -297,7 +297,7 @@ def test_bspline_bezier_decomposition_is_exact():
 
 def test_spline_kind_alias_and_unknown():
     """'Berzier' was the old default and matched no branch -> a wall-less .geo."""
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     assert SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind='Berzier').spline_kind() == 'bezier'
     assert SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind='Bezier').spline_kind() == 'bezier'
     assert SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind='BSpline').spline_kind() == 'bspline'
@@ -314,7 +314,7 @@ def test_spline_wall_length_matches_the_true_curve():
     ~0.5% short); the native path resolves it.
     """
     from ngsolve import Integrate, CF, BND
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     cav = SplineCavity({'geometry': dict(SPLINE_GEOM), 'n_cells': 2}, kind='BSpline')
     prof = cav.profile()
     seg = [s for s in prof._segs if s['kind'] == 'spline'][0]
@@ -327,7 +327,7 @@ def test_spline_wall_length_matches_the_true_curve():
 
 
 def test_spline_cavity_eigenmode(project_dir):
-    from cavsim2d.cavity import Cavities, SplineCavity
+    from cavsim2d import Cavities, SplineCavity
     cavs = Cavities(project_dir)
     cav = SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind='Bezier')
     assert cav.profile() is not None          # else this silently tests gmsh
@@ -344,7 +344,7 @@ def test_stationary_corner_raises_actionable_error():
     The raw OCC exception is `Standard_OutOfRange`, which says nothing. Profile
     detects the corner and explains it instead.
     """
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     cav = SplineCavity({'geometry': dict(SPLINE_GEOM), 'n_cells': 2}, kind='BSpline')
     prof = cav.profile()
     corners = prof._stationary_corners()
@@ -362,7 +362,7 @@ def test_stationary_corner_raises_actionable_error():
 
 
 def test_non_spline_profiles_have_no_stationary_corners():
-    from cavsim2d.cavity import EllipticalCavity, Pillbox
+    from cavsim2d import EllipticalCavity, Pillbox
     assert EllipticalCavity(2, TESLA, TESLA, TESLA, beampipe='both').profile()._stationary_corners() == []
     assert Pillbox(1, [100, 100, 20, 0, 0], beampipe='none').profile()._stationary_corners() == []
 
@@ -371,7 +371,7 @@ def test_non_spline_profiles_have_no_stationary_corners():
 
 def test_half_cells_uniform_reproduces_the_wrapper_contour():
     """The half-cell builder is behaviour-preserving for uniform mid-cells."""
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     from cavsim2d.geometry.contours import elliptical_profile
     end = [40, 40, 10, 21, 37, 56.0, 103.353]
     for n, el, er, bp in ((1, TESLA, TESLA, 'both'), (2, TESLA, TESLA, 'both'),
@@ -385,7 +385,7 @@ def test_half_cells_uniform_reproduces_the_wrapper_contour():
 
 def test_half_cells_enforces_equator_and_iris_continuity():
     """Req is shared within a cell, Ri across the iris between adjacent cells."""
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     from cavsim2d.geometry.contours import continuity_violations
     cav = EllipticalCavity(3, TESLA, TESLA, TESLA, beampipe='both')
     assert continuity_violations(cav.half_cells()) == []
@@ -405,7 +405,7 @@ def test_half_cells_enforces_equator_and_iris_continuity():
 
 
 def test_half_cells_let_each_cell_vary_independently():
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     cav = EllipticalCavity(3, TESLA, TESLA, TESLA, beampipe='both')
     hc = cav.half_cells()
     hc[1, 4] = hc[2, 4] = 33.0                # iris cell1|cell2
@@ -424,7 +424,7 @@ def test_half_cells_let_each_cell_vary_independently():
 
 
 def test_non_elliptical_models_have_no_half_cells():
-    from cavsim2d.cavity import Pillbox
+    from cavsim2d import Pillbox
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     with pytest.raises(NotImplementedError, match='half-cell'):
         pb.half_cells()
@@ -432,7 +432,7 @@ def test_non_elliptical_models_have_no_half_cells():
 
 def test_independent_cells_change_the_eigenmode(project_dir):
     """A narrower middle iris must lower the frequency and raise R/Q."""
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
 
     def freq_rq(tag, mutate=None):
         cav = EllipticalCavity(3, TESLA, TESLA, TESLA, beampipe='both')
@@ -476,7 +476,7 @@ def test_elliptical_contour_is_a_continuous_path():
     """contour_points must trace an unbroken polyline; a reversed ellipse segment
     left a chord-length jump that showed up as a diagonal across each cell dome."""
     import numpy as np
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     cav = EllipticalCavity(2, tesla, tesla, tesla, beampipe='none')
     pts = np.asarray(cav.profile().contour_points(2e-3, skip=('AXI',)))
@@ -492,7 +492,7 @@ def test_plot_geometry_works_for_every_cavity_type():
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  RFGun, SplineCavity)
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
@@ -522,7 +522,7 @@ def test_spline_multicell_tiles_without_gaps_and_honours_beampipe():
     - profile() ignored the beampipe entirely.
     """
     import numpy as np
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
             'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
     cell_w = 0.115                                   # one cell spans 115 mm
@@ -558,7 +558,7 @@ def test_spline_mid_and_end_cells_follow_elliptical_rules():
     mid_cell/end_cell_left/end_cell_right, with elliptical-style defaults; a bare
     control-point dict still means 'this cell everywhere'."""
     import numpy as np
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     mid = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
            'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
     endl = {'p0': [0, 39], 'p1': [0, 70], 'p2': [28, 98],
@@ -587,7 +587,7 @@ def test_nested_spline_create_is_native_only_and_arbitrary_point_count(project_d
     """A nested-geometry SplineCavity must not crash in create() (the legacy .geo
     writer only handles a single flat polygon); it stays native-only. Control
     polygons are not restricted to 6 points."""
-    from cavsim2d.cavity import Cavities, SplineCavity
+    from cavsim2d import Cavities, SplineCavity
     mid = {'p0': [0, 35], 'p1': [43, 51], 'p2': [-52, 136],
            'p3': [167, 136], 'p4': [72, 51], 'p5': [115, 35]}
     oc = {'p0': [0, 35], 'p1': [40, 63], 'p2': [-45, 130],
@@ -609,7 +609,7 @@ def test_nested_spline_create_is_native_only_and_arbitrary_point_count(project_d
 def test_spline_reports_a_dispersion_cell_length():
     """SplineCavity defines a cell period, so the dispersion light line is drawn
     for it too (base _cell_length_m returns None -> no light line)."""
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     mid = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
            'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
     sc = SplineCavity({'geometry': dict(mid), 'n_cells': 9})

@@ -8,7 +8,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import requires_abci
-from cavsim2d.cavity import Cavities, Pillbox, RFGun, EllipticalCavity
+from cavsim2d import Cavities, Pillbox, RFGun, EllipticalCavity
 
 
 def test_pillbox_eigenmode(project_dir):

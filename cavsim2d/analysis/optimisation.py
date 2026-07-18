@@ -243,7 +243,8 @@ class Optimisation:
         if 'weights' in config:
             self.weights = config['weights']
             require(len(self.weights) == len(weights),
-                    "Length of delta must be equal to the length of the variables. For impedance Z entries, one less thanthe length of the interval list weights are needed. Eg. for ['min', 'ZL', [1, 2, 3]], two weights are required. ")
+                    "Length of delta must be equal to the length of the variables. For impedance Z entries, one less than "
+                    "the length of the interval list weights are needed. Eg. for ['min', 'ZL', [1, 2, 3]], two weights are required. ")
         else:
             self.weights = weights
 
@@ -328,9 +329,14 @@ class Optimisation:
         self.hv_history = []
         self.hv_ref = None
         bar = tqdm(total=self.ng_max)
-        # Degenerate-geometry errors are expected noise during random
-        # mutation/crossover/chaos — silence them for the whole EA loop.
-        with suppress_errors('Parameter set leads to degenerate geometry'):
+        # Degenerate-geometry errors AND tune-accuracy failures are expected
+        # noise during the EA: random mutation/crossover/chaos generate
+        # candidates that cannot tune to the target frequency, and those are
+        # simply discarded (they never enter the ranked population). Silence
+        # both for the whole loop so the progress bar stays readable — a real
+        # failure surfaces as an empty generation, not a wall of red text.
+        with suppress_errors('Parameter set leads to degenerate geometry',
+                             'could not be reached'):
             self._run_ea(bar)
 
     def _load_resume_state(self):
@@ -570,7 +576,16 @@ class Optimisation:
                 if not tuned_vars or freq is None:
                     info(f'Incomplete tune result for {scav.self_dir}, skipping.')
                     continue
-                tune_variable_value = last['parameters'][tuned_vars[-1]]
+                # Read the tuned value through the model's own accessor, not by
+                # indexing last['parameters'] directly: a spline's 'p3_r' is a
+                # control-point coordinate (parameters stores 'p3' = [z, r]), so
+                # a flat lookup KeyErrors. get_tune_value knows each model's
+                # representation (elliptical 'Req_m', gun 'R6', spline 'p3_r').
+                tuned_cav = scav.tuned
+                if tuned_cav is not None:
+                    tune_variable_value = tuned_cav.get_tune_value(tuned_vars[-1])
+                else:
+                    tune_variable_value = last['parameters'].get(tuned_vars[-1])
 
                 tune_result.append([tune_variable_value, freq])
                 processed_keys.append(key)
@@ -638,20 +653,34 @@ class Optimisation:
         # Apply UQ
         if self.uq_config:
             uq_result_dict = {}
-            for key in df['key']:
-                # Prefer the tuned cavity's uq files; fall back to legacy paths.
-                tuned_eigen = Path(self.projectDir) / f'{key}/tuned/eigenmode/uq.json'
-                tuned_abci = Path(self.projectDir) / f'{key}/tuned/wakefield/uq.json'
-                legacy_eigen = Path(self.projectDir) / f'{key}/eigenmode/uq.json'
-                legacy_abci = Path(self.projectDir) / f'{key}/wakefield/uq.json'
-                filename_eigen = tuned_eigen if tuned_eigen.exists() else legacy_eigen
-                filename_abci = tuned_abci if tuned_abci.exists() else legacy_abci
+            # Objectives are polarisation-qualified ('monopole:Epk/Eacc []');
+            # EIGENMODE_QOIS holds the bare names, so compare on the suffix.
+            def _bare(name):
+                return name.split(':')[-1].strip()
+            # 'key' is the dataframe INDEX throughout _evaluate_generation (as in
+            # the non-UQ path), not a column — iterate/join on the index.
+            for key in df.index:
+                # Locate this candidate's uq.json via the cavity object (robust
+                # to the project-vs-candidates-folder layout, like the eigenmode
+                # objectives above): eigenmode and wakefield UQ both write to the
+                # tuned cavity's uq/ dir.
+                scav = cavs_dict.get(key)
+                uq_json = None
+                if scav is not None:
+                    tuned = scav.tuned
+                    candidates = ([Path(tuned.self_dir) / 'uq' / 'uq.json']
+                                  if tuned is not None else [])
+                    candidates.append(Path(scav.self_dir) / 'uq' / 'uq.json')
+                    uq_json = next((c for c in candidates if c.exists()), None)
+                if uq_json is None:
+                    continue
+                filename_eigen = filename_abci = uq_json
                 if os.path.exists(filename_eigen):
                     uq_result_dict[key] = []
                     with open(filename_eigen, "r") as infile:
                         uq_d = json.load(infile)
                         for o in self.objectives:
-                            if o[1] in EIGENMODE_QOIS:
+                            if _bare(o[1]) in EIGENMODE_QOIS:
                                 expe = uq_d[o[1]]['expe'][0]
                                 std = uq_d[o[1]]['stdDev'][0]
                                 uq_result_dict[key].append(expe)
@@ -664,7 +693,7 @@ class Optimisation:
                     with open(filename_abci, "r") as infile:
                         uq_d = json.load(infile)
                         for o in self.objectives:
-                            if o[1] not in EIGENMODE_QOIS:
+                            if _bare(o[1]) not in EIGENMODE_QOIS:
                                 expe = uq_d[o[1]]['expe'][0]
                                 std = uq_d[o[1]]['stdDev'][0]
                                 uq_result_dict[key].append(expe)
@@ -681,9 +710,8 @@ class Optimisation:
 
             require(len(df_uq) > 0, 'Unfortunately, no geometry was returned from uq, optimisation terminated.')
             df_uq.columns = uq_column_names
-            df_uq.index.name = 'key'
-            df_uq.reset_index(inplace=True)
-            df = df.merge(df_uq, on='key', how='inner')
+            # df_uq is keyed by the same candidate key as df's index -> join on it.
+            df = df.join(df_uq, how='inner')
 
         # Filter by constraints
         for col, op_func, val in self.constraints:
@@ -804,42 +832,6 @@ class Optimisation:
                 pass
 
         return df
-
-    def run_uq(self, df, objectives, solver_dict, solver_args_dict, uq_config):
-        """Run UQ for eigenmode and/or wakefield solvers."""
-        df = df.loc[:, ['key', 'A', 'B', 'a', 'b', 'Ri', 'L', 'Req', "alpha_i", "alpha_o"]]
-        shape_space = {}
-
-        df = df.set_index('key')
-        for index, row in df.iterrows():
-            rw = row.tolist()
-            ct = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
-
-            if ct == 'mid cell':
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-            elif ct == 'end cell':
-                require('mid-cell' in list(self.optimisation_config.keys()),
-                        "end-cell optimisation requires mid-cell dimensions via 'mid-cell' key.")
-                require(len(self.optimisation_config['mid-cell']) > 6,
-                        'Incomplete mid-cell geometry parameter. At least 7 geometric parameters required.')
-                IC = self.optimisation_config['mid-cell']
-                df_check = tangent_coords(*np.array(IC)[0:8], 0)
-                require(df_check[-2] == 1, 'The mid-cell geometry dimensions given result in a degenerate geometry.')
-                shape_space[f'{index}'] = {'IC': IC, 'OC': rw, 'OC_R': rw}
-            else:
-                shape_space[f'{index}'] = {'IC': rw, 'OC': rw, 'OC_R': rw}
-
-        if solver_args_dict['eigenmode']:
-            if 'uq_config' in solver_args_dict['eigenmode']:
-                solver_args_dict['eigenmode']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'eigenmode')
-
-        if solver_args_dict['wakefield']:
-            if 'uq_config' in solver_args_dict['wakefield']:
-                solver_args_dict['wakefield']['uq_config']['objectives_unprocessed'] = self.objectives_unprocessed
-                uq_parallel(shape_space, objectives, solver_dict, solver_args_dict, 'wakefield')
-
-        return shape_space
 
     def run_tune_opt(self, cav_dict, tune_config):
         processes = tune_config.get('processes', 1)
@@ -1033,27 +1025,20 @@ class Optimisation:
             for i in range(len(const_var) - 1, -1, -1):
                 df[const_var[i][0]] = np.ones(initial_points) * const_var[i][1]
 
-            df['alpha_i'] = np.zeros(initial_points)
-            df['alpha_o'] = np.zeros(initial_points)
-
             return df.set_index('key')
 
         elif method_name == "Random":
             data = {'key': [f"G{n}_C{i}_P" for i in range(initial_points)]}
-            for j, (var, bounds) in enumerate(self.bounds.items()):
+            for var, bounds in self.bounds.items():
                 data[var] = random.sample(
-                    list(np.linspace(bounds[0], bounds[1] + (1 if var == 'Req' else 0), initial_points * 2)),
+                    list(np.linspace(bounds[0], bounds[1], initial_points * 2)),
                     initial_points)
-            data['alpha_i'] = np.zeros(initial_points)
-            data['alpha_o'] = np.zeros(initial_points)
             return pd.DataFrame.from_dict(data).set_index('key')
 
         elif method_name == "Uniform":
             data = {'key': [f"G{n}_C{i}_P" for i in range(initial_points)]}
-            for j, (var, bounds) in enumerate(self.bounds.items()):
-                data[var] = np.linspace(bounds[0], bounds[1] + (1 if var == 'Req' else 0), initial_points)
-            data['alpha_i'] = np.zeros(initial_points)
-            data['alpha_o'] = np.zeros(initial_points)
+            for var, bounds in self.bounds.items():
+                data[var] = np.linspace(bounds[0], bounds[1], initial_points)
             return pd.DataFrame.from_dict(data).set_index('key')
 
     @staticmethod

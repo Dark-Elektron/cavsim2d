@@ -503,7 +503,7 @@ def plot_Si_D(Si_D, which=None, conf_intervals=True, ax=None, figsize=None, subc
 
             if ii == 0:
                 if which == 'delta':
-                    axs[fr'{d}'].set_ylabel('$\delta$', fontsize=20)
+                    axs[fr'{d}'].set_ylabel(r'$\delta$', fontsize=20)
                 else:
                     axs[f'{d}'].set_ylabel(f'{which}', fontsize=20)
             else:
@@ -527,7 +527,7 @@ def plot_Si_D(Si_D, which=None, conf_intervals=True, ax=None, figsize=None, subc
     return axs
 
 
-def plot_error(Si_D, which=None, ax=None, figsize=None, subcategories=True, label='$||\mathbf{\epsilon}||_2$',
+def plot_error(Si_D, which=None, ax=None, figsize=None, subcategories=True, label=r'$||\mathbf{\epsilon}||_2$',
                transpose=True, rowtitle=None, coltitle=None, oneplot=False):
     if subcategories:
         # form grid

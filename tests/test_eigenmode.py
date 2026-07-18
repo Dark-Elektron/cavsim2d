@@ -1,5 +1,6 @@
 """Eigenmode regression tests: monopole baseline, m-pole solver vs analytic,
 per-polarisation result folders and rerun semantics, legacy-layout fallback."""
+import gc
 import os
 import shutil
 
@@ -10,7 +11,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d.cavity import Cavities, EllipticalCavity
+from cavsim2d import Cavities, EllipticalCavity
 
 
 def _run(project_dir, name='CAV', n_cells=1, config=None):
@@ -61,6 +62,32 @@ def test_monopole_qois_physical(project_dir):
     assert q['Q []'] > 0
 
 
+def test_qois_df_spans_every_polarisation(project_dir):
+    """qois_df flattens the dict-of-dicts results into one filterable table:
+    a row per (polarisation, mode), keyed '<m>-<mode>' like the convergence df."""
+    cav = _run(project_dir, name='DF',
+               config={'polarisation': ['monopole', 'dipole'], 'n_modes': 4})
+    df = cav.eigenmode.qois_df
+
+    assert not df.empty
+    assert {'m', 'polarisation', 'mode', 'mode_index',
+            'freq [MHz]', 'R/Q [Ohm]', 'Q []'}.issubset(df.columns)
+    assert set(df['polarisation']) == {'monopole', 'dipole'}
+    assert set(df['m']) == {0, 1}
+    # polarisation-first composite key, and it is unique per row
+    assert {'0-0', '1-0'}.issubset(set(df['mode_index']))
+    assert df['mode_index'].is_unique
+    # rows really are that polarisation's modes, in order
+    mono = df[df.polarisation == 'monopole']
+    assert mono['mode'].tolist() == sorted(mono['mode'].tolist())
+    assert (mono['freq [MHz]'] > 0).all()
+
+    # a cavity with no eigenmode results yields an empty frame, not an error
+    fresh = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    Cavities(os.path.join(project_dir, 'empty')).add_cavity([fresh], ['E'])
+    assert fresh.eigenmode.qois_df.empty
+
+
 def test_ploss_mesh_independent(project_dir):
     """Regression for P0-1: G must not drift with mesh density."""
     gvals = []
@@ -73,43 +100,83 @@ def test_ploss_mesh_independent(project_dir):
     assert abs(gvals[0] - gvals[1]) / gvals[0] < 0.05, gvals
 
 
-def test_mpole_pillbox_matches_analytic():
-    """Dipole (m=1) eigenfrequencies of a PEC pillbox vs the analytic TM/TE
-    spectrum, exercising _solve_eigenproblem_mpole directly."""
+def _pillbox_mesh(R, Lz, maxh=0.008):
+    """PEC cylinder with the axis at r = 0 (where the 1/r weights are singular)."""
     from ngsolve import Mesh
     from netgen.geom2d import SplineGeometry
-    from scipy.special import jn_zeros, jnp_zeros
-    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
-
-    c0 = 299792458.0
-    R, Lz, m = 0.10, 0.15, 1
-
     geo = SplineGeometry()
     p = [geo.AppendPoint(*pt) for pt in [(0, 0), (Lz, 0), (Lz, R), (0, R)]]
     geo.Append(['line', p[0], p[1]], bc='AXI')
     geo.Append(['line', p[1], p[2]], bc='PEC')
     geo.Append(['line', p[2], p[3]], bc='PEC')
     geo.Append(['line', p[3], p[0]], bc='PEC')
-    mesh = Mesh(geo.GenerateMesh(maxh=0.008))
+    return Mesh(geo.GenerateMesh(maxh=maxh))
 
-    freqs, _, _ = NGSolveMEVP()._solve_eigenproblem_mpole(mesh, 2, m, 6)
+
+def _analytic_pillbox(m, R, Lz, n_each=3):
+    """Analytic TM_mnp (p>=0) and TE_mnp (p>=1) pillbox frequencies [MHz]."""
+    from scipy.special import jn_zeros, jnp_zeros
+    c0 = 299792458.0
+    tm, te = [], []
+    for xmn in jn_zeros(m, n_each):
+        for pp in range(3):
+            tm.append(c0 / (2*np.pi) * np.sqrt((xmn/R)**2 + (pp*np.pi/Lz)**2) * 1e-6)
+    for xpmn in jnp_zeros(m, n_each):
+        for pp in range(1, 3):
+            te.append(c0 / (2*np.pi) * np.sqrt((xpmn/R)**2 + (pp*np.pi/Lz)**2) * 1e-6)
+    return np.sort(np.array(tm)), np.sort(np.array(te))
+
+
+@pytest.mark.parametrize('m', [0, 1, 2])
+def test_pillbox_matches_analytic_for_every_m(m):
+    """One formulation solves every azimuthal order against the analytic pillbox
+    spectrum — TM *and* TE. The old HCurl-only monopole path could not represent
+    the m=0 TE modes at all (see test_monopole_te_modes_are_found)."""
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    R, Lz = 0.10, 0.15
+    mesh = _pillbox_mesh(R, Lz)
+
+    freqs, _, _ = NGSolveMEVP()._solve_modes(mesh, 2, m, 8)
     freqs = np.sort([f for f in freqs if f > 1.0])   # guard against any residual ~0 mode
     assert len(freqs) >= 3, freqs
 
-    # analytic dipole modes
-    ana = []
-    for xmn in jn_zeros(m, 3):       # TM
-        for pp in range(3):
-            ana.append(c0 / (2*np.pi) * np.sqrt((xmn/R)**2 + (pp*np.pi/Lz)**2) * 1e-6)
-    for xpmn in jnp_zeros(m, 3):     # TE (p>=1)
-        for pp in range(1, 3):
-            ana.append(c0 / (2*np.pi) * np.sqrt((xpmn/R)**2 + (pp*np.pi/Lz)**2) * 1e-6)
-    ana = np.sort(np.array(ana))
-
-    # the lowest analytic dipole modes must each appear among the computed
-    # physical modes to < 1%
+    tm, te = _analytic_pillbox(m, R, Lz)
+    ana = np.sort(np.concatenate([tm, te]))
     for a in ana[:3]:
-        assert np.min(np.abs(freqs - a) / a) < 0.01, (a, freqs)
+        assert np.min(np.abs(freqs - a) / a) < 0.01, (m, a, freqs)
+
+
+def test_monopole_te_modes_are_found():
+    """The monopole spectrum must contain the TE_0np modes.
+
+    An HCurl-only (E_r, E_z) formulation has no azimuthal unknown, so a mode
+    whose E is purely azimuthal is structurally invisible to it: the monopole
+    solve silently returned TM modes only. The unified product space carries
+    u_phi = r*E_phi, so the TE modes appear — and they carry no acceleration.
+    """
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    R, Lz = 0.10, 0.15
+    mesh = _pillbox_mesh(R, Lz)
+
+    freqs, gfu_E, _ = NGSolveMEVP()._solve_modes(mesh, 2, 0, 10)
+    freqs = np.array(sorted(f for f in freqs if f > 1.0))
+
+    tm, te = _analytic_pillbox(0, R, Lz)
+    # every low TM mode is still there (no regression) ...
+    for a in tm[:3]:
+        assert np.min(np.abs(freqs - a) / a) < 0.01, ('TM', a, freqs)
+    # ... and the TE modes, which the HCurl-only formulation could never find
+    for a in te[:2]:
+        assert np.min(np.abs(freqs - a) / a) < 0.01, ('TE', a, freqs)
+
+    # a TE mode is purely azimuthal: its in-plane block is zero, so it cannot
+    # accelerate. Identify it by matching the lowest analytic TE frequency.
+    from ngsolve import Integrate, InnerProduct, Conj, y
+    i_te = int(np.argmin(np.abs(freqs - te[0])))
+    u_gf, uphi_gf = gfu_E[i_te].components
+    e_inplane = abs(Integrate(y * InnerProduct(u_gf, Conj(u_gf)), mesh))
+    e_phi = abs(Integrate(1 / y * uphi_gf * Conj(uphi_gf), mesh))
+    assert e_inplane < 1e-6 * e_phi, (e_inplane, e_phi)
 
 
 def test_surface_resistance_helper():
@@ -156,7 +223,7 @@ def test_plot_fields_unsolved_polarisation_is_actionable(project_dir, capsys):
     """Plotting a polarisation that wasn't solved reports what IS available
     instead of a bare 'file does not exist'."""
     cav = _run(project_dir)                      # monopole only (fast)
-    cav.plot_fields(mode=0, which='E', plotter='matplotlib', pol='dipole')
+    cav.show_fields(mode=0, which='E', plotter='matplotlib', pol='dipole')
     captured = capsys.readouterr()
     out = captured.out + captured.err
     # the message names the missing pol and lists what is available
@@ -277,7 +344,7 @@ def test_dispersion_light_line_is_the_folded_speed_of_light(project_dir):
     assert labels.count('light line') == 1
 
     # a geometry with no defined cell period skips it without error
-    from cavsim2d.cavity import Pillbox
+    from cavsim2d import Pillbox
     assert Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')._cell_length_m() is None
     plt.close('all')
 
@@ -364,7 +431,7 @@ def test_dispersion_uses_the_house_font(project_dir):
 
 def test_field_and_mesh_render_non_blank(project_dir):
     """The matplotlib renderers produce a non-empty figure (regression for the
-    hardcoded edge mask that deleted every triangle, and for plot_fields
+    hardcoded edge mask that deleted every triangle, and for show_fields
     ignoring plotter='matplotlib')."""
     import matplotlib
     matplotlib.use('Agg')
@@ -372,13 +439,13 @@ def test_field_and_mesh_render_non_blank(project_dir):
 
     cav = _run(project_dir)
     plt.close('all')
-    cav.plot_fields(mode=1, which='E', plotter='matplotlib')
+    cav.show_fields(mode=1, which='E', plotter='matplotlib')
     fig = plt.gcf()
     # a real contour plot adds collections/artists; a blank one has none
     assert fig.axes and fig.axes[0].collections, "field plot is blank"
     plt.close('all')
 
-    cav.plot_mesh(plotter='matplotlib')
+    cav.show_mesh(plotter='matplotlib')
     fig = plt.gcf()
     assert fig.axes and fig.axes[0].lines, "mesh plot is blank"
     plt.close('all')
@@ -454,7 +521,7 @@ def test_modes_of_interest_resolution():
 def test_mode_of_interest_selects_the_headline_mode(project_dir):
     """Default picks the pi-mode; an override picks the requested passband mode."""
     import json
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
 
     def run(tag, extra):
@@ -485,7 +552,7 @@ def test_mode_of_interest_selects_the_headline_mode(project_dir):
 
 def test_mode_of_interest_is_metadata_not_a_qoi(project_dir):
     """Stored as a string so UQ's numeric coercion drops it, like 'polarisation'."""
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
     cavs = Cavities(project_dir)
@@ -545,3 +612,130 @@ def test_compare_scatter_marker_colours_match_the_legend(project_dir):
                            for coll in fig.axes[0].collections)
     assert marker_colors == sorted(leg_colors)
     plt.close('all')
+
+
+# --- adaptive mesh refinement ------------------------------------------------
+
+def test_parse_adaptive_normalises():
+    """mesh_config['adaptive'] enables refinement (True or a settings dict) and
+    is off by default; the stop tolerance defaults to 1e-12."""
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+
+    assert NGSolveMEVP._parse_adaptive({}) is None
+    assert NGSolveMEVP._parse_adaptive({'adaptive': False}) is None
+
+    cfg = NGSolveMEVP._parse_adaptive({'adaptive': True})
+    assert cfg['tol'] == 1e-12
+    assert cfg['theta'] == 0.25 and cfg['max_ndof'] == 100000 and cfg['max_refinements'] == 8
+    assert 'n_modes' not in cfg                    # the modes-to-check knob is gone
+
+    cfg = NGSolveMEVP._parse_adaptive({'adaptive': {'tol': 1e-8, 'max_ndof': 100}})
+    assert cfg['tol'] == 1e-8 and cfg['max_ndof'] == 100
+    assert cfg['max_refinements'] == 8            # unspecified keys keep defaults
+
+
+def test_adaptive_refines_the_mesh_and_records_history(project_dir):
+    """Turning on adaptive refinement grows the mesh over several error-driven
+    levels, persists a per-level history, and keeps the frequency physical."""
+    import json
+
+    cav = _run(project_dir, name='AMR',
+               config={'mesh_config': {'h': 40, 'adaptive': {'max_refinements': 3}}})
+    hist_path = os.path.join(cav.self_dir, 'eigenmode', 'monopole', 'adaptive_history.json')
+    assert os.path.exists(hist_path)
+    with open(hist_path) as f:
+        history = json.load(f)
+
+    # at least one refinement actually happened (tol=1e-12 won't be met, so the
+    # max_refinements cap governs)
+    assert len(history) >= 2
+    dofs = [lvl['No of DOFs'] for lvl in history]
+    elems = [lvl['No of Mesh Elements'] for lvl in history]
+    assert dofs == sorted(dofs) and dofs[-1] > dofs[0]      # DOFs grow monotonically
+    assert elems[-1] > elems[0]                             # so does the element count
+    # each level records a per-mode max_err list; the fundamental (mode 0, which
+    # the refinement resolves) improves with refinement
+    assert all(isinstance(lvl['max_err'], list) for lvl in history)
+    assert history[-1]['max_err'][0] < history[0]['max_err'][0]
+
+    # the reported result is the finest level; frequency is still physical
+    cav.get_eigenmode_qois()
+    assert 750 < cav.eigenmode_qois['freq [MHz]'] < 850
+    # QOIs are evaluated on the finest mesh, matching the last history level
+    assert cav.eigenmode_qois['No of Mesh Elements'] == elems[-1]
+
+
+def test_study_mesh_convergence_is_adaptive_in_h(project_dir):
+    """study_mesh_convergence drives h adaptively (no h_passes) while keeping the
+    full per-mode table: one row per (order, refinement level, pol, mode) with
+    all QOIs; DOFs recorded and growing per level; p still stepped."""
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs = Cavities(project_dir)
+    cavs.add_cavity([cav], ['CONV'])
+
+    cav.study_mesh_convergence(h=40, p=3, p_passes=2, p_step=1, n_modes=4,
+                               tol=1e-12, max_refinements=2)
+    df = cav.convergence_df_data
+    # the rich per-mode schema is preserved (not reduced to freq columns)
+    assert {'p', 'h_pass', 'No of DOFs', 'No of Mesh Elements', 'freq [MHz]',
+            'Q []', 'R/Q [Ohm]', 'polarisation', 'mode_index', 'max_err'}.issubset(df.columns)
+    assert set(df['p'].unique()) == {3, 4}                 # p was stepped, not h_passes
+    # default polarisation is monopole + dipole
+    assert set(df['polarisation']) == {'monopole', 'dipole'}
+    # every mode is kept ('<m>-<mode>' keys, polarisation first), not just one
+    assert {'0-0', '0-1', '1-0'}.issubset(set(df['mode_index']))
+
+    # follow the fundamental ('0-0') through the adaptive path: DOFs only grow
+    sub = df[(df['p'] == 3) & (df['mode_index'] == '0-0')].sort_values('h_pass')
+    dofs = sub['No of DOFs'].tolist()
+    assert dofs == sorted(dofs) and dofs[-1] > dofs[0]
+    assert sub['No of Mesh Elements'].iloc[-1] > sub['No of Mesh Elements'].iloc[0]
+    # each mode carries its own max_err (distinct per mode), and the fundamental
+    # improves as the mesh refines
+    assert df[(df['p'] == 3) & (df['h_pass'] == 0)]['max_err'].nunique() > 1
+    assert sub['max_err'].iloc[-1] < sub['max_err'].iloc[0]
+
+
+def test_no_mode_stalls_when_many_modes_share_a_mesh():
+    """A low mode must not freeze while the mesh is refined for the loud ones.
+
+    Summing the RAW per-mode error fields into the marking field let the high
+    modes -- whose errors are orders of magnitude larger -- dominate it. The
+    fundamental's worst element then never cleared theta*max, was never refined,
+    and its max_err stayed at *exactly* the same value level after level (a flat
+    step in an error-vs-DOF plot). _refinement_driver normalises each mode by its
+    own peak, so every mode's worst element scores 1.0 and is always marked.
+    """
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    solver = NGSolveMEVP()
+
+    # the driver must give every mode's peak the same weight, however much
+    # bigger another mode's error is
+    quiet = np.array([1e-9, 1e-12, 1e-12])     # peak in element 0
+    loud = np.array([1e-3, 1.0, 1e-3])         # 1e12x bigger, peaks elsewhere
+    driver = solver._refinement_driver([quiet, loud])
+    assert driver[0] == pytest.approx(1.0)     # the quiet mode's peak still marks
+    assert driver[1] == pytest.approx(1.0)
+    assert (driver > 0.25).tolist() == [True, True, False]
+
+    # end to end: the fundamental keeps improving with 10 modes on one mesh
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    mesh_p, n_modes = 5, 10
+    mesh = solver._build_mesh(cav, 40e-3, mesh_p)
+    system = solver._build_system(mesh, mesh_p, 0)
+
+    m0_errs = []
+    for _ in range(4):
+        _, gfu_E, _ = solver._solve_system(system, n_modes, 20)
+        fields = solver._error_fields(mesh, system['fes_rz'], gfu_E)
+        m0_errs.append(float(fields[0].max()))
+        driver = solver._refinement_driver(fields[:n_modes])
+        mesh.ngmesh.Elements2D().NumPy()["refine"] = driver > 0.25
+        del gfu_E, fields, driver
+        gc.collect()
+        mesh.Refine()
+        mesh.Curve(mesh_p)
+
+    # strictly decreasing — no flat step (the bug froze it at one exact value)
+    assert all(b < a for a, b in zip(m0_errs, m0_errs[1:])), m0_errs
+    assert m0_errs[-1] < m0_errs[0] / 100

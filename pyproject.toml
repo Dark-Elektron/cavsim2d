@@ -44,6 +44,8 @@ dependencies = [
 jupyter = ["ipython>=8.26.0", "ipywidgets>=8.1.3"]
 # Test + lint tooling.
 dev = ["pytest", "flake8"]
+# Documentation building
+docs = ["sphinx-immaterial>=0.11", "sphinxcontrib-bibtex", "numpydoc", "myst-nb"]
 
 [project.urls]
 Homepage = "https://github.com/Dark-Elektron/cavsim2d"
@@ -56,3 +58,5 @@ exclude = ["tests*", "docs*"]
 [tool.setuptools.package-data]
 # Ship the bundled ABCI solver and TopDrawer alongside the package.
 "cavsim2d.solvers.ABCI" = ["ABCI.exe", "**/*"]
+# Ship the default secondary-emission-yield table for multipacting.
+"cavsim2d.data_module" = ["sey/*"]

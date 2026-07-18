@@ -24,7 +24,10 @@ from cavsim2d.utils.config_validation import validate_wakefield_config
 from cavsim2d.utils.config_validation import validate_optimisation_config
 import re
 from cavsim2d.solvers.ABCI.abci import resolve_mrot
-from cavsim2d.solvers.solver_objects import OptimisationSolver
+from cavsim2d.solvers.solver_objects import (OptimisationSolver, StudyEigenmode,
+                                             StudyWakefield, merge_config,
+                                             DEFAULT_EIGENMODE_CONFIG,
+                                             DEFAULT_WAKEFIELD_CONFIG)
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.style import house_style, WARM
 
@@ -53,6 +56,8 @@ class Study:
         """
 
         self._optimisation_solver = None
+        self._eigenmode_ns = None
+        self._wakefield_ns = None
 
         # Legacy-API shim: historically the first positional arg was a list of
         # cavities. The refactor promoted ``folder`` to that slot, so older
@@ -461,7 +466,6 @@ class Study:
                         return True
 
                 except Exception as e:
-                    print('it is here 4')
                     error("Exception occurred: ", e)
                     return True
             else:
@@ -505,7 +509,7 @@ class Study:
                                          breaks=breaks, light_lines=light_lines or None,
                                          **kwargs)
 
-    def run_tune(self, tune_config=None):
+    def run_tune(self, tune_config=None, **kwargs):
         """
 
         Parameters
@@ -561,12 +565,15 @@ class Study:
 
         """
 
-        if tune_config is None:
+        if tune_config is None and not kwargs:
             tune_config = {
                 'cell_type': {'mid-cell': 'Req'},
                 'freqs': [c0 / (4 * cav.L * 1e-3) * 1e-6 for cav in self],
             }
             info(f'Tune variable and frequency not entered, defaulting to {json.dumps(tune_config, indent=4)}')
+        else:
+            # Config keys may also be passed as kwargs; kwargs override the dict.
+            tune_config = {**(tune_config or {}), **kwargs}
 
         validate_tune_config(tune_config)
 
@@ -583,16 +590,18 @@ class Study:
         # Validate by normalising (raises if the dict shape is wrong).
         normalize_cell_type_config(tune_config)
 
-        if 'uq_config' in tune_config.keys():
+        # Truthy checks (not just presence): complete saved configs carry the
+        # keys with explicit None when disabled.
+        if tune_config.get('uq_config'):
             uq_config = tune_config['uq_config']
 
             if 'epsilon' in uq_config.keys() and 'uq_config' in uq_config.keys():
                 info('epsilon and delta are both entered. Epsilon is preferred.')
 
-        if 'eigenmode_config' in tune_config.keys():
+        if tune_config.get('eigenmode_config'):
             eigenmode_config = tune_config['eigenmode_config']
 
-            if 'uq_config' in eigenmode_config.keys():
+            if eigenmode_config.get('uq_config'):
                 uq_config_eig = eigenmode_config['uq_config']
 
                 if 'epsilon' in uq_config_eig.keys() and 'uq_config' in uq_config_eig.keys():
@@ -647,7 +656,7 @@ class Study:
                 cav.get_ngsolve_tune_res()
                 self.tune_results[cav.name] = cav.tune_results
 
-    def run_eigenmode(self, eigenmode_config=None):
+    def run_eigenmode(self, eigenmode_config=None, **kwargs):
         """
         Runs the eigenmode analysis with the given configuration.
 
@@ -719,8 +728,14 @@ class Study:
 
         if eigenmode_config is None:
             eigenmode_config = {}
+        # Config keys may also be passed as kwargs; kwargs override the dict.
+        eigenmode_config = {**eigenmode_config, **kwargs}
 
         validate_eigenmode_config(eigenmode_config)
+
+        # Merge over the complete defaults so the saved config records every
+        # setting the run used (same pattern as EigenmodeSolver.run).
+        eigenmode_config = merge_config(DEFAULT_EIGENMODE_CONFIG, eigenmode_config)
 
         eigenmode_config['target'] = run_eigenmode_s
 
@@ -772,7 +787,7 @@ class Study:
                 self.uq_nodes[cav.name] = cav.uq_nodes
                 self.uq_fm_results_all_modes[cav.name] = cav.uq_fm_results_all_modes
 
-    def run_wakefield(self, wakefield_config=None):
+    def run_wakefield(self, wakefield_config=None, **kwargs):
         """
 
         Parameters
@@ -847,8 +862,14 @@ class Study:
 
         if wakefield_config is None:
             wakefield_config = {}
+        # Config keys may also be passed as kwargs; kwargs override the dict.
+        wakefield_config = {**wakefield_config, **kwargs}
 
         validate_wakefield_config(wakefield_config)
+
+        # Merge over the complete defaults so the saved config records every
+        # setting the run used (same pattern as WakefieldSolver.run).
+        wakefield_config = merge_config(DEFAULT_WAKEFIELD_CONFIG, wakefield_config)
 
         wakefield_config['target'] = run_wakefield_s
 
@@ -865,7 +886,9 @@ class Study:
                 rerun = wakefield_config['rerun']
 
         uq_config = {}
-        if 'uq_config' in wakefield_config_keys:
+        # Truthy check (not just presence): the complete merged config carries
+        # 'uq_config' with explicit None when UQ is disabled.
+        if wakefield_config.get('uq_config'):
 
 
 
@@ -874,14 +897,13 @@ class Study:
 
             require('objectives' in wakefield_config['uq_config'].keys(), 'Please enter objectives in uq_config.')
 
-            objectives_unprocessed = []
-            # adjust objectives to match signature with optimisation
-            for obj in wakefield_config['uq_config']['objectives']:
-                if isinstance(obj, list):
-                    objectives_unprocessed.append(['', obj[0], obj[1]])
-                else:
-                    objectives_unprocessed.append(obj)
-
+            # Keep the FULL objective form (goal, name, [args]). process_objectives
+            # and the UQ wakefield reader both key on obj[1]=name and obj[2]=args
+            # (e.g. a ZL/ZT objective's frequency windows), exactly as the
+            # optimiser's objectives_unprocessed does. The old code truncated to
+            # ['', goal, name] — dropping the frequency range and shifting the QOI
+            # name into the goal slot, so every ZL/ZT objective came back empty.
+            objectives_unprocessed = list(wakefield_config['uq_config']['objectives'])
             objectives, weights = process_objectives(objectives_unprocessed)
             wakefield_config['uq_config']['objectives_unprocessed'] = objectives_unprocessed
             wakefield_config['uq_config']['objectives'] = objectives
@@ -963,7 +985,10 @@ class Study:
             cav.get_wakefield_qois(self.wakefield_config)
             self.wakefield_qois_op[cav.name] = cav.wakefield_qois
             if uq_config:
-                cav.get_uq_hom_results(os.path.join(self.projectDir, "wakefield", "ABCI", cav.name, "uq.json"))
+                # Wakefield UQ writes to the cavity's own uq/ dir (the same file
+                # the eigenmode branch and the optimiser use), not the old
+                # pre-refactor <projectDir>/wakefield/ABCI/<name>/ layout.
+                cav.get_uq_hom_results(os.path.join(cav.uq_dir, "uq.json"))
                 cav_uq_hom_results = cav.uq_hom_results
                 if 'operating_points' in uq_config:
                     # separate into opearating points
@@ -978,12 +1003,29 @@ class Study:
                                 uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
                                                                  cav_uq_hom_results.items() if ident in kk}
                 else:
-                    print('it is here1')
                     uq_hom_results_op = cav.uq_hom_results
 
                 self.uq_hom_results[cav.name] = uq_hom_results_op
             # except FileNotFoundError:
             #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+
+    @property
+    def eigenmode(self):
+        """Eigenmode results across the whole study — the same namespace a single
+        cavity has, so ``study.eigenmode.plot_impedance()`` mirrors
+        ``cav.eigenmode.plot_impedance()`` and overlays every cavity."""
+        if self._eigenmode_ns is None:
+            self._eigenmode_ns = StudyEigenmode(self)
+        return self._eigenmode_ns
+
+    @property
+    def wakefield(self):
+        """Wakefield results across the whole study — mirrors
+        ``cav.wakefield.*`` (``plot_impedance``, ``plot_wake``, ``plot_k_loss``,
+        ``plot_k_kick``) and overlays every cavity."""
+        if self._wakefield_ns is None:
+            self._wakefield_ns = StudyWakefield(self)
+        return self._wakefield_ns
 
     @property
     def optimisation(self):
@@ -1031,77 +1073,16 @@ class Study:
         self.optimisation.run(optimisation_config, resume=resume)
 
     def plot(self, what, ax=None, scale_x=None, **kwargs):
+        # All wakefield plotting is on the wakefield namespace now
+        # (study.wakefield.plot_impedance() / plot_wake() / plot_k_loss()); this
+        # dispatch keeps only the geometry and convergence views.
+        if what.lower() in ('zl', 'zt', 'wpl', 'wpt'):
+            error(f"study.plot('{what}') was removed. Use the wakefield namespace: "
+                  f"study.wakefield.plot_impedance() / plot_wake().")
+            return ax
         for ii, cav in enumerate(self.cavities_list):
             if what.lower() == 'geometry':
                 ax = cav.plot('geometry', ax, **kwargs)
-
-            if what.lower() == 'zl':
-                if scale_x is None:
-                    scale_x = [1 for _ in self.cavities_list]
-                else:
-                    if isinstance(scale_x, list):
-                        require(len(scale_x) == len(self.cavities_list),
-                                'Length of scale_x must be same as number of Cavity objects.')
-                    else:
-                        scale_x = [scale_x for _ in self.cavities_list]
-
-                if ax:
-                    ax = cav.plot('zl', ax, scale_x=scale_x[ii], **kwargs)
-                else:
-                    fig, ax = plt.subplots(figsize=(12, 4))
-                    ax.margins(x=0)
-                    ax = cav.plot('zl', ax, scale_x=scale_x[ii], **kwargs)
-
-            if what.lower() == 'zt':
-                if scale_x is None:
-                    scale_x = [1 for _ in self.cavities_list]
-                else:
-                    if isinstance(scale_x, list):
-                        require(len(scale_x) == len(self.cavities_list),
-                                'Length of scale_x must be same as number of Cavity objects.')
-                    else:
-                        scale_x = [scale_x for _ in self.cavities_list]
-
-                if ax:
-                    ax = cav.plot('zt', ax, scale_x=scale_x[ii], **kwargs)
-                else:
-                    fig, ax = plt.subplots(figsize=(12, 4))
-                    ax.margins(x=0)
-                    ax = cav.plot('zt', ax, scale_x=scale_x[ii], **kwargs)
-
-            if what.lower() == 'wpl':
-                if scale_x is None:
-                    scale_x = [1 for _ in self.cavities_list]
-                else:
-                    if isinstance(scale_x, list):
-                        require(len(scale_x) == len(self.cavities_list),
-                                'Length of scale_x must be same as number of Cavity objects.')
-                    else:
-                        scale_x = [scale_x for _ in self.cavities_list]
-
-                if ax:
-                    ax = cav.plot('wpl', ax, scale_x=scale_x[ii], **kwargs)
-                else:
-                    fig, ax = plt.subplots(figsize=(12, 4))
-                    ax.margins(x=0)
-                    ax = cav.plot('wpl', ax, scale_x=scale_x[ii], **kwargs)
-
-            if what.lower() == 'wpt':
-                if scale_x is None:
-                    scale_x = [1 for _ in self.cavities_list]
-                else:
-                    if isinstance(scale_x, list):
-                        require(len(scale_x) == len(self.cavities_list),
-                                'Length of scale_x must be same as number of Cavity objects.')
-                    else:
-                        scale_x = [scale_x for _ in self.cavities_list]
-
-                if ax:
-                    ax = cav.plot('wpt', ax, scale_x=scale_x[ii], **kwargs)
-                else:
-                    fig, ax = plt.subplots(figsize=(12, 4))
-                    ax.margins(x=0)
-                    ax = cav.plot('wpt', ax, scale_x=scale_x[ii], **kwargs)
 
             if what.lower() == 'convergence':
                 ax = cav.plot('convergence', ax)
@@ -2021,7 +2002,11 @@ class Study:
             # QOI, but only the recognised figures of merit (those with a plot
             # label) are worth a bar — bookkeeping keys like
             # "Normalization Length [mm]" or "N Cells" are skipped.
-            metrics = [m for m in df['metric'].unique() if m in LABELS]
+            # UQ metric keys carry a polarisation prefix now
+            # ('monopole:freq [MHz]'); match/label on the bare QOI name.
+            def _bare(k):
+                return k.split(':')[-1].strip()
+            metrics = [m for m in df['metric'].unique() if _bare(m) in LABELS]
             selected_qois = self._resolve_qoi_keys(qois, metrics)
             metrics = [q for q in selected_qois if q in metrics]
             if not metrics:
@@ -2039,7 +2024,7 @@ class Study:
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
-                ax.set_ylabel(LABELS.get(metric, metric))
+                ax.set_ylabel(LABELS.get(_bare(metric), metric))
                 h, l = ax.get_legend_handles_labels()
 
         # fig.set_tight_layout(True)
@@ -2167,10 +2152,12 @@ class Study:
             labels = [cav.plot_label for cav in self.cavities_list]
             colors = self._compare_colors()
 
-            # Step 2: Create a Mosaic Plot
-            metrics = df['metric'].unique()
-            metrics = [m for m in metrics if m in selected_qois]
-            metrics = [q for q in selected_qois if q in metrics]
+            # Step 2: Create a Mosaic Plot. UQ metric keys carry a polarisation
+            # prefix now ('monopole:freq [MHz]'), so match/label on the bare QOI.
+            def _bare(k):
+                return k.split(':')[-1].strip()
+            available = list(df['metric'].unique())
+            metrics = [m for q in selected_qois for m in available if _bare(m) == q]
             if not metrics:
                 raise ValueError("None of the specified qois are present in the UQ fundamental mode results.")
 
@@ -2187,14 +2174,14 @@ class Study:
                                 color=scatter_points.get_edgecolor()[0])
 
                     # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[metric], facecolor='none', label='Design Point',
-                               ec='k', lw=1, s=75,
+                    ax.scatter(df_nominal.index, df_nominal[_bare(metric)], facecolor='none',
+                               label='Design Point', ec='k', lw=1, s=75,
                                zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.margins(0.3)
-                ax.set_xlabel(LABELS[metric])
+                ax.set_xlabel(LABELS[_bare(metric)])
 
             h, l = ax.get_legend_handles_labels()
 

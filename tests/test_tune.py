@@ -9,7 +9,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d.cavity import Cavities, EllipticalCavity
+from cavsim2d import Cavities, EllipticalCavity
 
 _GUN_GEOM = {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
              'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
@@ -58,7 +58,7 @@ def test_uses_cell_suffixes_is_a_model_capability():
     `kind == 'elliptical cavity'` skipped the Req -> Req_m suffixing and the
     tuner then looked up a bare 'Req' that does not exist.
     """
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  CircularWaveguide)
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     ft = tesla + [20]
@@ -93,7 +93,7 @@ def test_printing_survives_a_console_that_cannot_encode_the_message():
 def test_rebuild_is_the_single_per_type_hook():
     """Tuning, UQ and optimisation all reconstruct a cavity from a parameter dict.
     Every model provides `rebuild`; the base machinery is generic."""
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  RFGun, SplineCavity, CircularWaveguide)
     from cavsim2d.models.base import Cavity
     for cls in (EllipticalCavity, EllipticalCavityFlatTop, Pillbox, RFGun,
@@ -109,7 +109,7 @@ def test_a_model_without_rebuild_says_so():
     """The base hook names itself, instead of blaming the elliptical tuner."""
     from cavsim2d.models.base import Cavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
-    from cavsim2d.cavity import EllipticalCavity
+    from cavsim2d import EllipticalCavity
     cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='none')
     with pytest.raises(NotImplementedError, match='rebuild'):
         Cavity.rebuild(cav, cav.parameters)
@@ -118,7 +118,7 @@ def test_a_model_without_rebuild_says_so():
 def test_rebuild_round_trips_every_model():
     """rebuild(self.parameters) reproduces an equivalent cavity."""
     import numpy as np
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  RFGun, SplineCavity, CircularWaveguide)
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     ft = tesla + [20]
@@ -145,7 +145,7 @@ def test_rebuild_round_trips_every_model():
 
 def test_flattop_now_tunes(project_dir):
     """Previously a silent no-op: run_tune returned normally with cav.tuned = None."""
-    from cavsim2d.cavity import Cavities, EllipticalCavityFlatTop
+    from cavsim2d import Cavities, EllipticalCavityFlatTop
     ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
     cav = EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='both')
     cavs = Cavities(project_dir)
@@ -160,7 +160,7 @@ def test_flattop_now_tunes(project_dir):
 def test_every_model_declares_its_own_tune_variables():
     """`tune_variables()` is derived from the model's own parameters, so adding a
     geometry needs no edit to a central whitelist."""
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  RFGun, SplineCavity, CircularWaveguide)
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     ft = tesla + [20]
@@ -183,7 +183,7 @@ def test_every_model_declares_its_own_tune_variables():
 
 
 def test_unknown_tune_variable_names_the_models_own_parameters():
-    from cavsim2d.cavity import RFGun
+    from cavsim2d import RFGun
     from cavsim2d.processes.tune import _resolve_suffixed_var
     with pytest.raises(ValueError, match=r"Unknown tune variable 'Req'.*RFGun"):
         _resolve_suffixed_var('Req', 'mid-cell', RFGun(_gun()))
@@ -195,7 +195,7 @@ def test_unknown_tune_variable_names_the_models_own_parameters():
 def test_a_geometry_without_parameters_says_so():
     """An imported mesh/CAD geometry has no parameters — that is a different
     failure from misspelling a variable, and must not be reported as one."""
-    from cavsim2d.cavity import Pillbox
+    from cavsim2d import Pillbox
     from cavsim2d.processes.tune import _resolve_suffixed_var
     cav = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cav.parameters = {}                       # as if built from a .geo/CAD file
@@ -206,7 +206,7 @@ def test_a_geometry_without_parameters_says_so():
 def test_unsuffixed_models_keep_their_full_parameter_name():
     """The old resolver split on '_' to find the bare name, so the pillbox's
     'L_bp' silently resolved to 'L' — tuning the wrong parameter."""
-    from cavsim2d.cavity import Pillbox, EllipticalCavity
+    from cavsim2d import Pillbox, EllipticalCavity
     from cavsim2d.processes.tune import _resolve_suffixed_var
     pb = Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')
     assert _resolve_suffixed_var('L_bp', 'mid-cell', pb) == 'L_bp'
@@ -220,7 +220,7 @@ def test_unsuffixed_models_keep_their_full_parameter_name():
 
 
 def test_bad_tune_variable_is_rejected_before_any_process_is_spawned():
-    from cavsim2d.cavity import RFGun
+    from cavsim2d import RFGun
     from cavsim2d.processes.tune import validate_cell_type_config
     with pytest.raises(ValueError, match='Unknown tune variable'):
         validate_cell_type_config({'mid-cell': ['nope']}, [RFGun(_gun())])
@@ -228,7 +228,7 @@ def test_bad_tune_variable_is_rejected_before_any_process_is_spawned():
 
 def test_expand_variable_asks_the_model_not_substring_matching():
     """UQ expanded a variable by testing `k_var in parameter_key`."""
-    from cavsim2d.cavity import EllipticalCavity, Pillbox, RFGun, SplineCavity
+    from cavsim2d import EllipticalCavity, Pillbox, RFGun, SplineCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
 
     # a bare name on an elliptical cavity means 'this quantity in every cell'
@@ -253,7 +253,7 @@ def test_expand_variable_asks_the_model_not_substring_matching():
 def test_spline_uq_perturbs_a_control_point_coordinate(project_dir):
     """`k = 0` random variables -> ZeroDivisionError in the Stroud3 quadrature."""
     import json
-    from cavsim2d.cavity import Cavities, SplineCavity
+    from cavsim2d import Cavities, SplineCavity
     cav = SplineCavity({'geometry': dict(_SPLINE_GEOM)}, kind='Bezier')
     cavs = Cavities(project_dir)
     cavs.add_cavity([cav], ['SC'])
@@ -270,7 +270,7 @@ def test_spline_uq_perturbs_a_control_point_coordinate(project_dir):
 def test_perturbation_reaches_a_non_scalar_parameter():
     """apply_perturbation wrote cav.parameters[var] directly, so a variable
     living inside a control point ([z, r]) could not be perturbed at all."""
-    from cavsim2d.cavity import SplineCavity
+    from cavsim2d import SplineCavity
     from cavsim2d.utils.shapes import apply_perturbation
     cav = SplineCavity({'geometry': dict(_SPLINE_GEOM)}, kind='Bezier')
     out = apply_perturbation(cav, [[0.10]], ['p3_r'], 'mul')
@@ -285,7 +285,7 @@ def test_qoi_readers_keep_the_base_signature():
     """RFGun.get_eigenmode_qois() narrowed the base's (self, config=None) to
     (self), so every caller that passes a config — UQ does — hit a TypeError."""
     import inspect
-    from cavsim2d.cavity import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
+    from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
                                  RFGun, SplineCavity, CircularWaveguide)
     from cavsim2d.models.base import Cavity
     base = inspect.signature(Cavity.get_eigenmode_qois)
@@ -297,7 +297,7 @@ def test_qoi_readers_keep_the_base_signature():
 
 def test_rfgun_tunes(project_dir):
     """Blocked by a hardcoded elliptical-only variable whitelist."""
-    from cavsim2d.cavity import Cavities, RFGun
+    from cavsim2d import Cavities, RFGun
     cav = RFGun(_gun())
     cavs = Cavities(project_dir)
     cavs.add_cavity([cav], ['GUN'])
@@ -312,7 +312,7 @@ def test_spline_tunes_a_control_point_coordinate(project_dir):
     """A vector-valued parameter survives the round trip through tune_res.json:
     `_load_tuned_from_disk` used float(v), which raised on [z, r] and then
     silently dropped the tuned coordinate."""
-    from cavsim2d.cavity import Cavities, SplineCavity
+    from cavsim2d import Cavities, SplineCavity
     cav = SplineCavity({'geometry': dict(_SPLINE_GEOM)}, kind='Bezier')
     cavs = Cavities(project_dir)
     cavs.add_cavity([cav], ['SC'])
@@ -331,6 +331,6 @@ def test_flattop_create_accepts_the_tuner_mode_keyword(project_dir):
     """Its create() took `tune=`, so the tuner's `mode='tune'` raised a TypeError
     that tune_function reported as 'degenerate geometry'."""
     import inspect
-    from cavsim2d.cavity import EllipticalCavityFlatTop
+    from cavsim2d import EllipticalCavityFlatTop
     sig = inspect.signature(EllipticalCavityFlatTop.create)
     assert 'mode' in sig.parameters and 'tune' not in sig.parameters

@@ -66,15 +66,21 @@ def main():
     }
     cav.eigenmode_config = eigenmode_config
 
-    # Run convergence study using the library's built-in module
+    # Run convergence study using the library's built-in module. h-refinement
+    # is now error-driven (adaptive): start from maxh=20 mm and let the solver
+    # refine, sweeping the polynomial order p from 3 to 5.
     print("Running convergence study sweep...")
-    # Sweep h from 20 down to ~5.9 mm; p from 3 to 5
-    cav.study_mesh_convergence(h=20.0, h_passes=4, h_step=1.5, p=3, p_passes=3, p_step=1)
+    cav.study_mesh_convergence(h=20.0, p=3, p_passes=3, p_step=1,
+                               tol=1e-12, max_refinements=6)
 
-    # Load results
+    # Load results and keep the fundamental TM010 mode (monopole, mode 0); the
+    # table carries one row per (order, refinement level, polarisation, mode).
     df = cav.convergence_df_data.copy()
+    df = df[(df['polarisation'] == 'monopole') & (df['mode_index'] == 0)].copy()
+    for col in ('freq [MHz]', 'Q []', 'R/Q [Ohm]'):
+        df[col] = pd.to_numeric(df[col])
 
-    # Calculate relative errors compared to exact analytical values
+    # Relative errors compared to the exact analytical values
     df['rel_err_freq'] = np.abs(df['freq [MHz]'] - F_ANALYTICAL) / F_ANALYTICAL
     df['rel_err_Q'] = np.abs(df['Q []'] - Q_ANALYTICAL) / Q_ANALYTICAL
     df['rel_err_RoQ'] = np.abs(df['R/Q [Ohm]'] - RQ_ANALYTICAL) / RQ_ANALYTICAL
@@ -102,7 +108,7 @@ def plot_convergence_curves(df, output_dir):
     }
     markers = {3: 'o', 4: 's', 5: '^', 6: 'v'}
 
-    # 1. Error vs DOFs
+    # 1. Error vs DOFs (one adaptive refinement path per polynomial order p)
     fig, ax = plt.subplots(figsize=(8, 6))
     for p_val in sorted(df['p'].unique()):
         sub = df[df['p'] == p_val].sort_values('No of DOFs')
@@ -115,7 +121,7 @@ def plot_convergence_curves(df, output_dir):
     ax.set_yscale('log')
     ax.set_xlabel("Number of DOFs", fontsize=11)
     ax.set_ylabel("Relative Error", fontsize=11)
-    ax.set_title("Cylindrical Waveguide Cavity — Convergence vs DOFs", fontsize=12, weight='bold')
+    ax.set_title("Cylindrical Waveguide Cavity — Adaptive Convergence vs DOFs", fontsize=12, weight='bold')
     ax.grid(True, which="both", ls=":", alpha=0.5)
     ax.legend(fontsize=9, ncol=3, loc='best')
     fig.tight_layout()
@@ -135,7 +141,7 @@ def plot_convergence_curves(df, output_dir):
     ax.set_yscale('log')
     ax.set_xlabel("Solve Time [s]", fontsize=11)
     ax.set_ylabel("Relative Error", fontsize=11)
-    ax.set_title("Cylindrical Waveguide Cavity — Convergence vs Time", fontsize=12, weight='bold')
+    ax.set_title("Cylindrical Waveguide Cavity — Adaptive Convergence vs Time", fontsize=12, weight='bold')
     ax.grid(True, which="both", ls=":", alpha=0.5)
     ax.legend(fontsize=9, ncol=3, loc='best')
     fig.tight_layout()

@@ -116,7 +116,7 @@ Results are written under the project folder and cached on the objects.
 ```python
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-from cavsim2d.cavity import Cavities, EllipticalCavity
+from cavsim2d import Cavities, EllipticalCavity
 
 # A project folder — all results and geometry are written here.
 cavs = Cavities(r'/path/to/my_project')
@@ -171,7 +171,7 @@ my_project/
 | `boundary_conditions` | end-wall BCs, e.g. `'mm'` (magnetic-magnetic) | `'mm'` |
 | `polarisation` | azimuthal order(s) to solve — see below | `'monopole'` |
 | `n_modes` | physical modes per m-pole solve | `n_cells + 2` |
-| `mesh_config` | `{'h': ..., 'p': ...}` mesh size / order | h=20, p=3 |
+| `mesh_config` | `{'h': ..., 'p': ..., 'adaptive': ...}` mesh size / order / adaptive refinement | h=20, p=3 |
 | `conductivity` | wall conductivity [S/m] for Q/Ploss (normal conductor) | copper, 5.96e7 |
 | `surface_resistance` | fixed surface resistance [Ω] (e.g. SRF) — overrides `conductivity` | — |
 | `uq_config` | enable uncertainty quantification (see below) | — |
@@ -181,6 +181,16 @@ my_project/
 > are copper; pass `conductivity` for another normal conductor, or
 > `surface_resistance` (a fixed Rs, e.g. `1e-8` Ω) to model an SRF cavity. The
 > geometric factor `G` is material-independent.
+
+> [!TIP]
+> **Adaptive mesh refinement.** Set `mesh_config['adaptive']` to `True` (e.g.
+> `{'h': 20, 'p': 3, 'adaptive': True}`) and the solver refines the mesh where
+> the modes need it, stopping once every mode's recovery error is below the
+> tolerance, then reports the QOIs on the finest mesh. Use a dict to tune it:
+> `{'adaptive': {'tol': 1e-12, 'max_refinements': 6, 'max_ndof': 80000,
+> 'theta': 0.25}}`. The per-level history is written to
+> `eigenmode/monopole/adaptive_history.json`. `cav.study_mesh_convergence()`
+> uses the same machinery to sweep error-vs-DOF at each polynomial order.
 
 Access results either on the container or per cavity:
 

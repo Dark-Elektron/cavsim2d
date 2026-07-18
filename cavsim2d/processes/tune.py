@@ -453,8 +453,20 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                     ct_entry['TUNED VARIABLES'].append(resolved_var)
                 ct_entry['FREQ'] = stage_freq
 
-                aggregated_conv.setdefault(ct_name, {})[resolved_var] = conv_dict
-                aggregated_abs_err.setdefault(ct_name, {})[resolved_var] = abs_err_dict
+                # tuner.tune_ngsolve wraps its per-parameter iteration history
+                # in a single-entry dict keyed by an internal sentinel (not the
+                # cavity's name) — unwrap it so the saved convergence data is a
+                # flat {param: [values...]} dict, not a pointless extra nesting
+                # level ("cavity" in the saved JSON).
+                conv_series = (next(iter(conv_dict.values()))
+                              if isinstance(conv_dict, dict) and len(conv_dict) == 1
+                              else conv_dict)
+                abs_err_series = (next(iter(abs_err_dict.values()))
+                                  if isinstance(abs_err_dict, dict) and len(abs_err_dict) == 1
+                                  else abs_err_dict)
+
+                aggregated_conv.setdefault(ct_name, {})[resolved_var] = conv_series
+                aggregated_abs_err.setdefault(ct_name, {})[resolved_var] = abs_err_series
 
         if not aggregated_tune_res:
             _restore_and_bail()

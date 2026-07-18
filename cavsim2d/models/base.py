@@ -26,7 +26,8 @@ from cavsim2d.processes.tune import last_stage_result
 from cavsim2d.geometry.beampipes import abci_shape
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
 from cavsim2d.solvers.ABCI.abci import resolve_mrot
-from cavsim2d.solvers.solver_objects import TuneSolver, EigenmodeSolver, WakefieldSolver
+from cavsim2d.solvers.solver_objects import (TuneSolver, EigenmodeSolver, WakefieldSolver,
+                                             MultipactingSolver, _maybe_show)
 from cavsim2d.constants import SOFTWARE_DIRECTORY
 from cavsim2d.utils.style import house_style, polarisation_color, shades, WARM
 from fractions import Fraction
@@ -90,6 +91,7 @@ class Cavity(ABC):
         self._tune_solver = None
         self._eigenmode_solver = None
         self._wakefield_solver = None
+        self._multipacting_solver = None
         self._tuned_cavity = None
 
         self.eigenmode_qois_all_modes = {}
@@ -181,6 +183,13 @@ class Cavity(ABC):
         if self._wakefield_solver is None:
             self._wakefield_solver = WakefieldSolver(self)
         return self._wakefield_solver
+
+    @property
+    def multipacting(self):
+        """MultipactingSolver object for this cavity."""
+        if self._multipacting_solver is None:
+            self._multipacting_solver = MultipactingSolver(self)
+        return self._multipacting_solver
 
     @property
     def tuned(self):
@@ -766,167 +775,84 @@ class Cavity(ABC):
             "the current geometry pipeline). Workaround: build one cavity per "
             "sweep value and call cav.eigenmode.run() on each.")
 
-    def study_mesh_convergence_fm(self, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
-        """
+    def study_mesh_convergence(self, eigenmode_config=None, h=10, p=2, p_passes=3, p_step=1,
+                               n_modes=10, polarisation=('monopole', 'dipole'),
+                               tol=1e-12, max_refinements=8, max_ndof=100000):
+        """Mesh-convergence sweep: adaptive h-refinement at each polynomial order.
+
+        For every polynomial order ``p`` (``p_passes`` of them, stepping by
+        ``p_step``) the cavity is solved on an **adaptively refined** mesh that
+        starts from ``maxh = h``. Rather than a fixed geometric h-sequence, each
+        refinement is error-driven (monopole error; see the solver's
+        ``mesh_config['adaptive']``), and the DOF count is recorded at every
+        refinement level so error-vs-DOF converges along the optimal path.
+
+        The result keeps the full per-mode layout: ``convergence_df_data`` has
+        one row per (order, refinement level, polarisation, mode) with all the
+        QOIs (``freq [MHz]``, ``Q []``, ``R/Q [Ohm]``, …) plus each mode's own
+        ``max_err``. ``h_pass`` is the refinement level (0-based), ``No of DOFs``
+        the monopole DOF count there, and ``mode_index`` is ``'<m>-<mode>'``.
 
         Parameters
         ----------
-        h_passes
-        h
-        passes
-        solver
-        type: str
-            h or p refinement
-
-        Returns
-        -------
-
+        h : float
+            Starting maximum element size (mm) for the h-refinement.
+        p, p_passes, p_step : int
+            Polynomial order to start at, how many orders to sweep, and the step.
+        n_modes : int
+            How many modes to solve for and report per polarisation (default 10).
+        polarisation : sequence of str
+            Which polarisations to evaluate on each level's mesh — any of
+            'monopole', 'dipole', 'quadrupole', … (default monopole + dipole).
+        tol : float
+            Refinement stops once every solved mode's ``max_err`` is below this
+            (default 1e-12).
+        max_refinements, max_ndof : int
+            Hard caps: stop once either is reached even if ``tol`` is not met.
         """
+        self._ensure_workspace()      # standalone: provision ./<name>/ if needed
+        self.create()                 # write the geometry the mesher reads
 
-        convergence_df_ph = None
-        convergence_df_data_ph = None
-        # define start value, refinement (adaptive? fixed step?)
-        hs = h
-        for ip in range(p_passes):
-            convergence_dict_h = {}
-            for ih in range(h_passes):
-                eigenmode_config = {'boundary_conditions': 'mm',
-                                    'mesh_config': {
-                                        'h': hs,
-                                        'p': p
-                                    }
-                                    }
-                if 'polarisation' not in eigenmode_config.keys():
-                    eigenmode_config["polarisation"] = ['monopole']
-
-                t0 = time.perf_counter()
-                run_eigenmode_s({self.name: self}, eigenmode_config, '')
-                elapsed = time.perf_counter() - t0
-                # read results
-                self.get_eigenmode_qois(eigenmode_config)
-
-                qois_copy = dict(self.eigenmode_qois)
-                qois_copy['time [s]'] = elapsed
-                convergence_dict_h[ih] = qois_copy
-                convergence_dict_h[ih]['h'] = hs
-                convergence_dict_h[ih]['p'] = p
-                convergence_dict_h[ih]['No of Mesh Elements'] = self.eigenmode_qois['No of Mesh Elements']
-                convergence_dict_h[ih]['No of DOFs'] = self.eigenmode_qois.get('No of DOFs', 0)
-
-                hs /= h_step
-            convergence_df_data_h = pd.DataFrame.from_dict(convergence_dict_h, orient='index')
-            convergence_df_h = self.calculate_rel_errors(convergence_df_data_h)
-
-            if convergence_df_ph is None:
-                convergence_df_data_ph = convergence_df_data_h
-                convergence_df_ph = convergence_df_h
-            else:
-                convergence_df_data_ph = pd.concat([convergence_df_data_ph,
-                                                    convergence_df_data_h], ignore_index=True)
-                convergence_df_ph = pd.concat([convergence_df_ph,
-                                               convergence_df_h], ignore_index=True)
-            hs = h
-            p += p_step
-
-        # convert to dataframe
-        self.convergence_df_data = convergence_df_data_ph
-        self.convergence_df = convergence_df_ph
-
-    def study_mesh_convergence(self, eigenmode_config=None, h=10, h_passes=3, h_step=1, p=2, p_passes=3, p_step=1):
-        """
-        Runs a mesh convergence sweep (h- and p-refinement) tracking
-        all extracted eigenmodes instead of a single scalar mode.
-        """
-
-        # We will collect flat row dictionaries across the entire sweep
         all_rows = []
-
-        hs = h
         for ip in range(p_passes):
-            for ih in range(h_passes):
-                if eigenmode_config is None:
-                    eigenmode_config = {
-                        'boundary_conditions': 'mm',
-                        'mesh_config': {
-                            'h': hs,
-                            'p': p
-                        }
-                    }
+            p_now = p + ip * p_step
+            cfg = dict(eigenmode_config) if eigenmode_config else {}
+            cfg.setdefault('boundary_conditions', 'mm')
+            cfg.setdefault('polarisation', list(polarisation))
+            cfg.setdefault('n_modes', n_modes)
+            cfg['mesh_config'] = {'h': h, 'p': p_now,
+                                  'adaptive': {'tol': tol,
+                                               'max_refinements': max_refinements,
+                                               'max_ndof': max_ndof}}
 
-                eigenmode_config['mesh_config']['h'] = hs
-                eigenmode_config['mesh_config']['p'] = p
+            rows = ngsolve_mevp.solve_convergence(self, cfg)
+            for row in rows:
+                row['h'] = h
+                row['p'] = p_now
+                row['p_pass'] = ip
+            all_rows.extend(rows)
 
-                if 'polarisation' not in eigenmode_config.keys():
-                    eigenmode_config["polarisation"] = ['monopole']
-
-                t0 = time.perf_counter()
-                # Run the multimode solver
-                run_eigenmode_s({self.name: self}, eigenmode_config, '')
-                self.get_eigenmode_qois(eigenmode_config)
-                # print(self.eigenmode_qois_all_modes)
-                elapsed = time.perf_counter() - t0
-
-                # Fetch the dictionary containing all modes
-                # Expected structure: {'0': {...}, '1': {...}, ...}
-                all_modes_data = getattr(self, 'eigenmode_qois_all_modes', {})
-
-                # Fallback if all_modes isn't populated but the single mode is
-                if not all_modes_data and hasattr(self, 'eigenmode_qois'):
-                    all_modes_data = {'0': self.eigenmode_qois}
-
-                # Loop through every tracked mode in this simulation step
-                for mode_str, qois in all_modes_data.items():
-                    row = dict(qois)  # Copy all quantities (freq, Q, R/Q, etc.)
-
-                    # Append iteration tracking metadata
-                    row['mode_index'] = mode_str
-                    row['h'] = hs
-                    row['p'] = p
-                    row['h_pass'] = ih
-                    row['p_pass'] = ip
-                    row['time [s]'] = elapsed
-
-                    # Safe checking for element/DOF tracking
-                    row['No of Mesh Elements'] = qois.get('No of Mesh Elements',
-                                                          self.eigenmode_qois.get('No of Mesh Elements', 0))
-                    row['No of DOFs'] = qois.get('No of DOFs', self.eigenmode_qois.get('No of DOFs', 0))
-
-                    all_rows.append(row)
-
-                hs /= h_step
-            hs = h
-            p += p_step
-
-        # Build the comprehensive raw data dataframe
-        convergence_df_data_ph = pd.DataFrame(all_rows)
-
-        # Compute relative errors
-        # Note: Ensure your self.calculate_rel_errors handles multi-mode data frames,
-        # or apply it grouped by mode index:
+        self.convergence_df_data = pd.DataFrame(all_rows)
         try:
-            convergence_df_ph = self.calculate_rel_errors(convergence_df_data_ph)
+            self.convergence_df = self.calculate_rel_errors(self.convergence_df_data)
         except Exception:
-            # Fallback if calculate_rel_errors expects single-mode schemas
-            convergence_df_ph = convergence_df_data_ph.copy()
-
-            # Assign data structures back to the object instance
-        self.convergence_df_data = convergence_df_data_ph
-        self.convergence_df = convergence_df_ph
+            self.convergence_df = self.convergence_df_data.copy()
 
     def calculate_rel_errors(self, df):
-        # Specify the columns to exclude
-        columns_to_exclude = ['h', 'p', 'No of Mesh Elements', 'No of DOFs', 'time [s]']
-        
-        # Filter columns to exclude to only those present in df
-        actual_exclude = [col for col in columns_to_exclude if col in df.columns]
-        df_to_compute = df.drop(columns=actual_exclude)
+        # Level-to-level relative error of the numeric QOI columns. Metadata
+        # (mesh size/order, the refinement/pass indices, timings, mode/pol
+        # labels) is carried through unchanged, and text columns are skipped so
+        # a 'polarisation' string never breaks the subtraction.
+        metadata = ['h', 'p', 'h_pass', 'p_pass', 'refinement', 'mode_index',
+                    'No of Mesh Elements', 'No of DOFs', 'time [s]', 'max_err']
+        numeric = df.select_dtypes(include=[np.number])
+        compute_cols = [c for c in numeric.columns if c not in metadata]
+        df_to_compute = numeric[compute_cols]
         df_prev = df_to_compute.shift(1)
         relative_errors = (df_to_compute - df_prev).abs() / df_prev.abs()
-        relative_errors.columns = [f'rel_error_{col}' for col in df_to_compute.columns]
-        excluded_columns = df[actual_exclude]
-        rel_errors_df = pd.concat([relative_errors, excluded_columns], axis=1)
-
-        return rel_errors_df
+        relative_errors.columns = [f'rel_error_{col}' for col in compute_cols]
+        carried = [c for c in df.columns if c not in compute_cols]
+        return pd.concat([relative_errors, df[carried]], axis=1)
 
     def run_eigenmode(self, solver='ngsolve', freq_shift=0, boundary_cond=None, subdir='', uq_config=None):
         """
@@ -1516,49 +1442,38 @@ class Cavity(ABC):
         return self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
                                        breaks=breaks, light_lines=light_lines, **kwargs)
 
-    def plot_axis_field(self, show_min_max=True):
-        fig, ax = plt.subplots(figsize=(12, 3))
-        if len(self.Ez_0_abs['z(0, 0)']) != 0:
-            ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-            ax.text(
-                0.95, 0.05,  # Position (normalized coordinates)
-                r'$\eta=' + fr'{self.ff:.2f}\%' + '$',  # Text content
-                fontsize=12,  # Font size
-                ha='right',  # Horizontal alignment
-                va='bottom',  # Vertical alignment
-                transform=plt.gca().transAxes  # Use axes-relative positioning
-            )
-            ax.legend(loc="upper right")
-            if show_min_max:
-                minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 50, width=100)
-                Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                ax.plot(self.Ez_0_abs['z(0, 0)'][peaks], Ez_0_abs_peaks, marker='o', ls='')
-                ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                ax.axhline(max(Ez_0_abs_peaks), c='k')
-        else:
-            if os.path.exists(os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')):
-                with open(os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')) as csv_file:
-                    self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-                ax.plot(self.Ez_0_abs['z(0, 0)'], self.Ez_0_abs['|Ez(0, 0)|'], label='$|E_z(0,0)|$')
-                ax.text(
-                    0.95, 0.05,  # Position (normalized coordinates)
-                    r'$\eta=$' + fr'{self.ff:.2f}\%' + '$',  # Text content
-                    fontsize=12,  # Font size
-                    ha='right',  # Horizontal alignment
-                    va='bottom',  # Vertical alignment
-                    transform=plt.gca().transAxes  # Use axes-relative positioning
-                )
-                ax.legend(loc="upper right")
-                if show_min_max:
-                    minz, maxz = min(self.Ez_0_abs['z(0, 0)']), max(self.Ez_0_abs['z(0, 0)'])
-                    peaks, _ = find_peaks(self.Ez_0_abs['|Ez(0, 0)|'], distance=int(5000 * (maxz - minz)) / 100,
-                                          width=100)
-                    Ez_0_abs_peaks = self.Ez_0_abs['|Ez(0, 0)|'][peaks]
-                    ax.axhline(min(Ez_0_abs_peaks), c='r', ls='--')
-                    ax.axhline(max(Ez_0_abs_peaks), c='k')
-            else:
+    def plot_axis_field(self, show_min_max=True, show=True):
+        # Load the on-axis field if it isn't already in memory.
+        if len(self.Ez_0_abs['z(0, 0)']) == 0:
+            csv = os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')
+            if not os.path.exists(csv):
                 error('Axis field plot data not found.')
+                return None
+            with open(csv) as csv_file:
+                self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
+
+        z = np.asarray(self.Ez_0_abs['z(0, 0)'])
+        e = np.asarray(self.Ez_0_abs['|Ez(0, 0)|'])
+
+        fig, ax = plt.subplots(figsize=(12, 3))
+        ax.plot(z, e, label='$|E_z(0,0)|$')
+
+        # Field flatness from the on-axis cell peaks — computed here from the
+        # same peaks the min/max lines below draw, so the printed eta always
+        # matches the plot. (self.ff is only populated after get_eigenmode_qois;
+        # reading it here printed 0.00% on a fresh cavity.) Uses the same peak
+        # detection as evaluate_qois so the value equals the QOI 'ff [%]'.
+        peaks, _ = find_peaks(e, distance=max(1, len(e) // 100), width=100)
+        ff = (min(e[peaks]) / max(e[peaks]) * 100) if len(peaks) else 100.0
+        ax.text(0.95, 0.05, '$' + r'\eta=' + fr'{ff:.2f}\%' + '$', fontsize=12,
+                ha='right', va='bottom', transform=ax.transAxes)
+        ax.legend(loc="upper right")
+        if show_min_max and len(peaks):
+            ax.plot(z[peaks], e[peaks], marker='o', ls='')
+            ax.axhline(min(e[peaks]), c='r', ls='--')
+            ax.axhline(max(e[peaks]), c='k')
+        _maybe_show(show)
+        return ax
 
     def plot_spectra(self, var, ax=None):
         if len(self.uq_fm_results_all_modes) != 0:
@@ -1653,8 +1568,9 @@ class Cavity(ABC):
             with open(op_path) as json_file:
                 all_wakefield_qois = json.load(json_file)
 
-        # get only keys in op_points
-        if 'operating_points' in wakefield_config:
+        # get only keys in op_points. Truthy check (not just presence): the
+        # complete saved config carries 'operating_points': None when unset.
+        if wakefield_config.get('operating_points'):
             for op_pt in wakefield_config['operating_points'].keys():
                 for key, val in all_wakefield_qois.items():
                     if op_pt in key:
@@ -1855,12 +1771,14 @@ class Cavity(ABC):
         gfu_E, gfu_H = ngsolve_mevp.load_fields(self._eigenmode_pol_dir(pol), mode)
         return gfu_E, gfu_H
 
-    def _plot_profile(self, profile, ax=None, mirror=True, fill=True, **kwargs):
+    def _plot_profile(self, profile, ax=None, mirror=False, fill=True, **kwargs):
         """Draw a cavity's meridian outline straight from its :class:`Profile`.
 
         Geometry-independent: works for every model, since each builds a Profile.
-        The wall is drawn in mm; ``mirror`` reflects it about the axis for the full
-        cross-section and ``fill`` shades the interior.
+        The wall is drawn in mm. Only the upper half (``r >= 0``) is the analysed,
+        axisymmetric domain, so that is what is drawn by default; pass
+        ``mirror=True`` to reflect it about the axis for the full cross-section.
+        ``fill`` shades the interior.
         """
         with house_style():
             if ax is None:
@@ -1883,20 +1801,6 @@ class Cavity(ABC):
             ax.set_xlabel('$z$ [mm]')
             ax.set_ylabel(r'$r$ [mm]')
             return ax
-
-    def _wake_xy(self, pol, kind):
-        """``(x, y)`` for a wake plot, read from the normalised wakefield frame
-        (solver-agnostic; ``pol`` is ``'z'``/``'t'``, ``kind`` is ``'impedance'``
-        or ``'wake'``). Empty arrays when there is no result yet."""
-        df = self.wakefield.wake_z if pol == 'z' else self.wakefield.wake_t
-        if df is None or df.empty:
-            return np.array([]), np.array([])
-        if kind == 'impedance':
-            cols = ['f [MHz]', '|Z| [Ohm]' if pol == 'z' else '|Z| [Ohm/m]']
-        else:
-            cols = ['s [m]', 'W [V/pC]' if pol == 'z' else 'W [V/pC/m]']
-        sub = df[cols].dropna()
-        return sub[cols[0]].to_numpy(), sub[cols[1]].to_numpy()
 
     def plot(self, what, ax=None, scale_x=1, **kwargs):
         if what.lower() == 'geometry':
@@ -1968,32 +1872,13 @@ class Cavity(ABC):
                   f"plot its geometry.")
             return None
 
-        wake_specs = {
-            'zl': ('z', 'impedance', scale_x, 'Wake. Long.', 'f [MHz]',
-                   r"$Z_{\parallel} ~[\mathrm{k\Omega}]$", 1.8),
-            'zt': ('t', 'impedance', scale_x, 'Wake. Trans.', 'f [MHz]',
-                   r"$Z_{\perp} ~[\mathrm{k\Omega/m}]$", 1.8),
-            'wpl': ('z', 'wake', 1.0, 'Longitudinal wake potentials',
-                    'Distance from Bunch Head S [m]',
-                    r"Scaled Wake Potentials $W (S)$ [V/pC]", 1.8),
-            'wpt': ('t', 'wake', 1.0, 'Transversal wake potentials',
-                    'Distance from Bunch Head S [m]',
-                    r"Scaled Wake Potentials $W (S)$ [V/pC/m]", 3),
-        }
-        if what.lower() in wake_specs:
-            pol, kind, sx, tag, xlabel, ylabel, lw = wake_specs[what.lower()]
-            x, y = self._wake_xy(pol, kind)
-            if len(x) == 0:
-                info("No wakefield data — run cav.wakefield.run(...) first.")
-                return ax
-            if ax is None:
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.margins(x=0)
-            kwargs.setdefault('c', self.color)
-            kwargs.setdefault('lw', lw)
-            ax.plot(x * sx, y, label=fr'{self.name} ({tag})', **kwargs)
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
+        # All wakefield plotting now lives on the wakefield namespace:
+        #   cav.wakefield.plot_impedance() / plot_wake() / plot_k_loss() / plot_k_kick()
+        # cav.plot(...) keeps only the geometry and convergence views.
+        if what.lower() in ('zl', 'zt', 'wpl', 'wpt'):
+            error(f"cav.plot('{what}') was removed. Use the wakefield namespace: "
+                  f"cav.wakefield.plot_impedance() / plot_wake() "
+                  f"(kind='longitudinal'|'transverse').")
             return ax
 
         if what.lower() == 'convergence':
@@ -2031,22 +1916,33 @@ class Cavity(ABC):
         error(f"No {what} for polarisation '{pol}' "
               f"(looked for {required_file}). {avail_msg}{hint}")
 
-    def plot_mesh(self, plotter='ngsolve', pol='monopole'):
+    def show_geometry(self, plotter='ngsolve', maxh=20e-3, order=1):
+        """Interactive NGSolve (webgui) view of the analysed geometry.
+
+        Meshes the geometry on the fly, so it needs no prior eigenmode run.
+        For the flat matplotlib meridian outline use :meth:`plot` instead::
+
+            cav.plot('geometry')     # matplotlib, half cross-section (r >= 0)
+        """
+        return ngsolve_mevp.show_geometry(self, maxh=maxh, order=order, plotter=plotter)
+
+    def show_mesh(self, plotter='ngsolve', pol='monopole'):
+        """Interactive NGSolve (webgui) view of the mesh used in the analysis."""
         mesh_path = self._eigenmode_pol_dir(pol)
         if os.path.exists(os.path.join(mesh_path, 'mesh.pkl')):
-            ngsolve_mevp.plot_mesh(mesh_path, plotter=plotter)
-        else:
-            self._eigenmode_artifact_error(pol, 'mesh.pkl', 'mesh')
+            return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter)
+        self._eigenmode_artifact_error(pol, 'mesh.pkl', 'mesh')
 
-    def plot_fields(self, mode=1, which='E', plotter='ngsolve', pol='monopole'):
-        """Plot eigenmode fields. For m-pole results pass ``pol`` ('dipole',
-        'quadrupole', ... or the mode number m); *which* then accepts 'E'/'H'
-        (in-plane envelopes) as well as 'Ephi'/'Hphi' (azimuthal envelopes)."""
+    def show_fields(self, mode=1, which='E', plotter='ngsolve', pol='monopole'):
+        """Interactive NGSolve (webgui) view of the eigenmode fields.
+
+        For m-pole results pass ``pol`` ('dipole', 'quadrupole', ... or the mode
+        number m); *which* then accepts 'E'/'H' (in-plane envelopes) as well as
+        'Ephi'/'Hphi' (azimuthal envelopes)."""
         field_path = self._eigenmode_pol_dir(pol)
         if os.path.exists(os.path.join(field_path, 'gfu_EH.pkl')):
-            ngsolve_mevp.plot_fields(field_path, mode, which, plotter)
-        else:
-            self._eigenmode_artifact_error(pol, 'gfu_EH.pkl', 'field data')
+            return ngsolve_mevp.show_fields(field_path, mode, which, plotter)
+        self._eigenmode_artifact_error(pol, 'gfu_EH.pkl', 'field data')
 
     def _plot_convergence(self, ax):
         keys = list(ax.keys())

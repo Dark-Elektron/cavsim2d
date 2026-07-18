@@ -134,7 +134,10 @@ def validate_eigenmode_config(cfg):
     if isinstance(cfg, dict):
         _check_processes(cfg, 'eigenmode_config')
         for key in ('n_modes', 'nmodes'):
-            if key in cfg:
+            # Explicit None means unset (complete configs carry every key,
+            # with None for run-time-resolved values), so only typed values
+            # are checked.
+            if cfg.get(key) is not None:
                 require(isinstance(cfg[key], int) and not isinstance(cfg[key], bool),
                         f"eigenmode_config: '{key}' must be an integer.")
                 require(cfg[key] > 0,
@@ -148,7 +151,8 @@ def _check_mode_of_interest(cfg):
     """``mode_of_interest`` is a 1-based mode index, a list of them (a polarisation
     may have several modes of interest), or a dict of either keyed by polarisation
     ('monopole', 'dipole', ... or the azimuthal number)."""
-    if 'mode_of_interest' not in cfg:
+    # Explicit None means unset (the complete-config convention).
+    if cfg.get('mode_of_interest') is None:
         return
     value = cfg['mode_of_interest']
     entries = list(value.items()) if isinstance(value, dict) else [(None, value)]

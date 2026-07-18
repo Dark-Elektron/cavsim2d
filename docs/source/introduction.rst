@@ -1,81 +1,49 @@
 Introduction
 ************
 
-This is the introduction file and I have to write somethign at some point in time here
-Now, this software is used to for conducting analysis on accelerating
-cavities. Eigenmode analysis, wakefield analysis, multipacting analysis
-and general post-processing.
+This section introduces the numerical methods and solvers used in ``cavsim2d``
+for conducting analysis on accelerating RF cavities. The toolkit provides capabilities
+for eigenmode analysis, frequency tuning, wakefield/impedance analysis, shape
+optimisation, uncertainty quantification (UQ), and post-processing of results.
 
-Each module performs a different operation. The analysis that are currently
-supported in this module are eigenmode analysis, wakefield analysis,
-and multipacting analysis.
+Each module performs a different operation:
 
 * Eigenmode analysis - NGSolve :cite:p:`NGSolve`
 * Wakefield analysis - ABCI :cite:p:`ABCI`
-* Multipacting analysis - Multipac
-* Optimisation - Python
-* Uncertainty quantification - Python
-* Postprocessing - Python
+* Optimisation - Python (Genetic Algorithm)
+* Uncertainty quantification - Python (Quadrature/QMC via SALib/Dakota)
+* Post-processing - Python (Matplotlib/Pandas)
 
 Eigenmode Analysis
 ==================
 
-Eigenmode analysis is performed using the NGSolve electromagnetic code. The code
-also calculates most of the figures of merit. Some postprocessing is, however,
-required to transform them to the form that is used in most papers related
-to accelerating cavities design.
+Eigenmode analysis is performed using the NGSolve electromagnetic finite-element code :cite:p:`NGSolve`.
+Unlike legacy workflows that require executing external binary utilities, ``cavsim2d`` wraps
+NGSolve directly as a Python library. This enables end-to-end simulation pipelines—including
+meshing, solving, and post-processing—to run entirely within Python in-memory.
 
-The NGSolveMEVP code is intended to calculate azimuthal-homogenous modes in
-axissymmetric cavities, periodical structure, and cut-off frequencies in
-long homogenous waveguides :cite:p:`NGSolve`. NGSolve is written by Sergey
-Belomestnykh and it consists of a set of executable files for differnt
-purposes. The first of these is the ``genmesh.exe`` which reads a geometry
-file ``<filename>.geo`` written using Python and generates the mesh file
-which is a .gem file and some other related files. ``slansre.exe`` is then
-called to run the eigenmode simulation and the results are output to specified folder.
-
-The files output by the NGSolve codes are basically three types
-
-* binary files:
-* text files: which can be read by regular text editors
-* meta files
-
-The inputs and output files of the various NGSolve codes are given below:
-
-
-.. Note::
-
-    It is planned that in future releases, all analysis codes will be custom
-    codes written in Python.
+The solver computes the fields, frequencies, and relevant RF figures of merit (stored energy,
+accelerating/kick voltages, R/Q, surface power losses, geometric factor G, and field flatness)
+for both standard monopole modes (:math:`m=0`) and higher-order multipole modes (:math:`m \ge 1`).
 
 Wakefield Analysis
 ==================
 
-Wakefield analysis is performed using the ABCI
-(Azimuthal Beam Cavity Interaction) code written by Yang Ho Chin
-:cite:p:`ABCI`. It solves the Maxwell equations directly in the tiem domain
-when a bunched beam goes through an axi-symmetric structure on or off axis.
-It can be found `here <https://abci.kek.jp/abci.htm>`_.
-
-.. note::
-
-    It is planned that in future releases, all analysis codes will be custom
-    codes written in Python.
-
+Wakefield analysis is performed using the ABCI (Azimuthal Beam Cavity Interaction) code written by
+Yang Ho Chin :cite:p:`ABCI`. It solves the Maxwell equations directly in the time domain
+when a bunched beam goes through an axisymmetric structure on or off axis. It can be found
+on the official `ABCI website <https://abci.kek.jp/abci.htm>`_.
 
 Optimisation
 ============
 
-Optimisation is done using self-written Python codes which call to the previously
-mentioned analysis codes. Currently, Genetic Algorithm (GA)
-optimisations are supported. More should be included in future releases.
+Optimisation is carried out using self-written Python codes that call the previously mentioned analysis
+codes. Currently, multi-objective Genetic Algorithm (GA) optimisations are supported to find Pareto-optimal
+cavity geometries.
 
 Uncertainty Quantification
 ==========================
 
-Uncertainty quantificaion (UQ) is done using self-written Python codes
-which call to the previously mentioned analysis codes. The procedure followed
-is described in here. The mathematics can be found in the theory section.
-
-.. bibliography::
-   :all:
+Uncertainty quantification (UQ) propagates geometric tolerancing and alignment uncertainties
+through the solvers to calculate the statistical mean and variance of the cavity objectives.
+The underlying mathematics of the UQ methods can be found in the theory section.

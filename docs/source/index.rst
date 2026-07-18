@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 cavsim2d documentation!
-======================
+=======================
 
 .. toctree::
    :maxdepth: 2
@@ -15,10 +15,40 @@ cavsim2d documentation!
    :caption: Quickstart
 
    introduction
+   theory
+   installation
    quickstart
 
 .. toctree::
    :maxdepth: 6
+   :caption: Analysis Modules
+
+   eigenmode
+   tuning
+   wakefield
+   multipacting
+   optimisation
+   uq
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   examples/eigenmode/index
+   examples/tuning/index
+   examples/wakefield/index
+   examples/multipacting/index
+   examples/optimisation/index
+   examples/advanced/index
+
+.. toctree::
+   :maxdepth: 6
+   :caption: References
+
+   references
+
+.. .. toctree::
+   :maxdepth: 4
    :caption: Modules:
 
    modules

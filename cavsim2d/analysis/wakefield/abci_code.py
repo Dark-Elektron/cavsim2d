@@ -8,7 +8,7 @@ class ABCI:
     The type of cavity geometry it writes is regular elliptical cavity geometry with mid-cup dimensions equal
     and end cups different. Geometry type shown in the figure below:
 
-    .. image:: ../images/Cavity_parametrised.png
+    .. image:: ../images/ellipse_tangent.png
       :width: 800
       :alt: Cavity parametrised model
 

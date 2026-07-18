@@ -70,7 +70,7 @@ TESLA = [42, 42, 12, 19, 35, 57.7, 103.353]
 
 @pytest.fixture(scope='module')
 def solved(tmp_path_factory):
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     d = tmp_path_factory.mktemp('obj')
     cavs = Cavities(str(d))
     cav = EllipticalCavity(2, TESLA, TESLA, TESLA, beampipe='both')
@@ -122,7 +122,7 @@ def test_arbitrary_number_of_modes_of_interest(tmp_path):
     Each is written to qois_moi.json keyed by its 1-based index; the first listed
     is primary and lands in qois.json; each matches qois_all_modes.
     """
-    from cavsim2d.cavity import Cavities, EllipticalCavity
+    from cavsim2d import Cavities, EllipticalCavity
     cavs = Cavities(str(tmp_path))
     cav = EllipticalCavity(3, TESLA, TESLA, TESLA, beampipe='both')
     cavs.add_cavity([cav], ['C'])
