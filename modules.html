@@ -1,96 +1,1423 @@
-<!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="./">
-<head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>cavsim2d &mdash; cavsim2d 13.08.2024 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="_static/plot_directive.css?v=7f9a90b1" />
-      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="">
+    
+    
+      
+        <title>cavsim2d - cavsim2d 1.0.0 documentation</title>
+      
+    
+    
+      
+        
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+        <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+        <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
 
   
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="_static/jquery.js?v=5d32c60e"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=f5513fb5"></script>
-        <script src="_static/doctools.js?v=9bcbadda"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/js/theme.js"></script>
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="cavsim2d package" href="cavsim2d.html" />
-    <link rel="prev" title="Installation" href="quickstart.html" /> 
-</head>
 
-<body class="wy-body-for-nav"> 
-  <div class="wy-grid-for-nav">
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
-
-          
-          
-          <a href="index.html" class="icon icon-home">
-            cavsim2d
-              <img src="_static/cavsim2d_logo.svg" class="logo" alt="Logo"/>
-          </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
-</div>
-        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html#examples">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html#understanding-the-geometry-types">Understanding the geometry types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html#advanced">Advanced</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html#parallelisation">Parallelisation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">cavsim2d</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html">cavsim2d package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html">setup module</a></li>
-</ul>
-</li>
-</ul>
-
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="cavsim2d 1.0.0 documentation" class="md-header__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cavsim2d 1.0.0 documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              cavsim2d
+            
+          </span>
         </div>
       </div>
-    </nav>
-
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">cavsim2d</a>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
       </nav>
-
-      <div class="wy-nav-content">
-        <div class="rst-content">
-          <div role="navigation" aria-label="Page navigation">
-  <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">cavsim2d</li>
-      <li class="wy-breadcrumbs-aside">
-            <a href="_sources/modules.rst.txt" rel="nofollow"> View page source</a>
-      </li>
-  </ul>
-  <hr/>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
-             
-  <section id="cavsim2d">
-<h1>cavsim2d<a class="headerlink" href="#cavsim2d" title="Link to this heading"></a></h1>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="cavsim2d 1.0.0 documentation" class="md-nav__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    cavsim2d 1.0.0 documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Quickstart</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Introduction</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="theory.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Theory and Numerical Formulation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_2" id="__nav_1_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Theory and Numerical Formulation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="theory/eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="theory/wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="theory/multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="theory/uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification and Sensitivity Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Installation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart Tutorial</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Analysis Modules</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Analysis Modules</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Cavity Tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry Optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Examples</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Examples</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/eigenmode/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Eigenmode</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/pillbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode analysis:<wbr> the pillbox cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/tuning/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Tuning</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/tune_to_frequency.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a cavity to a target frequency</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/wakefield/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Wakefield</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/wakefield/impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield and impedance <wbr>(ABCI)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/multipacting/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Multipacting</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/multipacting/tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> the TESLA mid-<wbr>cell</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/optimisation/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimisation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Optimisation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/optimisation/pareto.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multi-<wbr>objective shape optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/advanced/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/advanced/eigenmode_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode under uncertainty <wbr>(spline &amp; RF gun)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/advanced/robust_tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust tuning <wbr>(flat-<wbr>top cavity)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/advanced/wakefield_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/advanced/robust_optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>References</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="references.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                
+                
+                  
+
+
+<h1 id="cavsim2d">cavsim2d<a class="headerlink" href="#cavsim2d" title="Link to this heading">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="cavsim2d.html">cavsim2d package</a><ul>
@@ -102,13 +1429,13 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.data_module.html">cavsim2d.data_module package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="cavsim2d.data_module.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.data_module.html#module-cavsim2d.data_module.abci_data">cavsim2d.data_module.abci_data module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.data_module.html#module-cavsim2d.data_module">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.data_module.html#cavsim2d-data-module-abci-data-module">cavsim2d.data_module.abci_data module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.data_module.html#module-contents">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.solvers.html">cavsim2d.solvers package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.html#subpackages">Subpackages</a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.html#module-cavsim2d.solvers">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cavsim2d.solvers.html#module-contents">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="cavsim2d.utils.html">cavsim2d.utils package</a><ul>
@@ -120,219 +1447,80 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#module-cavsim2d.cavity">cavsim2d.cavity module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities"><code class="docutils literal notranslate"><span class="pre">Cavities</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.add_cavity"><code class="docutils literal notranslate"><span class="pre">Cavities.add_cavity()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.arcTo"><code class="docutils literal notranslate"><span class="pre">Cavities.arcTo()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.arcTo2"><code class="docutils literal notranslate"><span class="pre">Cavities.arcTo2()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calc_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.calc_cutoff()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calc_limits"><code class="docutils literal notranslate"><span class="pre">Cavities.calc_limits()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.calculate_beampipe_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.calculate_beampipe_cutoff()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.check_uq_config"><code class="docutils literal notranslate"><span class="pre">Cavities.check_uq_config()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.compare_power"><code class="docutils literal notranslate"><span class="pre">Cavities.compare_power()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.config_sample"><code class="docutils literal notranslate"><span class="pre">Cavities.config_sample()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.define_operating_points"><code class="docutils literal notranslate"><span class="pre">Cavities.define_operating_points()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.find_folders_with_tag"><code class="docutils literal notranslate"><span class="pre">Cavities.find_folders_with_tag()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_eigenmode_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_power_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_power_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_tune_res"><code class="docutils literal notranslate"><span class="pre">Cavities.get_tune_res()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.get_wakefield_qois"><code class="docutils literal notranslate"><span class="pre">Cavities.get_wakefield_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.lineTo"><code class="docutils literal notranslate"><span class="pre">Cavities.lineTo()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.linspace"><code class="docutils literal notranslate"><span class="pre">Cavities.linspace()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.load_plot_from_json"><code class="docutils literal notranslate"><span class="pre">Cavities.load_plot_from_json()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.make_excel_summary"><code class="docutils literal notranslate"><span class="pre">Cavities.make_excel_summary()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.make_latex_summary_tables"><code class="docutils literal notranslate"><span class="pre">Cavities.make_latex_summary_tables()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot"><code class="docutils literal notranslate"><span class="pre">Cavities.plot()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_axis_fields"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_axis_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cavities_contour"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cavities_contour()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cavities_contour_dimension"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cavities_contour_dimension()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_all_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_all_bar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_all_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_all_scatter()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_bar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_eigenmode()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_fm_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_fm_bar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_fm_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_fm_scatter()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_hom_bar"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_hom_bar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_hom_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_hom_scatter()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_power_scatter"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_power_scatter()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_compare_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_compare_wakefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_cutoff"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_cutoff()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_dispersion"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_dispersion()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_from_json"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_from_json()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_multipac_triplot"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_multipac_triplot()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_power_comparison"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_power_comparison()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_surface_fields"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_surface_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_thresholds"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_thresholds()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.plot_uq_geometries"><code class="docutils literal notranslate"><span class="pre">Cavities.plot_uq_geometries()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_all"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_all()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_fm"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_fm()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.qois_hom"><code class="docutils literal notranslate"><span class="pre">Cavities.qois_hom()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.remove_cavity"><code class="docutils literal notranslate"><span class="pre">Cavities.remove_cavity()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_abci"><code class="docutils literal notranslate"><span class="pre">Cavities.run_abci()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavities.run_eigenmode()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_multipacting"><code class="docutils literal notranslate"><span class="pre">Cavities.run_multipacting()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_optimisation"><code class="docutils literal notranslate"><span class="pre">Cavities.run_optimisation()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_tune"><code class="docutils literal notranslate"><span class="pre">Cavities.run_tune()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavities.run_wakefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save"><code class="docutils literal notranslate"><span class="pre">Cavities.save()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save_all_plots"><code class="docutils literal notranslate"><span class="pre">Cavities.save_all_plots()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.save_plot_as_json"><code class="docutils literal notranslate"><span class="pre">Cavities.save_plot_as_json()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.set_cavities_field"><code class="docutils literal notranslate"><span class="pre">Cavities.set_cavities_field()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.set_name"><code class="docutils literal notranslate"><span class="pre">Cavities.set_name()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavities.sweep"><code class="docutils literal notranslate"><span class="pre">Cavities.sweep()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#cavsim2d-models-module">cavsim2d.models module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#cavsim2d-study-module">cavsim2d.study module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#module-contents">Module contents</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity"><code class="docutils literal notranslate"><span class="pre">Cavity</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.calc_op_freq"><code class="docutils literal notranslate"><span class="pre">Cavity.calc_op_freq()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.calculate_rel_errors"><code class="docutils literal notranslate"><span class="pre">Cavity.calculate_rel_errors()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.config_sample"><code class="docutils literal notranslate"><span class="pre">Cavity.config_sample()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.create"><code class="docutils literal notranslate"><span class="pre">Cavity.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.define_operating_points"><code class="docutils literal notranslate"><span class="pre">Cavity.define_operating_points()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.eval_expr"><code class="docutils literal notranslate"><span class="pre">Cavity.eval_expr()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.geo_to_abc"><code class="docutils literal notranslate"><span class="pre">Cavity.geo_to_abc()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_abci_data"><code class="docutils literal notranslate"><span class="pre">Cavity.get_abci_data()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">Cavity.get_eigenmode_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_fields"><code class="docutils literal notranslate"><span class="pre">Cavity.get_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">Cavity.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_ngsolve_tune_res"><code class="docutils literal notranslate"><span class="pre">Cavity.get_ngsolve_tune_res()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_power"><code class="docutils literal notranslate"><span class="pre">Cavity.get_power()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_power_uq"><code class="docutils literal notranslate"><span class="pre">Cavity.get_power_uq()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_fm_results"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_fm_results()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_hom_results"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_hom_results()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_uq_post"><code class="docutils literal notranslate"><span class="pre">Cavity.get_uq_post()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.get_wakefield_qois"><code class="docutils literal notranslate"><span class="pre">Cavity.get_wakefield_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.inspect"><code class="docutils literal notranslate"><span class="pre">Cavity.inspect()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.load"><code class="docutils literal notranslate"><span class="pre">Cavity.load()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.load_shape_space"><code class="docutils literal notranslate"><span class="pre">Cavity.load_shape_space()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot"><code class="docutils literal notranslate"><span class="pre">Cavity.plot()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_animate_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_animate_wakefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_axis_field"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_axis_field()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_dispersion"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_dispersion()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_fields"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_mesh"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_mesh()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.plot_spectra"><code class="docutils literal notranslate"><span class="pre">Cavity.plot_spectra()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Cavity.run_eigenmode()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Cavity.run_wakefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.save_shape_space"><code class="docutils literal notranslate"><span class="pre">Cavity.save_shape_space()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_beampipe"><code class="docutils literal notranslate"><span class="pre">Cavity.set_beampipe()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">Cavity.set_boundary_conditions()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_color"><code class="docutils literal notranslate"><span class="pre">Cavity.set_color()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_end_cell_left"><code class="docutils literal notranslate"><span class="pre">Cavity.set_end_cell_left()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_end_cell_right"><code class="docutils literal notranslate"><span class="pre">Cavity.set_end_cell_right()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_mid_cell"><code class="docutils literal notranslate"><span class="pre">Cavity.set_mid_cell()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_n_cells"><code class="docutils literal notranslate"><span class="pre">Cavity.set_n_cells()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_name"><code class="docutils literal notranslate"><span class="pre">Cavity.set_name()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_parameterisation"><code class="docutils literal notranslate"><span class="pre">Cavity.set_parameterisation()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_plot_label"><code class="docutils literal notranslate"><span class="pre">Cavity.set_plot_label()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.set_wall_material"><code class="docutils literal notranslate"><span class="pre">Cavity.set_wall_material()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.study_mesh_convergence"><code class="docutils literal notranslate"><span class="pre">Cavity.study_mesh_convergence()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.sweep"><code class="docutils literal notranslate"><span class="pre">Cavity.sweep()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Cavity.to_multicell"><code class="docutils literal notranslate"><span class="pre">Cavity.to_multicell()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota"><code class="docutils literal notranslate"><span class="pre">Dakota</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.combine_params_output"><code class="docutils literal notranslate"><span class="pre">Dakota.combine_params_output()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.environment"><code class="docutils literal notranslate"><span class="pre">Dakota.environment()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.get_pce"><code class="docutils literal notranslate"><span class="pre">Dakota.get_pce()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.get_sobol_indices"><code class="docutils literal notranslate"><span class="pre">Dakota.get_sobol_indices()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.interface"><code class="docutils literal notranslate"><span class="pre">Dakota.interface()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.method"><code class="docutils literal notranslate"><span class="pre">Dakota.method()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.nodes_to_cst_sweep_input"><code class="docutils literal notranslate"><span class="pre">Dakota.nodes_to_cst_sweep_input()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.plot_sobol"><code class="docutils literal notranslate"><span class="pre">Dakota.plot_sobol()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.plot_sobol_indices"><code class="docutils literal notranslate"><span class="pre">Dakota.plot_sobol_indices()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.quadrature_nodes_to_cst_par_input"><code class="docutils literal notranslate"><span class="pre">Dakota.quadrature_nodes_to_cst_par_input()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.quote_to_float"><code class="docutils literal notranslate"><span class="pre">Dakota.quote_to_float()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.responses"><code class="docutils literal notranslate"><span class="pre">Dakota.responses()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.run_analysis"><code class="docutils literal notranslate"><span class="pre">Dakota.run_analysis()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.variables"><code class="docutils literal notranslate"><span class="pre">Dakota.variables()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Dakota.write_input_file"><code class="docutils literal notranslate"><span class="pre">Dakota.write_input_file()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.create"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.write_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.write_geometry()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavity.write_quarter_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavity.write_quarter_geometry()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.create"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.EllipticalCavityFlatTop.write_geometry"><code class="docutils literal notranslate"><span class="pre">EllipticalCavityFlatTop.write_geometry()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints"><code class="docutils literal notranslate"><span class="pre">OperationPoints</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints.get_default_operating_points"><code class="docutils literal notranslate"><span class="pre">OperationPoints.get_default_operating_points()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.OperationPoints.load_operating_point"><code class="docutils literal notranslate"><span class="pre">OperationPoints.load_operating_point()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox"><code class="docutils literal notranslate"><span class="pre">Pillbox</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.create"><code class="docutils literal notranslate"><span class="pre">Pillbox.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">Pillbox.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.plot"><code class="docutils literal notranslate"><span class="pre">Pillbox.plot()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_eigenmode"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_eigenmode()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_tune"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_tune()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_tune_ngsolve"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_tune_ngsolve()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.run_wakefield"><code class="docutils literal notranslate"><span class="pre">Pillbox.run_wakefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.Pillbox.write_geometry"><code class="docutils literal notranslate"><span class="pre">Pillbox.write_geometry()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun"><code class="docutils literal notranslate"><span class="pre">RFGun</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.create"><code class="docutils literal notranslate"><span class="pre">RFGun.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.get_eigenmode_qois"><code class="docutils literal notranslate"><span class="pre">RFGun.get_eigenmode_qois()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">RFGun.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.plot"><code class="docutils literal notranslate"><span class="pre">RFGun.plot()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.plot_axis_field"><code class="docutils literal notranslate"><span class="pre">RFGun.plot_axis_field()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.RFGun.write_geometry"><code class="docutils literal notranslate"><span class="pre">RFGun.write_geometry()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity"><code class="docutils literal notranslate"><span class="pre">SplineCavity</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.create"><code class="docutils literal notranslate"><span class="pre">SplineCavity.create()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.get_geometric_parameters"><code class="docutils literal notranslate"><span class="pre">SplineCavity.get_geometric_parameters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.write_geometry"><code class="docutils literal notranslate"><span class="pre">SplineCavity.write_geometry()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.SplineCavity.write_quarter_geometry"><code class="docutils literal notranslate"><span class="pre">SplineCavity.write_quarter_geometry()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="cavsim2d.html#cavsim2d.cavity.show_welcome"><code class="docutils literal notranslate"><span class="pre">show_welcome()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="cavsim2d.html#module-cavsim2d">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="setup.html">setup module</a></li>
 </ul>
 </div>
-</section>
 
 
-           </div>
-          </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="quickstart.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="cavsim2d.html" class="btn btn-neutral float-right" title="cavsim2d package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
 
-  <hr/>
 
-  <div role="contentinfo">
-    <p>&#169; Copyright 2024, Sosoho-Abasi Udongwo.</p>
-  </div>
 
-  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
 
-</footer>
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
         </div>
-      </div>
-    </section>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        &#169; Copyright 2024, Sosoho-Abasi Udongwo.
+        
+    </div>
+  
+    Created using
+    <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
+    9.1.0.
+     and
+    <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
+  
+</div>
+      
+    </div>
+    
   </div>
-  <script>
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script> 
-
-</body>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": ".", "features": ["navigation.sections", "navigation.top", "search.share", "toc.follow", "content.code.copy"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+        <script src="_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+    
+  </body>
 </html>

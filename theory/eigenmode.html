@@ -1,0 +1,2100 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../theory.html">
+      
+      
+        <link rel="next" href="wakefield.html">
+      
+      
+      <link rel="icon" href="">
+    
+    
+      
+        <title>Eigenmode Analysis - cavsim2d 1.0.0 documentation</title>
+      
+    
+    
+      
+        
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="../_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+        <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+        <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#maxwell-eigenvalue-problem-unified-formulation-m-ge-0" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="cavsim2d 1.0.0 documentation" class="md-header__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cavsim2d 1.0.0 documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Eigenmode Analysis
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="cavsim2d 1.0.0 documentation" class="md-nav__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    cavsim2d 1.0.0 documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Quickstart</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Introduction</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../theory.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Theory and Numerical Formulation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_2" id="__nav_1_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Theory and Numerical Formulation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#maxwell-eigenvalue-problem-unified-formulation-m-ge-0" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:maxwell eigenvalue problem — unified formulation (:math:`m \ge 0`) (reference label)"><span>Maxwell Eigenvalue Problem — Unified Formulation <wbr>(m \ge 0)</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Maxwell Eigenvalue Problem — Unified Formulation (m \ge 0)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#governing-equations" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:governing equations (reference label)"><span>Governing Equations</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fourier-azimuthal-ansatz-and-scaling" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:fourier azimuthal ansatz and scaling (reference label)"><span>Fourier Azimuthal Ansatz and Scaling</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weak-formulation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:weak formulation (reference label)"><span>Weak Formulation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-kernel-projection" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:gradient kernel projection (reference label)"><span>Gradient Kernel Projection</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gradient Kernel Projection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#derivation-of-the-3d-gradient" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:derivation of the 3d gradient (reference label)"><span>Derivation of the 3D Gradient</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformation-to-a-real-valued-formulation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:transformation to a real-valued formulation (reference label)"><span>Transformation to a Real-<wbr>Valued Formulation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discrete-projector-construction" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:discrete projector construction (reference label)"><span>Discrete Projector Construction</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantities-of-interest-qois" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:quantities of interest (qois) (reference label)"><span>Quantities of Interest <wbr>(QOIs)</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quantities of Interest (QOIs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#longitudinal-qois" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:longitudinal qois (reference label)"><span>Longitudinal QOIs</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transverse-qois-and-panofsky-wenzel-relation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:transverse qois and panofsky--wenzel relation (reference label)"><span>Transverse QOIs and Panofsky–Wenzel Relation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:impedance spectrum from eigenfrequencies and quality factors (reference label)"><span>Impedance Spectrum from Eigenfrequencies and Quality Factors</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zienkiewicz-zhu-zz-error-estimator" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:zienkiewicz--zhu (zz) error estimator (reference label)"><span>Zienkiewicz–Zhu <wbr>(ZZ) Error Estimator</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zienkiewicz–Zhu (ZZ) Error Estimator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-posteriori-error-estimation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:a posteriori error estimation (reference label)"><span>A Posteriori Error Estimation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element-wise-error-indicator" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:element-wise error indicator (reference label)"><span>Element-<wbr>wise Error Indicator</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doerfler-marking-and-refinement" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:doerfler marking and refinement (reference label)"><span>Doerfler Marking and Refinement</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification and Sensitivity Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Installation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart Tutorial</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Analysis Modules</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Analysis Modules</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Cavity Tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry Optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Examples</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Examples</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/eigenmode/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Eigenmode</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/eigenmode/pillbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode analysis:<wbr> the pillbox cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/tuning/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Tuning</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/tuning/tune_to_frequency.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a cavity to a target frequency</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/wakefield/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Wakefield</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/wakefield/impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield and impedance <wbr>(ABCI)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/multipacting/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Multipacting</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multipacting/tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> the TESLA mid-<wbr>cell</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/optimisation/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimisation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Optimisation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/optimisation/pareto.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multi-<wbr>objective shape optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../examples/advanced/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced/eigenmode_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode under uncertainty <wbr>(spline &amp; RF gun)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced/robust_tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust tuning <wbr>(flat-<wbr>top cavity)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced/wakefield_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced/robust_optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>References</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#maxwell-eigenvalue-problem-unified-formulation-m-ge-0" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:maxwell eigenvalue problem — unified formulation (:math:`m \ge 0`) (reference label)"><span>Maxwell Eigenvalue Problem — Unified Formulation <wbr>(m \ge 0)</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Maxwell Eigenvalue Problem — Unified Formulation (m \ge 0)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#governing-equations" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:governing equations (reference label)"><span>Governing Equations</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fourier-azimuthal-ansatz-and-scaling" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:fourier azimuthal ansatz and scaling (reference label)"><span>Fourier Azimuthal Ansatz and Scaling</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weak-formulation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:weak formulation (reference label)"><span>Weak Formulation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-kernel-projection" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:gradient kernel projection (reference label)"><span>Gradient Kernel Projection</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gradient Kernel Projection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#derivation-of-the-3d-gradient" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:derivation of the 3d gradient (reference label)"><span>Derivation of the 3D Gradient</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformation-to-a-real-valued-formulation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:transformation to a real-valued formulation (reference label)"><span>Transformation to a Real-<wbr>Valued Formulation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discrete-projector-construction" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:discrete projector construction (reference label)"><span>Discrete Projector Construction</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantities-of-interest-qois" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:quantities of interest (qois) (reference label)"><span>Quantities of Interest <wbr>(QOIs)</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quantities of Interest (QOIs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#longitudinal-qois" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:longitudinal qois (reference label)"><span>Longitudinal QOIs</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transverse-qois-and-panofsky-wenzel-relation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:transverse qois and panofsky--wenzel relation (reference label)"><span>Transverse QOIs and Panofsky–Wenzel Relation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:impedance spectrum from eigenfrequencies and quality factors (reference label)"><span>Impedance Spectrum from Eigenfrequencies and Quality Factors</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zienkiewicz-zhu-zz-error-estimator" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:zienkiewicz--zhu (zz) error estimator (reference label)"><span>Zienkiewicz–Zhu <wbr>(ZZ) Error Estimator</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zienkiewicz–Zhu (ZZ) Error Estimator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-posteriori-error-estimation" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:a posteriori error estimation (reference label)"><span>A Posteriori Error Estimation</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element-wise-error-indicator" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:element-wise error indicator (reference label)"><span>Element-<wbr>wise Error Indicator</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doerfler-marking-and-refinement" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:doerfler marking and refinement (reference label)"><span>Doerfler Marking and Refinement</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                
+                
+                  
+
+
+<h1 id="eigenmode-analysis">Eigenmode Analysis<a class="headerlink" href="#eigenmode-analysis" title="Link to this heading">¶</a></h1>
+<h2 id="maxwell-eigenvalue-problem-unified-formulation-m-ge-0">Maxwell Eigenvalue Problem — Unified Formulation (<span class="math notranslate nohighlight">\(m \ge 0\)</span>)<a class="headerlink" href="#maxwell-eigenvalue-problem-unified-formulation-m-ge-0" title="Link to this heading">¶</a></h2>
+<h3 id="governing-equations">Governing Equations<a class="headerlink" href="#governing-equations" title="Link to this heading">¶</a></h3>
+<p>We start from the time-harmonic Maxwell’s equations in a source-free, lossless vacuum domain <span class="math notranslate nohighlight">\(\Omega\)</span> with a perfectly conducting boundary (PEC) <span class="math notranslate nohighlight">\(\partial\Omega_{\text{PEC}}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\nabla \times \mathbf{E} = -i\omega\mu_0 \mathbf{H}\]</div>
+<div class="math notranslate nohighlight">
+\[\nabla \times \mathbf{H} = i\omega\varepsilon_0 \mathbf{E}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\omega\)</span> is the angular frequency, <span class="math notranslate nohighlight">\(\mu_0\)</span> is the vacuum permeability, and <span class="math notranslate nohighlight">\(\varepsilon_0\)</span> is the vacuum permittivity. Taking the curl of the first equation and substituting the second yields the vector wave equation for the electric field <span class="math notranslate nohighlight">\(\mathbf{E}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\nabla \times \left( \nabla \times \mathbf{E} \right) = k^2 \mathbf{E}, \quad k^2 = \frac{\omega^2}{c_0^2}\]</div>
+<p>where <span class="math notranslate nohighlight">\(c_0 = 1/\sqrt{\mu_0\varepsilon_0}\)</span> is the speed of light. The boundary condition on PEC walls is:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{n} \times \mathbf{E} = \mathbf{0} \quad \text{on } \partial\Omega_{\text{PEC}}\]</div>
+<div class="math notranslate nohighlight">
+\[\mathbf{n} \times (\nabla \times \mathbf{E}) = \mathbf{0} \quad \text{on } \partial\Omega_{\text{PMC}}\]</div>
+<h3 id="fourier-azimuthal-ansatz-and-scaling">Fourier Azimuthal Ansatz and Scaling<a class="headerlink" href="#fourier-azimuthal-ansatz-and-scaling" title="Link to this heading">¶</a></h3>
+<p>For 2D axisymmetric geometries, we adopt cylindrical coordinates <span class="math notranslate nohighlight">\((z, r, \phi)\)</span>. We expand the 3D electric field in a Fourier series in azimuth <span class="math notranslate nohighlight">\(\phi\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{E}(z, r, \phi) = \mathbf{E}_{rz}(z, r) \cos(m\phi) + E_\phi(z, r) \sin(m\phi) \mathbf{e}_\phi\]</div>
+<p>where <span class="math notranslate nohighlight">\(m \ge 0\)</span> is the azimuthal mode number (angular harmonic).</p>
+<h3 id="weak-formulation">Weak Formulation<a class="headerlink" href="#weak-formulation" title="Link to this heading">¶</a></h3>
+<p>The fields are discretized on the product space <span class="math notranslate nohighlight">\(H(\text{curl}, \Omega_{2D}) \times H^1(\Omega_{2D})\)</span>. The trial functions are <span class="math notranslate nohighlight">\((\mathbf{u}, u_\phi)\)</span> and the test functions are <span class="math notranslate nohighlight">\((\mathbf{v}, v_\phi)\)</span>. The scalar <span class="math notranslate nohighlight">\(H^1\)</span> space is constructed with an order <span class="math notranslate nohighlight">\(p+1\)</span> and is zero on the axis <span class="math notranslate nohighlight">\(r=0\)</span> and PEC walls (<code class="code docutils literal notranslate"><span class="pre">dirichlet=&quot;PEC|AXI&quot;</span></code>). The elevated polynomial order
+<span class="math notranslate nohighlight">\(p+1\)</span> for the nodal space <span class="math notranslate nohighlight">\(H^1_{p+1}\)</span> is not an independent choice but a consequence of the exact sequence property underlying the Nédélec/hierarchical construction of <span class="math notranslate nohighlight">\(H(\mathrm{curl})_p\)</span>: the space is built such that</p>
+<div class="math notranslate nohighlight">
+\[\nabla H^1_{p+1}(\Omega_{2D}) \subset H(\mathrm{curl})_p(\Omega_{2D})\]</div>
+<p>holds exactly at the discrete level.</p>
+<p>Substituting the scaled ansatz into the wave equation, integrating against the cylindrical volume measure <span class="math notranslate nohighlight">\(\mathrm{d}V = 2\pi r \mathrm{d}r \mathrm{d}z\)</span>, and integrating over <span class="math notranslate nohighlight">\(\phi\)</span> yields the bilinear forms for all <span class="math notranslate nohighlight">\(m \ge 0\)</span> <span class="bibtex-citation" id="id1">[<a class="reference internal" href="../references.html#id11" title="Oscar Chinellato, Peter Arbenz, Matthias Streiff, and Andreas Witzig. Computation of optical modes in axisymmetric open cavity resonators. Future Generation Computer Systems, 21(8):1263–1274, 2005. doi:10.1016/j.future.2004.04.007.">CASW05</a>]</span>:</p>
+<div class="math notranslate nohighlight">
+\[a((\mathbf{u}, u_\phi), (\mathbf{v}, v_\phi)) = \int_{\Omega_{2D}} \left[ r (\nabla \times \mathbf{u}) \cdot (\nabla \times \mathbf{v}) + \frac{1}{r} \left( m^2 \mathbf{u}\cdot\mathbf{v} + m\mathbf{u}\cdot\nabla v_\phi + m\nabla u_\phi \cdot \mathbf{v} + \nabla u_\phi \cdot \nabla v_\phi \right) \right] \mathrm{d}A\]</div>
+<div class="math notranslate nohighlight">
+\[b((\mathbf{u}, u_\phi), (\mathbf{v}, v_\phi)) = \int_{\Omega_{2D}} \left[ r \mathbf{u}\cdot\mathbf{v} + \frac{1}{r} u_\phi v_\phi \right] \mathrm{d}A\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathrm{d}A = \mathrm{d}z \mathrm{d}r\)</span>.</p>
+<h3 id="gradient-kernel-projection">Gradient Kernel Projection<a class="headerlink" href="#gradient-kernel-projection" title="Link to this heading">¶</a></h3>
+<p>A major challenge in Maxwell eigenvalue computations is the presence of an infinite-dimensional kernel of electrostatic gradient fields that correspond to spurious modes with eigenvalue <span class="math notranslate nohighlight">\(k^2 = 0\)</span>. To see how this kernel relates to the product-space formulation, we present the step-by-step derivation of the gradient operator and its real-valued transformation.</p>
+<h4 id="derivation-of-the-3d-gradient">Derivation of the 3D Gradient<a class="headerlink" href="#derivation-of-the-3d-gradient" title="Link to this heading">¶</a></h4>
+<p>Let <span class="math notranslate nohighlight">\(\Psi(r, z, \phi)\)</span> be a 3D scalar potential. For a given azimuthal mode number <span class="math notranslate nohighlight">\(m\)</span>, we decompose it into a 2D meridian potential <span class="math notranslate nohighlight">\(\psi(r, z)\)</span> multiplied by the angular phase:</p>
+<div class="math notranslate nohighlight">
+\[\Psi(r, z, \phi) = \psi(r, z) e^{\mathrm{i}m\phi}\]</div>
+<p>The 3D gradient operator <span class="math notranslate nohighlight">\(\nabla\)</span> in cylindrical coordinates <span class="math notranslate nohighlight">\((r, z, \phi)\)</span> is defined as:</p>
+<div class="math notranslate nohighlight">
+\[\nabla \Psi = \frac{\partial \Psi}{\partial r}\hat{\mathbf{r}} + \frac{\partial \Psi}{\partial z}\hat{\mathbf{z}} + \frac{1}{r}\frac{\partial \Psi}{\partial \phi}\hat{\boldsymbol{\phi}}\]</div>
+<p>Substituting our ansatz <span class="math notranslate nohighlight">\(\Psi = \psi e^{\mathrm{i}m\phi}\)</span> into the definition:</p>
+<div class="math notranslate nohighlight">
+\[\nabla(\psi e^{\mathrm{i}m\phi}) = \frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial r}\hat{\mathbf{r}} + \frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial z}\hat{\mathbf{z}} + \frac{1}{r}\frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial \phi}\hat{\boldsymbol{\phi}}\]</div>
+<p>Applying the partial derivatives:</p>
+<ul class="simple">
+<li><p>For the radial component: <span class="math notranslate nohighlight">\(\frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial r} = \frac{\partial \psi}{\partial r}e^{\mathrm{i}m\phi}\)</span></p></li>
+<li><p>For the axial component: <span class="math notranslate nohighlight">\(\frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial z} = \frac{\partial \psi}{\partial z}e^{\mathrm{i}m\phi}\)</span></p></li>
+<li><p>For the azimuthal component: <span class="math notranslate nohighlight">\(\frac{1}{r}\frac{\partial(\psi e^{\mathrm{i}m\phi})}{\partial \phi} = \frac{1}{r}\left(\mathrm{i}m \psi e^{\mathrm{i}m\phi}\right)\)</span></p></li>
+</ul>
+<p>Gathering the components yields:</p>
+<div class="math notranslate nohighlight">
+\[\nabla(\psi e^{\mathrm{i}m\phi}) = \left( \frac{\partial \psi}{\partial r}\hat{\mathbf{r}} + \frac{\partial \psi}{\partial z}\hat{\mathbf{z}} + \frac{\mathrm{i}m}{r}\psi\hat{\boldsymbol{\phi}} \right) e^{\mathrm{i}m\phi}\]</div>
+<p>Let the 2D meridian gradient be denoted by <span class="math notranslate nohighlight">\(\nabla_{rz} \psi = \frac{\partial \psi}{\partial r}\hat{\mathbf{r}} + \frac{\partial \psi}{\partial z}\hat{\mathbf{z}}\)</span>. The 3D gradient vector mapped to the product space components <span class="math notranslate nohighlight">\(\begin{pmatrix} \mathbf{u} \\ u_\phi \end{pmatrix}\)</span> can be written by factoring out <span class="math notranslate nohighlight">\(e^{\mathrm{i}m\phi}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\nabla_{3\mathrm{D}} \psi = \begin{pmatrix} \nabla_{rz} \psi \\ \frac{\mathrm{i}m}{r}\psi \end{pmatrix}\end{split}\]</div>
+<h4 id="transformation-to-a-real-valued-formulation">Transformation to a Real-Valued Formulation<a class="headerlink" href="#transformation-to-a-real-valued-formulation" title="Link to this heading">¶</a></h4>
+<p>To avoid dealing with the coordinate singularity <span class="math notranslate nohighlight">\(\frac{1}{r}\)</span> and the imaginary unit <span class="math notranslate nohighlight">\(\mathrm{i}\)</span> directly inside the finite element spaces, a substitution is made for the azimuthal field component. By setting the azimuthal vector component variable to <span class="math notranslate nohighlight">\(u_\phi = \mathrm{i}r E_\phi\)</span>, the operator naturally simplifies.</p>
+<p>When mapping a scalar field <span class="math notranslate nohighlight">\(\psi\)</span> to this modified product space, the substitution scales the azimuthal slot by <span class="math notranslate nohighlight">\(\mathrm{i}r\)</span>. Multiplying the analytical component <span class="math notranslate nohighlight">\(\frac{\mathrm{i}m}{r}\psi\)</span> by <span class="math notranslate nohighlight">\(\mathrm{i}r\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[u_\phi = (\mathrm{i}r) \cdot \left(\frac{\mathrm{i}m}{r}\psi\right) = (\mathrm{i} \cdot \mathrm{i}) \cdot m \cdot \psi = - m \psi\]</div>
+<p>Therefore, in this transformed product space coordinate system, the exact continuous gradient operator acts as:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}G_{\text{continuous}}\psi = \begin{pmatrix} \nabla_{rz} \psi \\ -m\psi \end{pmatrix}\end{split}\]</div>
+<h4 id="discrete-projector-construction">Discrete Projector Construction<a class="headerlink" href="#discrete-projector-construction" title="Link to this heading">¶</a></h4>
+<p>For any <span class="math notranslate nohighlight">\(m \ge 0\)</span>, the gradient kernel <span class="math notranslate nohighlight">\(\mathcal{K}_m\)</span> in the product space takes the form:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{K}_m = \{ (\nabla \psi, -m \psi) : \psi \in H^1(\Omega_{2D}), \psi = 0 \text{ on } \partial\Omega_{\text{PEC}} \}\]</div>
+<p>To project out this gradient kernel during the iterative PINVIT solver steps, we construct the discrete block gradient matrix <span class="math notranslate nohighlight">\(G_m\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}G_m = \begin{bmatrix} G_{\text{rz}} \\ -m I \end{bmatrix}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(G_{\text{rz}}\)</span> is the discrete gradient operator mapping from the scalar potential space to the edge <span class="math notranslate nohighlight">\(H(\text{curl})\)</span> space. We define a <span class="math notranslate nohighlight">\(b\)</span>-orthogonal projector <span class="math notranslate nohighlight">\(P_m\)</span> that filters out this kernel:</p>
+<div class="math notranslate nohighlight">
+\[P_m = I - G_m (G_m^T B G_m)^{-1} G_m^T B\]</div>
+<p>where <span class="math notranslate nohighlight">\(B\)</span> is the mass matrix corresponding to the bilinear form <span class="math notranslate nohighlight">\(b\)</span>. The projector <span class="math notranslate nohighlight">\(P_m\)</span> is applied to wrap the preconditioned inverse system inside the PINVIT eigensolver to ensure rapid convergence without spurious mode pollution.</p>
+<h3 id="quantities-of-interest-qois">Quantities of Interest (QOIs)<a class="headerlink" href="#quantities-of-interest-qois" title="Link to this heading">¶</a></h3>
+<h4 id="longitudinal-qois">Longitudinal QOIs<a class="headerlink" href="#longitudinal-qois" title="Link to this heading">¶</a></h4>
+<p>Once the fields are computed, the following figures of merit are evaluated:</p>
+<ol class="arabic">
+<li><p><strong>Stored Energy</strong> <span class="math notranslate nohighlight">\(U\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[U = \frac{1}{2} \varepsilon_0 \int_{\Omega} |\mathbf{E}|^2 \mathrm{d}V = \pi \varepsilon_0 \int_{\Omega_{2D}} \left( r |\mathbf{E}_{rz}|^2 + \frac{1}{r} |u_\phi|^2 \right) \mathrm{d}z \mathrm{d}r\]</div>
+</li>
+<li><p><strong>Accelerating Voltage</strong> <span class="math notranslate nohighlight">\(V_{\text{acc}}\)</span> <strong>and Gradient</strong> <span class="math notranslate nohighlight">\(E_{\text{acc}}\)</span>:</p>
+<p>Integrated along the <span class="math notranslate nohighlight">\(z\)</span>-axis (<span class="math notranslate nohighlight">\(r=0\)</span>) for a particle traveling at speed <span class="math notranslate nohighlight">\(\beta c_0\)</span> <span class="bibtex-citation" id="id2">[<a class="reference internal" href="../references.html#id2" title="Thomas P. Wangler. RF Linear Accelerators. Wiley-VCH, Weinheim, 2nd edition, 2008.">Wan08</a>]</span>:</p>
+<div class="math notranslate nohighlight">
+\[V_{\text{acc}} = \left| \int_{z_{\text{min}}}^{z_{\text{max}}} E_z(z, 0) e^{i \frac{\omega z}{\beta c_0}} \mathrm{d}z \right|, \quad E_{\text{acc}} = \frac{V_{\text{acc}}}{L_{\text{active}}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(L_{\text{active}} = 2 L_{\text{cell}} N_{\text{cells}}\)</span> is the active cavity length.</p>
+</li>
+<li><p><strong>Shunt Impedance over Q</strong> <span class="math notranslate nohighlight">\((R/Q)\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{R}{Q} = \frac{V_{\text{acc}}^2}{\omega U}\]</div>
+</li>
+<li><p><strong>Surface Power Dissipation</strong> <span class="math notranslate nohighlight">\(P_{\text{loss}}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[P_{\text{loss}} = \frac{1}{2} R_s \int_{\partial\Omega_{\text{PEC}}} |\mathbf{H}|^2 \mathrm{d}S = \pi R_s \int_{\Gamma_{\text{PEC}}} r \left( |H_{rz}|^2 + |H_\phi|^2 \right) \mathrm{d}s\]</div>
+<p>where <span class="math notranslate nohighlight">\(R_s = \sqrt{\frac{\omega\mu_0}{2\sigma}}\)</span> is the surface resistance of the cavity wall with conductivity <span class="math notranslate nohighlight">\(\sigma\)</span> <span class="bibtex-citation" id="id3">[<a class="reference internal" href="../references.html#id3" title="Hasan Padamsee, Jens Knobloch, and Tom Hays. RF Superconductivity for Accelerators. Wiley-VCH, Weinheim, 2nd edition, 2008.">PKH08</a>]</span>.</p>
+</li>
+<li><p><strong>Quality Factor</strong> <span class="math notranslate nohighlight">\(Q\)</span> <strong>and Geometry Factor</strong> <span class="math notranslate nohighlight">\(G\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[Q = \frac{\omega U}{P_{\text{loss}}}, \quad G = Q R_s = \frac{\omega \mu_0 \int_{\Omega} |\mathbf{E}|^2 \mathrm{d}V}{\int_{\partial\Omega} |\mathbf{H}|^2 \mathrm{d}S}\]</div>
+</li>
+<li><p><strong>Peak Fields</strong> <span class="math notranslate nohighlight">\(E_{\text{pk}}\)</span> <strong>and</strong> <span class="math notranslate nohighlight">\(B_{\text{pk}}\)</span>:</p>
+<p>Pointwise maxima along the PEC boundary:</p>
+<div class="math notranslate nohighlight">
+\[E_{\text{pk}} = \max_{\Gamma_{\text{PEC}}} |\mathbf{E}|, \quad B_{\text{pk}} = \mu_0 \max_{\Gamma_{\text{PEC}}} |\mathbf{H}|\]</div>
+</li>
+</ol>
+<h4 id="transverse-qois-and-panofsky-wenzel-relation">Transverse QOIs and Panofsky–Wenzel Relation<a class="headerlink" href="#transverse-qois-and-panofsky-wenzel-relation" title="Link to this heading">¶</a></h4>
+<p>For deflecting higher-order modes (<span class="math notranslate nohighlight">\(m \ge 1\)</span>), the accelerating force is transverse. Since the longitudinal field <span class="math notranslate nohighlight">\(E_z\)</span> vanishes on the axis for <span class="math notranslate nohighlight">\(m \ge 1\)</span>, the longitudinal voltage is integrated along an off-axis line at radius <span class="math notranslate nohighlight">\(r_0\)</span> (typically half the beam aperture radius):</p>
+<div class="math notranslate nohighlight">
+\[V_z(r_0) = \left| \int_{z_{\text{min}}}^{z_{\text{max}}} E_z(z, r_0) e^{i \frac{\omega z}{\beta c_0}} \mathrm{d}z \right|\]</div>
+<p>By the Panofsky–Wenzel theorem, the transverse kick voltage <span class="math notranslate nohighlight">\(V_t\)</span> is related to the gradient of the longitudinal voltage:</p>
+<div class="math notranslate nohighlight">
+\[V_t = \frac{m V_z(r_0)}{k r_0}\]</div>
+<p>The transverse shunt impedance over Q is normalized by the off-axis factor to remain independent of the choice of <span class="math notranslate nohighlight">\(r_0\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\left( \frac{R}{Q} \right)_t = \frac{V_t^2}{\omega U r_0^{2(m-1)}}\]</div>
+<h2 id="impedance-spectrum-from-eigenfrequencies-and-quality-factors">Impedance Spectrum from Eigenfrequencies and Quality Factors<a class="headerlink" href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" title="Link to this heading">¶</a></h2>
+<p>The impedance spectrum the beam sees can be <em>reconstructed</em> from the eigenmode
+results alone: each resonant mode behaves as a parallel <span class="math notranslate nohighlight">\(RLC\)</span> resonator,
+completely characterised by its resonant frequency <span class="math notranslate nohighlight">\(f_i\)</span>, its
+<span class="math notranslate nohighlight">\((R/Q)_i\)</span> and its quality factor <span class="math notranslate nohighlight">\(Q_i\)</span> — exactly the quantities the
+eigenmode solver reports. The longitudinal beam-coupling impedance is the sum of
+Breit–Wigner resonator terms</p>
+<div class="math notranslate nohighlight">
+\[Z_\parallel(f) = \sum_i \frac{R_i}{1 + \mathrm{i}\, Q_i \left( \dfrac{f}{f_i} - \dfrac{f_i}{f} \right)},
+\qquad
+R_i = \frac{1}{2}\, Q_i \left( \frac{R}{Q} \right)_i\]</div>
+<p>where <span class="math notranslate nohighlight">\(R_i\)</span> is the shunt impedance of mode <span class="math notranslate nohighlight">\(i\)</span> (the factor
+<span class="math notranslate nohighlight">\(1/2\)</span> reflects the accelerator convention <span class="math notranslate nohighlight">\(R/Q = V^2/(\omega U)\)</span>
+used above). On resonance, <span class="math notranslate nohighlight">\(Z_\parallel(f_i) = R_i\)</span> is real; the
+<span class="math notranslate nohighlight">\(3\,\text{dB}\)</span> full width of each peak is <span class="math notranslate nohighlight">\(f_i / Q_i\)</span>. As
+<span class="math notranslate nohighlight">\(f \to 0\)</span> every longitudinal term vanishes.</p>
+<p>For the transverse (deflecting, <span class="math notranslate nohighlight">\(m \ge 1\)</span>) impedance, the transverse
+<span class="math notranslate nohighlight">\((R/Q)_t\)</span> from the Panofsky–Wenzel relation above (in <span class="math notranslate nohighlight">\(\Omega\)</span>) is
+converted to a transverse shunt impedance in <span class="math notranslate nohighlight">\(\Omega/\mathrm{m}\)</span> by the
+factor <span class="math notranslate nohighlight">\(\omega_i / c_0\)</span>, and each resonator term carries an additional
+<span class="math notranslate nohighlight">\(f_i / f\)</span> :</p>
+<div class="math notranslate nohighlight">
+\[Z_\perp(f) = \sum_i \frac{f_i}{f} \cdot
+\frac{R_{t,i}}{1 + \mathrm{i}\, Q_i \left( \dfrac{f}{f_i} - \dfrac{f_i}{f} \right)},
+\qquad
+R_{t,i} = \frac{1}{2}\, Q_i \left( \frac{R}{Q} \right)_{t,i} \frac{\omega_i}{c_0}\]</div>
+<p>whose DC limit is finite and purely inductive,
+<span class="math notranslate nohighlight">\(Z_\perp(0) = \mathrm{i} \sum_i R_{t,i} / Q_i\)</span>. The cavity is
+axisymmetric, so the two transverse planes are degenerate and a single
+transverse <span class="math notranslate nohighlight">\(R/Q\)</span> describes both.</p>
+<p>Two caveats. First, the eigenmode solver reports the <em>unloaded</em> <span class="math notranslate nohighlight">\(Q_0\)</span>
+(wall losses only); if the mode is damped by couplers or absorbers, the beam
+sees the loaded <span class="math notranslate nohighlight">\(Q_L\)</span>, which should be substituted for <span class="math notranslate nohighlight">\(Q_i\)</span> —
+lowering <span class="math notranslate nohighlight">\(Q\)</span> broadens the resonance and reduces its peak while leaving
+<span class="math notranslate nohighlight">\(R/Q\)</span> (a pure geometry quantity) unchanged. Second, the reconstruction
+contains exactly the modes that were solved and nothing else: no
+broadband/resistive-wall contribution and nothing above the highest computed
+mode. Within that range, however, it is essentially exact — it has no
+wake-length truncation, so it complements a wakefield solve, whose spectral
+resolution <span class="math notranslate nohighlight">\(\Delta f \sim c_0 / (2 L_{\text{wake}})\)</span> limits how well
+narrow (high-<span class="math notranslate nohighlight">\(Q\)</span>) resonances are resolved. <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> exposes both
+through the same frame layout (<code class="docutils literal notranslate"><span class="pre">cav.eigenmode.impedance()</span></code> vs
+<code class="docutils literal notranslate"><span class="pre">cav.wakefield.impedance()</span></code>) so the reconstructed and the simulated spectra
+can be overlaid directly.</p>
+<h2 id="zienkiewicz-zhu-zz-error-estimator">Zienkiewicz–Zhu (ZZ) Error Estimator<a class="headerlink" href="#zienkiewicz-zhu-zz-error-estimator" title="Link to this heading">¶</a></h2>
+<h3 id="a-posteriori-error-estimation">A Posteriori Error Estimation<a class="headerlink" href="#a-posteriori-error-estimation" title="Link to this heading">¶</a></h3>
+<p>To achieve high precision with minimum degrees of freedom, <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> implements an adaptive mesh refinement (AMR) loop driven by a recovery-based a posteriori error estimator.</p>
+<p>The standard finite-element approximation yields a discontinuous magnetic field <span class="math notranslate nohighlight">\(\mathbf{H} \propto \nabla \times \mathbf{E}\)</span> across element boundaries. The Zienkiewicz–Zhu (ZZ) technique reconstructs a continuous recovered field <span class="math notranslate nohighlight">\(\mathbf{H}^*\)</span> in the <span class="math notranslate nohighlight">\(H^1\)</span> space via patch recovery <span class="bibtex-citation" id="id4">[<a class="reference internal" href="../references.html#id4" title="O. C. Zienkiewicz and J. Z. Zhu. A simple error estimator and adaptive procedure for practical engineering analysis. International Journal for Numerical Methods in Engineering, 24(2):337–357, 1987.">ZZ87</a>, <a class="reference internal" href="../references.html#id5" title="O. C. Zienkiewicz and J. Z. Zhu. The superconvergent patch recovery and a posteriori error estimators. part 1: the recovery technique. International Journal for Numerical Methods in Engineering, 33(7):1331–1364, 1992.">ZZ92</a>]</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{H}^* = \sum_{j} H^*_j \phi_j\]</div>
+<p>where <span class="math notranslate nohighlight">\(\phi_j\)</span> are the continuous nodal basis functions. The recovered nodal values <span class="math notranslate nohighlight">\(H^*_j\)</span> are computed by a least-squares projection of the discontinuous FE field <span class="math notranslate nohighlight">\(\mathbf{H}\)</span> over a patch of elements surrounding node <span class="math notranslate nohighlight">\(j\)</span>.</p>
+<h3 id="element-wise-error-indicator">Element-wise Error Indicator<a class="headerlink" href="#element-wise-error-indicator" title="Link to this heading">¶</a></h3>
+<p>The error in element <span class="math notranslate nohighlight">\(K\)</span> is estimated as the difference between the recovered field and the raw FE field:</p>
+<div class="math notranslate nohighlight">
+\[\eta_K^2 = \int_K r \left| \mathbf{H} - \mathbf{H}^* \right|^2 \mathrm{d}A\]</div>
+<h3 id="doerfler-marking-and-refinement"><span id="dorfler-marking"></span>Doerfler Marking and Refinement<a class="headerlink" href="#doerfler-marking-and-refinement" title="Link to this heading">¶</a></h3>
+<p>In each refinement step, we compute the indicators <span class="math notranslate nohighlight">\(\eta_K\)</span> for all elements. Let <span class="math notranslate nohighlight">\(\eta_{\text{max}} = \max_K \eta_K\)</span>. We mark elements for refinement using the Doerfler marking strategy with threshold parameter <span class="math notranslate nohighlight">\(\theta \in (0, 1]\)</span> <span class="bibtex-citation" id="id5">[<a class="reference internal" href="../references.html#id6" title="Willy Dörfler. A convergent adaptive algorithm for poisson's equation. SIAM Journal on Numerical Analysis, 33(3):1106–1124, 1996.">Dorfler96</a>]</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{Mark } K \quad \text{if } \eta_K &gt; \theta \eta_{\text{max}}\]</div>
+<p>Marked elements are subdivided using Netgen’s 2D local refinement algorithms, and the polynomial order <span class="math notranslate nohighlight">\(p\)</span> is re-applied to curve the newly created elements along the boundary. The refinement terminates when the maximum error across all solved physical modes falls below a tolerance:</p>
+<div class="math notranslate nohighlight">
+\[\max_{\text{modes}} \left( \max_K \eta_K \right) &lt; \text{tol}\]</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        &#169; Copyright 2024, Sosoho-Abasi Udongwo.
+        
+    </div>
+  
+    Created using
+    <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
+    9.1.0.
+     and
+    <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
+  
+</div>
+      
+    </div>
+    
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections", "navigation.top", "search.share", "toc.follow", "content.code.copy"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+        <script src="../_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script id="MathJax-script" src="../_static/mathjax/tex-mml-chtml.js"></script>
+    
+  </body>
+</html>

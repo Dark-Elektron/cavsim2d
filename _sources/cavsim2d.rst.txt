@@ -15,10 +15,18 @@ Subpackages
 Submodules
 ----------
 
-cavsim2d.cavity module
+cavsim2d.models module
 ----------------------
 
-.. automodule:: cavsim2d.cavity
+.. automodule:: cavsim2d.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+cavsim2d.study module
+---------------------
+
+.. automodule:: cavsim2d.study
    :members:
    :undoc-members:
    :show-inheritance:

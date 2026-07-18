@@ -1,0 +1,236 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "c9ba8272",
+   "metadata": {},
+   "source": [
+    "# Robust tuning (flat-top cavity)\n",
+    "\n",
+    "> **Uncertainty quantification plugs into every analysis.** In cavsim2d, a run is deterministic — one geometry, one answer — until you add a `uq_config`. With it, the analysis is evaluated over a small Stroud-3 quadrature of the uncertain geometry and returns a **distribution** (mean and standard deviation) instead of a single number. The *same* pattern works for eigenmode, tuning (robust tuning), wakefield, and optimisation (robust optimisation) — only multipacting does not yet take a `uq_config`.\n",
+    "\n",
+    "These advanced examples deliberately span several cavity types (spline, RF gun, flat-top, elliptical, pillbox) — a good stress test of the model-agnostic machinery.\n",
+    "\n",
+    "**Robust tuning** is ordinary tuning with a `uq_config`: each tuning evaluation is averaged over the quadrature of the uncertain geometry, so the reached figures of merit carry the spread the tolerances imply. We tune an **elliptical flat-top** cell to 790 MHz."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "50639233",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2026-07-18T09:33:28.294406Z",
+     "iopub.status.busy": "2026-07-18T09:33:28.294277Z",
+     "iopub.status.idle": "2026-07-18T09:33:30.246890Z",
+     "shell.execute_reply": "2026-07-18T09:33:30.246312Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import tempfile\n",
+    "import json\n",
+    "\n",
+    "import pandas as pd\n",
+    "\n",
+    "from cavsim2d import Cavities, EllipticalCavityFlatTop\n",
+    "from cavsim2d.utils.style import apply_style\n",
+    "\n",
+    "apply_style()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b760241c",
+   "metadata": {},
+   "source": [
+    "## 1. Deterministic tuning\n",
+    "\n",
+    "Parameters `[A, B, a, b, Ri, L, Req, l]` in mm (the trailing `l` is the flat-top plateau length). Tune the equator radius `Req` to hit 790 MHz."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "15b0084b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2026-07-18T09:33:30.249240Z",
+     "iopub.status.busy": "2026-07-18T09:33:30.248893Z",
+     "iopub.status.idle": "2026-07-18T09:33:50.802369Z",
+     "shell.execute_reply": "2026-07-18T09:33:50.801654Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "tuned Req = 172.376 mm at 790.000 MHz\n"
+     ]
+    }
+   ],
+   "source": [
+    "ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]\n",
+    "cavs = Cavities(os.path.join(tempfile.mkdtemp(), 'ft_tune'))\n",
+    "cavs.add_cavity([EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='none')], ['FT'])\n",
+    "\n",
+    "cavs.run_tune({\n",
+    "    'freqs': 790.0,\n",
+    "    'cell_type': {'mid-cell': 'Req'},\n",
+    "    'processes': 1,\n",
+    "    'eigenmode_config': {'boundary_conditions': 'mm', 'mesh_config': {'h': 8, 'p': 2}},\n",
+    "})\n",
+    "res = cavs.cavities_list[0].tune.qois['mid-cell']\n",
+    "print(f\"tuned Req = {res['parameters']['Req_m']:.3f} mm at {res['FREQ']:.3f} MHz\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "412798f2",
+   "metadata": {},
+   "source": [
+    "## 2. Robust tuning\n",
+    "\n",
+    "Add a `uq_config` with a 2% spread on the semi-axes `A, B`. Same call, now UQ-averaged."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "14bd2b1c",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2026-07-18T09:33:50.806499Z",
+     "iopub.status.busy": "2026-07-18T09:33:50.806161Z",
+     "iopub.status.idle": "2026-07-18T09:35:15.591851Z",
+     "shell.execute_reply": "2026-07-18T09:35:15.591138Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "cavs2 = Cavities(os.path.join(tempfile.mkdtemp(), 'ft_rtune'))\n",
+    "cav = EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='none')\n",
+    "cavs2.add_cavity([cav], ['FT'])\n",
+    "\n",
+    "cavs2.run_tune({\n",
+    "    'freqs': 790.0,\n",
+    "    'cell_type': {'mid-cell': 'Req'},\n",
+    "    'processes': 1,\n",
+    "    'eigenmode_config': {'boundary_conditions': 'mm', 'mesh_config': {'h': 8, 'p': 2}},\n",
+    "    'uq_config': {\n",
+    "        'variables': ['A', 'B'],\n",
+    "        'objectives': ['monopole:freq [MHz]', 'monopole:R/Q [Ohm]'],\n",
+    "        'method': ['stroud3'], 'delta': [0.02, 0.02], 'processes': 1,\n",
+    "        'cell_type': 'mid-cell', 'cell_complexity': 'simplecell',\n",
+    "    },\n",
+    "})"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "040f9f2f",
+   "metadata": {},
+   "source": [
+    "## 3. Spread of the tuned figures of merit\n",
+    "\n",
+    "Read from `<cav>/tuned/tune_info/uq_tune_results.json`. As in any robust tuning, the **frequency is pinned** (tuned onto target for every node, so ~zero spread) and the residual uncertainty surfaces in R/Q."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "37a3c680",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2026-07-18T09:35:15.593583Z",
+     "iopub.status.busy": "2026-07-18T09:35:15.593439Z",
+     "iopub.status.idle": "2026-07-18T09:35:15.611736Z",
+     "shell.execute_reply": "2026-07-18T09:35:15.611084Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>mean</th>\n",
+       "      <th>std</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>freq [MHz]</th>\n",
+       "      <td>789.999997</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                  mean  std\n",
+       "freq [MHz]  789.999997  0.0"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "uq = json.load(open(os.path.join(cav.tune.folder, 'uq_tune_results.json')))\n",
+    "stats = next(iter(uq.values()))\n",
+    "pd.DataFrame({q.split(':', 1)[-1]: {'mean': v['expe'][0], 'std': v['stdDev'][0]}\n",
+    "             for q, v in stats.items()}).T.round(6)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "05abeb23",
+   "metadata": {},
+   "source": [
+    "See also: [eigenmode UQ](eigenmode_uq.ipynb) and [robust optimisation](robust_optimisation.ipynb)."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.9"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
