@@ -20,10 +20,10 @@
    "id": "6806cbc4",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:20:50.310405Z",
-     "iopub.status.busy": "2026-07-17T17:20:50.310285Z",
-     "iopub.status.idle": "2026-07-17T17:20:51.919098Z",
-     "shell.execute_reply": "2026-07-17T17:20:51.918501Z"
+     "iopub.execute_input": "2026-07-18T17:09:25.544763Z",
+     "iopub.status.busy": "2026-07-18T17:09:25.544632Z",
+     "iopub.status.idle": "2026-07-18T17:09:27.115967Z",
+     "shell.execute_reply": "2026-07-18T17:09:27.115150Z"
     }
    },
    "outputs": [],
@@ -53,10 +53,10 @@
    "id": "32e7346b",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:20:51.921035Z",
-     "iopub.status.busy": "2026-07-17T17:20:51.920832Z",
-     "iopub.status.idle": "2026-07-17T17:20:52.045511Z",
-     "shell.execute_reply": "2026-07-17T17:20:52.044984Z"
+     "iopub.execute_input": "2026-07-18T17:09:27.118574Z",
+     "iopub.status.busy": "2026-07-18T17:09:27.118282Z",
+     "iopub.status.idle": "2026-07-18T17:09:27.228985Z",
+     "shell.execute_reply": "2026-07-18T17:09:27.228533Z"
     }
    },
    "outputs": [
@@ -69,6 +69,16 @@
      },
      "metadata": {},
      "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'>"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
     }
    ],
    "source": [
@@ -76,8 +86,7 @@
     "cav = EllipticalCavity(1, midcell, midcell, midcell, beampipe='both', name='wake')\n",
     "cav.set_workspace(os.path.join(tempfile.mkdtemp(), 'wake'))\n",
     "\n",
-    "cav.plot('geometry')\n",
-    "plt.show()"
+    "cav.plot('geometry')"
    ]
   },
   {
@@ -96,10 +105,10 @@
    "id": "dfcb53cc",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:20:52.047099Z",
-     "iopub.status.busy": "2026-07-17T17:20:52.046967Z",
-     "iopub.status.idle": "2026-07-17T17:21:51.361676Z",
-     "shell.execute_reply": "2026-07-17T17:21:51.361069Z"
+     "iopub.execute_input": "2026-07-18T17:09:27.230793Z",
+     "iopub.status.busy": "2026-07-18T17:09:27.230624Z",
+     "iopub.status.idle": "2026-07-18T17:10:21.608664Z",
+     "shell.execute_reply": "2026-07-18T17:10:21.608177Z"
     }
    },
    "outputs": [
@@ -138,10 +147,10 @@
    "id": "8e608c04",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:21:51.363989Z",
-     "iopub.status.busy": "2026-07-17T17:21:51.363749Z",
-     "iopub.status.idle": "2026-07-17T17:21:51.862301Z",
-     "shell.execute_reply": "2026-07-17T17:21:51.861693Z"
+     "iopub.execute_input": "2026-07-18T17:10:21.610209Z",
+     "iopub.status.busy": "2026-07-18T17:10:21.610073Z",
+     "iopub.status.idle": "2026-07-18T17:10:22.088323Z",
+     "shell.execute_reply": "2026-07-18T17:10:22.087779Z"
     }
    },
    "outputs": [
@@ -154,11 +163,20 @@
      },
      "metadata": {},
      "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<Axes: xlabel='f [MHz]', ylabel='$|Z_\\\\parallel|$ [k$\\\\Omega$]'>"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
     }
    ],
    "source": [
-    "cav.wakefield.plot_impedance('longitudinal')\n",
-    "plt.show()"
+    "cav.wakefield.plot_impedance('longitudinal')"
    ]
   },
   {
@@ -175,10 +193,10 @@
    "id": "5e30c446",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:21:51.863910Z",
-     "iopub.status.busy": "2026-07-17T17:21:51.863719Z",
-     "iopub.status.idle": "2026-07-17T17:21:51.930111Z",
-     "shell.execute_reply": "2026-07-17T17:21:51.929348Z"
+     "iopub.execute_input": "2026-07-18T17:10:22.090057Z",
+     "iopub.status.busy": "2026-07-18T17:10:22.089797Z",
+     "iopub.status.idle": "2026-07-18T17:10:22.155438Z",
+     "shell.execute_reply": "2026-07-18T17:10:22.154979Z"
     }
    },
    "outputs": [
@@ -191,11 +209,20 @@
      },
      "metadata": {},
      "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<Axes: xlabel='f [MHz]', ylabel='$|Z_\\\\perp|$ [k$\\\\Omega$/m]'>"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
     }
    ],
    "source": [
-    "cav.wakefield.plot_impedance('transverse')\n",
-    "plt.show()"
+    "cav.wakefield.plot_impedance('transverse')"
    ]
   },
   {
@@ -214,10 +241,10 @@
    "id": "2f15b4d6",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:21:51.932289Z",
-     "iopub.status.busy": "2026-07-17T17:21:51.932070Z",
-     "iopub.status.idle": "2026-07-17T17:21:52.019388Z",
-     "shell.execute_reply": "2026-07-17T17:21:52.018739Z"
+     "iopub.execute_input": "2026-07-18T17:10:22.157074Z",
+     "iopub.status.busy": "2026-07-18T17:10:22.156934Z",
+     "iopub.status.idle": "2026-07-18T17:10:22.245251Z",
+     "shell.execute_reply": "2026-07-18T17:10:22.244588Z"
     }
    },
    "outputs": [
@@ -230,11 +257,20 @@
      },
      "metadata": {},
      "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<Axes: title={'center': 'Longitudinal wake'}, xlabel='S [m]', ylabel='$W_\\\\parallel$ [V/pC]'>"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
     }
    ],
    "source": [
-    "cav.wakefield.plot_wake('longitudinal')\n",
-    "plt.show()"
+    "cav.wakefield.plot_wake('longitudinal')"
    ]
   },
   {
@@ -251,10 +287,10 @@
    "id": "cd9c2eef",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-17T17:21:52.020977Z",
-     "iopub.status.busy": "2026-07-17T17:21:52.020825Z",
-     "iopub.status.idle": "2026-07-17T17:21:52.084769Z",
-     "shell.execute_reply": "2026-07-17T17:21:52.084017Z"
+     "iopub.execute_input": "2026-07-18T17:10:22.247208Z",
+     "iopub.status.busy": "2026-07-18T17:10:22.246985Z",
+     "iopub.status.idle": "2026-07-18T17:10:22.313025Z",
+     "shell.execute_reply": "2026-07-18T17:10:22.312466Z"
     }
    },
    "outputs": [
@@ -267,11 +303,20 @@
      },
      "metadata": {},
      "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<Axes: xlabel='f [MHz]', ylabel='$k_{\\\\mathrm{loss}}(F)$ [V/pC]'>"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
     }
    ],
    "source": [
-    "cav.wakefield.plot_k_loss()\n",
-    "plt.show()"
+    "cav.wakefield.plot_k_loss()"
    ]
   },
   {

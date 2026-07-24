@@ -59,7 +59,7 @@ Once the UQ simulation finishes, the standard deviations are populated in the re
 
 .. code-block:: python
 
-    cavs.plot_compare_fm_bar(uq=True)
+    cavs.eigenmode.plot_fm_bar(uq=True)
 
 .. important::
 

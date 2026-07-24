@@ -9,12 +9,12 @@ Core Concepts
 The core workflow of ``cavsim2d`` revolves around two main classes:
 
 1. **``Cavity`` (and subclasses like ``EllipticalCavity``):** Represents a single physical RF cavity device, holding its cell dimensions, geometry configurations, and local analysis results.
-2. **``Cavities`` (Study Manager):** A study manager class that groups multiple ``Cavity`` objects under a single project folder, handles directory layouts, triggers parallelised analyses, and facilitates comparisons between different designs.
+2. **``Study`` (Study Manager):** A study manager class that groups multiple ``Cavity`` objects under a single project folder, handles directory layouts, triggers parallelised analyses, and facilitates comparisons between different designs.
 
 Step 1: Set Up the Project and Geometry
 ***************************************
 
-We begin by importing the necessary classes and initializing a ``Cavities`` project manager. We then define the dimensions for a 9-cell TESLA cavity and construct an ``EllipticalCavity`` object.
+We begin by importing the necessary classes and initializing a ``Study`` project manager. We then define the dimensions for a 9-cell TESLA cavity and construct an ``EllipticalCavity`` object.
 
 Create a new Python script (e.g., ``run_tutorial.py``) and add the following:
 
@@ -22,14 +22,14 @@ Create a new Python script (e.g., ``run_tutorial.py``) and add the following:
 
     import sys
     import pprint
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
 
     # Initialize a pretty printer for readable output
     pp = pprint.PrettyPrinter(indent=4)
 
     # Initialize the project folder
     # This directory will hold all meshes, solver inputs, and result JSON files
-    cavs = Cavities(project_folder='./tutorial_project', overwrite=True)
+    cavs = Study('./tutorial_project', overwrite=True)
 
     # Define dimensions for a standard 9-cell TESLA cavity (in mm)
     # IC: [A, B, a, b, Ri, L, Req]

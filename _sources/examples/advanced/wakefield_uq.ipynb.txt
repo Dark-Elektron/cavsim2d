@@ -20,10 +20,10 @@
    "id": "eeaa7e59",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T11:14:08.224799Z",
-     "iopub.status.busy": "2026-07-18T11:14:08.224645Z",
-     "iopub.status.idle": "2026-07-18T11:14:10.017819Z",
-     "shell.execute_reply": "2026-07-18T11:14:10.017183Z"
+     "iopub.execute_input": "2026-07-18T17:10:28.802873Z",
+     "iopub.status.busy": "2026-07-18T17:10:28.802715Z",
+     "iopub.status.idle": "2026-07-18T17:10:30.393551Z",
+     "shell.execute_reply": "2026-07-18T17:10:30.392755Z"
     }
    },
    "outputs": [],
@@ -34,7 +34,7 @@
     "import pandas as pd\n",
     "import matplotlib.pyplot as plt\n",
     "\n",
-    "from cavsim2d import Cavities, EllipticalCavity\n",
+    "from cavsim2d import Study, EllipticalCavity\n",
     "from cavsim2d.utils.style import apply_style\n",
     "\n",
     "apply_style()"
@@ -47,7 +47,7 @@
    "source": [
     "## 1. The cavity and the uncertainty\n",
     "\n",
-    "A TESLA-like mid-cell in a one-cavity study (UQ perturbs the geometry, so it runs through `Cavities`, not a bare `Cavity`). The `uq_config` puts a **5% spread** on the ellipse semi-axes `A, B` and asks for the `ZL` peaks in two windows: 0.2–2.0 GHz and 2.0–5.0 GHz."
+    "A TESLA-like mid-cell in a one-cavity study (UQ perturbs the geometry, so it runs through `Study`, not a bare `Cavity`). The `uq_config` puts a **5% spread** on the ellipse semi-axes `A, B` and asks for the `ZL` peaks in two windows: 0.2–2.0 GHz and 2.0–5.0 GHz."
    ]
   },
   {
@@ -56,15 +56,15 @@
    "id": "8790673e",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T11:14:10.020402Z",
-     "iopub.status.busy": "2026-07-18T11:14:10.020122Z",
-     "iopub.status.idle": "2026-07-18T11:14:10.031273Z",
-     "shell.execute_reply": "2026-07-18T11:14:10.030343Z"
+     "iopub.execute_input": "2026-07-18T17:10:30.395700Z",
+     "iopub.status.busy": "2026-07-18T17:10:30.395428Z",
+     "iopub.status.idle": "2026-07-18T17:10:30.407155Z",
+     "shell.execute_reply": "2026-07-18T17:10:30.406149Z"
     }
    },
    "outputs": [],
    "source": [
-    "cavs = Cavities(os.path.join(tempfile.mkdtemp(), 'wake_uq'))\n",
+    "cavs = Study(os.path.join(tempfile.mkdtemp(), 'wake_uq'))\n",
     "midcell = [42, 42, 12, 19, 35, 57.7, 103.353]\n",
     "cavs.add_cavity([EllipticalCavity(1, midcell, midcell, midcell, beampipe='both')], ['W'])\n",
     "\n",
@@ -95,10 +95,10 @@
    "id": "f222be4a",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T11:14:10.033932Z",
-     "iopub.status.busy": "2026-07-18T11:14:10.033758Z",
-     "iopub.status.idle": "2026-07-18T11:27:06.190204Z",
-     "shell.execute_reply": "2026-07-18T11:27:06.189493Z"
+     "iopub.execute_input": "2026-07-18T17:10:30.409719Z",
+     "iopub.status.busy": "2026-07-18T17:10:30.409539Z",
+     "iopub.status.idle": "2026-07-18T17:22:56.803800Z",
+     "shell.execute_reply": "2026-07-18T17:22:56.802740Z"
     }
    },
    "outputs": [
@@ -132,10 +132,10 @@
    "id": "e0646e1a",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T11:27:06.192429Z",
-     "iopub.status.busy": "2026-07-18T11:27:06.192205Z",
-     "iopub.status.idle": "2026-07-18T11:27:06.202140Z",
-     "shell.execute_reply": "2026-07-18T11:27:06.201471Z"
+     "iopub.execute_input": "2026-07-18T17:22:56.805701Z",
+     "iopub.status.busy": "2026-07-18T17:22:56.805497Z",
+     "iopub.status.idle": "2026-07-18T17:22:56.815808Z",
+     "shell.execute_reply": "2026-07-18T17:22:56.815175Z"
     }
    },
    "outputs": [
@@ -212,10 +212,10 @@
    "id": "eb81f9a9",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T11:27:06.203918Z",
-     "iopub.status.busy": "2026-07-18T11:27:06.203774Z",
-     "iopub.status.idle": "2026-07-18T11:27:06.333304Z",
-     "shell.execute_reply": "2026-07-18T11:27:06.332388Z"
+     "iopub.execute_input": "2026-07-18T17:22:56.818101Z",
+     "iopub.status.busy": "2026-07-18T17:22:56.817837Z",
+     "iopub.status.idle": "2026-07-18T17:22:56.964483Z",
+     "shell.execute_reply": "2026-07-18T17:22:56.964085Z"
     }
    },
    "outputs": [
