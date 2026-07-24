@@ -105,7 +105,15 @@ _RC = {
     'font.family': 'serif',
     'font.serif': [HOUSE_FONT, 'DejaVu Serif'],
     'font.size': 11,
-    'legend.frameon': False,
+    # Boxed, slightly raised legend (a thin dark border on an opaque white face,
+    # square corners) — reads as a distinct panel lifted off the plot.
+    'legend.frameon': True,
+    'legend.fancybox': False,
+    'legend.framealpha': 1.0,
+    'legend.facecolor': 'white',
+    'legend.edgecolor': '#333333',
+    'legend.borderpad': 0.5,
+    'legend.shadow': True,
     'lines.linewidth': 1.8,
     'lines.markersize': 6,
     'mathtext.fontset': HOUSE_MATHFONT,   # matches HOUSE_FONT; no LaTeX needed

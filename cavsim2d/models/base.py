@@ -386,12 +386,29 @@ class Cavity(ABC):
     def _load_tuned_from_disk(self, tuned_dir):
         """Rebuild the tuned cavity from a persisted ``tuned/`` folder.
 
-        Generic: reads the merged tuned parameters from ``tune_info/tune_res.json``
-        and reconstructs via :meth:`rebuild`.
+        Prefers the complete, self-consistent ``tune_info/tuned_parameters.json``
+        (the full sibling-propagated parameter set the tuner converged on). Falls
+        back to merging the FILTERED per-stage snapshots in ``tune_res.json`` only
+        for older tuned folders written before that file existed — that merge is
+        lossy (a mid-cell stage stores only ``*_m``, so a tuned ``Req_m`` lands on
+        top of an untuned ``Req_el`` and ``_unify_equator_radius`` can wipe it),
+        which is exactly why the complete dump is preferred.
         """
         params = dict(self.parameters)
+        full_path = os.path.join(str(tuned_dir), 'tune_info', 'tuned_parameters.json')
         tune_res_path = os.path.join(str(tuned_dir), 'tune_info', 'tune_res.json')
-        if os.path.exists(tune_res_path):
+        if os.path.exists(full_path):
+            with open(full_path) as fh:
+                tuned_params = json.load(fh)
+            for k, v in tuned_params.items():
+                if isinstance(v, (list, tuple)):
+                    params[k] = list(v)
+                    continue
+                try:
+                    params[k] = float(v)
+                except (TypeError, ValueError):
+                    params[k] = v
+        elif os.path.exists(tune_res_path):
             with open(tune_res_path) as fh:
                 tune_res = json.load(fh)
             last = last_stage_result(tune_res)
@@ -748,7 +765,7 @@ class Cavity(ABC):
         Parameters
         ----------
         filepath: str
-            Directory to save shape space to. If no input is given, it is saved to the Cavities directory
+            Directory to save shape space to. If no input is given, it is saved to the project directory
 
         Returns
         -------
@@ -1021,7 +1038,7 @@ class Cavity(ABC):
 
         # Which polarisations to read: those named in the config (normalised to
         # names — a bare 'dipole'/1 or a list are all accepted), or, when no
-        # config is given (e.g. the Cavities-level caller), whatever was solved.
+        # config is given (e.g. the Study-level caller), whatever was solved.
         raw = (config or {}).get('polarisation') if isinstance(config, dict) else None
         if raw is not None:
             if not isinstance(raw, (list, tuple, set)):
@@ -1157,7 +1174,7 @@ class Cavity(ABC):
     def _dispersion_series(self, pol=None, bands=None, color=None, label=None):
         """Collect the dispersion curves as a list of ``dict(x, y, color, label)``,
         one per (polarisation, passband). Shared by the single-cavity and the
-        ``Cavities`` overlay plotters so both render identically."""
+        ``Study`` overlay plotters so both render identically."""
         if pol is None:
             pols = self._available_polarisations() or ['monopole']
         elif isinstance(pol, (str, int)):
@@ -1475,7 +1492,14 @@ class Cavity(ABC):
         _maybe_show(show)
         return ax
 
-    def plot_spectra(self, var, ax=None):
+    def plot_spectra(self, var='freq [MHz]', ax=None, show=True, **kwargs):
+        """Mode-spectrum plot — delegates to :meth:`EigenmodeSolver.plot_spectra`
+        (the canonical home). Draws the per-mode distribution of *var* over the UQ
+        samples, coloured by polarisation; see that method for mode/frequency
+        selection, ``std_cap`` and reference overlays."""
+        return self.eigenmode.plot_spectra(var=var, ax=ax, show=show, **kwargs)
+
+    def _plot_spectra_legacy(self, var, ax=None):
         if len(self.uq_fm_results_all_modes) != 0:
             results = self.uq_fm_results_all_modes
 
@@ -1802,7 +1826,16 @@ class Cavity(ABC):
             ax.set_ylabel(r'$r$ [mm]')
             return ax
 
-    def plot(self, what, ax=None, scale_x=1, **kwargs):
+    def plot(self, what, ax=None, scale_x=1, show=True, **kwargs):
+        """Plot a static view of this cavity (``what='geometry'`` or
+        ``'convergence'``). Like the solver-object ``plot_*`` methods this shows
+        the figure by default; pass ``show=False`` to compose onto the returned
+        axis (e.g. add a title, or overlay several cavities on one ``ax``)."""
+        result = self._plot_dispatch(what, ax=ax, scale_x=scale_x, **kwargs)
+        _maybe_show(show)
+        return result
+
+    def _plot_dispatch(self, what, ax=None, scale_x=1, **kwargs):
         if what.lower() == 'geometry':
             # Opt-in: `tuned=True` routes the plot to self.tuned when it
             # exists, so callers can overlay before/after on the same ax.
@@ -2628,8 +2661,8 @@ class Cavity(ABC):
         ``TypeError: Pillbox.__init__() got an unexpected keyword argument 'name'``.)
         """
         # Deferred: breaks the base <-> cavities import cycle.
-        from cavsim2d.study import Cavities
-        spawn = Cavities(folder, _skip_project_init=True)
+        from cavsim2d.study import Study
+        spawn = Study(folder, _skip_project_init=True)
         os.makedirs(folder, exist_ok=True)
 
         for key, row in difference.iterrows():

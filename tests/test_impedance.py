@@ -68,12 +68,12 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL                        # noqa: E402
-from cavsim2d import Cavities, EllipticalCavity     # noqa: E402
+from cavsim2d import Study, EllipticalCavity     # noqa: E402
 
 
 def _solved(project_dir):
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['Z'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
                         'polarisation': ['monopole', 'dipole'], 'n_modes': 5,
@@ -168,7 +168,7 @@ def test_study_eigenmode_plot_impedance_overlays_every_cavity(project_dir):
     import matplotlib
     matplotlib.use('Agg')
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     a = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     b = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([a, b], ['A', 'B'])
@@ -229,9 +229,45 @@ def test_impedance_without_that_polarisation_is_reported(project_dir):
     """Asking for a transverse impedance with no dipole solve returns an empty
     frame and says why, rather than raising a KeyError from deep in the maths."""
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['NoDip'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
                         'polarisation': 'monopole', 'n_modes': 3})
     assert cav.eigenmode.impedance('transverse').empty
     assert not cav.eigenmode.impedance().empty
+
+
+def test_reconstruct_impedance_dc_limit():
+    """Edge case f = 0 (allowed): the longitudinal impedance vanishes at DC while
+    the transverse one tends to a finite i*R/Q — the resonator term's two limits.
+    Guards the special-casing that a naive 1/(f/f0 - f0/f) would divide by zero."""
+    f0, roq, q = np.array([1.0e9]), np.array([100.0]), np.array([1e4])
+    grid = np.array([0.0, f0[0]])
+
+    zl = reconstruct_impedance(f0, roq, q, grid, transverse=False)
+    assert zl[0] == 0.0                                   # longitudinal -> 0 at DC
+
+    zt = reconstruct_impedance(f0, roq, q, grid, transverse=True)
+    assert zt[0].real == pytest.approx(0.0, abs=1e-9)
+    # DC transverse limit i*R/Q: r_shunt/q cancels the q (r_shunt = 0.5 q roq w0/c).
+    assert zt[0].imag == pytest.approx(0.5 * roq[0] * (2 * np.pi * f0[0] / C0))
+
+
+def test_reconstruct_impedance_rejects_bad_input():
+    """Edge cases: mismatched array lengths and a non-positive mode frequency must
+    raise clearly rather than produce silent garbage."""
+    with pytest.raises(ValueError, match="same length"):
+        reconstruct_impedance([1e9, 2e9], [100.0], [1e4], np.array([1e9]))
+    with pytest.raises(ValueError, match="positive"):
+        reconstruct_impedance([0.0], [100.0], [1e4], np.array([1e9]))
+
+
+def test_reconstruct_impedance_sums_modes():
+    """Two well-separated modes: each peak reaches its own shunt impedance,
+    independent of the other (a linear sum of resonators)."""
+    f0 = np.array([1.0e9, 2.0e9])
+    roq = np.array([100.0, 50.0])
+    q = np.array([1e4, 1e4])
+    z = reconstruct_impedance(f0, roq, q, f0)
+    assert z[0].real == pytest.approx(0.5 * q[0] * roq[0], rel=1e-3)
+    assert z[1].real == pytest.approx(0.5 * q[1] * roq[1], rel=1e-3)

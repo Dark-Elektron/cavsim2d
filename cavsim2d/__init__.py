@@ -2,14 +2,14 @@
 cavsim2d - 2D axisymmetric RF cavity simulation toolkit.
 
 Main entry points:
-    Cavities           - Container for multiple Cavity objects
+    Study              - Container for multiple Cavity objects
     EllipticalCavity   - Standard elliptical cavity
     EllipticalCavityFlatTop - Flat-top elliptical cavity
     SplineCavity       - Spline-based cavity
     RFGun              - RF gun cavity
     Pillbox            - Pillbox cavity
 
-Solver objects (attached as lazy properties on Cavity/Cavities):
+Solver objects (attached as lazy properties on Cavity/Study):
     cav.tune           - TuneSolver
     cav.eigenmode      - EigenmodeSolver
     cav.wakefield      - WakefieldSolver
@@ -24,7 +24,7 @@ from cavsim2d.models import (
     Pillbox,
     CircularWaveguide,
 )
-from cavsim2d.study import Study, Cavities
+from cavsim2d.study import Study
 from cavsim2d.analysis.uq.dakota import Dakota
 from cavsim2d.data_module.operating_points import OperationPoints
 from cavsim2d.utils.welcome import show_welcome
@@ -41,7 +41,6 @@ from cavsim2d.utils.style import apply_style, house_style, WARM
 
 __all__ = [
     'Study',
-    'Cavities',
     'Cavity',
     'EllipticalCavity',
     'EllipticalCavityFlatTop',

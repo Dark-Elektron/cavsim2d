@@ -3,7 +3,7 @@ import pytest
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from cavsim2d.study import Study, Cavities
+from cavsim2d.study import Study
 
 class DummyCavity:
     def __init__(self, name, plot_label, color, freq, e, b, k_cc, R_Q, G, GR_Q):
@@ -20,14 +20,14 @@ class DummyCavity:
 
 def test_plot_compare_fm_scatter_defaults(tmp_path):
     # Setup mock cavities
-    cavs = Cavities(str(tmp_path), _skip_project_init=True)
+    cavs = Study(str(tmp_path), _skip_project_init=True)
     cav1 = DummyCavity('cav1', 'Cavity 1', 'blue', 800.0, 2.0, 4.0, 1.5, 110.0, 270.0, 29700.0)
     cav2 = DummyCavity('cav2', 'Cavity 2', 'red', 810.0, 2.1, 4.2, 1.6, 115.0, 275.0, 31625.0)
     
     cavs.cavities_list = [cav1, cav2]
     
     # Call plot_compare_fm_scatter (without uq)
-    axd = cavs.plot_compare_fm_scatter()
+    axd = cavs.eigenmode.plot_fm_scatter()
     
     # Verify the default axes are created
     expected_default_keys = ['freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]', 'R/Q [Ohm]']
@@ -35,21 +35,21 @@ def test_plot_compare_fm_scatter_defaults(tmp_path):
     plt.close('all')
 
 def test_plot_compare_fm_scatter_custom_qois(tmp_path):
-    cavs = Cavities(str(tmp_path), _skip_project_init=True)
+    cavs = Study(str(tmp_path), _skip_project_init=True)
     cav1 = DummyCavity('cav1', 'Cavity 1', 'blue', 800.0, 2.0, 4.0, 1.5, 110.0, 270.0, 29700.0)
     cav2 = DummyCavity('cav2', 'Cavity 2', 'red', 810.0, 2.1, 4.2, 1.6, 115.0, 275.0, 31625.0)
     
     cavs.cavities_list = [cav1, cav2]
     
     # Custom QoIs: frequency, R/Q, and kcc
-    axd = cavs.plot_compare_fm_scatter(qois=['frequency', 'r/q', 'kcc'])
+    axd = cavs.eigenmode.plot_fm_scatter(qois=['frequency', 'r/q', 'kcc'])
     
     expected_keys = ['freq [MHz]', 'R/Q [Ohm]', 'kcc [%]']
     assert set(axd.keys()) == set(expected_keys)
     plt.close('all')
 
 def test_plot_compare_fm_scatter_uq(tmp_path):
-    cavs = Cavities(str(tmp_path), _skip_project_init=True)
+    cavs = Study(str(tmp_path), _skip_project_init=True)
     cav1 = DummyCavity('cav1', 'Cavity 1', 'blue', 800.0, 2.0, 4.0, 1.5, 110.0, 270.0, 29700.0)
     cav2 = DummyCavity('cav2', 'Cavity 2', 'red', 810.0, 2.1, 4.2, 1.6, 115.0, 275.0, 31625.0)
     
@@ -87,7 +87,7 @@ def test_plot_compare_fm_scatter_uq(tmp_path):
     }
     
     # Custom list of UQ QoIs
-    axd = cavs.plot_compare_fm_scatter(uq=True, qois=['Epk', 'bpk'])
+    axd = cavs.eigenmode.plot_fm_scatter(uq=True, qois=['Epk', 'bpk'])
     
     expected_keys = ['Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]']
     assert set(axd.keys()) == set(expected_keys)

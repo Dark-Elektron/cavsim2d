@@ -328,13 +328,22 @@ def _is_notebook():
 def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
                          color_by='energy', trail=40, step=1, fps=30,
                          save=None, dpi=120, zoom='auto', progress=True,
-                         embed='auto'):
+                         embed='auto', zoom_smooth=0.12, zoom_min=0.5,
+                         inline_format='auto'):
     """Animate the surviving trajectories: moving heads with a short fading
     trace, colour-coded by ``'energy'`` (default) or ``'velocity'``.
 
-    ``zoom='auto'`` (default) frames the selected trajectories — multipacting
-    orbits are sub-millimetre, invisible at full-cavity scale; ``zoom=None``
-    shows the whole cavity.
+    ``zoom`` controls the framing — multipacting orbits are sub-millimetre and
+    invisible at full-cavity scale:
+
+    - ``'auto'`` (default) — one fixed box around *all* of the selected
+      trajectories, for the whole animation;
+    - ``'follow'`` — a **moving camera**: the view re-frames each frame onto the
+      particles still alive, so an initial burst filling the domain is shown wide
+      and the view closes in as the multipacting localises. The centre and width
+      are exponentially smoothed (``zoom_smooth``) so the camera glides instead of
+      jittering, and it never zooms below ``zoom_min`` mm;
+    - ``None`` — the whole cavity.
 
     Selection (all combinable; ``None`` = all, the default):
 
@@ -357,6 +366,13 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
     is *also* played **inline** immediately (unless ``save`` was given, so a
     save-to-file call does not pay for a second render); ``embed=True``/``False``
     forces it on/off.
+
+    ``inline_format`` chooses how the inline player is encoded: ``'auto'``
+    (default) uses a compact **H.264 ``<video>``** when ffmpeg is available, else a
+    JS frame player. ``'video'``/``'jshtml'`` force one. Prefer the video — the JS
+    player base64-embeds every PNG frame and is truncated by
+    ``animation.embed_limit`` on a long animation (the tail is silently dropped),
+    whereas H.264 is 10-50x smaller so the whole animation embeds.
     """
     # Deferred: matplotlib.animation pulls in writer machinery only needed here.
     from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
@@ -400,8 +416,9 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
         ax.set_ylabel('r [mm]')
         ax.set_title(title)
         ax.set_aspect('equal', 'box')
-        if zoom == 'auto':
-            # frame the trajectories, not the cavity: the orbits are sub-mm
+        if zoom in ('auto', 'follow'):
+            # frame the trajectories, not the cavity: the orbits are sub-mm.
+            # 'follow' starts from this same box and then closes in per frame.
             allp = np.vstack([p[:, :2] for p in paths]) * 1e3
             pad_z = max(0.2 * (allp[:, 0].max() - allp[:, 0].min()), 1.0)
             pad_r = max(0.2 * (allp[:, 1].max() - allp[:, 1].min()), 1.0)
@@ -416,10 +433,44 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
 
     n_frames = max(len(p) for p in paths)
 
+    # --- moving camera (zoom='follow') -------------------------------------
+    # Re-frame each frame onto what is still on screen, so a wide opening burst
+    # tightens onto the surviving orbits. Kept stable by three things: the box
+    # ratio is locked to the axes box (so 'equal' aspect never resizes the axes
+    # mid-animation), the centre/width are exponentially smoothed, and the width
+    # is floored at zoom_min.
+    _bb = ax.get_position()
+    _box_ratio = ((_bb.width * fig.get_figwidth()) /
+                  max(_bb.height * fig.get_figheight(), 1e-9))
+    _cam = {'cz': None, 'cr': None, 'half': None}
+
+    def _follow(pts_mm):
+        if len(pts_mm) == 0:
+            return
+        zlo, zhi = float(pts_mm[:, 0].min()), float(pts_mm[:, 0].max())
+        rlo, rhi = float(pts_mm[:, 1].min()), float(pts_mm[:, 1].max())
+        cz, cr = 0.5 * (zlo + zhi), 0.5 * (rlo + rhi)
+        # one half-height covering both extents (z is widened by the box ratio),
+        # plus 25% breathing room
+        half = 0.5 * max(rhi - rlo, (zhi - zlo) / _box_ratio) * 1.25
+        half = max(half, float(zoom_min))
+        if _cam['half'] is None:
+            _cam.update(cz=cz, cr=cr, half=half)
+        else:
+            a = float(zoom_smooth)
+            _cam['cz'] += a * (cz - _cam['cz'])
+            _cam['cr'] += a * (cr - _cam['cr'])
+            _cam['half'] += a * (half - _cam['half'])
+        ax.set_xlim(_cam['cz'] - _cam['half'] * _box_ratio,
+                    _cam['cz'] + _cam['half'] * _box_ratio)
+        ax.set_ylim(_cam['cr'] - _cam['half'], _cam['cr'] + _cam['half'])
+
     def frame(f):
         segs, colors = [], []
         hx, hy, hv = [], [], []
+        live = []                      # points of trajectories still running
         for p, v in zip(paths, values):
+            alive = f < len(p)         # ended tracks freeze on their last point
             i1 = min(f, len(p) - 1)
             i0 = max(0, i1 - trail)
             if i1 >= 1 and len(v):
@@ -429,6 +480,8 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
                 rgba[:, 3] = np.linspace(0.12, 1.0, len(rgba))   # fading trace
                 segs.extend(seg)
                 colors.extend(rgba)
+                if alive:
+                    live.append(pts)
             hx.append(p[i1, 0] * 1e3)
             hy.append(p[i1, 1] * 1e3)
             hv.append(v[min(i1, len(v) - 1)] if len(v) else norm.vmin)
@@ -436,6 +489,10 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
         lc.set_color(colors if colors else 'none')
         heads.set_offsets(np.column_stack([hx, hy]))
         heads.set_array(np.asarray(hv))
+        if zoom == 'follow':
+            # Track only the live trajectories: frozen (finished) ones would peg
+            # the box open and stop the camera closing in.
+            _follow(np.vstack(live) if live else np.empty((0, 2)))
         return lc, heads
 
     anim = FuncAnimation(fig, frame, frames=n_frames, interval=1000 / fps,
@@ -464,21 +521,72 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
     # save-to-file call would otherwise render every frame a second time).
     want_embed = (_is_notebook() and not save) if embed == 'auto' else bool(embed)
     if want_embed:
-        # Build the inline JS player (same per-frame cost as a save), display it,
-        # and close the still frame so the notebook shows only the player, not a
-        # duplicate static axes. The FuncAnimation is still returned so .save()
-        # remains available.
-        # Deferred: IPython display is a notebook API.
+        # Play inline, then close the still frame so the notebook shows only the
+        # player, not a duplicate static axes. The FuncAnimation is still returned
+        # so .save() remains available.
+        # Deferred: IPython display + writer availability are notebook/animation APIs.
         from IPython.display import HTML, display
+        from matplotlib.animation import FFMpegWriter
+        # Prefer an H.264 <video>: to_jshtml base64-embeds every PNG frame and
+        # gets truncated by animation.embed_limit on a long animation (frames
+        # silently dropped). Video is 10-50x smaller, so the whole thing embeds.
+        use_video = (FFMpegWriter.isAvailable() if inline_format == 'auto'
+                     else inline_format == 'video')
         t0 = time.time()
-        html = (_to_jshtml_with_progress(anim, fps, n_frames) if progress
-                else anim.to_jshtml(fps=fps, embed_frames=True))
-        info(f"Trajectory animation rendered inline "
+        if use_video:
+            html = _to_html5_video_with_progress(anim, fps, n_frames, dpi, progress)
+            kind = 'H.264 video'
+        else:
+            if inline_format == 'video':
+                info("ffmpeg not found — falling back to the (larger) JS frame "
+                     "player. Install ffmpeg for a compact inline video.")
+            html = (_to_jshtml_with_progress(anim, fps, n_frames) if progress
+                    else anim.to_jshtml(fps=fps, embed_frames=True))
+            kind = 'JS frame player'
+        info(f"Trajectory animation rendered inline as {kind} "
              f"({n_frames} frames, {len(sel)} trajectories, "
              f"{time.time() - t0:.1f}s).")
         plt.close(fig)
         display(HTML(html))
     return anim
+
+
+def _to_html5_video_with_progress(anim, fps, n_frames, dpi, progress):
+    """Encode the animation to an H.264 ``<video>`` and return it as embeddable
+    HTML, with a tqdm bar over frame rendering.
+
+    Far smaller than ``to_jshtml`` (which base64-embeds every PNG frame and blows
+    past ``animation.embed_limit`` on a many-frame animation, silently dropping the
+    tail): H.264 is typically 10-50x smaller, so the WHOLE animation embeds. Needs
+    ffmpeg (the same writer used for ``.mp4`` saves)."""
+    # Deferred: base64 + tempfile + the ffmpeg writer are only needed to encode
+    # the inline video, so keep them off the module import path.
+    import base64
+    import tempfile
+    from matplotlib.animation import FFMpegWriter
+
+    cb = None
+    if progress:
+        # Deferred: tqdm core dep, kept local to the plotting path.
+        from tqdm.auto import tqdm
+        bar = tqdm(total=n_frames, desc='Encoding inline video', unit='frame',
+                   leave=True)
+        cb = lambda i, n: (bar.update(1), bar.close() if i + 1 >= n else None)
+
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as f:
+        path = f.name
+    try:
+        anim.save(path, writer=FFMpegWriter(fps=fps), dpi=dpi, progress_callback=cb)
+        with open(path, 'rb') as f:
+            data = base64.b64encode(f.read()).decode('ascii')
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return (f'<video controls autoplay loop style="max-width:100%">'
+            f'<source src="data:video/mp4;base64,{data}" type="video/mp4">'
+            f'</video>')
 
 
 def _to_jshtml_with_progress(anim, fps, n_frames):

@@ -7,3 +7,5 @@ Tuning a cavity's geometry so its fundamental mode lands on a target frequency.
    :maxdepth: 1
 
    tune_to_frequency
+   multicell
+   cavity_types

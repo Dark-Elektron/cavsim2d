@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
-from cavsim2d.study import Cavities
+from cavsim2d.study import Study
 from cavsim2d.geometry import Profile
 from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half_cell_sequence,
@@ -1084,7 +1084,7 @@ class EllipticalCavity(Cavity):
         else:
             A, B, a, b, Ri, L, Req = (parameters[f'{n}_m']*1e-3 for n in names)
 
-        L_bp = 4 * L
+        L_bp = 2 * L
         if dimension or contour:
             L_bp = 1 * L
 
@@ -1241,7 +1241,7 @@ class EllipticalCavity(Cavity):
         """
 
         # Create container without project directory structure
-        spawn = Cavities(folder, _skip_project_init=True)
+        spawn = Study(folder, _skip_project_init=True)
         os.makedirs(folder, exist_ok=True)
 
         for key, params_diff in difference.iterrows():
@@ -1302,7 +1302,7 @@ class EllipticalCavity(Cavity):
         :class:`~cavsim2d.geometry.Profile` path can express independently varying
         cells, and ``write_geometry`` would silently emit a uniform-mid-cell contour.
         """
-        spawn = Cavities(folder, _skip_project_init=True)
+        spawn = Study(folder, _skip_project_init=True)
         os.makedirs(folder, exist_ok=True)
 
         for name, half_cells in perturbed.items():
@@ -1385,6 +1385,63 @@ class EllipticalCavity(Cavity):
         # solve the wrong cavity (see NGSolveMEVP._build_mesh).
         self.geo_filepath = None
         return self
+
+    def _half_cell_tune_target(self, name):
+        """Resolve a suffixed tune variable (``'L_m'``, ``'Req_el'``, …) to the
+        ``(_half_cells column, rows)`` it addresses, or ``None`` if it is not a
+        per-half-cell variable. ``_m`` = mid-cells, ``_el`` = left end-cell,
+        ``_er`` = right end-cell (for ``n_cells <= 2`` there are no distinct
+        mid-cells, so every suffix maps to the whole cavity)."""
+        for suffix, tag in (('_el', 'el'), ('_er', 'er'), ('_m', 'm')):
+            if name.endswith(suffix):
+                base = name[:-len(suffix)]
+                if base not in self.HALF_CELL_VARS:
+                    return None
+                col = self.HALF_CELL_VARS.index(base)
+                n = int(self.n_cells)
+                if tag == 'el':
+                    rows = [0, 1]
+                elif tag == 'er':
+                    rows = [2 * n - 2, 2 * n - 1]
+                elif n <= 2:
+                    rows = list(range(2 * n))
+                else:
+                    rows = list(range(2, 2 * n - 2))
+                return col, rows
+        return None
+
+    def get_tune_value(self, name):
+        """Read a tune variable. When explicit half-cells are installed
+        (:meth:`set_half_cells`), a per-half-cell variable is read from the
+        half-cell array (the live geometry source), not the flat
+        ``parameters`` — otherwise tuning a half-cell cavity would read a value
+        the geometry does not use."""
+        hc = getattr(self, '_half_cells', None)
+        if hc is not None:
+            target = self._half_cell_tune_target(name)
+            if target is not None:
+                col, rows = target
+                return float(np.mean(np.asarray(hc)[rows, col]))
+        return super().get_tune_value(name)
+
+    def set_tune_value(self, name, value):
+        """Write a tune variable. When explicit half-cells are installed, a
+        per-half-cell variable is written into the half-cell array so
+        :meth:`profile` actually reflects the change — this is what makes a
+        spawned multicell cavity tunable (e.g. the paper's per-sample L tuning).
+        ``parameters`` is kept in sync so beampipe length and reporting stay
+        consistent."""
+        hc = getattr(self, '_half_cells', None)
+        if hc is not None:
+            target = self._half_cell_tune_target(name)
+            if target is not None:
+                col, rows = target
+                arr = np.asarray(self._half_cells, dtype=float)
+                arr[rows, col] = value
+                self._half_cells = arr
+                self.parameters[name] = value
+                return
+        super().set_tune_value(name, value)
 
     def _cell_length_m(self):
         """Mid-cell axial length (iris to iris), metres: twice the half-cell L."""

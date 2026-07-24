@@ -85,6 +85,7 @@ def test_multipacting_run_end_to_end(tmp_path, monkeypatch):
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='none', name='MPE2E')
     epks = list(1e6 * np.linspace(5, 45, 4))
     cav.multipacting.run({'proc_count': 2, 'epks': epks,
+                          'xrange': [-0.005, 0.005],
                           'phis': list(np.linspace(0, 2 * np.pi, 6)),
                           't_max': 50e-10,
                           'eigenmode_config': {'mesh_config': {'h': 8, 'p': 3}}})
@@ -187,6 +188,7 @@ def test_pec_maxh_gives_multipacting_its_own_field(tmp_path, monkeypatch):
     freq_before = cav.eigenmode.qois['freq [MHz]']
 
     cav.multipacting.run({'proc_count': 1, 'pec_maxh': 1.0,
+                          'xrange': [-0.005, 0.005],
                           'epks': list(1e6 * np.linspace(5, 45, 3)),
                           'phis': list(np.linspace(0, 2 * np.pi, 6)),
                           't_max': 40e-10})
@@ -224,7 +226,7 @@ def test_stepwise_api_stage_preview_and_overlap_warning(tmp_path, monkeypatch):
 
     cav = _solved(tmp_path, monkeypatch, name='MPstep')
     mp = cav.multipacting
-    mp.set_xrange([-0.005, 0.005]).set_epks([2e6, 4e6])
+    mp.set_emission_points([-0.005, 0.005]).set_epks([2e6, 4e6])
     mp.set_phis(list(np.linspace(0, 2 * np.pi, 4)))
 
     # preview before running: emission sites of the staged xrange
@@ -375,3 +377,139 @@ def test_draw_trajectory_uses_sequences_and_equal_aspect():
                            plt.get_cmap('inferno'), 'label')
     assert lc2 is None                                 # plain line, no collection
     plt.close(fig)
+
+
+def test_concave_corner_geometry_does_not_crash_the_sweep(tmp_path):
+    """Regression: a sharp CONCAVE (re-entrant) corner used to kill the sweep.
+
+    The wall-collision point is found on the straight collision polyline, so at a
+    re-entrant corner it can land a hair outside the meshed domain and the field
+    evaluation raised ``NgException: Meshpoint not in mesh!`` — surfacing only as
+    "multipacting worker N produced no result -- it crashed". `RFGun(beampipe=...)`
+    introduces exactly such a corner where the cathode pipe meets the funnel.
+    `Integrators._wall_mip` now nudges the point back inside (no-op when it is
+    already valid), so the sweep completes.
+    """
+    pytest.importorskip("ngsolve")
+    from cavsim2d import RFGun
+
+    gun = {'geometry': {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
+                        'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
+                        'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
+                        'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
+    cav = RFGun(gun, beampipe='both')        # cathode pipe -> concave corner
+    cav.name = 'gun_corner'
+    cav.set_workspace(os.path.join(tmp_path, 'gun_corner'))
+    cav.multipacting.run({'proc_count': 1,                 # in-process: real traceback
+                          'xrange': [-0.30, 0.0],           # cathode pipe + funnel
+                          'epks': list(1e6 * np.linspace(1, 20, 2)),
+                          'phis': list(np.linspace(0, 2 * np.pi, 8))})
+    assert len(cav.multipacting.counter) == 2             # both field levels survived
+
+
+def test_densify_wall_adds_sites_without_moving_the_wall():
+    """More launch sites from the SAME mesh: emission sites are wall-polyline
+    vertices, so a coarse mesh gives few in a narrow band. densify_wall
+    interpolates along the existing straight segments — so the count goes up while
+    the polyline (and hence the collision geometry) is unchanged."""
+    from cavsim2d.analysis.multipacting.driver import densify_wall
+
+    # a straight wall stretch, 5 mm apart: only 3 vertices inside [0, 0.01]
+    wall = np.column_stack([np.linspace(0.0, 0.05, 11), np.full(11, 0.1)])
+    band = [0.0, 0.01]
+    assert ((wall[:, 0] >= band[0]) & (wall[:, 0] <= band[1])).sum() == 3
+
+    dense = densify_wall(wall, band, n_points=25)
+    inb = (dense[:, 0] >= band[0]) & (dense[:, 0] <= band[1])
+    assert inb.sum() == 25                       # band resampled to 25 sites
+    # geometry untouched: same extent, and every densified point lies ON the wall
+    assert dense[:, 0].min() == pytest.approx(wall[:, 0].min())
+    assert dense[:, 0].max() == pytest.approx(wall[:, 0].max())
+    assert np.allclose(dense[inb][:, 1], 0.1)    # still on the r = 0.1 wall
+    # out-of-band vertices survive untouched
+    assert ((dense[:, 0] > band[1])).sum() == (wall[:, 0] > band[1]).sum()
+    # asking for fewer than already present is a no-op
+    assert np.array_equal(densify_wall(wall, band, n_points=2), wall)
+    assert np.array_equal(densify_wall(wall, band, n_points=None), wall)
+
+
+def test_compute_field_takes_eigenmode_config_polarisation_and_modes(tmp_path, monkeypatch):
+    """compute_field() accepts the same keys as an eigenmode config, so
+    multipacting can be driven by a chosen mode of a chosen polarisation (e.g. the
+    2nd monopole mode, or a dipole mode) rather than only the fundamental."""
+    monkeypatch.chdir(tmp_path)
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both', name='MPpol')
+    mp = cav.multipacting
+    mp.compute_field(polarisation='monopole', n_modes=3,
+                     mesh_config={'h': 8, 'p': 2}, pec_maxh=2)
+    mono = mp.field_frequencies
+    assert mp.has_field and len(mono) >= 3
+    assert mono == sorted(mono) and mono[0] > 100          # ascending, physical
+
+    cav2 = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both', name='MPdip')
+    dip = cav2.multipacting.compute_field(polarisation='dipole', n_modes=3,
+                                          mesh_config={'h': 8, 'p': 2},
+                                          pec_maxh=2).field_frequencies
+    assert len(dip) >= 3
+    # a dipole band is a different spectrum from the monopole one
+    assert abs(dip[0] - mono[0]) > 1.0
+
+    # the chosen mode is what the sweep tracks, and is recorded
+    mp.set_emission_points([-0.005, 0.005], n_points=12)
+    mp.run({'proc_count': 1, 'mode': 1, 'epks': [2e6],
+            'phis': list(np.linspace(0, 2 * np.pi, 4)), 't_max': 20e-10})
+    assert mp.config['mode'] == 1
+
+
+def test_animation_follow_zoom_tracks_the_live_particles(tmp_path, monkeypatch):
+    """zoom='follow' gives a moving camera: the view re-frames each frame onto the
+    trajectories still alive, so an opening burst across the domain closes in as
+    the multipacting localises. zoom='auto' stays put for the whole animation."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    monkeypatch.chdir(tmp_path)
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='none', name='MPanim')
+    mp = cav.multipacting
+    mp.set_mesh_parameters(h=6, p=3, pec_maxh=1)
+    mp.set_emission_points([-0.005, 0.0], step=0.001)
+    mp.run({'proc_count': 1, 'epks': list(1e6 * np.linspace(35, 45, 2)),
+            'phis': list(np.linspace(0, 2 * np.pi, 24))})
+    assert any(len(p.bright_set) for p in mp.particles), 'need bright trajectories'
+
+    def spans(zoom):
+        anim = mp.animate_trajectories(zoom=zoom, progress=False, embed=False)
+        fig = plt.gcf()
+        ax = fig.axes[0]
+        out = []
+        for f in (0, 20, 60, 150):
+            anim._func(f)                       # render that frame
+            out.append(ax.get_xlim()[1] - ax.get_xlim()[0])
+        plt.close(fig)
+        return out
+
+    fixed = spans('auto')
+    assert max(fixed) - min(fixed) < 1e-9       # one box for the whole animation
+
+    moving = spans('follow')
+    assert max(moving) - min(moving) > 1e-3     # the camera actually moves
+    assert moving[-1] < moving[0]               # and ends closer in than it began
+
+
+def test_densify_wall_handles_bands_with_under_two_vertices():
+    """A band holding 0 or 1 wall vertices has no segment of its own to walk
+    along — densify_wall brackets it with the neighbouring vertices so a coarse
+    mesh can still be given launch sites (the case that matters most)."""
+    from cavsim2d.analysis.multipacting.driver import densify_wall
+
+    wall = np.column_stack([np.linspace(0.0, 0.05, 11), np.full(11, 0.1)])  # 5 mm
+    for band in ([0.011, 0.014],          # 0 vertices inside
+                 [0.009, 0.012]):         # 1 vertex inside
+        dense = densify_wall(wall, band, n_points=25)
+        inb = (dense[:, 0] >= band[0]) & (dense[:, 0] <= band[1])
+        assert inb.sum() == 25
+        assert np.allclose(dense[inb][:, 1], 0.1)      # still exactly on the wall
+    # wall extent is never altered
+    d = densify_wall(wall, [0.0, 0.01], n_points=25)
+    assert d[:, 0].min() == pytest.approx(0.0) and d[:, 0].max() == pytest.approx(0.05)

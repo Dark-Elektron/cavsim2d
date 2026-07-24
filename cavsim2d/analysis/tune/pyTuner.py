@@ -244,13 +244,26 @@ class PyTuneNGSolve:
 
         if not degenerate:
             orig_n_cells = self.cav.n_cells
+            orig_beampipe = getattr(self.cav, 'beampipe', None)
             self.cav.n_cells = 1
+            # The eigensolver meshes cav.profile(), which reads cav.beampipe /
+            # cav.n_cells — NOT the reduced .geo that create(mode=...) just
+            # wrote. Without this override a mid-cell tune on a cavity built
+            # with beampipe='both' would solve a single cell WITH both
+            # beampipes (a different, beampipe-loaded frequency) instead of the
+            # bare periodic mid-cell, converging on the wrong Req. Pin the
+            # cavity's geometry context to this stage's intended beampipe for
+            # the duration of the solve.
+            if orig_beampipe is not None:
+                self.cav.beampipe = bp
             try:
                 res = ngsolve_mevp.solve(self.cav)
             except Exception:
                 res = False
             finally:
                 self.cav.n_cells = orig_n_cells
+                if orig_beampipe is not None:
+                    self.cav.beampipe = orig_beampipe
             if not res:
                 degenerate = True
 
@@ -432,10 +445,14 @@ class PyTuneNGSolve:
             tv_dict[ii] = tv_list
             freq_dict[ii] = freq_list
 
-            conv_dict = {f'{tune_var}': convergence_list[0], 'freq [MHz]': convergence_list[1]}
-            convergence_dict[f'halfcell {ii}'] = convergence_dict
+            # THIS half-cell's convergence trace. Was doubly buggy: it read
+            # `convergence_list[0]/[1]` (always the FIRST cup's lists, since
+            # convergence_list is extended every iteration) and then did
+            # `convergence_dict[...] = convergence_dict` (a circular self-reference).
+            conv_dict = {f'{tune_var}': tv_list, 'freq [MHz]': freq_list}
+            convergence_dict[f'halfcell {ii}'] = conv_dict
 
-        return tv_dict, freq_dict, conv_dict, abs_err_list
+        return tv_dict, freq_dict, convergence_dict, abs_err_list
 
     @staticmethod
     def all_equal(iterable):

@@ -9,17 +9,17 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d import Cavities, EllipticalCavity
+from cavsim2d import Study, EllipticalCavity
 from cavsim2d.models.base import Cavity
 
 
 @pytest.mark.parametrize("name", ["run_abci", "run_multipacting", "check_uq_config"])
 def test_dead_cavities_wrappers_removed(name):
-    assert not hasattr(Cavities, name), f"{name} should have been deleted"
+    assert not hasattr(Study, name), f"{name} should have been deleted"
 
 
 def test_sweep_raises_clear_error(project_dir):
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['S'])
     with pytest.raises(NotImplementedError):
@@ -100,8 +100,8 @@ def test_require_raises_with_a_message_and_survives_O():
 
 def test_config_errors_reach_the_user(project_dir):
     """A user mistake raises ValueError with the real message, not AssertionError: None."""
-    from cavsim2d import Cavities, EllipticalCavity
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, EllipticalCavity
+    cavs = Study(project_dir)
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     with pytest.raises(ValueError, match='number of names'):
         cavs.add_cavity([cav], ['a', 'b'])

@@ -5,11 +5,11 @@ import pytest
 pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
-from cavsim2d import Cavities
+from cavsim2d import Study
 
 
 def test_optimisation_small_run(project_dir):
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     # Bounds bracket the known-good TESLA-like mid-cell so the inner tune
     # converges; mutation/crossover factors are integer offspring counts.
     config = {
@@ -45,7 +45,7 @@ def test_optimisation_generalises_to_pillbox(project_dir):
     """A pillbox optimises via its own tune variables (Ri/L swept, Req tuned) —
     the template is the added cavity, not a fabricated elliptical."""
     from cavsim2d import Pillbox
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([Pillbox(1, [100, 100, 22, 0, 0], beampipe='none')], ['PB'])
     config = {
         'initial_points': 2,
@@ -77,7 +77,7 @@ def test_optimisation_generalises_to_spline(project_dir):
     from cavsim2d import SplineCavity
     geom = {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
             'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([SplineCavity({'geometry': dict(geom)}, kind='Bezier')], ['SP'])
     config = {
         'initial_points': 2,
@@ -107,7 +107,7 @@ def test_robust_optimisation_ranks_by_uq_objective(project_dir):
     column; uq.json is under the candidate's own tuned/uq/ dir; objectives are
     polarisation-prefixed but EIGENMODE_QOIS holds bare names)."""
     from cavsim2d import EllipticalCavity
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     mid = [42, 42, 12, 19, 35, 57.7, 103.353]
     cavs.add_cavity([EllipticalCavity(1, mid, mid, mid, beampipe='none')], ['TESLA'])
     config = {

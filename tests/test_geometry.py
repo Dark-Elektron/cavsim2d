@@ -66,8 +66,8 @@ def test_pillbox_meshes_natively():
 
 def test_pillbox_profile_native_matches_gmsh(project_dir):
     """The native-profile pillbox eigenmode matches the gmsh-path result."""
-    from cavsim2d import Cavities, Pillbox
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, Pillbox
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     assert pb.profile() is not None          # else this silently tests gmsh
     cavs.add_cavity([pb], ['PB'])
@@ -128,8 +128,8 @@ def test_elliptical_meshes_natively():
 
 def test_elliptical_profile_native_matches_gmsh(project_dir):
     """Native exact-ellipse TESLA 1-cell reproduces the gmsh-path eigenmode."""
-    from cavsim2d import Cavities, EllipticalCavity
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, EllipticalCavity
+    cavs = Study(project_dir)
     cav = EllipticalCavity(1, TESLA, TESLA, TESLA, beampipe='none')
     assert cav.profile() is not None          # else this silently tests gmsh
     cavs.add_cavity([cav], ['TESLA'])
@@ -195,11 +195,11 @@ def test_flattop_with_zero_flat_equals_elliptical(project_dir):
     This is the flat top's only ground truth: its `.geo` writer emits no file at
     all, so there is no gmsh path to compare against.
     """
-    from cavsim2d import Cavities, EllipticalCavity, EllipticalCavityFlatTop
+    from cavsim2d import Study, EllipticalCavity, EllipticalCavityFlatTop
     base = FLATTOP[:7]
 
     def freq(cav, tag):
-        cavs = Cavities(os.path.join(project_dir, tag))
+        cavs = Study(os.path.join(project_dir, tag))
         cavs.add_cavity([cav], [tag])
         cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
         cav.get_eigenmode_qois()
@@ -211,12 +211,12 @@ def test_flattop_with_zero_flat_equals_elliptical(project_dir):
 
 
 def test_flattop_frequency_falls_as_flat_lengthens(project_dir):
-    from cavsim2d import Cavities, EllipticalCavityFlatTop
+    from cavsim2d import Study, EllipticalCavityFlatTop
     base = FLATTOP[:7]
     freqs = []
     for l in (0, 20, 40):
         cav = EllipticalCavityFlatTop(1, base + [l], base + [l], base + [l], beampipe='both')
-        cavs = Cavities(os.path.join(project_dir, f'l{l}'))
+        cavs = Study(os.path.join(project_dir, f'l{l}'))
         cavs.add_cavity([cav], [f'l{l}'])
         cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
         cav.get_eigenmode_qois()
@@ -242,11 +242,11 @@ def test_circular_waveguide_meshes_natively():
 
 def test_circular_waveguide_matches_analytic_tm010(project_dir):
     from scipy.special import jn_zeros
-    from cavsim2d import Cavities, CircularWaveguide
+    from cavsim2d import Study, CircularWaveguide
     R = 100.0
     cw = CircularWaveguide(R, 150.0)
     assert cw.profile() is not None          # else this silently tests gmsh
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cw], ['CW'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
     cw.get_eigenmode_qois()
@@ -327,8 +327,8 @@ def test_spline_wall_length_matches_the_true_curve():
 
 
 def test_spline_cavity_eigenmode(project_dir):
-    from cavsim2d import Cavities, SplineCavity
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, SplineCavity
+    cavs = Study(project_dir)
     cav = SplineCavity({'geometry': dict(SPLINE_GEOM)}, kind='Bezier')
     assert cav.profile() is not None          # else this silently tests gmsh
     cavs.add_cavity(cav, 'SC')
@@ -432,11 +432,11 @@ def test_non_elliptical_models_have_no_half_cells():
 
 def test_independent_cells_change_the_eigenmode(project_dir):
     """A narrower middle iris must lower the frequency and raise R/Q."""
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
 
     def freq_rq(tag, mutate=None):
         cav = EllipticalCavity(3, TESLA, TESLA, TESLA, beampipe='both')
-        cavs = Cavities(os.path.join(project_dir, tag))
+        cavs = Study(os.path.join(project_dir, tag))
         cavs.add_cavity([cav], [tag])
         if mutate:
             hc = cav.half_cells()
@@ -587,13 +587,13 @@ def test_nested_spline_create_is_native_only_and_arbitrary_point_count(project_d
     """A nested-geometry SplineCavity must not crash in create() (the legacy .geo
     writer only handles a single flat polygon); it stays native-only. Control
     polygons are not restricted to 6 points."""
-    from cavsim2d import Cavities, SplineCavity
+    from cavsim2d import Study, SplineCavity
     mid = {'p0': [0, 35], 'p1': [43, 51], 'p2': [-52, 136],
            'p3': [167, 136], 'p4': [72, 51], 'p5': [115, 35]}
     oc = {'p0': [0, 35], 'p1': [40, 63], 'p2': [-45, 130],
           'p3': [156, 130], 'p4': [71, 63], 'p5': [111, 35]}
     sc = SplineCavity({'geometry': {'IC': mid, 'OC': oc}, 'n_cells': 9, 'beampipe': 'both'})
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([sc], ['S'])                 # used to raise TypeError in write_geometry
     assert sc.geo_filepath is None               # native-only for per-cell geometry
     assert sc.profile() is not None and len(sc._cell_polys()) == 9
@@ -614,3 +614,21 @@ def test_spline_reports_a_dispersion_cell_length():
            'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}
     sc = SplineCavity({'geometry': dict(mid), 'n_cells': 9})
     assert sc._cell_length_m() == pytest.approx(0.115, abs=1e-4)   # mid-cell width, m
+
+
+def test_rfgun_cathode_beampipe_extends_past_barrel():
+    """RFGun(beampipe='left'/'both') adds a cathode beam pipe whose PMC entrance
+    face sits UPSTREAM of the barrel's leftmost wall (a pipe that stops short folds
+    back on the funnel). The extended geometry must still mesh natively."""
+    import numpy as np
+    from cavsim2d import RFGun
+
+    gun = {'geometry': {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
+                        'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
+                        'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
+                        'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
+    z_bare = np.array(RFGun(gun, beampipe='none').profile().points)[:, 0].min()
+    z_pipe = np.array(RFGun(gun, beampipe='left').profile().points)[:, 0].min()
+    assert z_pipe < z_bare                       # pipe entrance is upstream of barrel
+    # and the extended geometry still meshes natively
+    assert_meshes_natively(RFGun(gun, beampipe='both'), boundaries=('AXI', 'PEC', 'PMC'))

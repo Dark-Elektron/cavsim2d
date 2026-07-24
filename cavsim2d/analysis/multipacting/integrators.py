@@ -535,6 +535,35 @@ class Integrators:
 
         return k
 
+    def _wall_mip(self, x_wall, x_inside, em):
+        """A mesh point at the wall-collision point *x_wall* that the field can
+        actually be evaluated at, or ``None`` if there is none.
+
+        The collision point is found on the **straight** collision polyline, so
+        against a curved mesh — or at a sharp **concave (re-entrant) corner**, where
+        the two wall segments fold back on each other — it can land a hair OUTSIDE
+        the meshed domain. The field evaluation then raises
+        ``NgException: Meshpoint not in mesh!`` and kills the whole sweep.
+
+        The cure is geometric, not physical: step a vanishing fraction back along
+        the incoming path toward *x_inside* (the particle's previous position,
+        which was inside by construction) until the field evaluates. The offsets
+        are far below an element size, so the field is the same to many digits.
+        When the collision point is already valid this is a no-op — the ``f = 0``
+        pass returns it — so runs that work today are bit-for-bit unchanged.
+        """
+        x_wall = np.asarray(x_wall, dtype=float)
+        d = np.asarray(x_inside, dtype=float) - x_wall
+        for f in (0.0, 1e-9, 1e-7, 1e-5, 1e-3, 1e-2):
+            try:
+                mip = self.mesh(float(x_wall[0] + f * d[0]),
+                                float(x_wall[1] + f * d[1]))
+                em.e(mip)          # the evaluation is what validates the point
+                return mip
+            except Exception:
+                continue
+        return None
+
     def _inside_mask(self, x, mask, em):
         """Per-particle test of whether each masked point can be field-evaluated
         (i.e. lies in the meshed domain). Note self.mesh(z, r) does NOT raise for
@@ -596,10 +625,18 @@ class Integrators:
 
                     # Advance particle to surface
                     #  calculate field values at this time which is a (fraction of dt) + t
-                    e = scale * np.array([em.e(self.mesh(*x_intc_p))]) * np.exp(
-                        1j * (self.w * t_frac + particles_dummy.phi[ind]))
-                    b = mu0 * scale * np.array([em.h(self.mesh(*x_intc_p))]) * np.exp(
-                        1j * (self.w * t_frac + particles_dummy.phi[ind]))
+                    # Evaluate the wall field at a point guaranteed to be inside
+                    # the mesh (see _wall_mip: a concave corner can push the
+                    # polyline intersection just outside). A point that cannot be
+                    # recovered at all means the particle really has left the
+                    # domain, so treat it as lost rather than crashing the sweep.
+                    mip = self._wall_mip(x_intc_p, particles_dummy.x_old[ind], em)
+                    if mip is None:
+                        lost_particles_indx.append(ind)
+                        continue
+                    _phase = np.exp(1j * (self.w * t_frac + particles_dummy.phi[ind]))
+                    e = scale * np.array([em.e(mip)]) * _phase
+                    b = mu0 * scale * np.array([em.h(mip)]) * _phase
 
                     # check if the e-field surface normal is close to zero indicating a possible change in field
                     line22 = np.array(line22)[:, intc_indx]

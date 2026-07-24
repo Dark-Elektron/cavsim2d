@@ -9,7 +9,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d import Cavities, EllipticalCavity
+from cavsim2d import Study, EllipticalCavity
 
 _GUN_GEOM = {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
              'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
@@ -29,7 +29,7 @@ def test_tune_hits_target_frequency(project_dir):
     target = 801.58
     midcell = np.array(MIDCELL + [0])  # trailing alpha slot
     cav = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity(cav, 'tune')
 
     tune_config = {
@@ -47,6 +47,66 @@ def test_tune_hits_target_frequency(project_dir):
     assert abs(res['FREQ'] - target) < 0.5, res['FREQ']
     # tuning moved the equator radius away from its starting value
     assert res['parameters']['Req_m'] != MIDCELL[6]
+
+
+def test_tuned_cavity_actually_sits_on_target_frequency(project_dir):
+    """Re-solving ``cav.tuned`` must reproduce the target frequency.
+
+    Regression: ``cav.tune.qois`` reported the target, but ``cav.tuned`` was
+    reloaded from the FILTERED per-stage snapshot in tune_res.json (mid-cell
+    stage stores only ``*_m``). The tuned ``Req_m`` landed on top of an
+    untuned ``Req_el``, and ``_unify_equator_radius`` — which treats the
+    end-cell as canonical for a single cell — wiped it back to the start. A
+    1300 MHz tune then re-solved to 1236.9 MHz. Guard the invariant the
+    tuner exists to provide: the tuned geometry sits on the target.
+    """
+    target = 1300.0
+    start = [42, 42, 12, 19, 35, 57.7, 108.0]  # Req far below target
+    cav = EllipticalCavity(1, start, start, start, beampipe='none')
+    cavs = Study(project_dir)
+    cavs.add_cavity(cav, 'tuned_resolve')
+
+    cavs.run_tune({'freqs': target, 'cell_type': {'mid-cell': 'Req'},
+                   'processes': 1, 'rerun': True,
+                   'eigenmode_config': {'boundary_conditions': 'mm',
+                                        'mesh_config': {'h': 6, 'p': 2}}})
+
+    # The reloaded tuned cavity must carry the tuned Req on every cell,
+    # not the untuned start.
+    assert cav.tuned.parameters['Req_m'] < start[6] - 1
+    assert cav.tuned.parameters['Req_el'] == pytest.approx(cav.tuned.parameters['Req_m'])
+
+    cav.tuned.eigenmode.run({'polarisation': 'monopole',
+                             'boundary_conditions': 'mm',
+                             'mesh_config': {'h': 6, 'p': 2}})
+    resolved = cav.tuned.eigenmode.qois['freq [MHz]']
+    assert abs(resolved - target) < 1.0, (
+        f"tuned cavity re-solved to {resolved} MHz, not {target}")
+
+
+def test_mid_cell_tune_is_beampipe_independent(project_dir):
+    """A mid-cell (periodic) tune must not depend on the cavity's beampipe.
+
+    Regression: the eigensolver meshes ``cav.profile()``, which reads
+    ``cav.beampipe`` — not the bare quarter geometry ``create(mode='tune')``
+    writes. A mid-cell tune on a ``beampipe='both'`` cavity therefore solved a
+    single cell loaded with both beampipes and converged on the wrong Req
+    (~102.4 mm instead of ~103.4 mm), so the assembled multicell pi-mode
+    missed the target. The periodic mid-cell frequency is a bare-cell quantity.
+    """
+    target = 1300.0
+    start = [42, 42, 12, 19, 35, 57.7, 108.0]
+    reqs = {}
+    for bp in ('none', 'both'):
+        cav = EllipticalCavity(9, start, list(start), list(start), beampipe=bp)
+        cavs = Study(project_dir)
+        cavs.add_cavity(cav, f'midbp_{bp}')
+        cavs.run_tune({'freqs': target, 'cell_type': {'mid-cell': 'Req'},
+                       'processes': 1, 'rerun': True,
+                       'eigenmode_config': {'boundary_conditions': 'mm',
+                                            'mesh_config': {'h': 6, 'p': 2}}})
+        reqs[bp] = cav.tune.qois['mid-cell']['parameters']['Req_m']
+    assert reqs['none'] == pytest.approx(reqs['both'], abs=1e-2), reqs
 
 
 # --- three defects that made non-elliptical tuning fail silently -------------
@@ -145,10 +205,10 @@ def test_rebuild_round_trips_every_model():
 
 def test_flattop_now_tunes(project_dir):
     """Previously a silent no-op: run_tune returned normally with cav.tuned = None."""
-    from cavsim2d import Cavities, EllipticalCavityFlatTop
+    from cavsim2d import Study, EllipticalCavityFlatTop
     ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
     cav = EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['FT'])
     cavs.run_tune({'freqs': 790.0, 'cell_type': {'mid-cell': 'Req'}, 'processes': 1})
     assert cav.tuned is not None, 'run_tune reported success but tuned nothing'
@@ -253,9 +313,9 @@ def test_expand_variable_asks_the_model_not_substring_matching():
 def test_spline_uq_perturbs_a_control_point_coordinate(project_dir):
     """`k = 0` random variables -> ZeroDivisionError in the Stroud3 quadrature."""
     import json
-    from cavsim2d import Cavities, SplineCavity
+    from cavsim2d import Study, SplineCavity
     cav = SplineCavity({'geometry': dict(_SPLINE_GEOM)}, kind='Bezier')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['SC'])
     cav.run_eigenmode({'processes': 1, 'rerun': True, 'uq_config': {
         'variables': ['p3_r', 'p2_r'], 'objectives': ['monopole:freq [MHz]'],
@@ -297,9 +357,9 @@ def test_qoi_readers_keep_the_base_signature():
 
 def test_rfgun_tunes(project_dir):
     """Blocked by a hardcoded elliptical-only variable whitelist."""
-    from cavsim2d import Cavities, RFGun
+    from cavsim2d import Study, RFGun
     cav = RFGun(_gun())
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['GUN'])
     cavs.run_tune({'freqs': 210.0, 'cell_type': {'mid-cell': 'R6'}, 'processes': 1,
                    'rerun': True})
@@ -312,9 +372,9 @@ def test_spline_tunes_a_control_point_coordinate(project_dir):
     """A vector-valued parameter survives the round trip through tune_res.json:
     `_load_tuned_from_disk` used float(v), which raised on [z, r] and then
     silently dropped the tuned coordinate."""
-    from cavsim2d import Cavities, SplineCavity
+    from cavsim2d import Study, SplineCavity
     cav = SplineCavity({'geometry': dict(_SPLINE_GEOM)}, kind='Bezier')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['SC'])
     cavs.run_tune({'freqs': 1488.02, 'cell_type': {'mid-cell': 'p3_r'}, 'processes': 1,
                    'rerun': True})

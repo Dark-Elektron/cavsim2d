@@ -1,6 +1,5 @@
 """Parallel tuning process functions."""
 import json
-import multiprocessing as mp
 import os.path
 import shutil
 import time
@@ -250,31 +249,32 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
     base_chunk_size = shape_space_len // processes
     remainder = shape_space_len % processes
 
+    specs = []
     start_idx = 0
     for p in range(processes):
         current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
         proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
         proc_freqs = freqs[start_idx:start_idx + current_chunk_size]
-
         start_idx += current_chunk_size
 
         proc_tune_config = dict(tune_config)
         proc_tune_config['freqs'] = proc_freqs
         proc_tune_config['cell_type'] = cell_type_config
-
         processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
+        specs.append((processor_cavs_dict, proc_tune_config, p))
 
-        if processes == 1:
-            # Run inline: avoids Windows spawn issues, keeps stdout in Jupyter,
-            # and lets the caller retain direct references to cavity objects.
-            run_tune_s(processor_cavs_dict, proc_tune_config, p)
-        else:
-            service = mp.Process(target=run_tune_s, args=(processor_cavs_dict, proc_tune_config, p))
-            service.start()
-            jobs.append(service)
-
-    for job in jobs:
-        job.join()
+    if processes == 1:
+        # Run inline: no spawn overhead, keeps stdout in Jupyter, and lets the
+        # caller retain direct references to the tuned cavity objects.
+        run_tune_s(*specs[0])
+    else:
+        # Parallel across cavities via joblib's loky backend — notebook-safe on
+        # Windows (unlike multiprocessing.Process spawn, which needs a __main__
+        # guard). Each worker tunes its chunk and writes results to disk.
+        # Deferred: joblib is only pulled in for parallel runs.
+        from joblib import Parallel, delayed
+        Parallel(n_jobs=processes, backend='loky')(
+            delayed(run_tune_s)(*spec) for spec in specs)
 
 
 def run_tune_s(processor_cavs_dict, tune_config, p):
@@ -501,6 +501,20 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
 
         with open(tune_info_dir / 'tune_res.json', 'w') as f:
             json.dump(aggregated_tune_res, f, indent=4, default=str)
+        # The per-stage snapshots in tune_res.json are FILTERED to the tuned
+        # cell (mid-cell stores only `*_m`) for readability — they are NOT a
+        # complete, self-consistent parameter set. Reconstructing the tuned
+        # cavity from them merges a tuned `Req_m` over an untuned `Req_el`,
+        # and `_unify_equator_radius` (which, for a single cell, treats the
+        # end-cell as canonical) then wipes the tuned value. Persist the
+        # complete, sibling-propagated `final_params` so `.tuned` reloads the
+        # exact geometry the tuner converged on.
+        with open(tune_info_dir / 'tuned_parameters.json', 'w') as f:
+            json.dump({k: (list(v) if isinstance(v, (list, tuple, np.ndarray))
+                           else float(v) if isinstance(v, (int, float, np.floating))
+                           else v)
+                       for k, v in final_params.items()},
+                      f, indent=4, default=str)
         with open(tune_info_dir / 'tune_convergence.json', 'w') as f:
             json.dump(aggregated_conv, f, indent=4, default=str)
         with open(tune_info_dir / 'tune_absolute_error.json', 'w') as f:

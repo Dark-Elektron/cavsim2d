@@ -7,3 +7,7 @@ Beam-induced wake potentials and the impedance spectrum, via the ABCI backend.
    :maxdepth: 1
 
    impedance
+   spline
+   rfgun
+   reentrant
+   parameter_sweep

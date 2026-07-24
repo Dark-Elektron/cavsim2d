@@ -9,3 +9,8 @@ and the mode-reconstructed impedance.
 
    elliptical_tesla
    pillbox
+   cavity_types
+   dispersion
+   mesh_convergence
+   compare_cavities
+   multicell_uq_sa

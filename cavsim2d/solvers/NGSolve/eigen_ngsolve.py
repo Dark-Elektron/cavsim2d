@@ -493,6 +493,82 @@ class NGSolveMEVP:
 
         return True
 
+    def cavity_quarter(self, cell, bp=False, save_dir=None, bc=33, n_modes=1,
+                       mesh_h=12, mesh_p=3, m=0, mode_index=0):
+        r"""Eigenfrequency of a single **quarter cell** — a half-cell with a
+        PMC boundary on the equator mid-plane — used to tune each half-cell's length
+        ``L`` to the target frequency (the Corno et al. / WEPB015 per-half-cell
+        method). ``cell`` is the half-cell parameter array
+        ``[A, B, a, b, Ri, L, Req, (l)]`` in **mm**; ``bp=True`` attaches a beampipe
+        (an **end** cup), ``bp=False`` is a **mid** cup with no beampipe.
+
+        ``m`` selects the azimuthal order (0 monopole, 1 dipole, ...) and
+        ``mode_index`` the mode within that band (0 = the fundamental of the band).
+        The default ``m=0, mode_index=0`` is the accelerating fundamental — the
+        quarter-cell resonance that maps to the assembled cavity's pi-mode.
+
+        The quarter cell is a small cavity in its own right, so ``save_dir`` is laid
+        out like a normal cavity: the ``.geo`` + ``mesh.step`` go in
+        ``save_dir/geometry/``, the solved fields + ``qois.json`` in
+        ``save_dir/eigenmode/`` — a caller (the tuner) adds a ``tune/`` sibling for
+        the tuning record. ``mesh_h=12`` (a quarter cell is over-resolved at 20 —
+        the frequency is identical to 3 significant figures but ~30 % faster).
+
+        Returns the selected mode's frequency [MHz], or ``None`` on degenerate
+        geometry. Mirrors :meth:`cavity_multicell` but writes the quarter geometry
+        via the model's :meth:`EllipticalCavity.write_quarter_geometry`."""
+        # Deferred: the geometry writer lives on the model (models <-> solvers cycle).
+        from cavsim2d.models.elliptical import EllipticalCavity
+        names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
+        bp_str = 'left' if bp else 'none'
+        suffix = '_el' if bp else '_m'
+        params = {f'{nm}{suffix}': float(cell[i]) for i, nm in enumerate(names)}
+
+        geo_dir = os.path.join(save_dir, 'geometry')
+        eigen_dir = os.path.join(save_dir, 'eigenmode')
+        os.makedirs(geo_dir, exist_ok=True)
+        os.makedirs(eigen_dir, exist_ok=True)
+        geo_stub = os.path.join(geo_dir, 'geodata.n')
+        # write_quarter_geometry does not touch instance state, so call it unbound.
+        EllipticalCavity.write_quarter_geometry(None, params, bp=bp_str,
+                                                write=geo_stub, ignore_degenerate=True)
+        geo_path = geo_stub.replace('.n', '.geo')
+        if not os.path.exists(geo_path):
+            return None
+
+        L = float(cell[5])
+        maxh = L / mesh_h * 1e-3
+
+        gmsh.initialize()
+        gmsh.option.setNumber("General.Verbosity", 0)
+        gmsh.option.setNumber("General.Terminal", 0)
+        gmsh.open(geo_path)
+        gmsh.model.mesh.generate(2)
+        with suppress_c_stdout_stderr():
+            gmsh.write(os.path.join(geo_dir, "mesh.step"))
+        step_geo = OCCGeometry(os.path.join(geo_dir, "mesh.step"), dim=2)
+        ngmesh = step_geo.GenerateMesh(maxh=maxh)
+        bcs = self._get_boundaries_from_gmsh()
+        gmsh.finalize()
+        for key, bc_name in bcs.items():
+            ngmesh.SetBCName(key - 1, bc_name)
+
+        mesh = Mesh(ngmesh)
+        mesh.Curve(mesh_p)
+        self.save_mesh(geo_dir, mesh)
+
+        want = self.requested_n_modes(n_modes=max(int(n_modes), int(mode_index) + 1))
+        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(
+            eigen_dir, eigen_dir, mesh, mesh_p, want, m=int(m))
+        if freq_fes is None or len(freq_fes) == 0:
+            return None
+        idx = min(int(mode_index), len(freq_fes) - 1)
+        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m=int(m),
+                                  mode_idx=idx, n_cells=1, L=L, save_dir=eigen_dir)
+        with open(os.path.join(eigen_dir, 'qois.json'), 'w') as f:
+            json.dump(qois, f, indent=4, separators=(',', ': '))
+        return float(qois['freq [MHz]'])
+
     @staticmethod
     def _parse_adaptive(mesh_config):
         """Normalise ``mesh_config['adaptive']`` to a settings dict, or None if off.
@@ -549,6 +625,16 @@ class NGSolveMEVP:
         """
         if direct_solver is None:
             direct_solver = default_direct_solver()
+        # p >= 2 is required: at p=1 the HCurl(p) x H1(p+1) product space is
+        # rank-deficient for this formulation and the PINVIT reduced eigenproblem
+        # comes out with NaNs (scipy.linalg.eigh then raises a cryptic "array must
+        # not contain infs or NaNs"). Fail early with a clear message instead.
+        if int(mesh_p) < 2:
+            raise ValueError(
+                f"eigenmode polynomial order p={mesh_p} is unsupported: the "
+                "HCurl(p) x H1(p+1) formulation is rank-deficient at p<2 and the "
+                "eigensolve returns NaN. Use p>=2 (set via mesh_config['p'], "
+                "default 3).")
         r = y
         fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
         fes_phi = H1(mesh, order=mesh_p + 1, dirichlet="PEC|AXI")
@@ -980,6 +1066,13 @@ class NGSolveMEVP:
         xpnts_ax = np.linspace(minz, maxz, n_ax_pts)
 
         # --- Voltage / gradient / R-over-Q: the only physics that branches -----
+        # CONVENTION: R/Q here is the *linac* definition R/Q = V^2 / (w U), with U
+        # the total stored energy. This is exactly TWICE the *circuit/accelerator*
+        # definition R/Q = V^2 / (2 w U) that many references tabulate — e.g. the
+        # TESLA design report lists R/Q = 518 Ohm (circuit), which is 1036 Ohm here
+        # (linac). The reconstructed beam impedance divides it back (peak = 0.5 Q R/Q)
+        # so the impedance is convention-consistent; only this QOI column is 2x a
+        # circuit-convention table.
         if m == 0:
             # On-axis E_z; a TE mode has no E_z, so its Vacc is zero.
             Vout = abs(Integrate(u_gf[0] * exp(1j * k_wave * x), mesh,

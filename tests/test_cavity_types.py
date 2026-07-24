@@ -8,12 +8,12 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import requires_abci
-from cavsim2d import Cavities, Pillbox, RFGun, EllipticalCavity
+from cavsim2d import Study, Pillbox, RFGun, EllipticalCavity
 
 
 def test_pillbox_eigenmode(project_dir):
     """A pillbox resonates near the analytic TM010 frequency."""
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     # dims = [L, Req, Ri, S, L_bp] (mm); R=100 mm -> TM010 ~ 1.147 GHz
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cavs.add_cavity([pb], ['PB'])
@@ -31,7 +31,7 @@ def test_pillbox_wakefield(project_dir):
     ABCI silently refused: it left 0-byte cavity.top files, and the old
     `os.path.exists` assertions passed on them regardless.
     """
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')
     cavs.add_cavity([pb], ['PB'])
     cavs.run_wakefield({'processes': 1, 'rerun': True,
@@ -45,7 +45,7 @@ def test_pillbox_wakefield(project_dir):
 def test_pillbox_tuning(project_dir):
     """Tune a pillbox's equator radius to a target frequency; the tuned
     cavity is reachable via cav.tuned and re-solves to the target."""
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cavs.add_cavity([pb], ['PB'])
     cavs.run_tune({'freqs': 1100, 'cell_type': {'mid-cell': 'Req'},
@@ -71,7 +71,7 @@ def test_rfgun_eigenmode(project_dir):
         'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
         'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
         'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     gun = RFGun(shape)
     cavs.add_cavity(gun, 'gun')
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
@@ -87,7 +87,7 @@ def test_rfgun_qois_normalised_sensibly(project_dir):
         'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
         'T9': np.deg2rad(8), 'R10': 3e-2, 'T10': np.deg2rad(40),
         'L11': 5e-2, 'R12': 3e-2, 'L13': 3e-2, 'R14': 3e-2, 'x': 1e-2}}
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     gun = RFGun(shape)
     cavs.add_cavity(gun, 'gun')
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
@@ -99,7 +99,7 @@ def test_parallel_eigenmode_processes_gt_1(project_dir):
     """processes>1 spawns worker processes (Windows uses 'spawn'); Cavity
     objects must pickle and both results must be written (P2-8)."""
     import os
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     mid = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20]
     mid2 = [62.22, 66.13, 30.22, 23.11, 78, 93.5, 171.20]
     c1 = EllipticalCavity(1, mid, mid, mid, beampipe='both')
@@ -114,7 +114,7 @@ def test_parallel_eigenmode_processes_gt_1(project_dir):
 
 def test_per_cavity_run_eigenmode_delegates(project_dir):
     """cav.run_eigenmode() (single-cavity) works via the modern pipeline."""
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cavs.add_cavity([pb], ['PB'])
     assert pb.run_eigenmode() is True

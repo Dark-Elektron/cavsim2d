@@ -22,6 +22,7 @@ import numpy as np
 from ngsolve import curl
 
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, mesh_h_metres
+from cavsim2d.solvers.eigenmode_result import pol_number
 
 mu0 = 4 * np.pi * 1e-7
 
@@ -67,8 +68,9 @@ def load_eigenmode_fields(fields_dir):
     return mesh, gfu_E, gfu_H
 
 
-def solve_multipacting_field(cav, save_dir, mesh_config=None, n_modes=None):
-    """Solve the monopole eigenmode on a multipacting-specific mesh, into the
+def solve_multipacting_field(cav, save_dir, mesh_config=None, n_modes=None,
+                             polarisation='monopole'):
+    """Solve the eigenmode on a multipacting-specific mesh, into the
     multipacting analysis' OWN field folder.
 
     Used when a custom surface refinement (``pec_maxh``) is requested: the
@@ -79,7 +81,10 @@ def solve_multipacting_field(cav, save_dir, mesh_config=None, n_modes=None):
     consistent with its own mesh.
 
     *mesh_config* takes ``h`` / ``p`` (global size [mm] / order, as in the
-    eigenmode config) plus ``pec_maxh`` (local PEC surface size [mm]). Writes
+    eigenmode config) plus ``pec_maxh`` (local PEC surface size [mm]).
+    *polarisation* selects the azimuthal order to solve ('monopole', 'dipole', ...)
+    and *n_modes* how many modes of it — so multipacting can be driven by, say, the
+    second monopole mode or a dipole mode. Writes
     ``mesh.pkl`` + ``gfu_EH.pkl`` + ``freqs.json`` into *save_dir* (the same
     layout as an eigenmode polarisation folder, so the sweep driver reads it
     unchanged) and returns the mode-frequency list [MHz].
@@ -111,7 +116,7 @@ def solve_multipacting_field(cav, save_dir, mesh_config=None, n_modes=None):
     # With the fine pec_maxh wall the geometric error is the chord sagitta
     # (~h^2/8R, micrometres); the field itself keeps the full order *p*.
     mesh = profile.mesh(maxh=maxh, order=1, edge_maxh=edge_maxh)
-    system = solver._build_system(mesh, order, 0)
+    system = solver._build_system(mesh, order, pol_number(polarisation))
     freqs, gfu_E, gfu_H = solver._solve_system(system, n)
 
     os.makedirs(save_dir, exist_ok=True)

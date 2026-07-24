@@ -34,7 +34,7 @@ _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
-from cavsim2d.cavity import Cavities, CircularWaveguide
+from cavsim2d.cavity import Study, CircularWaveguide
 
 # Analytical solutions for TM010 mode of R=230 mm, L=200 mm copper cavity
 F_ANALYTICAL   = 498.880556     # MHz
@@ -52,7 +52,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     # Instantiate cavities container
-    cavs = Cavities(output_dir)
+    cavs = Study(output_dir)
     # Radius R = 230 mm, Length L = 200 mm
     cav = CircularWaveguide(R=230.0, L=200.0)
     cavs.add_cavity([cav], ['circular_waveguide'])

@@ -28,6 +28,7 @@ from cavsim2d.analysis.multipacting.fields import build_emfield, load_eigenmode_
 from cavsim2d.analysis.multipacting.integrators import Integrators
 from cavsim2d.analysis.multipacting.metrics import distance_function
 from cavsim2d.analysis.multipacting.particles import Particles
+from cavsim2d.utils.run_log import RunTimer
 
 q0 = 1.60217663e-19
 m0 = 9.1093837e-31
@@ -61,6 +62,67 @@ def default_xrange(xsurf):
     return [z_eq - half, z_eq + half]
 
 
+def densify_wall(xsurf, xrange, n_points):
+    """Insert extra vertices along the wall polyline inside *xrange* so the band
+    carries about ``n_points`` emission sites — WITHOUT refining the mesh.
+
+    Emission sites are wall-polyline vertices, so a coarse mesh offers only a
+    handful in a narrow band. The wall between two consecutive vertices is a
+    straight segment (the tracker's collision polyline is straight by
+    construction), so points interpolated along it lie exactly on the wall: the
+    polyline — and hence the collision geometry and the surface normals — is
+    unchanged, there are simply more places to launch from. Cheaper and far more
+    local than shrinking ``pec_maxh`` over the whole cavity.
+
+    Returns the wall points with the in-band stretch resampled to ``n_points``
+    equally spaced (by arclength) vertices; out-of-band points are untouched.
+    ``n_points`` at or below the number already present is a no-op.
+    """
+    xsurf = np.asarray(xsurf, dtype=float)
+    n_points = int(n_points or 0)
+    if n_points <= 0 or len(xsurf) < 2:
+        return xsurf
+    lo, hi = float(xrange[0]), float(xrange[1])
+    inb = (xsurf[:, 0] >= lo) & (xsurf[:, 0] <= hi)
+    if n_points <= int(inb.sum()):
+        return xsurf                      # already at least that many sites
+
+    # Interpolate along the wall spanning the band, INCLUDING one vertex either
+    # side: a narrow band may hold 0 or 1 vertices, which on their own give no
+    # segment to walk along (that is exactly the coarse-mesh case this is for).
+    idx = np.nonzero(inb)[0]
+    if len(idx):
+        i0, i1 = int(idx[0]), int(idx[-1])
+    else:
+        i1 = int(np.searchsorted(xsurf[:, 0], lo))
+        i0 = i1 - 1
+    i0 = max(i0 - 1, 0)
+    i1 = min(i1 + 1, len(xsurf) - 1)
+    seg = xsurf[i0:i1 + 1]
+    if len(seg) < 2:
+        return xsurf
+
+    def _resample(pts, n):
+        d = np.r_[0.0, np.cumsum(np.hypot(*np.diff(pts, axis=0).T))]
+        if d[-1] <= 0:
+            return None
+        t = np.linspace(0.0, d[-1], int(n))
+        return np.column_stack([np.interp(t, d, pts[:, 0]),
+                                np.interp(t, d, pts[:, 1])])
+
+    # walk the bracketed stretch finely, keep what lands in the band, then space
+    # exactly n_points along that
+    fine = _resample(seg, max(n_points * 8, 64))
+    if fine is None:
+        return xsurf
+    cand = fine[(fine[:, 0] >= lo) & (fine[:, 0] <= hi)]
+    dense = _resample(cand, n_points) if len(cand) >= 2 else None
+    if dense is None:
+        return xsurf
+    out = np.vstack([xsurf[~inb], dense])
+    return out[np.lexsort((out[:, 1], out[:, 0]))]
+
+
 def _peak_surface_field(em, mesh, xsurf):
     """Peak in-plane |E| over the interior wall points (drives the Epk
     normalisation)."""
@@ -71,7 +133,8 @@ def _peak_surface_field(em, mesh, xsurf):
 
 
 def _worker(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epks,
-            phis, v_init, sey, Epk, step, bounding_rect, loss_model, t_max):
+            phis, v_init, sey, Epk, step, bounding_rect, loss_model, t_max,
+            n_points=None):
     """One process's slice of the Epk sweep. Reloads the mesh + eigenmode field
     from *fields_dir*, builds the multipacting EM field, and tracks the cloud for
     each assigned peak-field value; writes ``mresults_{proc_id}``.
@@ -83,7 +146,7 @@ def _worker(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epks,
     try:
         _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange,
                      procs_epks, phis, v_init, sey, Epk, step, bounding_rect,
-                     loss_model, t_max)
+                     loss_model, t_max, n_points)
     except BaseException:
         with open(os.path.join(folder, f"mresults_{proc_id}.err"), 'w') as f:
             f.write(traceback.format_exc())
@@ -91,10 +154,13 @@ def _worker(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epks,
 
 
 def _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epks,
-                 phis, v_init, sey, Epk, step, bounding_rect, loss_model, t_max):
+                 phis, v_init, sey, Epk, step, bounding_rect, loss_model, t_max,
+                 n_points=None):
     mesh, gfu_E, _ = load_eigenmode_fields(fields_dir)
     em = build_emfield(gfu_E, mode, freq_mode)
-    xsurf = _surface_points(mesh)
+    # Same wall the parent measured Epk on: densified in-band when n_points asks
+    # for more launch sites than the mesh vertices provide (geometry unchanged).
+    xsurf = densify_wall(_surface_points(mesh), xrange, n_points)
 
     dt = 1 / (freq_mode * 1e6 * 20 * 6)
     w = 2 * np.pi * freq_mode * 1e6
@@ -191,7 +257,7 @@ class _SweepProgress:
 
 def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
               phis=None, v_init=2, step=None, proc_count=None, loss_model='field',
-              t_max=1000e-10, progress=True):
+              t_max=1000e-10, progress=True, n_points=None):
     """Run the peak-field sweep and return the assembled results dict.
 
     Parameters mirror PyMultipact's ``analyse_multipacting``. *fields_dir* is the
@@ -218,6 +284,9 @@ def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
         # PyMultipact used a fixed [-0.25, 0] mm band tied to its own z-origin;
         # cavsim2d's profile has a different origin, so anchor to the geometry.
         xrange = default_xrange(xsurf)
+    # More launch sites without a finer mesh: interpolate along the wall polyline
+    # inside the band (geometry unchanged). Workers densify identically.
+    xsurf = densify_wall(xsurf, xrange, n_points)
 
     if proc_count is None:
         proc_count = max(1, min(mp.cpu_count() - 1, len(epks_v)))
@@ -245,7 +314,8 @@ def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
                     pass
 
     args = lambda p: (p, folder, fields_dir, freq_mode, mode, xrange, proc_epks[p],
-                      phi_v, v_init, sey, Epk, step, bounding_rect, loss_model, t_max)
+                      phi_v, v_init, sey, Epk, step, bounding_rect, loss_model, t_max,
+                      n_points)
     with _SweepProgress(folder, proc_count, len(epks_v), enabled=progress):
         if proc_count == 1:
             _worker(*args(0))
@@ -316,6 +386,13 @@ def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
               'fields_dir': str(fields_dir), 'sweep_time [s]': elapsed}
     with open(os.path.join(folder, "mresults.pkl"), "wb") as file:
         pickle.dump(result, file)
+    # Consistent per-analysis timing log (see cavsim2d.utils.run_log).
+    timer = RunTimer(folder, 'multipacting', name=f'mode {mode}',
+                     config={'freq [MHz]': freq_mode, 'mode': mode,
+                             'field_levels': len(epks_v), 'processes': proc_count})
+    timer._t0 = sweep_start
+    timer.add('sweep', elapsed)
+    timer.write()
     print(f"Multipacting sweep done: {len(epks_v)} field levels, "
           f"{n_init} launch sites x phases, {elapsed:.1f}s "
           f"({elapsed / max(len(epks_v), 1):.2f}s per field level).")

@@ -11,11 +11,11 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d import Cavities, EllipticalCavity
+from cavsim2d import Study, EllipticalCavity
 
 
 def _run(project_dir, name='CAV', n_cells=1, config=None):
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(n_cells, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], [name])
     cfg = {'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'}
@@ -84,7 +84,7 @@ def test_qois_df_spans_every_polarisation(project_dir):
 
     # a cavity with no eigenmode results yields an empty frame, not an error
     fresh = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
-    Cavities(os.path.join(project_dir, 'empty')).add_cavity([fresh], ['E'])
+    Study(os.path.join(project_dir, 'empty')).add_cavity([fresh], ['E'])
     assert fresh.eigenmode.qois_df.empty
 
 
@@ -211,7 +211,7 @@ def test_per_polarisation_rerun_isolation(project_dir):
     assert os.path.exists(mono) and os.path.exists(dip)
     mono_mtime = os.path.getmtime(mono)
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['CAV2'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
                         'polarisation': 'dipole', 'n_modes': 3})
@@ -255,7 +255,7 @@ def test_mpole_dispersion_plot(project_dir):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['D'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -292,7 +292,7 @@ def test_dispersion_single_polarisation_still_works(project_dir):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['D'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -315,7 +315,7 @@ def test_dispersion_light_line_is_the_folded_speed_of_light(project_dir):
     import numpy as np
     from cavsim2d.constants import c0
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(9, MIDCELL, MIDCELL, MIDCELL, beampipe='none')
     cavs.add_cavity([cav], ['T'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -356,7 +356,7 @@ def test_dispersion_break_axis_splits_far_apart_passbands(project_dir):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['D'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -392,7 +392,7 @@ def test_dispersion_breaks_a_passed_subplot_axis_in_place(project_dir):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['D'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -415,7 +415,7 @@ def test_dispersion_uses_the_house_font(project_dir):
     import matplotlib.pyplot as plt
     from cavsim2d.utils.style import house_style
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['D'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
@@ -461,7 +461,7 @@ def test_legacy_flat_layout_fallback(project_dir):
         shutil.move(os.path.join(mono, f), os.path.join(eig, f))
     os.rmdir(mono)
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav2 = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav2], ['CAV'])
     cav2.get_eigenmode_qois()      # reads via fallback, must not raise
@@ -521,12 +521,12 @@ def test_modes_of_interest_resolution():
 def test_mode_of_interest_selects_the_headline_mode(project_dir):
     """Default picks the pi-mode; an override picks the requested passband mode."""
     import json
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
 
     def run(tag, extra):
         cav = EllipticalCavity(3, tesla, tesla, tesla, beampipe='both')
-        cavs = Cavities(os.path.join(project_dir, tag))
+        cavs = Study(os.path.join(project_dir, tag))
         cavs.add_cavity([cav], [tag])
         cfg = {'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'}
         cfg.update(extra)
@@ -552,10 +552,10 @@ def test_mode_of_interest_selects_the_headline_mode(project_dir):
 
 def test_mode_of_interest_is_metadata_not_a_qoi(project_dir):
     """Stored as a string so UQ's numeric coercion drops it, like 'polarisation'."""
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['C'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
     cav.get_eigenmode_qois()
@@ -592,7 +592,7 @@ def test_compare_scatter_marker_colours_match_the_legend(project_dir):
     import matplotlib.colors as mcolors
     from cavsim2d.utils.style import WARM
 
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     a = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both'); a.plot_label = 'A'
     b = EllipticalCavity(1, [x * 1.02 for x in MIDCELL], [x * 1.02 for x in MIDCELL],
                          [x * 1.02 for x in MIDCELL], beampipe='both'); b.plot_label = 'B'
@@ -600,7 +600,7 @@ def test_compare_scatter_marker_colours_match_the_legend(project_dir):
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
 
     plt.close('all')
-    cavs.plot_compare_eigenmode()
+    cavs.eigenmode.plot_compare()
     fig = plt.gcf()
     leg = fig.legends[0]
     leg_colors = [mcolors.to_hex(h.get_facecolor()[0]) for h in leg.legend_handles]
@@ -670,7 +670,7 @@ def test_study_mesh_convergence_is_adaptive_in_h(project_dir):
     full per-mode table: one row per (order, refinement level, pol, mode) with
     all QOIs; DOFs recorded and growing per level; p still stepped."""
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['CONV'])
 
     cav.study_mesh_convergence(h=40, p=3, p_passes=2, p_step=1, n_modes=4,
@@ -739,3 +739,21 @@ def test_no_mode_stalls_when_many_modes_share_a_mesh():
     # strictly decreasing — no flat step (the bug froze it at one exact value)
     assert all(b < a for a, b in zip(m0_errs, m0_errs[1:])), m0_errs
     assert m0_errs[-1] < m0_errs[0] / 100
+
+
+def test_eigenmode_order_below_two_raises_clear_error():
+    """p < 2 is unsupported (the HCurl(p) x H1(p+1) space is rank-deficient at p=1
+    and the PINVIT solve returns NaN -> a cryptic scipy 'array must not contain
+    infs or NaNs'). _build_system must fail early with a clear, actionable message
+    instead. Guards the low-order crash the mesh-convergence example hit."""
+    from cavsim2d import CircularWaveguide
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    import tempfile
+
+    cav = CircularWaveguide(230.0, 200.0)
+    cav.set_workspace(os.path.join(tempfile.mkdtemp(), 'cyl'))
+    cav.create()
+    mevp = NGSolveMEVP()
+    mesh = mevp._build_mesh(cav, 60, 2)          # a coarse mesh is enough
+    with pytest.raises(ValueError, match=r"p\s*<\s*2|p>=2|unsupported"):
+        mevp._build_system(mesh, mesh_p=1, m_pol=0)

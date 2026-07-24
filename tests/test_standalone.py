@@ -13,7 +13,7 @@ from cavsim2d import EllipticalCavity
 
 def test_standalone_eigenmode_and_save_load(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)                  # default workspace lands here
-    # no Cavities / add_cavity — a bare cavity is analysed directly
+    # no Study / add_cavity — a bare cavity is analysed directly
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both', name='solo')
     cav.eigenmode.run({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
 

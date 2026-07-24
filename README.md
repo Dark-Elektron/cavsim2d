@@ -109,17 +109,17 @@ eigenmode, tuning, UQ and optimisation do not need ABCI.
 
 ## Quickstart
 
-Everything is driven by two classes: **`Cavities`**, a container that owns a
+Everything is driven by two classes: **`Study`**, a container that owns a
 project folder, and **`Cavity`** (here `EllipticalCavity`), a single cavity.
 Results are written under the project folder and cached on the objects.
 
 ```python
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-from cavsim2d import Cavities, EllipticalCavity
+from cavsim2d import Study, EllipticalCavity
 
 # A project folder — all results and geometry are written here.
-cavs = Cavities(r'/path/to/my_project')
+cavs = Study(r'/path/to/my_project')
 
 # A 1-cell TESLA mid-cell:  A, B, a, b, Ri, L, Req  [mm]
 midcell = [42, 42, 12, 19, 35, 57.7, 103.353]
@@ -209,7 +209,7 @@ cavs.add_cavity([EllipticalCavity(1,
         [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27],
         [53.58, 36.58, 8.08, 9.84, 35, 57.7, 98.27], beampipe='none')], ['reentrant'])
 cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm'})
-cavs.plot_compare_fm_bar()
+cavs.eigenmode.plot_fm_bar()
 ```
 
 ### Visualising the mesh and fields
@@ -299,7 +299,7 @@ frequency. Give a target `freqs` and a `cell_type` mapping (cell → parameter t
 vary); a nested `eigenmode_config` controls the solves.
 
 ```python
-cavs = Cavities(r'/path/to/my_project')
+cavs = Study(r'/path/to/my_project')
 midcell = [42, 42, 12, 19, 35, 57.7, 100]        # deliberately wrong Req
 tesla = EllipticalCavity(1, midcell, midcell, midcell, beampipe='none')
 cavs.add_cavity([tesla], ['TESLA'])
@@ -325,7 +325,7 @@ on it directly (`tesla.tuned.run_eigenmode(...)`).
 ## Wakefield analysis
 
 ```python
-cavs = Cavities(r'/path/to/my_project')
+cavs = Study(r'/path/to/my_project')
 midcell   = [42, 42, 12, 19, 35, 57.7, 103.353]
 endcell_l = [40.34, 40.34, 10, 13.5, 39, 55.716, 103.353]
 endcell_r = [42, 42, 9, 12.8, 39, 56.815, 103.353]
@@ -398,7 +398,7 @@ cavs.run_wakefield({
     'operating_points': op_points,
 })
 pp.pprint(cavs.wakefield_qois)
-cavs.plot_compare_hom_bar('Z_SR_4.32mm')
+cavs.wakefield.plot_hom_bar('Z_SR_4.32mm')
 ```
 
 ---
@@ -476,7 +476,7 @@ cavs.run_eigenmode({
     },
 })
 pp.pprint(cavs.uq_fm_results)
-cavs.plot_compare_fm_bar(uq=True)     # bar chart with error bars
+cavs.eigenmode.plot_fm_bar(uq=True)     # bar chart with error bars
 ```
 
 > [!IMPORTANT]
@@ -493,7 +493,7 @@ tuned to the target frequency (via a nested `tune_config`) before its objectives
 are evaluated.
 
 ```python
-cavs = Cavities(r'/path/to/my_project')
+cavs = Study(r'/path/to/my_project')
 
 optimisation_config = {
     'initial_points': 6,

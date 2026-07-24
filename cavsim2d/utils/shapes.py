@@ -195,6 +195,75 @@ def perturb_half_cells(cav, config):
     return out, np.atleast_2d(weights).T
 
 
+def perturb_half_cells_independent(cav, config):
+    """Paper-style multicell perturbation (Corno et al. / WEPB015): perturb **every
+    half-cell independently** (so continuity at the shared irises/equators is
+    violated), then enforce continuity by **averaging** the half-cells that meet
+    at each seam — exactly how separately-manufactured dumb-bells are welded into
+    a cavity.
+
+    Returns ``(after, before, weights)``:
+
+    - ``after``  — the seam-averaged half-cells (continuity restored); this is
+      what gets solved,
+    - ``before`` — the raw per-half-cell perturbations (continuity violated),
+      kept so the before/after-continuity distributions can be compared
+      (WEPB015 Fig. 4).
+
+    Unlike :func:`perturb_half_cells` (which preserves continuity *by
+    construction*, one random variable per shared DOF), this gives each half-cell
+    its own random variable, so the averaging step genuinely narrows the spread.
+    Use a Monte-Carlo design (``method=['normal', N]``) to get a distribution.
+    """
+    uq_config = config['uq_config']
+    variables = uq_config['variables']
+    if isinstance(variables, str):
+        variables = [variables]
+
+    mode = uq_config.get('perturbation_mode', ['add', uq_config.get('delta', 0.01)])
+    if len(mode) < 2:
+        mode = [mode[0], uq_config.get('delta', 0.01)]
+    deltas_per_var = mode[1]
+    if not isinstance(deltas_per_var, (list, tuple, np.ndarray)):
+        deltas_per_var = [deltas_per_var] * len(variables)
+
+    base = np.asarray(cav.half_cells(), dtype=float)
+    n_rows = 2 * cav.n_cells
+    cols = [HALF_CELL_COLS.index(v) for v in variables]
+
+    # one independent random variable per (variable, half-cell row)
+    bounds = []
+    for b in deltas_per_var:
+        bounds.extend([b] * n_rows)
+    nodes, weights = generate_nodes(len(cols) * n_rows, bounds, uq_config['method'])
+
+    # rows that share a DOF at a seam (Req halves of a cell, Ri across an iris)
+    spec = half_cell_free_variables(cav.n_cells, variables)
+
+    before, after = {}, {}
+    for i, node in enumerate(nodes):
+        hc = base.copy()
+        vals = iter(np.asarray(node, dtype=float))
+        for col in cols:
+            for row in range(n_rows):
+                d = next(vals)
+                if mode[0] == 'add':
+                    hc[row, col] += d
+                else:
+                    hc[row, col] *= (1.0 + d)
+        name = f'{cav.name}_Q{i}'
+        before[name] = hc.copy()
+
+        welded = hc.copy()
+        for _label, col, rows in spec:
+            if len(rows) > 1:
+                r = np.asarray(rows)
+                welded[r, col] = welded[r, col].mean()
+        after[name] = welded
+
+    return after, before, np.atleast_2d(weights).T
+
+
 def half_cells_to_dataframe(perturbed):
     """Half-cell arrays -> a node table with columns ``A1, B1, ..., Req1, A2, ...``,
     one index per half-cell (left then right, across all cells)."""

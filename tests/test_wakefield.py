@@ -8,12 +8,12 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL, requires_abci
-from cavsim2d import Cavities, EllipticalCavity
+from cavsim2d import Study, EllipticalCavity
 
 
 @requires_abci
 def test_wakefield_runs_and_writes_output(project_dir):
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
     cavs.add_cavity([cav], ['WF'])
 
@@ -49,8 +49,8 @@ def test_wakefield_runs_and_writes_output(project_dir):
 @requires_abci
 def test_pillbox_wakefield_end_to_end(project_dir):
     """Non-elliptical geometries run through ABCI too (P2-4)."""
-    from cavsim2d import Cavities, Pillbox
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, Pillbox
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')   # L_bp = 50 mm
     cavs.add_cavity([pb], ['PB'])
     cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 10})
@@ -84,8 +84,8 @@ def test_abci_abort_raises_instead_of_silently_producing_nothing(tmp_path):
 @requires_abci
 def test_pillbox_without_beampipe_now_runs(project_dir):
     """L_bp = 0 used to make ABCI refuse; the pipes are added for it now."""
-    from cavsim2d import Cavities, Pillbox
-    cavs = Cavities(project_dir)
+    from cavsim2d import Study, Pillbox
+    cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cavs.add_cavity([pb], ['PB'])
     cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 3})
@@ -169,12 +169,12 @@ def test_abci_shape_keeps_arcs():
 @requires_abci
 def test_wakefield_matches_the_legacy_geo_path(project_dir):
     """The Profile-based deck reproduces the old .geo-parsed deck exactly."""
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
 
     def k_loss(legacy):
         cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
-        cavs = Cavities(os.path.join(project_dir, 'legacy' if legacy else 'profile'))
+        cavs = Study(os.path.join(project_dir, 'legacy' if legacy else 'profile'))
         cavs.add_cavity([cav], ['C'])
         original = EllipticalCavity.profile
         if legacy:
@@ -196,7 +196,7 @@ def test_wakefield_runs_for_every_cavity_type(project_dir):
     """Flat-top, spline and gun had no working wakefield: the flat top writes no
     .geo at all, and the spline wall is a curve the old regex could not see."""
     import numpy as np
-    from cavsim2d import (Cavities, EllipticalCavity, Pillbox, RFGun,
+    from cavsim2d import (Study, EllipticalCavity, Pillbox, RFGun,
                                  SplineCavity, EllipticalCavityFlatTop)
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     ft = tesla + [20]
@@ -213,7 +213,7 @@ def test_wakefield_runs_for_every_cavity_type(project_dir):
              ('SC', SplineCavity({'geometry': dict(geom)}, kind='Bezier')),
              ('GUN', RFGun(gun))]
     for name, cav in cases:
-        cavs = Cavities(os.path.join(project_dir, name))
+        cavs = Study(os.path.join(project_dir, name))
         cavs.add_cavity([cav], [name])
         cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 3})
         top = os.path.join(cav.self_dir, 'wakefield', 'longitudinal', 'cavity.top')
@@ -227,12 +227,12 @@ def test_wakefield_runs_for_every_cavity_type(project_dir):
 def test_added_beampipes_do_not_change_the_cavity_wake(project_dir):
     """The same elliptical cavity with beampipe='both' and with beampipe='none'
     (pipes added automatically) must give the same loss factor."""
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
 
     def k(bp, tag):
         cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe=bp)
-        cavs = Cavities(os.path.join(project_dir, tag))
+        cavs = Study(os.path.join(project_dir, tag))
         cavs.add_cavity([cav], [tag])
         cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 3})
         return cav.wakefield.qois['|k_loss| [V/pC]']
@@ -255,10 +255,10 @@ def test_backend_registry():
 def test_run_writes_the_normalised_schema(project_dir):
     """A run persists wakefield/<pol>/qois.json, read back via cav.wakefield.qois."""
     import json
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
     cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
-    cavs = Cavities(project_dir)
+    cavs = Study(project_dir)
     cavs.add_cavity([cav], ['C'])
     cavs.run_wakefield({'processes': 1, 'rerun': True, 'MROT': 2, 'wakelength': 3})
 
@@ -325,7 +325,7 @@ def test_wakefield_backend_is_swappable(project_dir):
     no ABCI, proving nothing downstream is tied to a specific solver."""
     import matplotlib
     matplotlib.use('Agg')
-    from cavsim2d import Cavities, EllipticalCavity
+    from cavsim2d import Study, EllipticalCavity
     from cavsim2d.solvers.wakefield import register_backend, BACKENDS
     from cavsim2d.processes.wakefield import get_wakefield_objectives_value
 
@@ -333,7 +333,7 @@ def test_wakefield_backend_is_swappable(project_dir):
     try:
         tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
         cav = EllipticalCavity(1, tesla, tesla, tesla, beampipe='both')
-        cavs = Cavities(project_dir)
+        cavs = Study(project_dir)
         cavs.add_cavity([cav], ['D'])
         cavs.run_wakefield({'solver': 'dummy', 'processes': 1, 'rerun': True})
 
@@ -355,3 +355,27 @@ def test_wakefield_backend_is_swappable(project_dir):
         assert not df_wake.empty
     finally:
         BACKENDS.pop('dummy', None)
+
+
+@requires_abci
+def test_wakefield_field_line_animation(project_dir):
+    """save_fields=True turns on ABCI's electric-field-line output (LPLE), and
+    cav.wakefield.animate_fields() reads those snapshots into an animation. Without
+    save_fields there are no snapshots, and it returns None with a message rather
+    than an empty animation (the old plot_animate_wakefield gave 0 frames)."""
+    import matplotlib
+    matplotlib.use('Agg')
+
+    cavs = Study(project_dir)
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs.add_cavity([cav], ['WFANIM'])
+
+    # nothing run yet -> no cavity.top -> no animation, clear return (not a crash)
+    assert cav.wakefield.animate_fields(embed=False) is None
+
+    # save_fields -> ABCI writes electric-field-line frames that animate
+    cav.wakefield.run({'MROT': 0, 'wakelength': 10, 'bunch_length': 25,
+                       'save_fields': True})
+    anim = cav.wakefield.animate_fields(embed=False)
+    assert anim is not None
+    assert anim._save_count >= 1                 # at least one field-line frame

@@ -16,6 +16,7 @@ from cavsim2d.solvers.wakefield import get_backend
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.solvers.eigenmode_result import monopole_dir
+from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.config_validation import require
 
 
@@ -69,23 +70,24 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
     def _run_abci(cav, wakefield_config):
         freq = 0
         R_Q = 0
-        start_time = time.time()
+        timer = RunTimer(cav.wakefield_dir, 'wakefield', name=cav.name,
+                         config=wakefield_config)
 
         # Run the solve through the selected backend (ABCI by default), then
         # persist the normalised wakefield/<pol>/qois.json so cav.wakefield.qois
         # is readable without re-solving. Swapping the solver is one config key.
         backend = get_backend(wakefield_config.get('solver', 'abci'))
-        backend.run(cav, wakefield_config)
-        backend.write_qois(cav)
+        with timer.step('solve'):
+            backend.run(cav, wakefield_config)
+            backend.write_qois(cav)
         # Persist the config (incl. 'solver') so cav.wakefield resolves the same
         # backend when reading results back, whichever run path was used.
         os.makedirs(cav.wakefield_dir, exist_ok=True)
         with open(os.path.join(cav.wakefield_dir, 'config.json'), 'w') as cf:
             json.dump({k: v for k, v in wakefield_config.items() if k != 'target'},
                       cf, indent=2, default=str)
-        done(f'Cavity {cav.name}. Time: {time.time() - start_time}')
 
-        # Truthy check (not just presence): ``Cavities.run_wakefield``
+        # Truthy check (not just presence): ``Study.run_wakefield``
         # injects an empty ``{}`` when the caller did not supply one, so a
         # bare ``in`` check would falsely trigger UQ on spawned variants.
         if wakefield_config.get('uq_config'):
@@ -96,7 +98,8 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                 raise NotImplementedError(
                     "Multicell UQ (uq_config['cell_complexity'] = 'multicell') is not "
                     "supported in this release. Use 'simplecell' (the default).")
-            uq_parallel(cav, wakefield_config, 'wakefield')
+            with timer.step('uq'):
+                uq_parallel(cav, wakefield_config, 'wakefield')
 
         if operating_points:
             try:
@@ -150,6 +153,9 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
             except KeyError:
                 error('The operating point entered is not valid. See below for the proper input structure.')
                 show_valid_operating_point_structure()
+
+        total = timer.write()
+        done(f'Cavity {cav.name}. Time: {total}')
 
     for i, (key, cav) in enumerate(cavs_dict.items()):
         if os.path.exists(cav.self_dir):

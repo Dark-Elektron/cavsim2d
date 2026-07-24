@@ -1,5 +1,4 @@
 """Parallel eigenmode analysis process functions."""
-import multiprocessing as mp
 import os.path
 import shutil
 import time
@@ -9,6 +8,7 @@ from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, parse_polarisati
 from cavsim2d.solvers.eigenmode_result import pol_name
 from cavsim2d.constants import *
 from cavsim2d.processes.uq import uq_parallel
+from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.shared_functions import *
 from cavsim2d.utils.config_validation import require
 
@@ -31,27 +31,28 @@ def run_eigenmode_parallel(cavs_dict, solver_config, subdir=''):
     base_chunk_size = shape_space_len // processes
     remainder = shape_space_len % processes
 
-    jobs = []
+    chunks = []
     start_idx = 0
-
     for p in range(processes):
         current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
         proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
         start_idx += current_chunk_size
+        chunks.append({key: cavs_dict[key] for key in proc_keys_list})
 
-        processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
-
-        if processes == 1:
-            # Inline path: avoids Windows spawn guard requirement and
-            # surfaces stdout/stderr directly in Jupyter.
-            solver_config['target'](processor_cavs_dict, solver_config, subdir)
-        else:
-            service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
-            service.start()
-            jobs.append(service)
-
-    for job in jobs:
-        job.join()
+    target = solver_config['target']
+    if processes == 1:
+        # Inline path: avoids process-spawn overhead and surfaces stdout/stderr
+        # directly in Jupyter; keeps the caller's cavity objects updated in place.
+        target(chunks[0], solver_config, subdir)
+    else:
+        # Parallel across cavities via joblib's loky backend. Unlike
+        # multiprocessing.Process (spawn), loky works inside a Jupyter notebook on
+        # Windows without an ``if __name__ == '__main__'`` guard — each worker
+        # solves its chunk and writes results to disk, which callers re-read.
+        # Deferred: joblib is only pulled in for parallel runs.
+        from joblib import Parallel, delayed
+        Parallel(n_jobs=processes, backend='loky')(
+            delayed(target)(chunk, solver_config, subdir) for chunk in chunks)
 
 
 def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
@@ -76,10 +77,12 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT['mm']
 
     def _run_ngsolve(cav, eigenmode_config):
-        start_time = time.time()
+        timer = RunTimer(cav.eigenmode_dir, 'eigenmode', name=cav.name,
+                         config=eigenmode_config)
 
         cav.create()
-        ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
+        with timer.step('solve'):
+            ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
 
         # Run UQ if configured. With uq_config['cell_complexity'] = 'multicell',
         # every half-cell becomes an independent random variable (subject to the
@@ -88,9 +91,11 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         # carries 'uq_config' (None when disabled), so a bare `in` check would
         # send every run down the UQ path.
         if eigenmode_config.get('uq_config'):
-            uq_parallel(cav, eigenmode_config, 'eigenmode')
+            with timer.step('uq'):
+                uq_parallel(cav, eigenmode_config, 'eigenmode')
 
-        done(f'Done with Cavity {cav.name}. Time: {time.time() - start_time}')
+        total = timer.write()
+        done(f'Done with Cavity {cav.name}. Time: {total}')
 
     # legacy flat-layout monopole artefacts (pre-``monopole/`` subfolder)
     legacy_monopole_files = ('qois.json', 'qois_all_modes.json', 'gfu_EH.pkl',

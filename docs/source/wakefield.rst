@@ -114,7 +114,7 @@ removed in favour of ``plot_impedance()`` / ``plot_wake()`` above.
 
 The scalar ``cav.wakefield.qois['|k_loss| [V/pC]']`` (a single number) is the total
 loss factor; the per-cavity comparison of that number across a study is drawn by the
-comparison plots (e.g. ``study.plot_compare_hom_bar(...)``). ``plot_k_loss()`` instead
+comparison plots (e.g. ``study.wakefield.plot_hom_bar(...)``). ``plot_k_loss()`` instead
 draws the frequency-resolved cumulative spectrum k(F).
 
 Accessing Results

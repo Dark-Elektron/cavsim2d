@@ -27,7 +27,7 @@ from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import (OptimisationSolver, StudyEigenmode,
                                              StudyWakefield, merge_config,
                                              DEFAULT_EIGENMODE_CONFIG,
-                                             DEFAULT_WAKEFIELD_CONFIG)
+                                             DEFAULT_WAKEFIELD_CONFIG, _maybe_show)
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.style import house_style, WARM
 
@@ -37,8 +37,6 @@ class Study:
     Groups devices under one project folder to run and compare analyses across
     them. A single device can also be analysed on its own without a ``Study`` —
     see :meth:`Cavity.set_workspace` / :meth:`Cavity.save`.
-
-    ``Cavities`` is a backward-compatible alias for this class.
     """
 
     def __init__(self, folder, name=None, cavities_list=None, names_list=None, overwrite=False,
@@ -61,7 +59,7 @@ class Study:
 
         # Legacy-API shim: historically the first positional arg was a list of
         # cavities. The refactor promoted ``folder`` to that slot, so older
-        # notebooks calling ``Cavities([])`` or ``Cavities([cav, ...])`` would
+        # notebooks calling ``Study([])`` or ``Study([cav, ...])`` would
         # feed a list into ``Path(...)`` and crash in ``_create_project``.
         # Route lists to ``cavities_list`` and defer folder creation until
         # ``save()`` is called explicitly.
@@ -81,7 +79,7 @@ class Study:
         self.name = 'cavities'
         if name:
             if not isinstance(name, str):
-                raise ValueError('Cavities name must be a string.')
+                raise ValueError('Study name must be a string.')
             self.name = name
 
         if not _skip_project_init and folder is not None:
@@ -120,7 +118,7 @@ class Study:
 
     @property
     def tuned(self):
-        """Return a Cavities view containing each cavity's tuned version.
+        """Return a Study view containing each cavity's tuned version.
 
         Each element is `cav.tuned` — a full cavity object with its own
         folder (geometry, eigenmode, etc.), so you can call `.plot`,
@@ -135,7 +133,7 @@ class Study:
                 tuned_cavs.append(t)
                 tuned_names.append(t.name or f'{cav.name}_tuned')
         if not tuned_cavs:
-            warning('No cavities in this Cavities have a tuned version yet. '
+            warning('No cavities in this Study have a tuned version yet. '
                     'Run run_tune(...) first.')
             return None
         view = Study(self.projectDir, name=f'{self.name}_tuned',
@@ -1082,10 +1080,10 @@ class Study:
             return ax
         for ii, cav in enumerate(self.cavities_list):
             if what.lower() == 'geometry':
-                ax = cav.plot('geometry', ax, **kwargs)
+                ax = cav.plot('geometry', ax, show=False, **kwargs)
 
             if what.lower() == 'convergence':
-                ax = cav.plot('convergence', ax)
+                ax = cav.plot('convergence', ax, show=False)
         if 'logy' in kwargs:
             if kwargs['logy']:
                 ax.set_yscale('log')
@@ -1226,7 +1224,7 @@ class Study:
 
         for cav, ax in zip(self.cavities_list, axd.values()):
             # plot nominal
-            cav.plot('geometry', ax=ax, mid_cell=True, zorder=10)
+            cav.plot('geometry', ax=ax, mid_cell=True, zorder=10, show=False)
             directory = os.path.join(cav.self_dir, 'eigenmode')
             tag = f'{cav.name}_Q'
             uq_geom_folders = self.find_folders_with_tag(directory, tag)
@@ -1407,7 +1405,7 @@ class Study:
                     resolved.append(qoi)
         return [r for r in resolved if r in df_columns]
 
-    def plot_compare_bar(self):
+    def _power_bar_impl(self):
         """
         Plots bar chart of power quantities of interest
 
@@ -1442,8 +1440,7 @@ class Study:
         fname = '_'.join(fname)
 
         self.save_all_plots(f"{fname}_power_comparison_bar.png")
-
-        plt.show()
+        return ax
 
     def get_power_qois(self, cav, rf_config, op_points_list, uq=False):
         """
@@ -1467,7 +1464,7 @@ class Study:
 
         return qois
 
-    def plot_compare_power_scatter(self, rf_config, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
+    def _power_scatter_impl(self, rf_config, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plots bar chart of power quantities of interest
 
@@ -1486,7 +1483,7 @@ class Study:
                 'Lengh of inv_eta [] must equal number of Cavity objects.')
         if 'Eacc [MV/m]' in rf_config.keys():
             require(len(rf_config['Eacc [MV/m]']) == len(self.cavities_list),
-                    'length of accelerating field Eacc [MV/m] must equal number of Cavity objects in Cavities.')
+                    'length of accelerating field Eacc [MV/m] must equal number of Cavity objects in the Study.')
         if 'V [GV]' in rf_config.keys():
             require(len(rf_config['V [GV]']) == len(op_points_list),
                     'length of RF Voltage V [GV] must equal number of operating points.')
@@ -1607,17 +1604,17 @@ class Study:
 
         self.save_all_plots(f"{fname}_power_scatter_{op_points_list}.png")
 
-    def plot_compare_eigenmode(self, kind='scatter', uq=False, ncols=3, qois=None):
+    def _eigenmode_compare_impl(self, kind='scatter', uq=False, ncols=3, qois=None):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_fm_scatter(uq=uq, ncols=ncols, qois=qois)
+            self._fm_scatter_impl(uq=uq, ncols=ncols, qois=qois)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_fm_bar(uq=uq, ncols=ncols, qois=qois)
+            self._fm_bar_impl(uq=uq, ncols=ncols, qois=qois)
 
-    def plot_compare_wakefield(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3), qois=None):
+    def _wakefield_compare_impl(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3), qois=None):
         if kind == 'scatter' or kind == 's':
-            self.plot_compare_hom_scatter(opt, uq=uq, ncols=ncols, figsize=figsize, qois=qois)
+            self._hom_scatter_impl(opt, uq=uq, ncols=ncols, figsize=figsize, qois=qois)
         if kind == 'bar' or kind == 'b':
-            self.plot_compare_hom_bar(opt, uq=uq, ncols=ncols, qois=qois)
+            self._hom_bar_impl(opt, uq=uq, ncols=ncols, qois=qois)
 
     # def plot_compare_hom_bar_(self, opt, ncols=3, uq=False):
     #     """
@@ -1692,7 +1689,7 @@ class Study:
     #
     #     return axd
 
-    def plot_compare_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
+    def _hom_bar_impl(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -1820,7 +1817,7 @@ class Study:
 
         return axd
 
-    def plot_compare_hom_scatter(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
+    def _hom_scatter_impl(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -1949,7 +1946,7 @@ class Study:
 
         return axd
 
-    def plot_compare_fm_bar(self, ncols=3, uq=False, qois=None):
+    def _fm_bar_impl(self, ncols=3, uq=False, qois=None):
         """
         Plot bar chart of fundamental mode quantities of interest
 
@@ -2050,7 +2047,7 @@ class Study:
             out.append(c if c and c not in ('k', 'black', '#000000') else WARM[i % len(WARM)])
         return out
 
-    def plot_compare_fm_scatter(self, ncols=3, uq=False, qois=None):
+    def _fm_scatter_impl(self, ncols=3, uq=False, qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -2198,7 +2195,7 @@ class Study:
 
         return axd
 
-    def plot_compare_all_scatter(self, opt, ncols=3):
+    def _all_scatter_impl(self, opt, ncols=3):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -2321,7 +2318,7 @@ class Study:
 
         return axd
 
-    def plot_compare_all_bar(self, opt, ncols=3):
+    def _all_bar_impl(self, opt, ncols=3):
         """
         Plot bar chart of fundamental mode quantities of interest
 
@@ -2436,6 +2433,23 @@ class Study:
         self.save_all_plots(f"{fname}_contour_{opt}.png")
 
         # fig.show()
+
+    # -- Cross-domain comparison plots (span eigenmode + wakefield) ----------
+    # Renamed from plot_compare_all_* — these overlay both fundamental-mode and
+    # HOM/power QOIs, so they live at the Study level rather than under a single
+    # result namespace. Per-domain comparisons live under study.eigenmode.* /
+    # study.wakefield.*.
+    def plot_all_scatter(self, opt, ncols=3, show=True):
+        """Scatter of fundamental-mode + HOM/power QOIs across every cavity."""
+        r = self._all_scatter_impl(opt, ncols=ncols)
+        _maybe_show(show)
+        return r
+
+    def plot_all_bar(self, opt, ncols=3, show=True):
+        """Bar chart of fundamental-mode + HOM/power QOIs across every cavity."""
+        r = self._all_bar_impl(opt, ncols=ncols)
+        _maybe_show(show)
+        return r
 
     def plot_cavities_contour_dimension(self, opt='mid', figsize=None):
         """Plot geometric contour of Cavity objects
@@ -3899,7 +3913,7 @@ class Study:
     def __repr__(self):
         names = list(self.cavities_dict.keys())
         shown = names if len(names) <= 6 else names[:6] + ['...']
-        return (f"Cavities(project={getattr(self, 'name', None)!r}, "
+        return (f"Study(project={getattr(self, 'name', None)!r}, "
                 f"{len(names)} cavities: {shown})")
 
     def __str__(self):
@@ -3924,12 +3938,8 @@ class Study:
             if key in self.cavities_dict.keys():
                 return self.cavities_dict[key]
             else:
-                error('Invalid key. Cavities does not contain a Cavity named {key}.')
+                error('Invalid key. Study does not contain a Cavity named {key}.')
         else:
             raise TypeError("Invalid argument type. Must be int or str.")
-
-
-# Backward-compatible alias: the manager was renamed Cavities -> Study.
-Cavities = Study
 
 

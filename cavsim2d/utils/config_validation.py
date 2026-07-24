@@ -23,6 +23,7 @@ UQ_KEYS = {
     'variables', 'objectives', 'delta', 'epsilon', 'processes', 'distribution',
     'method', 'cell_type', 'cell_complexity', 'perturbation_mode', 'tune_config',
     'cell', 'operating_points', 'integration', 'objectives_unprocessed',
+    'independent_half_cells',
 }
 WAKEFIELD_KEYS = {
     'processes', 'rerun', 'MROT', 'polarisation', 'wakelength', 'bunch_length',

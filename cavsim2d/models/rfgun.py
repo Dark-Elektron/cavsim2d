@@ -11,7 +11,7 @@ import os
 import pandas as pd
 
 class RFGun(Cavity):
-    def __init__(self, shape, name='gun'):
+    def __init__(self, shape, name='gun', beampipe='none', beampipe_length=None):
         """A VHF-type RF gun, its wall a chain of arcs and straight segments.
 
         Parameters
@@ -36,18 +36,25 @@ class RFGun(Cavity):
             - ``x``   : downstream drift-tube length to the exit aperture.
         name : str
             Cavity name (used for its output folder).
-
-        Notes
-        -----
-        The gun already ships with a downstream drift tube (``x``), so a wakefield
-        run adds a beam pipe only on the cathode side.
+        beampipe : {'none', 'left', 'right', 'both'}
+            Add a straight beam pipe at the **cathode** end (``'left'`` or
+            ``'both'``), giving a pipe at both ends for a wakefield run (the
+            downstream **exit** drift is already built in via ``x`` / the ``10*y1``
+            section, so ``'right'`` is a no-op). The cathode pipe is a tube of radius
+            ``y1`` whose PMC entrance face is placed **upstream of the barrel's
+            leftmost wall**, so the cathode funnel opens cleanly into it. Default
+            ``'none'`` is the bare gun for an eigenmode solve.
+        beampipe_length : float, optional
+            How far the cathode pipe entrance sits **beyond** the barrel's leftmost
+            wall, in **metres**; defaults to ``10 * y1`` (matching the exit drift).
         """
         super().__init__(name)
         self.self_dir = None
         self.cell_parameterisation = 'simplecell'  # consider removing
         self.name = name
         self.n_cells = 1
-        self.beampipe = 'none'
+        self.beampipe = beampipe
+        self.beampipe_length = beampipe_length
         self.n_modes = 1
         self.axis_field = None
         self.bc = 'mm'
@@ -56,7 +63,7 @@ class RFGun(Cavity):
 
         self.shape = {
             "geometry": shape['geometry'],
-            'BP': 'none',
+            'BP': self.beampipe,
             'CELL PARAMETERISATION': self.cell_parameterisation,
             'kind': self.kind}
 
@@ -115,64 +122,87 @@ class RFGun(Cavity):
         except (KeyError, TypeError, ValueError, ZeroDivisionError):
             return None
 
+        def _walls(prof):
+            """Barrel + downstream exit drift, continuing from the cathode aperture
+            at ``(0, y1)`` — the geometry that is identical with or without a
+            cathode pipe. Closes the contour along the axis."""
+            z, r = R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)
+            prof.circle_arc_to(z, r, center=(-R2, y1), boundary='PEC')
+
+            z, r = z - L3 * np.cos(T2), r + L3 * np.sin(T2)
+            prof.line_to(z, r, 'PEC')
+
+            c = (z + R4 * np.cos(T2), r + R4 * np.sin(T2))
+            z, r = z - (R4 - R4 * np.cos(T2)), r + R4 * np.sin(T2)
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            z, r = z, r + L5
+            prof.line_to(z, r, 'PEC')
+
+            c = (z + R6, r)
+            z, r = z + R6, r + R6
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            z, r = z + L7, r
+            prof.line_to(z, r, 'PEC')
+
+            c = (z, r - R8)
+            z, r = z + R8 * np.cos(T9), r - (R8 - R8 * np.sin(T9))
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            c = (z - R9 * np.cos(T9), r - R9 * np.sin(T9))
+            z, r = z + (R9 - R9 * np.cos(T9)), r - R9 * np.sin(T9)
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            c = (z - R10, r)
+            z, r = z - (R10 - R10 * np.cos(T10)), r - R10 * np.sin(T10)
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            z, r = z - L11 * np.sin(T10), r - L11 * np.cos(T10)
+            prof.line_to(z, r, 'PEC')
+
+            c = (z + R12 * np.cos(T10), r - R12 * np.sin(T10))
+            z, r = z - (R12 - R12 * np.cos(T10)), r - R12 * np.sin(T10)
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            z, r = z, r - L13
+            prof.line_to(z, r, 'PEC')
+
+            c = (z + R14, r)
+            z, r = z + R14, r - R14
+            prof.circle_arc_to(z, r, center=c, boundary='PEC')
+
+            z, r = z + 10 * y1, r
+            prof.line_to(z, r, 'PEC')
+
+            z, r = z, r - x
+            prof.line_to(z, r, 'PMC')                                 # exit aperture
+            prof.close('AXI')
+            return prof
+
+        if str(self.beampipe).lower() in ('left', 'both'):
+            # Cathode-side beam pipe (mirrors the built-in exit drift, so a
+            # wakefield run has a pipe at both ends). Its PMC entrance face must sit
+            # UPSTREAM of the barrel's leftmost wall — otherwise the pipe stops short
+            # and the cathode funnel folds back over it. So build the bare gun once
+            # to read the barrel z-extent, then start the pipe beyond it.
+            base = Profile('rfgun')
+            base.start(0.0, 0.0)
+            base.line_to(0.0, y1, 'PMC')
+            _walls(base)
+            z_barrel = min(pt[0] for pt in base.points)
+            L_bp = float(self.beampipe_length) if self.beampipe_length else 10 * y1
+            z_entrance = z_barrel - L_bp
+            prof = Profile('rfgun')
+            prof.start(z_entrance, 0.0)
+            prof.line_to(z_entrance, y1, 'PMC')                       # pipe entrance (beam)
+            prof.line_to(0.0, y1, 'PEC')                              # pipe wall
+            return _walls(prof)
+
         prof = Profile('rfgun')
         prof.start(0.0, 0.0)
         prof.line_to(0.0, y1, 'PMC')                                  # cathode plane
-        z, r = 0.0, y1
-
-        z, r = R2 * np.cos(T2) - R2, y1 + R2 * np.sin(T2)
-        prof.circle_arc_to(z, r, center=(-R2, y1), boundary='PEC')
-
-        z, r = z - L3 * np.cos(T2), r + L3 * np.sin(T2)
-        prof.line_to(z, r, 'PEC')
-
-        c = (z + R4 * np.cos(T2), r + R4 * np.sin(T2))
-        z, r = z - (R4 - R4 * np.cos(T2)), r + R4 * np.sin(T2)
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        z, r = z, r + L5
-        prof.line_to(z, r, 'PEC')
-
-        c = (z + R6, r)
-        z, r = z + R6, r + R6
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        z, r = z + L7, r
-        prof.line_to(z, r, 'PEC')
-
-        c = (z, r - R8)
-        z, r = z + R8 * np.cos(T9), r - (R8 - R8 * np.sin(T9))
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        c = (z - R9 * np.cos(T9), r - R9 * np.sin(T9))
-        z, r = z + (R9 - R9 * np.cos(T9)), r - R9 * np.sin(T9)
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        c = (z - R10, r)
-        z, r = z - (R10 - R10 * np.cos(T10)), r - R10 * np.sin(T10)
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        z, r = z - L11 * np.sin(T10), r - L11 * np.cos(T10)
-        prof.line_to(z, r, 'PEC')
-
-        c = (z + R12 * np.cos(T10), r - R12 * np.sin(T10))
-        z, r = z - (R12 - R12 * np.cos(T10)), r - R12 * np.sin(T10)
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        z, r = z, r - L13
-        prof.line_to(z, r, 'PEC')
-
-        c = (z + R14, r)
-        z, r = z + R14, r - R14
-        prof.circle_arc_to(z, r, center=c, boundary='PEC')
-
-        z, r = z + 10 * y1, r
-        prof.line_to(z, r, 'PEC')
-
-        z, r = z, r - x
-        prof.line_to(z, r, 'PMC')                                     # exit aperture
-        prof.close('AXI')
-        return prof
+        return _walls(prof)
 
     def write_geometry(self, parameters, n_cells=None, beampipe=None, write=None, **kwargs):
         # n_cells / beampipe accepted for signature compatibility with the other
