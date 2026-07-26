@@ -514,11 +514,11 @@ class RFGun(Cavity):
                 info("Convergence data not available.")
 
     def get_eigenmode_qois(self, config=None):
-        """Read the eigenmode QOIs, plus the gun's on-axis |Ez| profile.
+        """Read the eigenmode QOIs, plus the gun's on-axis ``|Ez|`` profile.
 
         This used to reimplement the base reader with a monopole-only body and a
         narrower signature, so any caller passing a config (UQ does) hit a
-        TypeError. Only the |Ez| profile is gun-specific.
+        TypeError. Only the ``|Ez|`` profile is gun-specific.
         """
         super().get_eigenmode_qois(config)
 

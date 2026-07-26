@@ -109,6 +109,58 @@ def test_mid_cell_tune_is_beampipe_independent(project_dir):
     assert reqs['none'] == pytest.approx(reqs['both'], abs=1e-2), reqs
 
 
+def test_native_only_model_clones_for_tuning(project_dir):
+    """A custom model providing only ``profile()`` + ``rebuild()`` (no
+    ``write_geometry``) must still tune. ``clone_for_tuning`` used to call
+    ``write_geometry`` unconditionally, so a native-only geometry raised
+    AttributeError instead of tuning; it now writes a ``.geo`` only when the
+    model has a writer and otherwise relies on ``profile()``."""
+    from cavsim2d.models.base import Cavity
+    from cavsim2d.geometry import Profile
+
+    class _Cone(Cavity):
+        def __init__(self, dims, name='cone'):
+            super().__init__(n_cells=1, beampipe='none', name=name)
+            L, Req, Ri = dims
+            self.n_cells, self.kind, self.beampipe = 1, 'cone', 'none'
+            self.parameters = {'L': float(L), 'Req': float(Req), 'Ri': float(Ri)}
+            self.shape = {'IC': [L, Req, Ri], 'BP': 'none'}
+
+        def profile(self):
+            L, Req, Ri = (self.parameters[k] * 1e-3 for k in ('L', 'Req', 'Ri'))
+            p = Profile('cone')
+            p.start(-L / 2, 0.0)
+            p.line_to(-L / 2, Ri, 'PMC')
+            p.line_to(0.0, Req, 'PEC')
+            p.line_to(L / 2, Ri, 'PEC')
+            p.line_to(L / 2, 0.0, 'PMC')
+            p.close('AXI')
+            return p
+
+        def create(self, n_cells=None, beampipe=None, mode=None):
+            if self.projectDir:
+                self.self_dir = os.path.join(self.projectDir, self.name)
+                os.makedirs(os.path.join(self.self_dir, 'geometry'), exist_ok=True)
+                self.uq_dir = os.path.join(self.self_dir, 'uq')
+                self.geo_filepath = None
+                self._write_geometry_snapshot()
+
+        def rebuild(self, parameters, beampipe=None):
+            return _Cone([parameters['L'], parameters['Req'], parameters['Ri']],
+                         name=self.name)
+
+    assert not hasattr(_Cone, 'write_geometry')      # genuinely native-only
+    cav = _Cone([100, 100, 20])
+    cav.projectDir = project_dir
+    cav.create()
+
+    clone = cav.clone_for_tuning({'L': 100.0, 'Req': 105.0, 'Ri': 20.0},
+                                 os.path.join(project_dir, 'cone', 'tuned'))
+    assert clone.geo_filepath is None                # no .geo written; profile()-only
+    assert clone.profile() is not None               # still meshable
+    assert clone.parameters['Req'] == 105.0
+
+
 # --- three defects that made non-elliptical tuning fail silently -------------
 
 def test_uses_cell_suffixes_is_a_model_capability():

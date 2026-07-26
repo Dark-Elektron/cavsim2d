@@ -251,11 +251,12 @@ class EllipticalCavity(Cavity):
         needs to hit the target.
 
         ``bp`` selects the end-cell being tuned:
+
         - 'left'  : end-LEFT cell tuned; end-right parameters are replaced
-                    with the current mid-cell parameters for the adjacent
-                    half of the geometry.
+          with the current mid-cell parameters for the adjacent half of the
+          geometry.
         - 'right' : mirrored — end-RIGHT cell tuned; end-left params are
-                    replaced with mid-cell params.
+          replaced with mid-cell params.
         """
         params = dict(parameters)
         names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']

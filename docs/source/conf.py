@@ -30,6 +30,10 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.doctest',
     'numpydoc',
+    # numpydoc otherwise emits an autosummary "Methods" table per class, whose
+    # per-method stub pages aren't generated (no autosummary generator wired),
+    # producing a flood of "stub file not found" warnings. autodoc already lists
+    # the members via `:members:`, so turn the duplicate table off.
     'sphinx.ext.mathjax',
     'sphinx.ext.inheritance_diagram',
     'matplotlib.sphinxext.mathmpl',
@@ -42,6 +46,11 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 bibtex_bibfiles = ['../references/refs.bib']
+
+# See the numpydoc note in the extensions list above.
+numpydoc_show_class_members = False
+# Missing internal deps shouldn't fail an autodoc import of the public API.
+autodoc_mock_imports = []
 
 # -- Notebooks (myst-nb) -----------------------------------------------------
 # Example notebooks under source/examples/ are committed *with* their outputs

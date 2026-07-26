@@ -91,13 +91,6 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
         # injects an empty ``{}`` when the caller did not supply one, so a
         # bare ``in`` check would falsely trigger UQ on spawned variants.
         if wakefield_config.get('uq_config'):
-            uq_config = wakefield_config['uq_config']
-            uq_cell_complexity = uq_config.get('cell_complexity', 'simplecell')
-
-            if uq_cell_complexity == 'multicell':
-                raise NotImplementedError(
-                    "Multicell UQ (uq_config['cell_complexity'] = 'multicell') is not "
-                    "supported in this release. Use 'simplecell' (the default).")
             with timer.step('uq'):
                 uq_parallel(cav, wakefield_config, 'wakefield')
 

@@ -18,12 +18,12 @@ def test_dead_cavities_wrappers_removed(name):
     assert not hasattr(Study, name), f"{name} should have been deleted"
 
 
-def test_sweep_raises_clear_error(project_dir):
-    cavs = Study(project_dir)
-    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
-    cavs.add_cavity([cav], ['S'])
-    with pytest.raises(NotImplementedError):
-        cav.sweep({'A': [40, 45, 3]})
+@pytest.mark.parametrize("cls", [Cavity, Study])
+def test_sweep_was_removed(cls):
+    """``sweep`` was a stub that only raised NotImplementedError; it was removed
+    rather than ported. The supported pattern is one cavity per sweep value —
+    see the wakefield ``parameter_sweep`` example."""
+    assert not hasattr(cls, 'sweep'), f"{cls.__name__}.sweep should have been deleted"
 
 
 def test_imports_live_at_module_top():

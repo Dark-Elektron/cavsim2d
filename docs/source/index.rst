@@ -21,6 +21,15 @@ cavsim2d documentation!
 
 .. toctree::
    :maxdepth: 6
+   :caption: Concepts & reference
+
+   concepts
+   geometry
+   configuration
+   extending
+
+.. toctree::
+   :maxdepth: 6
    :caption: Analysis Modules
 
    eigenmode
@@ -42,16 +51,16 @@ cavsim2d documentation!
    examples/advanced/index
 
 .. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api
+
+.. toctree::
    :maxdepth: 6
    :caption: References
 
    references
-
-.. .. toctree::
-   :maxdepth: 4
-   :caption: Modules:
-
-   modules
 
 Indices and tables
 ==================

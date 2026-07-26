@@ -159,10 +159,14 @@ def test_geometry_package_is_the_single_home():
     for mod in ('cavsim2d.geometry.profile', 'cavsim2d.geometry.tangency',
                 'cavsim2d.geometry.primitives', 'cavsim2d.geometry.plotting',
                 'cavsim2d.geometry.writers.gmsh', 'cavsim2d.geometry.writers.multipac',
-                'cavsim2d.geometry.writers.cst', 'cavsim2d.geometry.writers.abci'):
+                'cavsim2d.geometry.writers.cst'):
         assert importlib.import_module(mod) is not None
+    # The legacy ABCI deck writer (writers.abci + analysis.wakefield.abci_code)
+    # was removed — ABCI decks are now written natively by Cavity._write_abc.
     for gone in ('cavsim2d.utils.geometry', 'cavsim2d.analysis.wakefield.geometry',
-                 'cavsim2d.analysis.wakefield.abci_geometry'):
+                 'cavsim2d.analysis.wakefield.abci_geometry',
+                 'cavsim2d.geometry.writers.abci',
+                 'cavsim2d.analysis.wakefield.abci_code'):
         with pytest.raises(ModuleNotFoundError):
             importlib.import_module(gone)
 

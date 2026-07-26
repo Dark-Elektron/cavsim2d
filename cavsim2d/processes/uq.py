@@ -481,17 +481,41 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         if not os.path.exists(cav.uq_dir):
             os.mkdir(cav.uq_dir)
 
-        perturbed_cavities, weights_ = perturb_geometry(cav, wakefield_config)
+        # Multicell UQ perturbs every half-cell (from ``half_cells()``) rather
+        # than the mid/end-cell groups, exactly as the eigenmode branch does. The
+        # ABCI backend needs no special writer: ``run_wakefield`` meshes
+        # ``cav.profile()``, which already renders an independently-varying
+        # multicell contour, so a ``spawn_half_cells`` variant writes a correct
+        # deck. Like the simplecell wakefield branch (and unlike the eigenmode
+        # paper workflow) the variants are NOT retuned — impedance is measured on
+        # the perturbed geometry as-is.
+        multicell = uq_cfg.get('cell_complexity', 'simplecell') == 'multicell'
+        if multicell:
+            if uq_cfg.get('independent_half_cells'):
+                perturbed_half_cells, before_hc, weights_ = \
+                    perturb_half_cells_independent(cav, wakefield_config)
+                half_cells_to_dataframe(before_hc).to_csv(
+                    os.path.join(cav.uq_dir, 'nodes_before_continuity.csv'),
+                    index=False, sep='\t', float_format='%.32f')
+            else:
+                perturbed_half_cells, weights_ = perturb_half_cells(cav, wakefield_config)
+            half_cells_to_dataframe(perturbed_half_cells).to_csv(
+                os.path.join(cav.uq_dir, 'nodes.csv'),
+                index=False, sep='\t', float_format='%.32f')
+            cavs_object = cav.spawn_half_cells(perturbed_half_cells,
+                                               os.path.join(cav.self_dir, 'uq'))
+        else:
+            perturbed_cavities, weights_ = perturb_geometry(cav, wakefield_config)
 
-        nodes_perturbed = shapes_to_dataframe(perturbed_cavities)
-        nodes_perturbed.to_csv(os.path.join(cav.uq_dir, 'nodes_before_continuity.csv'),
-                               index=False, sep='\t', float_format='%.32f')
+            nodes_perturbed = shapes_to_dataframe(perturbed_cavities)
+            nodes_perturbed.to_csv(os.path.join(cav.uq_dir, 'nodes_before_continuity.csv'),
+                                   index=False, sep='\t', float_format='%.32f')
 
-        nodes_ = nodes_perturbed
-        nodes_.to_csv(os.path.join(cav.uq_dir, 'nodes.csv'),
-                      index=False, sep='\t', float_format='%.32f')
+            nodes_ = nodes_perturbed
+            nodes_.to_csv(os.path.join(cav.uq_dir, 'nodes.csv'),
+                          index=False, sep='\t', float_format='%.32f')
 
-        cavs_object = cav.spawn(nodes_, os.path.join(cav.self_dir, 'uq'))
+            cavs_object = cav.spawn(nodes_, os.path.join(cav.self_dir, 'uq'))
 
         with open(os.path.join(cav.uq_dir, 'uq_config.json'), 'w') as f:
             json.dump(wakefield_config, f, indent=4, default=str)
@@ -548,6 +572,20 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         Ttab_val_f = df_wake.to_numpy()
         mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(
             Ttab_val_f, weights_)
+
+        # A perturbation that leaves every variant identical (std == 0) is almost
+        # always a too-small ``delta``, not a genuine zero-sensitivity result:
+        # ``delta`` is an ADDITIVE perturbation in mm, so e.g. 0.002 moves a
+        # geometry by 2 microns — below ABCI's numerical resolution. Warn rather
+        # than write a silent, misleading std=0 / NaN-skew uq.json.
+        rel_spread = np.abs(np.asarray(std_obj)) / (np.abs(np.asarray(mean_obj)) + 1e-30)
+        if np.all(rel_spread < 1e-9):
+            warning(
+                f"UQ {cav.name}: every perturbed variant gave an identical result "
+                f"(std ~ 0), so the impedance spread is 0. 'delta' is an ADDITIVE "
+                f"perturbation in mm and is likely too small to move the geometry "
+                f"above the solver's resolution — increase it (e.g. a realistic "
+                f"tolerance of 0.1-0.5 mm).")
 
         result_dict_wake = {}
         for i, o in enumerate(df_wake.columns):

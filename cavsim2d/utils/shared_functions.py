@@ -17,10 +17,6 @@ The remaining utilities were split into:
 
 All symbols are re-exported here for backward compatibility. New code should
 import from the specific module instead.
-
-``cavsim2d.geometry.writers.abci`` is deliberately absent: it imports
-``abci_code``, which star-imports this module, so re-exporting it here would
-create an import cycle.
 """
 from cavsim2d.geometry.tangency import *
 from cavsim2d.geometry.primitives import *

@@ -1418,7 +1418,7 @@ class WakefieldSolver:
 
     def plot_impedance(self, kind='longitudinal', ax=None, unit='k', show=True,
                        **kwargs):
-        """Plot the wakefield impedance: |Z| vs f.
+        """Plot the wakefield impedance: ``|Z|`` vs f.
 
         The same call as :meth:`EigenmodeSolver.plot_impedance`, in the same
         default unit (kOhm), so the two overlay without a scale factor (pass
@@ -2416,6 +2416,7 @@ class OptimisationSolver:
         """Run the full optimisation loop.
 
         This method:
+
         1. Uses the cavity added to the study as the optimisation template (its
            type drives tune-variable resolution / spawn / rebuild, so every
            model optimises); falls back to a bounds-derived elliptical template

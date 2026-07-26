@@ -82,11 +82,35 @@ Settings description:
 
 Accessing Results
 *****************
-The optimisation results (Pareto front, per-generation fitness values, and the final population) are saved to the project folder and can be inspected programmatically:
+Results are saved to ``<project>/optimisation/`` and exposed as DataFrames under the ``optimisation`` namespace:
 
 .. code-block:: python
 
-    # Inspect final population and Pareto front
-    print(cavs.optimisation_results)
+    opt = cavs.optimisation
+    opt.history          # every evaluated candidate (geometry + objectives + generation)
+    opt.pareto           # the non-dominated designs
+    opt.pareto_history   # the Pareto front from each generation
+    opt.objective_vars   # the objective column names
 
-See the worked example: :doc:`examples/optimisation/pareto`.
+Each row carries the candidate's geometry variables and its objective values, so the front can be sorted and picked from directly, e.g. ``opt.pareto.sort_values('monopole:Epk/Eacc []')``.
+
+Visualisation
+*************
+The objective space can be viewed several ways via ``kind=`` (``'scatter'``, ``'pcp'`` parallel-coordinates, ``'radar'``, ``'heatmap'``), with ``normalise=True|False``:
+
+.. code-block:: python
+
+    opt.plot_pareto(kind='scatter')      # pairwise scatter matrix of objectives
+    opt.plot_pareto(kind='pcp')          # parallel coordinates — one line per design
+    opt.plot_pareto(kind='radar')        # a polygon fingerprint per design
+    opt.plot_history(color_by_gen=True)  # every candidate, coloured by generation
+    opt.plot_pareto_history()            # the front from each generation
+    opt.plot_convergence()               # fitness against generation
+
+Objectives may combine eigenmode QOIs (e.g. ``'monopole:Epk/Eacc []'``, ``'monopole:R/Q [Ohm]'``) with wakefield impedance targets (``'ZL'`` / ``'ZT'`` over frequency intervals), so a single run can trade off surface fields, shunt impedance and higher-order-mode impedance together.
+
+Worked examples:
+
+- :doc:`examples/optimisation/pareto` — a minimal two-objective run,
+- :doc:`examples/optimisation/visualising_results` — a three-objective run and the full set of result views,
+- :doc:`examples/optimisation/cavity_types` — optimising a non-elliptical (spline) cavity over its own variables.

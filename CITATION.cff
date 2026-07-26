@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "cavsim2d"
+abstract: >-
+  A 2D axisymmetric RF cavity analysis toolkit: eigenmode, tuning, wakefield,
+  multipacting, uncertainty quantification and multi-objective shape optimisation.
+type: software
+authors:
+  - family-names: Udongwo
+    given-names: Sosoho-Abasi
+    email: numurho@gmail.com
+version: "0.1.0"
+license: MIT
+repository-code: "https://github.com/Dark-Elektron/cavsim2d"
+url: "https://github.com/Dark-Elektron/cavsim2d"
+keywords:
+  - rf-cavity
+  - accelerator
+  - eigenmode
+  - wakefield
+  - finite-element
+  - ngsolve

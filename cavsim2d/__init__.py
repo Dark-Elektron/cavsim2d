@@ -25,7 +25,6 @@ from cavsim2d.models import (
     CircularWaveguide,
 )
 from cavsim2d.study import Study
-from cavsim2d.analysis.uq.dakota import Dakota
 from cavsim2d.data_module.operating_points import OperationPoints
 from cavsim2d.utils.welcome import show_welcome
 
@@ -47,7 +46,6 @@ __all__ = [
     'SplineCavity',
     'RFGun',
     'Pillbox',
-    'Dakota',
     'OperationPoints',
     'show_welcome',
     'CircularWaveguide',

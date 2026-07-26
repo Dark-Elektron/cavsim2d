@@ -108,8 +108,6 @@ class Cavity(ABC):
         self.rf_performance_qois_uq = {}
         self.rf_performance_qois = {}
         self.uq_hom_results = None
-        self.sweep_results = {}
-        self.sweep_results_uq = {}
         self.uq_fm_results = None
         self.mesh = None
         self.shape = None
@@ -377,9 +375,17 @@ class Cavity(ABC):
         geo_dir = os.path.join(clone.self_dir, 'geometry')
         os.makedirs(geo_dir, exist_ok=True)
         clone.uq_dir = os.path.join(clone.self_dir, 'uq')
-        clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
-        clone.write_geometry(clone.parameters, clone.n_cells, clone.beampipe,
-                             write=clone.geo_filepath)
+        # Native (profile()-based) models don't emit a gmsh .geo — the solver
+        # meshes their profile() directly. Only write a .geo when the model
+        # actually has a writer, so a custom geometry that provides just
+        # profile() + rebuild() (no write_geometry) still tunes.
+        writer = getattr(clone, 'write_geometry', None)
+        if callable(writer):
+            clone.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+            writer(clone.parameters, clone.n_cells, clone.beampipe,
+                   write=clone.geo_filepath)
+        else:
+            clone.geo_filepath = None
         clone._write_geometry_snapshot()
         return clone
 
@@ -772,25 +778,6 @@ class Cavity(ABC):
 
         """
         pass
-
-    def sweep(self, sweep_config, which='eigenmode', how='independent', uq_config=None):
-        """Parameter sweep — NOT YET PORTED to the current geometry pipeline.
-
-        The old implementation mutated ``self.shape['IC']`` and re-ran the
-        legacy eigenmode path. After the refactor, geometry is regenerated
-        from ``self.parameters`` (not ``self.shape``), and ``create()`` is a
-        no-op once the geometry file exists — so mutating ``shape`` no longer
-        changes what is simulated. Porting requires updating ``parameters``,
-        invalidating the geometry snapshot, and re-running via
-        ``self.eigenmode.run()`` for each sweep point.
-
-        Workaround until then: create one cavity per sweep value (varying the
-        parameter in the constructor) and run eigenmode on each.
-        """
-        raise NotImplementedError(
-            "Cavity.sweep is not available in this release (pending a port to "
-            "the current geometry pipeline). Workaround: build one cavity per "
-            "sweep value and call cav.eigenmode.run() on each.")
 
     def study_mesh_convergence(self, eigenmode_config=None, h=10, p=2, p_passes=3, p_step=1,
                                n_modes=10, polarisation=('monopole', 'dipole'),

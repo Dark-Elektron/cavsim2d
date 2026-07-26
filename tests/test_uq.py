@@ -1,6 +1,7 @@
 """UQ tests: simplecell UQ perturbs the mid/end-cell parameter groups; multicell UQ
 makes every half-cell an independent random variable, honouring the equator/iris
-continuity constraints. Multicell wakefield UQ is still unimplemented."""
+continuity constraints. Both eigenmode and wakefield UQ support the multicell path
+(the ABCI deck is written natively from the perturbed cavity's profile)."""
 import os
 import json
 import pytest
@@ -62,23 +63,38 @@ def test_rerun_clears_stale_uq_artefacts(project_dir):
     assert not os.path.exists(uq_dir)
 
 
-def test_multicell_wakefield_uq_still_raises_clear_error(project_dir):
-    """Multicell UQ is implemented for eigenmode only; wakefield must say so."""
+def test_multicell_wakefield_uq_produces_statistics(project_dir):
+    """Multicell wakefield UQ perturbs every half-cell and gathers impedance QOIs.
+
+    Regression: this used to raise NotImplementedError. The ABCI backend needs no
+    special writer — ``run_wakefield`` meshes ``cav.profile()``, which already
+    renders an independently-varying multicell contour, so a ``spawn_half_cells``
+    variant writes a correct deck. Assert the sweep runs and writes the weighted
+    ZL statistics to ``uq.json`` (the objective's interval is a FLAT ``[lo, hi]``
+    GHz list — ``process_interval`` pairs consecutive entries).
+    """
     from cavsim2d.processes.wakefield import run_wakefield_s
     cavs, cav = _cavs(project_dir)
-    with pytest.raises(NotImplementedError, match="Multicell UQ"):
-        run_wakefield_s({cav.name: cav}, {
-            'processes': 1, 'rerun': True,
-            'uq_config': {
-                'variables': ['A'],
-                'objectives': ['monopole:R/Q [Ohm]'],
-                'delta': [0.05],
-                'processes': 1,
-                'method': ['Quadrature', 'Stroud3'],
-                'cell_type': 'mid-cell',
-                'cell_complexity': 'multicell',
-            },
-        }, '')
+    run_wakefield_s({cav.name: cav}, {
+        'processes': 1, 'rerun': True, 'MROT': 0, 'wakelength': 1, 'bunch_length': 25,
+        'uq_config': {
+            'variables': ['A'],
+            'objectives': [['min', 'ZL', [0.2, 1.5]]],
+            'delta': [0.05],
+            'processes': 1,
+            'method': ['Quadrature', 'Stroud3'],
+            'cell_complexity': 'multicell',
+        },
+    }, '')
+
+    for fname in ('nodes.csv', 'table.csv', 'uq.json'):
+        assert os.path.exists(os.path.join(cav.uq_dir, fname)), fname
+    with open(os.path.join(cav.uq_dir, 'uq.json')) as fh:
+        uq = json.load(fh)
+    key = 'ZL [max(0.2<f<1.5)]'
+    assert key in uq, uq.keys()
+    assert uq[key]['expe'][0] > 0
+    assert uq[key]['stdDev'][0] >= 0
 
 
 # --- multicell UQ: every half-cell an independent random variable -------------

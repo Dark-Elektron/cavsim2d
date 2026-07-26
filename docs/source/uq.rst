@@ -48,7 +48,7 @@ Configuration Settings
    *(str, default:* ``'mid-cell'`` *)* The type of cell to which the perturbation is applied.
 
 ``cell_complexity``
-   *(str, default:* ``'simplecell'`` *)* Determines whether perturbations are applied to a single cell (``'simplecell'``) or the full multi-cell structure.
+   *(str, default:* ``'simplecell'`` *)* Determines whether perturbations are applied to a single cell (``'simplecell'``) or the full multi-cell structure (``'multicell'``, where every half-cell becomes an independent random variable subject to the equator/iris continuity constraints). Both are available for eigenmode and wakefield UQ.
 
 ``processes``
    *(int, default: 1)* Number of parallel processes for evaluating the perturbed quadrature nodes.

@@ -91,7 +91,6 @@ class Study:
         self.power_qois_uq = {}
         self.shape_space = {}
         self.shape_space_multicell = {}
-        self.sweep_results = None
         self.eigenmode_qois = {}
         self.eigenmode_qois_all_modes = {}
         self.wakefield_qois = {}       # main run: per-cavity loss/kick factors
@@ -470,17 +469,6 @@ class Study:
                 return True
         else:
             return False
-
-    def sweep(self, sweep_config):
-        self.sweep_results = {}
-        for cav in self.cavities_list:
-            cav.sweep(sweep_config)
-            self.sweep_results[cav.name] = cav.sweep_results
-
-    # NOTE: Cavity.sweep currently raises NotImplementedError — the parameter
-    # sweep was not carried through the geometry refactor (see the method for
-    # the manual workaround). This wrapper is kept so the API shape is stable
-    # once sweep is ported.
 
     def plot_dispersion(self, pol=None, bands=None, ax=None, break_axis=True,
                         breaks=None, light_line=True, **kwargs):

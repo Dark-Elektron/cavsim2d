@@ -9,6 +9,59 @@ context they carry; their outstanding portions are what SHIPPING_ACTION_PLAN.md 
 Items marked **[verified]** were exercised end-to-end on 2026-07-03 (Windows,
 conda env `cavsim2d`, NGSolve 6.2.2506) — re-verify anything you touch afterwards.
 
+**Legacy removal + docs/release scaffolding (2026-07-26).**
+
+- **`sweep` removed.** `Cavity.sweep` / `Study.sweep` were stubs that only raised
+  `NotImplementedError`; deleted (plus the dead `sweep_results*` attrs). The guard test now
+  asserts `sweep` is gone (`test_api_guards.py::test_sweep_was_removed`). Supported pattern:
+  one cavity per sweep value (see `wakefield/parameter_sweep.ipynb`).
+- **Dakota driver removed.** Deleted `analysis/uq/dakota.py` + `analysis/uq/dakota_scripts/`,
+  the `Dakota` export from `__init__.py`, and the docs stub. Superseded by
+  `analysis/uq/sobol_sa.py`. `read_dakota_input_file` (a parser in `utils/sensitivity.py`, used
+  by cubature/surrogate) is unrelated and stays.
+- **Legacy ABCI deck writer removed.** Deleted `geometry/writers/abci.py` (`ABCIGeometry` +
+  `Geometry`) and `analysis/wakefield/abci_code.py` (`ABCI`, `ABCI_flattop`) — never instantiated;
+  the live path is native `Cavity._write_abc` (base.py) via `geometry.beampipes.abci_shape`.
+  Updated `writers/__init__.py`, the `shared_functions` comment, and `test_geometry` (moved
+  `writers.abci` + `abci_code` to the gone-list). 30 wakefield/impedance tests still pass.
+- **Docs: API reference + concepts.** Deleted both stale, unwired apidoc dumps (`docs/rce/` and
+  `docs/source/cavsim2d.*.rst` + `modules.rst`). Added a curated `docs/source/api.rst` (autodoc of
+  the public API: Study, the models, the solver namespaces, EigenmodeResult) and
+  `docs/source/concepts.rst` (folder layout, config dictionaries, QOI + m-pole conventions), both
+  wired into `index.rst`. Set `numpydoc_show_class_members = False` (kills the "stub file not found"
+  flood). Fixed 4 docstring RST errors (`|Ez|`/`|Z|` substitutions, list indentation) and 3 broken
+  notebook xrefs (`multipacting/{rfgun,spline}` → the split `wakefield/{rfgun,spline}`). Sphinx build
+  is now **0 errors** (residual warnings are numpydoc param-vs-signature mismatches, a P3 docstring pass).
+- **Release scaffolding.** Added `CITATION.cff` and `.github/` issue templates (bug/feature) +
+  `PULL_REQUEST_TEMPLATE.md`. Still needs the maintainer: version bump, GitHub release/tag, PyPI publish.
+- **Reference docs + extensibility (2026-07-26).** Added `geometry.rst` (Profile model — one
+  PEC/PMC/AXI-labelled meridian serves every analysis — and all per-model parameterisations incl.
+  multicell half-cells), `configuration.rst` (every config dict and key), and an `extending.rst`
+  tutorial for writing a new `Cavity` subclass, wired under a "Concepts & reference" index caption.
+  The tutorial's `ConeCavity` was written and run before documenting (eigenmode 1598.9 MHz; tune
+  Req 100→107.1 mm hits 1500 MHz). Building it surfaced a real coupling: `clone_for_tuning`
+  (base.py) called `write_geometry` unconditionally, so a native-only model (only `profile()` +
+  `rebuild()`) crashed on tune — now guarded (writes `.geo` only if the model has a writer, else
+  `geo_filepath=None` and the solver meshes `profile()`). Regression:
+  `test_native_only_model_clones_for_tuning`; tune suite 22 green.
+- **Multicell wakefield UQ implemented.** Lifted the `NotImplementedError` in
+  `processes/wakefield.py`. The ABCI backend needed *no* new writer: `run_wakefield` meshes
+  `cav.profile()`, which already renders an independently-varying multicell contour, so a
+  `spawn_half_cells` variant writes a correct deck (verified directly). The work was pure
+  UQ-driver plumbing — added a `cell_complexity == 'multicell'` branch to the wakefield path in
+  `processes/uq.py` mirroring the eigenmode one (`perturb_half_cells` /
+  `perturb_half_cells_independent` → `half_cells_to_dataframe` → `spawn_half_cells` →
+  `run_wakefield`), no per-variant retune (consistent with the simplecell wakefield branch).
+  Writes `nodes.csv`/`table.csv`/`uq.json` (weighted ZL/ZT stats). Regression test replaces the
+  old raises-test. **Gotcha:** a ZL/ZT objective's interval is a FLAT `[lo, hi]` GHz list, not
+  nested — `process_interval` pairs consecutive entries, so `[[lo,hi]]` yields an empty range and
+  an empty `uq.json`. **`delta` is an ADDITIVE perturbation in mm** (both UQ paths default to
+  `perturbation_mode=['add', delta]`), not a fraction — `delta=0.002` = ±2 µm, below ABCI's
+  resolution, so a too-small delta yields an all-identical, std=0 result (not a bug; use a realistic
+  ~0.1–0.5 mm tolerance). Added a guard in the wakefield UQ branch that `warning()`s when every
+  variant's rel-std < 1e-9, so a no-effect run is no longer silent; example notebooks corrected to
+  use/label real mm perturbations.
+
 Legend: `[ ]` open · `[x]` done · `[~]` partly done · **P0** ship-blocker · **P1** needed
 for a good first impression · **P2** soon after release · **P3** nice to have.
 
