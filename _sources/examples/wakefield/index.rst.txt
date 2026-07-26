@@ -11,3 +11,4 @@ Beam-induced wake potentials and the impedance spectrum, via the ABCI backend.
    rfgun
    reentrant
    parameter_sweep
+   multicell_uq

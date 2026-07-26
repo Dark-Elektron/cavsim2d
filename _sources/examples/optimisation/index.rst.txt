@@ -8,3 +8,5 @@ variables.
    :maxdepth: 1
 
    pareto
+   visualising_results
+   cavity_types

@@ -11,7 +11,7 @@ Each module performs a different operation:
 * Eigenmode analysis - NGSolve :cite:p:`NGSolve`
 * Wakefield analysis - ABCI :cite:p:`ABCI`
 * Optimisation - Python (Genetic Algorithm)
-* Uncertainty quantification - Python (Quadrature/QMC via SALib/Dakota)
+* Uncertainty quantification - Python (Quadrature/QMC via SALib)
 * Post-processing - Python (Matplotlib/Pandas)
 
 Eigenmode Analysis
