@@ -36,7 +36,14 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
 ``mesh_config``
    *(dict, default* ``{'h': 20, 'p': 3, 'adaptive': None}`` *)* ``h`` maximum element
    size in **mm**; ``p`` polynomial order (**>= 2**); ``adaptive`` opt-in error-driven
-   h-refinement.
+   h-refinement. Pass ``adaptive: True`` for the defaults, or a dict to tune it:
+   ``{'tol': 1e-12, 'max_refinements': 8, 'max_ndof': 100000, 'theta': 0.5}`` — refine
+   (Dörfler-marking the elements carrying the top ``theta`` fraction of the recovery
+   error) until every requested mode's error is below ``tol`` or a DOF/refinement cap is
+   hit. Adaptivity is a **mode of the eigenmode solve**, not a separate object: the
+   refined mesh *is* the eigenmode result, so ``cav.show_fields``, ``cav.show_mesh`` and
+   ``cav.multipacting`` all use it directly, and ``cav.eigenmode.plot_convergence()`` plots
+   the error/frequency-vs-DOF history the refinement records.
 ``n_modes`` / ``nmodes``
    *(int, default None)* Number of eigenmodes to solve. ``None`` → ``n_cells + 2``.
 ``mode_of_interest``
@@ -78,6 +85,16 @@ Wakefield — ``cav.wakefield.run`` / ``study.run_wakefield``
 ``MT``, ``NFS``, ``DDR_SIG``, ``DDZ_SIG``
    ABCI meshing / sampling controls (mesh density, number of frequency samples,
    radial and longitudinal mesh ratios). Defaults ``10``, ``10000``, ``0.1``, ``0.1``.
+
+.. note::
+
+   **Adaptive refinement does not apply to wakefield.** ``mesh_config['adaptive']``
+   drives the **NGSolve eigenmode** backend (and, through it, multipacting, which reads
+   the eigenmode field). Wakefield uses the **ABCI** backend, which builds and meshes its
+   own deck from ``cav.profile()`` and is controlled by ``MT``/``NFS``/``DDR_SIG``/
+   ``DDZ_SIG`` above — it has no NGSolve mesh to refine, so the eigenmode ``adaptive`` /
+   ``h`` / ``p`` keys are ignored there. This is a backend boundary, not a limitation of a
+   particular geometry.
 
 Tuning — ``cav.tune.run`` / ``study.run_tune``
 ----------------------------------------------

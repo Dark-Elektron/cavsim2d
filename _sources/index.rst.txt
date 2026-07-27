@@ -48,6 +48,8 @@ cavsim2d documentation!
    examples/wakefield/index
    examples/multipacting/index
    examples/optimisation/index
+   examples/studies/index
+   examples/custom_geometry/index
    examples/advanced/index
 
 .. toctree::

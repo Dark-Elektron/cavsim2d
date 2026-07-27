@@ -54,6 +54,37 @@ and every analysis writes into a subfolder of it::
 ``cav.tuned`` loads the cavity under ``tuned/`` (its ``tune_info/tuned_parameters.json``
 records the complete, self-consistent parameter set the tuner converged on).
 
+Persistence and reloading
+-------------------------
+
+Results are written to disk and read back lazily: ``cav.eigenmode.qois``,
+``cav.wakefield.qois`` and ``cav.tuned`` all load from the folders above the first
+time you touch them, so within a session a completed analysis is never re-run.
+
+An entire project reloads in one call. Each cavity also saves a small
+``geometry/model.json`` describing its type and parameters, so::
+
+    study = Study.load('my_project')     # reconstruct every cavity + its cached results
+
+returns a Study with every cavity reconstructed (the right model type, pointing at
+its existing folder). All cached results are then available with **no
+re-simulation**, and because a loaded Study behaves like any other, two studies —
+from different sessions, or a loaded one against a fresh one — compare directly
+(``study.eigenmode.qois_df``, ``study.eigenmode.plot_compare()``). Custom
+in-notebook models whose module cannot be imported by name are passed explicitly:
+``Study.load(dir, models={'MyCavity': MyCavity})``.
+
+Parameter sweeps
+----------------
+
+``study.sweep(template, {var: values}, mode='tensor'|'hadamard')`` builds one
+cavity per parameter combination (``'tensor'`` = the full grid; ``'hadamard'`` =
+element-wise, requiring equal-length value lists), each in its own folder. It
+returns a Study, so any analysis runs on the whole family at once; ``sw.results()``
+joins the swept values with the QOIs into a single comparison table, and
+``sw.sweep_table`` records which cavity is which. See the
+:doc:`examples/studies/parameter_sweep` example.
+
 Configuration dictionaries
 --------------------------
 
@@ -76,6 +107,13 @@ Eigenmode (``cav.eigenmode.run`` / ``study.run_eigenmode``):
       'mesh_config': {'h': 20, 'p': 3, 'adaptive': None},  # h in mm, p order >= 2
       'uq_config': None,            # attach to propagate geometry uncertainty
     }
+
+Setting ``mesh_config['adaptive']`` refines the eigenmode mesh where the solver's own
+error estimate is largest. It is a *mode* of the eigenmode solve — the refined mesh is
+the eigenmode result, so ``show_fields``/``show_mesh``/``multipacting`` use it directly
+and ``cav.eigenmode.plot_convergence()`` shows the error-vs-DOF history. Because the
+wakefield below runs on the **ABCI** backend (its own deck, meshed from
+``cav.profile()``), adaptivity applies to eigenmode/multipacting only.
 
 Wakefield (``cav.wakefield.run`` / ``study.run_wakefield``) — ABCI backend:
 

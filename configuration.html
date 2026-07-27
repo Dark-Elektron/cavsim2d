@@ -1943,12 +1943,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="examples/advanced/index.html" class="md-nav__link ">
+            <a href="examples/studies/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    <span>Studies:<wbr> sweeps and persistence</span>
     
   </span>
   
@@ -1964,6 +1964,186 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Studies:<wbr> sweeps and persistence</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/studies/parameter_sweep.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Parameter sweeps and persistence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Custom geometry</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/custom_geometry/cone_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A custom cavity from scratch:<wbr> the cone</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/custom_geometry/dome_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A curved custom cavity:<wbr> eigenmode, multipacting and tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/advanced/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2369,7 +2549,14 @@ a list. Every <code class="docutils literal notranslate"><span class="pre">m</sp
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">mesh_config</span></code></dt><dd><p><em>(dict, default</em> <code class="docutils literal notranslate"><span class="pre">{'h':</span> <span class="pre">20,</span> <span class="pre">'p':</span> <span class="pre">3,</span> <span class="pre">'adaptive':</span> <span class="pre">None}</span></code> <em>)</em> <code class="docutils literal notranslate"><span class="pre">h</span></code> maximum element
 size in <strong>mm</strong>; <code class="docutils literal notranslate"><span class="pre">p</span></code> polynomial order (<strong>&gt;= 2</strong>); <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> opt-in error-driven
-h-refinement.</p>
+h-refinement. Pass <code class="docutils literal notranslate"><span class="pre">adaptive:</span> <span class="pre">True</span></code> for the defaults, or a dict to tune it:
+<code class="docutils literal notranslate"><span class="pre">{'tol':</span> <span class="pre">1e-12,</span> <span class="pre">'max_refinements':</span> <span class="pre">8,</span> <span class="pre">'max_ndof':</span> <span class="pre">100000,</span> <span class="pre">'theta':</span> <span class="pre">0.5}</span></code> — refine
+(Dörfler-marking the elements carrying the top <code class="docutils literal notranslate"><span class="pre">theta</span></code> fraction of the recovery
+error) until every requested mode’s error is below <code class="docutils literal notranslate"><span class="pre">tol</span></code> or a DOF/refinement cap is
+hit. Adaptivity is a <strong>mode of the eigenmode solve</strong>, not a separate object: the
+refined mesh <em>is</em> the eigenmode result, so <code class="docutils literal notranslate"><span class="pre">cav.show_fields</span></code>, <code class="docutils literal notranslate"><span class="pre">cav.show_mesh</span></code> and
+<code class="docutils literal notranslate"><span class="pre">cav.multipacting</span></code> all use it directly, and <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.plot_convergence()</span></code> plots
+the error/frequency-vs-DOF history the refinement records.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">n_modes</span></code> / <code class="docutils literal notranslate"><span class="pre">nmodes</span></code></dt><dd><p><em>(int, default None)</em> Number of eigenmodes to solve. <code class="docutils literal notranslate"><span class="pre">None</span></code> → <code class="docutils literal notranslate"><span class="pre">n_cells</span> <span class="pre">+</span> <span class="pre">2</span></code>.</p>
 </dd>
@@ -2412,6 +2599,16 @@ bunch lengths) to fold into loss/kick-factor and HOM-power tables.</p>
 radial and longitudinal mesh ratios). Defaults <code class="docutils literal notranslate"><span class="pre">10</span></code>, <code class="docutils literal notranslate"><span class="pre">10000</span></code>, <code class="docutils literal notranslate"><span class="pre">0.1</span></code>, <code class="docutils literal notranslate"><span class="pre">0.1</span></code>.</p>
 </dd>
 </dl>
+<div class="note admonition">
+<p class="admonition-title">Note</p>
+<p><strong>Adaptive refinement does not apply to wakefield.</strong> <code class="docutils literal notranslate"><span class="pre">mesh_config['adaptive']</span></code>
+drives the <strong>NGSolve eigenmode</strong> backend (and, through it, multipacting, which reads
+the eigenmode field). Wakefield uses the <strong>ABCI</strong> backend, which builds and meshes its
+own deck from <code class="docutils literal notranslate"><span class="pre">cav.profile()</span></code> and is controlled by <code class="docutils literal notranslate"><span class="pre">MT</span></code>/<code class="docutils literal notranslate"><span class="pre">NFS</span></code>/<code class="docutils literal notranslate"><span class="pre">DDR_SIG</span></code>/
+<code class="docutils literal notranslate"><span class="pre">DDZ_SIG</span></code> above — it has no NGSolve mesh to refine, so the eigenmode <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> /
+<code class="docutils literal notranslate"><span class="pre">h</span></code> / <code class="docutils literal notranslate"><span class="pre">p</span></code> keys are ignored there. This is a backend boundary, not a limitation of a
+particular geometry.</p>
+</div>
 <h2 id="tuning-cav-tune-run-study-run-tune">Tuning — <code class="docutils literal notranslate"><span class="pre">cav.tune.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_tune</span></code><a class="headerlink" href="#tuning-cav-tune-run-study-run-tune" title="Link to this heading">¶</a></h2>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">freqs</span></code></dt><dd><p><em>(float | list)</em> Target frequency [MHz] (a list gives a per-cavity target).</p>
