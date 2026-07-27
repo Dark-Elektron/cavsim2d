@@ -34,6 +34,20 @@ conda env `cavsim2d`, NGSolve 6.2.2506) — re-verify anything you touch afterwa
   is now **0 errors** (residual warnings are numpydoc param-vs-signature mismatches, a P3 docstring pass).
 - **Release scaffolding.** Added `CITATION.cff` and `.github/` issue templates (bug/feature) +
   `PULL_REQUEST_TEMPLATE.md`. Still needs the maintainer: version bump, GitHub release/tag, PyPI publish.
+- **Parameter sweeps, persistence, plot_mesh (2026-07-26).** `Study.sweep(template, {var: values},
+  mode='tensor'|'hadamard')` builds one cavity per parameter combination (full grid / element-wise;
+  ValueError on unequal hadamard lengths), returns a Study with `.sweep_table` and a `.results()`
+  that joins swept values with QOIs; per-call unique folder (`sweep`, `sweep_1`, …). Sweep is
+  Study-only. `Study.load(project_dir, models=None)` reconstructs a saved project (each cavity now
+  writes `geometry/model.json`; rebuilt via `Cavity._reconstruct_from_state` = `__new__` stub +
+  `rebuild`) so cached results reload with no re-solve and studies compare across sessions.
+  `EigenmodeSolver.plot_mesh()` matplotlib-triplots the (adaptively-refined) mesh. Fixed a real
+  coupling: `spawn` (and earlier `clone_for_tuning`) called `write_geometry` unconditionally →
+  native-only custom models crashed; now guarded. `tests/test_sweep.py` (6 tests); UQ suite stayed
+  green. Examples: `examples/studies/parameter_sweep.ipynb` (sweep + results + Study.load reload),
+  dome example gained an adaptive-mesh section (AMR must come AFTER multipacting — adaptive field +
+  multipacting reload throws an NgException size mismatch), and all three tuning examples now plot
+  geometry before/after tuning (`cav.plot('geometry', tuned=True)` overlay).
 - **Reference docs + extensibility (2026-07-26).** Added `geometry.rst` (Profile model — one
   PEC/PMC/AXI-labelled meridian serves every analysis — and all per-model parameterisations incl.
   multicell half-cells), `configuration.rst` (every config dict and key), and an `extending.rst`

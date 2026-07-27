@@ -45,7 +45,7 @@ def test_monopole_writes_monopole_folder(project_dir):
     cav = _run(project_dir)
     eig = os.path.join(cav.self_dir, 'eigenmode')
     assert os.path.exists(os.path.join(eig, 'monopole', 'qois.json'))
-    assert os.path.exists(os.path.join(eig, 'monopole', 'mesh.pkl'))
+    assert os.path.exists(os.path.join(eig, 'monopole', 'mesh.vol'))
     # flat layout must NOT be written
     assert not os.path.exists(os.path.join(eig, 'qois.json'))
 
@@ -757,3 +757,61 @@ def test_eigenmode_order_below_two_raises_clear_error():
     mesh = mevp._build_mesh(cav, 60, 2)          # a coarse mesh is enough
     with pytest.raises(ValueError, match=r"p\s*<\s*2|p>=2|unsupported"):
         mevp._build_system(mesh, mesh_p=1, m_pol=0)
+
+
+def test_adaptive_field_round_trips_and_feeds_multipacting(project_dir):
+    """An adaptively-refined NGSolve mesh does NOT round-trip: any reload
+    flattens it, so the space rebuilt on reload had a different ndof than the
+    hierarchical one the field was solved on — reload threw
+    ``BaseVector::Set: size a != b`` (and broke show_fields / multipacting after
+    an adaptive run). ``save_fields`` now projects each mode onto the flattened
+    ``.vol`` mesh at save time, so ``load_fields`` rebuilds an exactly-matching
+    space. Verify the round-trip succeeds and the field multipacting consumes is
+    finite — the exact path that used to crash."""
+    cav = _run(project_dir, name='AMR',
+               config={'mesh_config': {'h': 20, 'p': 2,
+                                       'adaptive': {'max_refinements': 2,
+                                                    'max_ndof': 40000}}})
+    eig = os.path.join(cav.self_dir, 'eigenmode', 'monopole')
+
+    # the refinement history is recorded and exposed, DOFs growing along the path
+    assert os.path.exists(os.path.join(eig, 'adaptive_history.json'))
+    hist = cav.eigenmode.adaptive_history('monopole')
+    assert len(hist) >= 2
+    assert hist[0]['No of DOFs'] < hist[-1]['No of DOFs']
+    # the refined mesh really flattened (no .pkl round-trip) but a .vol was saved
+    assert os.path.exists(os.path.join(eig, 'mesh.vol'))
+    assert os.path.exists(os.path.join(eig, 'field_meta.json'))
+
+    from ngsolve import Integrate
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    from cavsim2d.analysis.multipacting.fields import build_emfield
+
+    # load_fields rebuilds a matching space (the old crash) ...
+    gfu_E, _ = NGSolveMEVP().load_fields(eig, 0)
+    assert len(gfu_E) >= 1
+    # ... and the reconstructed E/H field multipacting evaluates is finite
+    em = build_emfield(gfu_E, 0, hist[-1]['freq [MHz]'][0])
+    mesh = gfu_E[0].space.mesh
+    energy = complex(Integrate(em.e * em.e, mesh)).real
+    assert np.isfinite(energy) and energy > 0
+
+
+def test_plot_convergence_present_only_for_adaptive(project_dir):
+    """``plot_convergence`` is the AMR namespace's unique diagnostic: it returns
+    (fig, axes) when an adaptive history exists and ``None`` (with an info) for a
+    plain fixed-mesh run."""
+    import matplotlib
+    matplotlib.use('Agg')
+
+    cav = _run(project_dir, name='NOADAPT',
+               config={'mesh_config': {'h': 24, 'p': 2}})
+    assert cav.eigenmode.adaptive_history('monopole') == []
+    assert cav.eigenmode.plot_convergence(show=False) is None
+
+    cav2 = _run(project_dir, name='ADAPT',
+                config={'mesh_config': {'h': 24, 'p': 2,
+                                        'adaptive': {'max_refinements': 2,
+                                                     'max_ndof': 40000}}})
+    fig, axes = cav2.eigenmode.plot_convergence(show=False)
+    assert fig is not None and len(axes) == 2

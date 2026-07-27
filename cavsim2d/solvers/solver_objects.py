@@ -130,6 +130,18 @@ def _maybe_show(show):
         plt.show()
 
 
+def _has_mesh(folder):
+    """A saved eigenmode mesh exists in *folder* — the round-tripping ``.vol``
+    (current format) or the legacy ``mesh.pkl``."""
+    return any((Path(folder) / f).exists() for f in ('mesh.vol', 'mesh.pkl'))
+
+
+def _has_field(folder):
+    """A saved eigenmode field exists in *folder* — the ``field_meta.json`` +
+    projected vectors (current format) or the legacy ``gfu_EH.pkl`` pickle."""
+    return any((Path(folder) / f).exists() for f in ('field_meta.json', 'gfu_EH.pkl'))
+
+
 def _reference_series(reference):
     """Normalise a plot ``reference`` into a list of ``(label, mean, std|None)``.
 
@@ -441,6 +453,89 @@ class EigenmodeSolver:
         if m == 0:
             return Path(monopole_dir(self.folder))
         return self.folder / pol_name(m)
+
+    def plot_mesh(self, pol='monopole', ax=None, mirror=True, show=True, **kwargs):
+        """Draw the mesh actually used for the solve as a matplotlib triangulation.
+
+        When the run was adaptive (``mesh_config['adaptive']``) this is the
+        *refined* mesh, so it reveals where refinement concentrated elements —
+        typically sharp corners and high-field regions. ``mirror`` reflects the
+        upper-half analysis domain about the axis for the full cross-section.
+        """
+        # Deferred: pulls in the heavy ngsolve mesh backend only when plotting.
+        from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+        folder = self.pol_folder(pol)
+        if not _has_mesh(folder):
+            info(f"No saved mesh for {pol_name(pol_number(pol))} at {folder}. "
+                 "Run the eigenmode analysis first.")
+            return ax
+        mesh = NGSolveMEVP.load_mesh(str(folder))
+        pts, tris = NGSolveMEVP._mesh_points_and_triangles(mesh)
+        pts = np.asarray(pts, dtype=float) * 1e3        # metres -> mm
+        tris = np.asarray(tris)
+        z, r = pts[:, 0] - pts[:, 0].min(), pts[:, 1]
+        with house_style():
+            if ax is None:
+                _, ax = plt.subplots(figsize=(7, 4))
+            color = kwargs.pop('color', WARM[7])
+            lw = kwargs.pop('lw', kwargs.pop('linewidth', 0.3))
+            ax.triplot(z, r, tris, color=color, lw=lw, **kwargs)
+            if mirror:
+                ax.triplot(z, -r, tris, color=color, lw=lw, **kwargs)
+            ax.set_aspect('equal')
+            ax.set_xlabel('$z$ [mm]')
+            ax.set_ylabel('$r$ [mm]')
+            ax.set_title(f'{self.cavity.name}: {len(tris)} elements')
+        _maybe_show(show)
+        return ax
+
+    def adaptive_history(self, pol='monopole'):
+        """Adaptive-refinement history for *pol* as a list of per-refinement
+        dicts (``No of DOFs``, ``No of Mesh Elements``, ``freq [MHz]`` and the
+        per-mode recovery ``max_err``), or ``[]`` when the solve was not
+        adaptive (``mesh_config={'adaptive': True}``)."""
+        path = self.pol_folder(pol) / 'adaptive_history.json'
+        if not path.exists():
+            return []
+        with open(path) as f:
+            return json.load(f)
+
+    def plot_convergence(self, pol='monopole', show=True):
+        """Adaptive-refinement convergence for *pol* — the AMR namespace's
+        "unique property". Two panels versus the number of DOFs along the
+        refinement path: the recovery **error** (log-log, driving the marking)
+        and each mode's **frequency** (it should flatten as the mesh resolves).
+        ``info`` + ``None`` when the run was not adaptive."""
+        history = self.adaptive_history(pol)
+        if not history:
+            info(f"No adaptive history for {pol_name(pol_number(pol))} — run the "
+                 "eigenmode analysis with mesh_config={'adaptive': True}.")
+            return None
+        dofs = [h['No of DOFs'] for h in history]
+        errs = np.array([h['max_err'] for h in history])      # (levels, modes)
+        freqs = np.array([h['freq [MHz]'] for h in history])  # (levels, modes)
+        n_modes = errs.shape[1] if errs.ndim == 2 else 1
+        with house_style():
+            fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+            for j in range(n_modes):
+                c = WARM[j % len(WARM)]
+                axes[0].loglog(dofs, errs[:, j], marker='o', color=c,
+                               label=f'mode {j + 1}')
+                axes[1].semilogx(dofs, freqs[:, j], marker='o', color=c,
+                                 label=f'mode {j + 1}')
+            axes[0].set_xlabel('Number of DOFs')
+            axes[0].set_ylabel('Recovery error')
+            axes[0].set_title('Error vs DOFs')
+            axes[1].set_xlabel('Number of DOFs')
+            axes[1].set_ylabel('Frequency [MHz]')
+            axes[1].set_title('Frequency vs DOFs')
+            if n_modes > 1:
+                axes[0].legend(fontsize='small')
+            fig.suptitle(f'Adaptive convergence — {self.cavity.name} '
+                         f'({pol_name(pol_number(pol))})')
+            plt.tight_layout()
+        _maybe_show(show)
+        return fig, axes
 
     def mpole_qois(self, pol, all_modes=True):
         """QOIs of an m-pole solve, keyed by mode index (``all_modes=True``)
@@ -1186,12 +1281,16 @@ class EigenmodeSolver:
         # backend. Every other plot_* returns axes — match them.
         return flat[:n]
 
-    def plot_sobol_indices(self, results=None, objectives=None, show=True):
+    def plot_sobol_indices(self, results=None, objectives=None, group=False, show=True):
         r"""Grouped bars of Sobol' main (``S_1``) and total (``S_T``) indices per
         input variable, one panel per figure of merit (WEPB015 Fig. 6). Pass the
         ``results`` from :meth:`run_sensitivity`, or omit to read ``uq/sobol.json``.
         The wide gap between a variable's main and total index flags its
-        higher-order interactions."""
+        higher-order interactions.
+
+        ``group=True`` orders the x-axis by variable **stem** — every ``Req``
+        (``Req1, Req2, …``) before every ``Ri``, as in the paper's Fig. 6 — instead
+        of the order they were sampled in."""
         if results is None:
             path = os.path.join(self.cavity.uq_dir, 'sobol.json')
             if not os.path.exists(path):
@@ -1209,6 +1308,14 @@ class EigenmodeSolver:
 
         def _bare(c):
             return c.split(':')[-1].strip()
+
+        def _stem_key(v):
+            # split a trailing integer: 'Req12' -> ('Req', 12); 'Ri' -> ('Ri', 0)
+            i = len(v)
+            while i > 0 and v[i - 1].isdigit():
+                i -= 1
+            return (v[:i], int(v[i:]) if i < len(v) else 0)
+
         with house_style():
             n = len(fms)
             n_vars = max(len(results[fm]) for fm in fms)
@@ -1216,6 +1323,8 @@ class EigenmodeSolver:
                                                     2.4 * n), squeeze=False)
             for ax, fm in zip(axes[:, 0], fms):
                 variables = list(results[fm])
+                if group:
+                    variables = sorted(variables, key=_stem_key)
                 x = np.arange(len(variables))
                 w = 0.4
                 s1 = [results[fm][v]['S1'] for v in variables]
@@ -1738,7 +1847,7 @@ class MultipactingSolver:
         spec = self._field_mesh_spec()
         if spec is None:
             pol_dir = Path(monopole_dir(self.cavity.eigenmode.folder))
-            if (pol_dir / 'mesh.pkl').exists():
+            if _has_mesh(pol_dir):
                 mesh, _, _ = load_eigenmode_fields(str(pol_dir))
                 return mesh
             spec = dict(self.DEFAULT_EIGENMODE['mesh_config'])
@@ -1775,10 +1884,10 @@ class MultipactingSolver:
         ``mesh_config`` run) has solved one, else the shared monopole eigenmode
         folder. ``None`` if neither exists yet."""
         own = self.folder / 'field'
-        if (own / 'gfu_EH.pkl').exists():
+        if _has_field(own):
             return own
         pol = Path(monopole_dir(self.cavity.eigenmode.folder))
-        return pol if (pol / 'gfu_EH.pkl').exists() else None
+        return pol if _has_field(pol) else None
 
     @property
     def has_field(self):
@@ -2094,7 +2203,7 @@ class MultipactingSolver:
         # A field solved earlier by compute_field() is reused as-is: re-solving it
         # would silently discard the mesh the user inspected.
         own_field = self.folder / 'field'
-        if (own_field / 'gfu_EH.pkl').exists():
+        if _has_field(own_field):
             info(f"Multipacting: a field has already been computed in {own_field} "
                  f"— using it (call compute_field() again to replace it).")
             fields_dir = own_field
@@ -2156,7 +2265,7 @@ class MultipactingSolver:
         solve first if its fields are not on disk."""
         def pol_dir():
             return Path(monopole_dir(self.cavity.eigenmode.folder))
-        have = (pol_dir() / 'gfu_EH.pkl').exists() and (pol_dir() / 'mesh.pkl').exists()
+        have = _has_field(pol_dir()) and _has_mesh(pol_dir())
         if not have:
             cfg = dict(self.DEFAULT_EIGENMODE)
             if eigenmode_config:

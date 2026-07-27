@@ -16,7 +16,6 @@ PyMultipact used exactly.
 """
 import json
 import os
-import pickle
 
 import numpy as np
 from ngsolve import curl
@@ -57,14 +56,17 @@ def build_emfield(gfu_E, mode, freq_mhz):
 def load_eigenmode_fields(fields_dir):
     """Load ``(mesh, gfu_E, gfu_H)`` from an eigenmode polarisation folder.
 
-    Reads the ``mesh.pkl`` and ``gfu_EH.pkl`` the eigenmode solver writes into
-    ``eigenmode/<pol>/``. Kept separate from :func:`build_emfield` so a worker
-    process can load once and build the field per swept mode.
+    Delegates to :meth:`NGSolveMEVP.load_fields`, which rebuilds the product
+    space on the saved (round-tripping ``.vol``) mesh and reloads the projected
+    coefficient vectors — so this works uniformly for fixed and **adaptively
+    refined** solves (a raw ``gfu_EH.pkl`` pickle does not round-trip a refined
+    mesh). Kept separate from :func:`build_emfield` so a worker process can load
+    once and build the field per swept mode. The mesh returned is the field's own
+    (curved to the solve order), so field evaluations land on the render mesh.
     """
-    with open(os.path.join(fields_dir, 'mesh.pkl'), 'rb') as f:
-        mesh = pickle.load(f)
-    with open(os.path.join(fields_dir, 'gfu_EH.pkl'), 'rb') as f:
-        gfu_E, gfu_H = pickle.load(f)
+    solver = NGSolveMEVP()
+    gfu_E, gfu_H = solver.load_fields(fields_dir, 0)
+    mesh = gfu_E[0].space.mesh if gfu_E else solver.load_mesh(fields_dir)
     return mesh, gfu_E, gfu_H
 
 
@@ -121,7 +123,11 @@ def solve_multipacting_field(cav, save_dir, mesh_config=None, n_modes=None,
 
     os.makedirs(save_dir, exist_ok=True)
     solver.save_mesh(save_dir, mesh)
-    solver.save_fields(save_dir, gfu_E, gfu_H)
+    # geom_order=1: the own-field mesh is STRAIGHT (built with order=1 above) and
+    # must stay straight on reload so the tracker's collision polyline coincides
+    # with the element edges — see the mesh comment above.
+    solver.save_fields(save_dir, gfu_E, gfu_H, order, pol_number(polarisation),
+                       freqs, geom_order=1)
     freqs = [float(f) for f in freqs]
     with open(os.path.join(save_dir, 'freqs.json'), 'w') as f:
         json.dump(freqs, f, indent=4)

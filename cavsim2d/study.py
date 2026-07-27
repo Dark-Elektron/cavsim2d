@@ -8,6 +8,8 @@ from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
 from scipy.special import *
 import fnmatch
+import importlib
+import itertools
 import json
 import matplotlib
 import matplotlib as mpl
@@ -30,6 +32,16 @@ from cavsim2d.solvers.solver_objects import (OptimisationSolver, StudyEigenmode,
                                              DEFAULT_WAKEFIELD_CONFIG, _maybe_show)
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.style import house_style, WARM
+
+
+def _sweep_point_name(keys, combo):
+    """A filesystem-safe cavity name for one sweep point, e.g. ``Req103p35_Ri20``."""
+    parts = []
+    for k, v in zip(keys, combo):
+        s = f'{v:g}' if isinstance(v, (int, float)) else str(v)
+        parts.append(f'{k}{s}'.replace('.', 'p').replace('-', 'm').replace(' ', ''))
+    return '_'.join(parts)
+
 
 class Study:
     """A study: a manager over several RF-device simulations (cavities, guns, …).
@@ -200,6 +212,176 @@ class Study:
 
                 self.shape_space[cav.name] = cav.shape
                 self.shape_space_multicell[cav.name] = cav.shape_multicell
+
+    # -- Parameter sweep ----------------------------------------------------
+
+    def sweep(self, template, parameters, mode='tensor', names=None, folder=None):
+        """Build a Study of cavities spanning a grid of parameter values.
+
+        A sweep is Study-initiated because every point is a distinct cavity with
+        its own folder and simulations.
+
+        Parameters
+        ----------
+        template : Cavity
+            The base geometry; each point is ``template.rebuild(...)`` with the
+            swept variables overridden. Works for any model (uses the model's own
+            ``rebuild`` / ``expand_variable``), so a multicell ``'Req'`` correctly
+            sets every cell.
+        parameters : dict ``{var: [values]}``
+            The variables to sweep and the values for each.
+        mode : {'tensor', 'hadamard'}
+            ``'tensor'`` sweeps **every combination** (cartesian product);
+            ``'hadamard'`` sweeps them **element-wise** (zipped) and requires every
+            value list to be the same length (raises ``ValueError`` otherwise).
+        names : list of str, optional
+            Explicit per-point cavity names (default: derived from the values).
+
+        Returns
+        -------
+        Study
+            A study of the swept cavities. Run any analysis on it
+            (``sw.run_eigenmode(...)``) and compare via ``sw.eigenmode.qois_df``,
+            ``sw.eigenmode.plot_compare()`` or :meth:`results` (which joins the
+            swept values with the QOIs). The swept values are on ``sw.sweep_table``.
+        """
+        if not isinstance(template, Cavity):
+            raise TypeError('sweep(template, ...): template must be a Cavity.')
+        if mode not in ('tensor', 'hadamard'):
+            raise ValueError(f"sweep mode must be 'tensor' or 'hadamard', got {mode!r}.")
+        if not parameters:
+            raise ValueError('sweep: `parameters` must be a non-empty {var: [values]} dict.')
+
+        keys = list(parameters)
+        vals = [list(parameters[k]) for k in keys]
+        for k in keys:                       # reject unknown vars up front, with the model's own names
+            template.expand_variable(k)
+        if mode == 'hadamard':
+            lengths = {k: len(v) for k, v in zip(keys, vals)}
+            if len(set(lengths.values())) != 1:
+                raise ValueError(
+                    'hadamard sweep requires every parameter value list to be the '
+                    f'same length; got {lengths}. Use mode="tensor" for a full grid.')
+            combos = list(zip(*vals))
+        else:
+            combos = list(itertools.product(*vals))
+
+        rows, table_rows = {}, {}
+        for i, combo in enumerate(combos):
+            nm = names[i] if names else _sweep_point_name(keys, combo)
+            slot_row = {}
+            for k, v in zip(keys, combo):
+                for slot in template.expand_variable(k):
+                    slot_row[slot] = v
+            rows[nm] = slot_row
+            table_rows[nm] = dict(zip(keys, combo))
+
+        diff = pd.DataFrame.from_dict(rows, orient='index')
+        if folder is None:
+            # A unique subfolder per sweep call, so successive sweeps on the same
+            # study don't accumulate into one directory (which would then reload
+            # mixed together via Study.load).
+            n = getattr(self, '_sweep_counter', 0)
+            self._sweep_counter = n + 1
+            base = self.projectDir or os.getcwd()
+            folder = os.path.join(str(base), 'sweep' if n == 0 else f'sweep_{n}')
+        sw = template.spawn(diff, folder)
+        sw.name = 'sweep'
+        sw.sweep_parameters = dict(parameters)
+        sw.sweep_mode = mode
+        sw.sweep_table = pd.DataFrame.from_dict(table_rows, orient='index')
+        return sw
+
+    def results(self, analysis='eigenmode'):
+        """One table joining the swept parameter values with an analysis' QOIs,
+        one row per cavity (index = cavity name).
+
+        Reads each cavity's primary result dict (``cav.eigenmode.qois`` /
+        ``cav.wakefield.qois``) so the table has exactly one row per point; only
+        scalar QOIs are kept. Requires the analysis to have been run on this
+        (sweep) study; without a ``sweep_table`` it returns the QOIs alone."""
+        rows = {}
+        for cav in self.cavities_list:
+            ns = getattr(cav, analysis, None)
+            q = getattr(ns, 'qois', None)
+            if isinstance(q, dict) and q:
+                rows[cav.name] = {k: v for k, v in q.items()
+                                  if isinstance(v, (int, float)) and not isinstance(v, bool)}
+        qdf = pd.DataFrame.from_dict(rows, orient='index')
+        table = getattr(self, 'sweep_table', None)
+        if table is not None:
+            return table.join(qdf, how='left')
+        return qdf
+
+    # -- Persistence --------------------------------------------------------
+
+    @classmethod
+    def load(cls, project_dir, models=None, name='cavities'):
+        """Reconstruct a Study from a saved project directory.
+
+        Scans ``project_dir`` for cavity folders (each carries a
+        ``geometry/model.json`` snapshot written on creation) and rebuilds every
+        cavity with its ``self_dir`` pointing at the existing folder, so all its
+        cached results — ``cav.eigenmode.qois``, ``cav.wakefield.qois``,
+        ``cav.tuned`` — read straight from disk with **no re-simulation**. The
+        returned Study behaves like any other, so two loaded studies can be
+        compared directly (``study.eigenmode.plot_compare()``, ``qois_df``).
+
+        ``models`` optionally maps a model's class name to the class, for custom
+        (in-notebook) geometries whose module is not importable by name.
+        """
+        project_dir = str(project_dir)
+        if not os.path.isdir(project_dir):
+            raise FileNotFoundError(f'No such project directory: {project_dir}')
+
+        study = cls(project_dir, _skip_project_init=True, name=name)
+        models = models or {}
+        loaded = 0
+        for entry in sorted(os.listdir(project_dir)):
+            sub = os.path.join(project_dir, entry)
+            model_json = os.path.join(sub, 'geometry', 'model.json')
+            if not os.path.isfile(model_json):
+                continue
+            try:
+                with open(model_json) as f:
+                    state = json.load(f)
+            except Exception as e:
+                warning(f'load: could not read {model_json}: {e!r}')
+                continue
+            klass = models.get(state.get('model'))
+            if klass is None:
+                try:
+                    klass = getattr(importlib.import_module(state.get('module', '')),
+                                    state['model'])
+                except Exception:
+                    warning(
+                        f"load: cannot import model {state.get('model')!r} from "
+                        f"{state.get('module')!r} for '{entry}'. Pass "
+                        f"models={{'{state.get('model')}': <class>}} to load a custom "
+                        f'geometry. Skipping.')
+                    continue
+            try:
+                cav = klass._reconstruct_from_state(state)
+            except Exception as e:
+                warning(f"load: could not reconstruct '{entry}': {e!r}")
+                continue
+            cav.name = entry
+            cav.projectDir = project_dir
+            cav.self_dir = sub
+            cav.uq_dir = os.path.join(sub, 'uq')
+            geo = os.path.join(sub, 'geometry', 'geodata.geo')
+            cav.geo_filepath = geo if os.path.isfile(geo) else None
+            study.cavities_list.append(cav)
+            study.cavities_dict[cav.name] = cav
+            study.shape_space[cav.name] = getattr(cav, 'shape', None)
+            study.shape_space_multicell[cav.name] = getattr(cav, 'shape_multicell', None)
+            loaded += 1
+
+        if loaded == 0:
+            warning(f'load: no reconstructable cavities found under {project_dir}. '
+                    '(A cavity folder needs a geometry/model.json, written when the '
+                    'cavity is created.)')
+        return study
 
     def set_name(self, name):
         """
@@ -2079,7 +2261,11 @@ class Study:
         }
 
         if qois is None:
-            selected_qois = ['freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]', 'R/Q [Ohm]']
+            # The paper's Fig. 5 set (G, kcc, ff were missing before). Absent
+            # columns are filtered out below, so this degrades gracefully to
+            # whatever the run actually recorded.
+            selected_qois = ['freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]',
+                             'R/Q [Ohm]', 'G [Ohm]', 'kcc [%]', 'ff [%]']
         else:
             if isinstance(qois, str):
                 qois = [qois]

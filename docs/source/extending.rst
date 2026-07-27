@@ -166,3 +166,14 @@ That is the whole model. It now behaves like any built-in cavity:
 
 Because ``profile()`` labels its wall ``PEC`` and its apertures ``PMC``, the same
 ``ConeCavity`` also runs through the wakefield and multipacting analyses unchanged.
+
+Worked examples
+---------------
+
+Two runnable notebooks build custom geometries from scratch and run several
+analyses on each:
+
+- :doc:`examples/custom_geometry/cone_cavity` — this cone, through eigenmode,
+  tuning and wakefield;
+- :doc:`examples/custom_geometry/dome_cavity` — a **curved** (arc-walled) cavity,
+  through eigenmode, multipacting and tuning.

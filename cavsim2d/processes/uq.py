@@ -188,10 +188,12 @@ def _save_assembled_geometry(cav):
         pass
     eig_dir = getattr(cav, 'eigenmode_dir', None)
     if eig_dir:
-        for cand in (os.path.join(eig_dir, 'monopole', 'mesh.pkl'),
-                     os.path.join(eig_dir, 'mesh.pkl')):
-            if os.path.exists(cand):
-                shutil.copy(cand, os.path.join(geo_dir, 'mesh.pkl'))
+        for name in ('mesh.vol', 'mesh.pkl'):
+            cand = next((p for p in (os.path.join(eig_dir, 'monopole', name),
+                                     os.path.join(eig_dir, name))
+                         if os.path.exists(p)), None)
+            if cand:
+                shutil.copy(cand, os.path.join(geo_dir, name))
                 break
 
 

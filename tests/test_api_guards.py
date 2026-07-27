@@ -18,12 +18,12 @@ def test_dead_cavities_wrappers_removed(name):
     assert not hasattr(Study, name), f"{name} should have been deleted"
 
 
-@pytest.mark.parametrize("cls", [Cavity, Study])
-def test_sweep_was_removed(cls):
-    """``sweep`` was a stub that only raised NotImplementedError; it was removed
-    rather than ported. The supported pattern is one cavity per sweep value —
-    see the wakefield ``parameter_sweep`` example."""
-    assert not hasattr(cls, 'sweep'), f"{cls.__name__}.sweep should have been deleted"
+def test_sweep_is_study_only():
+    """A parameter sweep saves several cavities with their own simulations, so it
+    is a Study-level operation. ``Study.sweep`` is the real feature; the old
+    per-cavity ``Cavity.sweep`` stub stays removed."""
+    assert not hasattr(Cavity, 'sweep'), "Cavity.sweep should stay removed (sweep is Study-only)"
+    assert callable(getattr(Study, 'sweep', None)), "Study.sweep should exist"
 
 
 def test_imports_live_at_module_top():

@@ -29,9 +29,10 @@ def test_plot_compare_fm_scatter_defaults(tmp_path):
     # Call plot_compare_fm_scatter (without uq)
     axd = cavs.eigenmode.plot_fm_scatter()
     
-    # Verify the default axes are created
-    expected_default_keys = ['freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]', 'R/Q [Ohm]']
-    assert set(axd.keys()) == set(expected_default_keys)
+    # The default now follows the paper's Fig. 5 set (G was previously missing);
+    # absent QOIs are filtered out, so we assert the core set is present incl. G.
+    core = {'freq [MHz]', 'Epk/Eacc []', 'Bpk/Eacc [mT/MV/m]', 'R/Q [Ohm]', 'G [Ohm]'}
+    assert core.issubset(set(axd.keys())), axd.keys()
     plt.close('all')
 
 def test_plot_compare_fm_scatter_custom_qois(tmp_path):

@@ -474,7 +474,8 @@ class Cavity(ABC):
 
         Written as ``<self_dir>/geometry/parameters.json`` so subsequent
         analyses can detect when the in-memory cavity no longer matches
-        the cached simulation results.
+        the cached simulation results. A companion ``model.json`` records
+        enough to *reconstruct* the cavity from disk (:meth:`Study.load`).
         """
         if self.self_dir is None:
             return
@@ -486,6 +487,41 @@ class Cavity(ABC):
         except Exception:
             # Snapshot is advisory — never block geometry writes on IO.
             pass
+        try:
+            with open(geo_dir / 'model.json', 'w') as f:
+                json.dump(self._reconstruct_state(), f, indent=2, default=str)
+        except Exception:
+            pass
+
+    def _reconstruct_state(self):
+        """The state :meth:`Study.load` needs to rebuild this cavity from disk:
+        the model class + the attributes :meth:`rebuild` reads, plus parameters."""
+        return {
+            'model': type(self).__name__,
+            'module': type(self).__module__,
+            'n_cells': int(getattr(self, 'n_cells', 1) or 1),
+            'beampipe': getattr(self, 'beampipe', 'none'),
+            'cell_parameterisation': getattr(self, 'cell_parameterisation', 'simplecell'),
+            'name': self.name,
+            'parameters': dict(self.parameters),
+        }
+
+    @classmethod
+    def _reconstruct_from_state(cls, state):
+        """Rebuild a bare cavity of this type from a :meth:`_reconstruct_state`
+        dict. Built on :meth:`rebuild` (the one hook every model implements), so
+        it is generic — a stub carrying just the attributes ``rebuild`` reads is
+        enough to produce a fresh, fully-typed instance."""
+        stub = cls.__new__(cls)
+        stub.n_cells = state.get('n_cells', 1)
+        stub.beampipe = state.get('beampipe', 'none')
+        stub.cell_parameterisation = state.get('cell_parameterisation', 'simplecell')
+        stub.name = state.get('name', 'cavity')
+        stub.color = state.get('color', 'k')
+        stub.plot_label = state.get('plot_label', None)
+        cav = stub.rebuild(dict(state['parameters']), beampipe=stub.beampipe)
+        cav.name = state.get('name', cav.name)
+        return cav
 
     def _check_geometry_mismatch(self, analysis):
         """Warn if the on-disk geometry snapshot disagrees with
@@ -1949,9 +1985,9 @@ class Cavity(ABC):
     def show_mesh(self, plotter='ngsolve', pol='monopole'):
         """Interactive NGSolve (webgui) view of the mesh used in the analysis."""
         mesh_path = self._eigenmode_pol_dir(pol)
-        if os.path.exists(os.path.join(mesh_path, 'mesh.pkl')):
+        if any(os.path.exists(os.path.join(mesh_path, f)) for f in ('mesh.vol', 'mesh.pkl')):
             return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter)
-        self._eigenmode_artifact_error(pol, 'mesh.pkl', 'mesh')
+        self._eigenmode_artifact_error(pol, 'mesh.vol', 'mesh')
 
     def show_fields(self, mode=1, which='E', plotter='ngsolve', pol='monopole'):
         """Interactive NGSolve (webgui) view of the eigenmode fields.
@@ -1960,9 +1996,9 @@ class Cavity(ABC):
         number m); *which* then accepts 'E'/'H' (in-plane envelopes) as well as
         'Ephi'/'Hphi' (azimuthal envelopes)."""
         field_path = self._eigenmode_pol_dir(pol)
-        if os.path.exists(os.path.join(field_path, 'gfu_EH.pkl')):
+        if any(os.path.exists(os.path.join(field_path, f)) for f in ('field_meta.json', 'gfu_EH.pkl')):
             return ngsolve_mevp.show_fields(field_path, mode, which, plotter)
-        self._eigenmode_artifact_error(pol, 'gfu_EH.pkl', 'field data')
+        self._eigenmode_artifact_error(pol, 'field_meta.json', 'field data')
 
     def _plot_convergence(self, ax):
         keys = list(ax.keys())
@@ -2666,15 +2702,22 @@ class Cavity(ABC):
             geo_dir = os.path.join(scav.self_dir, 'geometry')
             os.makedirs(geo_dir, exist_ok=True)
 
-            scav.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
-            scav.write_geometry(scav.parameters, scav.n_cells, scav.beampipe,
-                                write=scav.geo_filepath)
+            # Native (profile()-based) models have no gmsh writer; the solver
+            # meshes profile() directly. Only write a .geo when a writer exists,
+            # so a custom geometry (profile() + rebuild() only) also spawns.
+            writer = getattr(scav, 'write_geometry', None)
+            if callable(writer):
+                scav.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
+                writer(scav.parameters, scav.n_cells, scav.beampipe,
+                       write=scav.geo_filepath)
+            else:
+                scav.geo_filepath = None
             scav._write_geometry_snapshot()
 
             spawn.cavities_list.append(scav)
             spawn.cavities_dict[scav.name] = scav
-            spawn.shape_space[scav.name] = scav.shape
-            spawn.shape_space_multicell[scav.name] = scav.shape_multicell
+            spawn.shape_space[scav.name] = getattr(scav, 'shape', None)
+            spawn.shape_space_multicell[scav.name] = getattr(scav, 'shape_multicell', None)
 
         return spawn
 

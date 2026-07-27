@@ -99,7 +99,8 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
 
     # legacy flat-layout monopole artefacts (pre-``monopole/`` subfolder)
     legacy_monopole_files = ('qois.json', 'qois_all_modes.json', 'gfu_EH.pkl',
-                             'mesh.pkl', 'Ez_0_abs.csv')
+                             'gfu_E_vecs.npy', 'field_meta.json', 'mesh.pkl',
+                             'mesh.vol', 'Ez_0_abs.csv')
 
     for i, (key, cav) in enumerate(list(cavs_dict.items())):
         cav_path = Path(cav.self_dir)

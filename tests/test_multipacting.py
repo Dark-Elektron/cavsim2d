@@ -184,7 +184,7 @@ def test_pec_maxh_gives_multipacting_its_own_field(tmp_path, monkeypatch):
         with open(p, 'rb') as f:
             return hashlib.md5(f.read()).hexdigest()
     qois_before = digest(os.path.join(eig_dir, 'qois.json'))
-    mesh_before = digest(os.path.join(eig_dir, 'mesh.pkl'))
+    mesh_before = digest(os.path.join(eig_dir, 'mesh.vol'))
     freq_before = cav.eigenmode.qois['freq [MHz]']
 
     cav.multipacting.run({'proc_count': 1, 'pec_maxh': 1.0,
@@ -196,14 +196,14 @@ def test_pec_maxh_gives_multipacting_its_own_field(tmp_path, monkeypatch):
 
     # own field written, and the sweep used it
     fdir = os.path.join(mp.folder, 'field')
-    for fn in ('mesh.pkl', 'gfu_EH.pkl', 'freqs.json'):
+    for fn in ('mesh.vol', 'field_meta.json', 'gfu_E_vecs.npy', 'freqs.json'):
         assert os.path.exists(os.path.join(fdir, fn))
     assert mp.results['fields_dir'].endswith('field')
     assert len(mp.counter) == 3 and np.all(np.isfinite(mp.counter))
 
     # the shared eigenmode results are byte-identical -- untouched
     assert digest(os.path.join(eig_dir, 'qois.json')) == qois_before
-    assert digest(os.path.join(eig_dir, 'mesh.pkl')) == mesh_before
+    assert digest(os.path.join(eig_dir, 'mesh.vol')) == mesh_before
 
     # same physics on the refined mesh: the fundamental agrees
     with open(os.path.join(fdir, 'freqs.json')) as f:

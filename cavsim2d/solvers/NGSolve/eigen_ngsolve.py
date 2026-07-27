@@ -736,7 +736,7 @@ class NGSolveMEVP:
         system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver)
         freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
         if save_dir:
-            self.save_fields(save_dir, gfu_E, gfu_H)
+            self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m_pol, freq_fes)
         return freq_fes, gfu_E, gfu_H
 
     @staticmethod
@@ -896,7 +896,7 @@ class NGSolveMEVP:
                 mesh, mesh_p, n_modes, pinvit_maxit, system,
                 adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
 
-        self.save_fields(save_dir, gfu_E, gfu_H)
+        self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes)
         return freq_fes, gfu_E, gfu_H
 
     def solve_convergence(self, cav, eigenmode_config=None):
@@ -1182,28 +1182,112 @@ class NGSolveMEVP:
     # Persistence
     # ──────────────────────────────────────────────────────────────────────
 
-    @staticmethod
-    def save_fields(project_folder, gfu_E, gfu_H):
-        with open(os.path.join(project_folder, 'gfu_EH.pkl'), "wb") as f:
-            pickle.dump([gfu_E, gfu_H], f)
+    def save_fields(self, project_folder, gfu_E, gfu_H, mesh_p, m, freqs,
+                    geom_order=None):
+        """Persist the eigenmode fields so they reload consistently — including
+        after **adaptive** refinement.
+
+        An adaptively-refined NGSolve mesh does NOT round-trip: any reload (pickle
+        or netgen ``.vol``) returns a *flattened* mesh whose space has a different
+        ndof than the hierarchical one the field was solved on, so raw-pickling the
+        GridFunctions gave the ``BaseVector::Set: size a != b`` error hit by
+        show_fields / multipacting after an adaptive run. The fix: save the mesh as
+        ``.vol``, **reload the flattened mesh here**, and project each mode's E onto
+        the space built on it (the geometry and order are identical, so the
+        projection is exact to machine precision). Save those projected coefficient
+        vectors + the metadata needed to rebuild the space (``mesh_p``, azimuthal
+        order ``m``, per-mode ``freqs``); ``gfu_H`` is derived from E on reload
+        (see :meth:`load_fields`).
+
+        *geom_order* is the mesh's **geometric curve order**, kept distinct from the
+        field's FES order ``mesh_p``: the eigenmode solve curves to ``mesh_p`` (so it
+        defaults there), but multipacting's own-field mesh is deliberately **straight**
+        (``geom_order=1``) so the tracker's collision polyline coincides with the
+        element edges — reload must not curve it (see ``solve_multipacting_field``)."""
+        n = len(gfu_E)
+        geom_order = int(mesh_p if geom_order is None else geom_order)
+        meta = {'mesh_p': int(mesh_p), 'm': int(m), 'n_modes': int(n),
+                'geom_order': geom_order, 'freqs': [float(v) for v in freqs]}
+        if n:
+            # Persist the (round-tripping) flattened mesh, then reload it so the
+            # saved vectors live on the exact space reload will rebuild.
+            src_mesh = gfu_E[0].space.mesh
+            self.save_mesh(project_folder, src_mesh)
+            flat = self.load_mesh(project_folder)
+            if geom_order > 1:
+                flat.Curve(geom_order)
+            fes = self._build_system(flat, mesh_p, m)['fes']
+            fes.Update()
+            vecs = []
+            for g in gfu_E:
+                fg = GridFunction(fes)
+                fg.components[0].Set(g.components[0])       # HCurl E block
+                fg.components[1].Set(g.components[1])       # H1 u_phi block
+                vecs.append(np.asarray(fg.vec.FV().NumPy(), dtype=float).copy())
+            np.save(os.path.join(project_folder, 'gfu_E_vecs.npy'), np.stack(vecs))
+        else:
+            np.save(os.path.join(project_folder, 'gfu_E_vecs.npy'), np.empty((0, 0)))
+        with open(os.path.join(project_folder, 'field_meta.json'), 'w') as f:
+            json.dump(meta, f, indent=2)
 
     @staticmethod
     def save_mesh(folder, mesh):
-        """Save the mesh into *folder* (a polarisation results folder)."""
-        with open(os.path.join(folder, "mesh.pkl"), "wb") as f:
-            pickle.dump(mesh, f)
-
-    @staticmethod
-    def load_fields(folder, mode):
-        with open(os.path.join(folder, 'gfu_EH.pkl'), "rb") as f:
-            [gfu_E, gfu_H] = pickle.load(f)
-        return gfu_E, gfu_H
+        """Save the mesh as netgen ``.vol`` into *folder*. Unlike a pickle, a
+        ``.vol`` round-trips a refined mesh to a stable (flattened) mesh, which is
+        what :meth:`save_fields` projects the fields onto and :meth:`load_fields`
+        rebuilds — so the two always agree."""
+        mesh.ngmesh.Save(os.path.join(folder, "mesh.vol"))
 
     @staticmethod
     def load_mesh(folder):
+        """Load the mesh (netgen ``.vol``; legacy ``mesh.pkl`` fallback)."""
+        vol = os.path.join(folder, 'mesh.vol')
+        if os.path.exists(vol):
+            return Mesh(vol)
         with open(os.path.join(folder, 'mesh.pkl'), 'rb') as f:
-            mesh = pickle.load(f)
-        return mesh
+            return pickle.load(f)
+
+    def load_fields(self, folder, mode):
+        """Reload the eigenmode fields: rebuild the product space on the saved
+        ``.vol`` mesh, load the projected E vectors, and reconstruct the H
+        envelopes from E. Returns ``(gfu_E, gfu_H)`` in the shape
+        :meth:`_solve_system` produces. Falls back to the legacy ``gfu_EH.pkl``
+        for caches written before this format (fixed meshes only)."""
+        meta_path = os.path.join(folder, 'field_meta.json')
+        if not os.path.exists(meta_path):
+            with open(os.path.join(folder, 'gfu_EH.pkl'), "rb") as f:
+                [gfu_E, gfu_H] = pickle.load(f)
+            return gfu_E, gfu_H
+
+        with open(meta_path) as f:
+            meta = json.load(f)
+        mesh = self.load_mesh(folder)
+        # Curve to the SAVED geometric order (mesh_p for the eigenmode mesh; 1 —
+        # i.e. no curving — for multipacting's deliberately straight own-field mesh).
+        geom_order = int(meta.get('geom_order', meta['mesh_p']))
+        if geom_order > 1:
+            mesh.Curve(geom_order)
+        fes = self._build_system(mesh, meta['mesh_p'], meta['m'])['fes']
+        fes.Update()
+        vecs = np.load(os.path.join(folder, 'gfu_E_vecs.npy'))
+        m_pol = meta['m']
+        inv_r = IfPos(y - AXIS_EPS, 1 / y, 0)
+        gfu_E, gfu_H = [], []
+        for i in range(meta['n_modes']):
+            gfu = GridFunction(fes)
+            fv = gfu.vec.FV().NumPy()
+            if len(vecs[i]) != len(fv):
+                raise ValueError(
+                    f"eigenmode field reload: saved vector has {len(vecs[i])} DOFs "
+                    f"but the rebuilt space has {len(fv)}.")
+            fv[:] = vecs[i]
+            gfu_E.append(gfu)
+            u_gf, uphi_gf = gfu.components
+            w = 2 * pi * meta['freqs'][i] * 1e6
+            H_inplane = inv_r / (mu0 * w) * (m_pol * u_gf + grad(uphi_gf))
+            H_phi = 1 / (mu0 * w) * curl(u_gf)
+            gfu_H.append((H_inplane, H_phi))
+        return gfu_E, gfu_H
 
     # ──────────────────────────────────────────────────────────────────────
     # Visualization
@@ -1233,8 +1317,10 @@ class NGSolveMEVP:
         return sqrt(Norm(u_gf) ** 2 + Norm(e_phi) ** 2)
 
     def show_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
-        mesh = self.load_mesh(folder)
         gfu_E, gfu_H = self.load_fields(folder, mode)
+        # Draw over the field's OWN mesh (curved to the solve order inside
+        # load_fields) so the field CF and the render mesh are the same object.
+        mesh = gfu_E[mode].space.mesh
         field_cf = self._field_cf(gfu_E[mode], gfu_H[mode], which)
 
         if plotter == 'matplotlib':
