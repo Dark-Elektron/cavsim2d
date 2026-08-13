@@ -46,6 +46,52 @@ def _traj_values(path, dt, color_by):
     raise ValueError(f"color_by must be 'velocity' or 'energy', got {color_by!r}")
 
 
+#: The quantities a phase-space axis (or the colour) can plot, keyed by the name
+#: passed as ``x`` / ``y`` / ``color_by``. Each maps a path to one value PER
+#: recorded step (length n), so any two compose directly. Aliases share a target.
+_PHASE_KEYS = ('z', 'r', 'vz', 'vr', 'speed', 'v', 'energy', 'ke', 'phase', 'time')
+
+
+def _kinetic_energy_eV(speed):
+    """Relativistic kinetic energy [eV] of an electron at *speed* [m/s]. Same
+    formula the trajectory colouring uses (see :func:`_traj_values`)."""
+    beta = np.clip(np.asarray(speed) / c0, 0.0, 1 - 1e-12)
+    gamma = 1.0 / np.sqrt(1.0 - beta ** 2)
+    return (gamma - 1.0) * m0 * c0 ** 2 / q0
+
+
+def _phase_quantity(path, dt, omega, key):
+    """One per-point series (length n) for a phase-space axis or the colour.
+
+    *path* is a ``(n, 3)`` ``[z, r, wt+phi]`` history, *dt* the recorded step [s]
+    and *omega* the angular RF frequency [rad/s]. Positions are exact; velocities
+    are finite-differenced (``np.gradient`` — central differences, per-point), the
+    same derivation the trajectory energy/velocity colouring uses. Returns
+    ``(values, label)``."""
+    p = np.asarray(path, dtype=float)
+    z, r, ph = p[:, 0], p[:, 1], p[:, 2]
+    k = str(key).lower()
+    if k == 'z':
+        return z * 1e3, 'z [mm]'
+    if k == 'r':
+        return r * 1e3, 'r [mm]'
+    if k == 'vz':
+        return np.gradient(z, dt), r'$v_z$ [m/s]'
+    if k == 'vr':
+        return np.gradient(r, dt), r'$v_r$ [m/s]'
+    if k in ('speed', 'v'):
+        return np.hypot(np.gradient(z, dt), np.gradient(r, dt)), 'speed [m/s]'
+    if k in ('energy', 'ke'):
+        speed = np.hypot(np.gradient(z, dt), np.gradient(r, dt))
+        return _kinetic_energy_eV(speed), 'kinetic energy [eV]'
+    if k == 'phase':
+        return np.degrees(ph) % 360.0, 'RF phase [deg]'
+    if k == 'time':
+        return (ph - ph[0]) / omega * 1e9, 'time [ns]'
+    raise ValueError(f"unknown phase-space quantity {key!r}; valid keys are "
+                     f"{', '.join(_PHASE_KEYS)}.")
+
+
 def _traj_norm(values):
     """Log colour scale for trajectory values. The dynamic range is real and
     huge: wall-hugging multipacting electrons sit at ~10^2 eV while electrons
@@ -60,6 +106,21 @@ def _traj_norm(values):
     if vmax <= vmin:
         vmax = vmin * 10
     return LogNorm(vmin, vmax)
+
+
+def _color_norm(values):
+    """Colour scale for a phase-space ``color_by`` series, which — unlike the
+    always-positive energy/speed the trajectory plot colours by — can be any
+    quantity: strictly-positive, wide-range data keeps the informative log scale
+    (:func:`_traj_norm`); signed data (e.g. ``vz``) gets a plain linear scale so
+    negatives are not clipped."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    if not len(v):
+        return plt.Normalize(0, 1)
+    if v.min() > 0:
+        return _traj_norm(v)
+    return plt.Normalize(float(v.min()), float(v.max()))
 
 
 def _phase_index(particles, k, path):
@@ -375,7 +436,7 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
     whereas H.264 is 10-50x smaller so the whole animation embeds.
     """
     # Deferred: matplotlib.animation pulls in writer machinery only needed here.
-    from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
+    from matplotlib.animation import FuncAnimation
 
     if not solver.particles:
         info("No multipacting results — run cav.multipacting.run(...) first.")
@@ -497,6 +558,26 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
 
     anim = FuncAnimation(fig, frame, frames=n_frames, interval=1000 / fps,
                          blit=False)
+    return _render_or_embed(anim, fig, fps=fps, n_frames=n_frames, dpi=dpi,
+                            save=save, embed=embed, progress=progress,
+                            inline_format=inline_format, n_sel=len(sel),
+                            kind='Trajectory')
+
+
+def _render_or_embed(anim, fig, *, fps, n_frames, dpi, save, embed, progress,
+                     inline_format, n_sel, kind):
+    """Shared tail for the multipacting animations: optionally write *anim* to a
+    file (*save*) and/or play it inline in a notebook (*embed*).
+
+    Saving picks the writer from the extension (``.gif`` → Pillow, else ffmpeg).
+    Inline playback prefers a compact H.264 ``<video>`` when ffmpeg is available
+    (``inline_format='auto'``) over the JS frame player (which base64-embeds every
+    PNG and is truncated by ``animation.embed_limit`` on a long animation). *kind*
+    labels the info messages ('Trajectory' / 'Phase-space'); *n_sel* is the
+    trajectory count reported. Always returns *anim* (so ``.save()`` stays
+    available)."""
+    # Deferred: matplotlib.animation writer machinery only needed here.
+    from matplotlib.animation import FFMpegWriter, PillowWriter
 
     def _bar(desc):
         """A frame-render progress callback (i, n) -> None, backed by tqdm."""
@@ -513,8 +594,8 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
         t0 = time.time()
         anim.save(save, writer=writer, dpi=dpi,
                   progress_callback=_bar(f'Saving {os.path.basename(str(save))}'))
-        info(f"Trajectory animation saved to {save} "
-             f"({n_frames} frames, {len(sel)} trajectories, "
+        info(f"{kind} animation saved to {save} "
+             f"({n_frames} frames, {n_sel} trajectories, "
              f"{time.time() - t0:.1f}s).")
 
     # embed='auto': play inline in a notebook, but not when saving (a
@@ -526,7 +607,6 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
         # so .save() remains available.
         # Deferred: IPython display + writer availability are notebook/animation APIs.
         from IPython.display import HTML, display
-        from matplotlib.animation import FFMpegWriter
         # Prefer an H.264 <video>: to_jshtml base64-embeds every PNG frame and
         # gets truncated by animation.embed_limit on a long animation (frames
         # silently dropped). Video is 10-50x smaller, so the whole thing embeds.
@@ -535,20 +615,154 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
         t0 = time.time()
         if use_video:
             html = _to_html5_video_with_progress(anim, fps, n_frames, dpi, progress)
-            kind = 'H.264 video'
+            how = 'H.264 video'
         else:
             if inline_format == 'video':
                 info("ffmpeg not found — falling back to the (larger) JS frame "
                      "player. Install ffmpeg for a compact inline video.")
             html = (_to_jshtml_with_progress(anim, fps, n_frames) if progress
                     else anim.to_jshtml(fps=fps, embed_frames=True))
-            kind = 'JS frame player'
-        info(f"Trajectory animation rendered inline as {kind} "
-             f"({n_frames} frames, {len(sel)} trajectories, "
+            how = 'JS frame player'
+        info(f"{kind} animation rendered inline as {how} "
+             f"({n_frames} frames, {n_sel} trajectories, "
              f"{time.time() - t0:.1f}s).")
         plt.close(fig)
         display(HTML(html))
     return anim
+
+
+def phase_space_animation(solver, x='z', y='r', epk_i=None, phi_i=None, traj=None,
+                          color_by='energy', trail=40, step=1, fps=30, save=None,
+                          dpi=120, progress=True, embed='auto',
+                          inline_format='auto', zoom='auto', zoom_smooth=0.15):
+    """Animate the surviving trajectories in a **phase-space projection** — the
+    phase-space companion to :func:`trajectory_animation`. The user chooses what
+    each axis plots (and the colour), and the moving heads with a fading trail
+    evolve over the RF cycle.
+
+    *x*, *y* and *color_by* each name a per-point quantity (see :data:`_PHASE_KEYS`
+    / :func:`_phase_quantity`): ``'z'``/``'r'`` [mm], ``'vz'``/``'vr'``/``'speed'``
+    [m/s], ``'energy'`` [eV], ``'phase'`` [deg] or ``'time'`` [ns]. Any combination
+    is allowed; the default ``x='z', y='r'`` is the real-space projection (without
+    the cavity-wall overlay :func:`trajectory_animation` draws). Velocity and
+    energy are finite-differenced from the recorded positions — the same derivation
+    the trajectory colouring uses — so velocity axes look jagged near wall impacts.
+
+    Selection (``epk_i`` / ``phi_i`` / ``traj``), ``trail``, ``step``, ``fps``,
+    ``save``, ``dpi``, ``progress``, ``embed`` and ``inline_format`` behave exactly
+    as in :func:`trajectory_animation`. ``zoom`` frames the view like there, adapted
+    to the mixed-unit axes: ``'auto'`` (default) one fixed box around all selected
+    points; ``'follow'`` an **adaptive camera** that re-frames each axis
+    independently, every frame, onto the particles still alive (so a wide opening
+    orbit closes in as the multipacting localises), exponentially smoothed by
+    ``zoom_smooth`` (0-1, smaller = slower/steadier); ``None`` is the same fixed box
+    as ``'auto'`` (there is no cavity to fall back to). Returns the
+    :class:`~matplotlib.animation.FuncAnimation`."""
+    # Deferred: matplotlib.animation pulls in writer machinery only needed here.
+    from matplotlib.animation import FuncAnimation
+
+    if not solver.particles:
+        info("No multipacting results — run cav.multipacting.run(...) first.")
+        return None
+    sel = _select_trajectories(solver, epk_i=epk_i, phi_i=phi_i, traj=traj)
+    if not sel:
+        info("No bright (20-hit) trajectories match the selection.")
+        return None
+
+    step = max(1, int(step))
+    dt = _step_dt(solver) * step
+    omega = 2 * np.pi * solver.results['freq [MHz]'] * 1e6
+    paths = [p[::step] for (_, _, p) in sel]
+
+    # Per-point x, y and colour series for every selected path (all length n, so
+    # any pair composes). _phase_quantity raises on an unknown axis key.
+    xs, ys, cs = [], [], []
+    xlabel = ylabel = clabel = ''
+    for p in paths:
+        xv, xlabel = _phase_quantity(p, dt, omega, x)
+        yv, ylabel = _phase_quantity(p, dt, omega, y)
+        cv, clabel = _phase_quantity(p, dt, omega, color_by)
+        xs.append(xv)
+        ys.append(yv)
+        cs.append(cv)
+    norm = _color_norm(np.concatenate([c for c in cs if len(c)]))
+    cmap = plt.get_cmap(TRAJ_CMAP)
+
+    epk_axis = solver.epk
+    epks_shown = sorted({e for (e, _, _) in sel})
+    title = (rf'$E_\mathrm{{pk}}$ = {epk_axis[epks_shown[0]]:.1f} MV/m'
+             if len(epks_shown) == 1 else
+             f'{len(sel)} trajectories, {len(epks_shown)} field levels')
+
+    with house_style():
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        lc = LineCollection([], linewidths=1.6)
+        ax.add_collection(lc)
+        heads = ax.scatter([], [], s=16, c=[], cmap=cmap, norm=norm, zorder=10)
+        fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax,
+                     label=clabel)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        # phase-space axes are mixed-unit: no equal aspect, no wall overlay.
+        allx, ally = np.concatenate(xs), np.concatenate(ys)
+        px = max(0.05 * (float(allx.max()) - float(allx.min())), 1e-9)
+        py = max(0.05 * (float(ally.max()) - float(ally.min())), 1e-9)
+        ax.set_xlim(float(allx.min()) - px, float(allx.max()) + px)
+        ax.set_ylim(float(ally.min()) - py, float(ally.max()) + py)
+
+    n_frames = max(len(p) for p in paths)
+    _cam = {'x': None, 'y': None}
+
+    def _follow_axis(setter, vals, key):
+        lo, hi = float(vals.min()), float(vals.max())
+        pad = max(0.1 * (hi - lo), 1e-9)
+        lo, hi = lo - pad, hi + pad
+        if _cam[key] is None:
+            _cam[key] = (lo, hi)
+        else:
+            a = float(zoom_smooth)
+            _cam[key] = (_cam[key][0] + a * (lo - _cam[key][0]),
+                         _cam[key][1] + a * (hi - _cam[key][1]))
+        setter(*_cam[key])
+
+    def frame(f):
+        segs, colors = [], []
+        hx, hy, hv = [], [], []
+        livex, livey = [], []
+        for xv, yv, cv in zip(xs, ys, cs):
+            n = len(xv)
+            alive = f < n                       # ended tracks freeze on their last point
+            i1 = min(f, n - 1)
+            i0 = max(0, i1 - trail)
+            if i1 >= 1:
+                pts = np.column_stack([xv[i0:i1 + 1], yv[i0:i1 + 1]])
+                seg = np.stack([pts[:-1], pts[1:]], axis=1)
+                rgba = cmap(norm(cv[i0:i1]))
+                rgba[:, 3] = np.linspace(0.12, 1.0, len(rgba))   # fading trace
+                segs.extend(seg)
+                colors.extend(rgba)
+                if alive:
+                    livex.append(xv[i0:i1 + 1])
+                    livey.append(yv[i0:i1 + 1])
+            hx.append(xv[i1])
+            hy.append(yv[i1])
+            hv.append(cv[i1])
+        lc.set_segments(segs)
+        lc.set_color(colors if colors else 'none')
+        heads.set_offsets(np.column_stack([hx, hy]))
+        heads.set_array(np.asarray(hv))
+        if zoom == 'follow' and livex:
+            _follow_axis(ax.set_xlim, np.concatenate(livex), 'x')
+            _follow_axis(ax.set_ylim, np.concatenate(livey), 'y')
+        return lc, heads
+
+    anim = FuncAnimation(fig, frame, frames=n_frames, interval=1000 / fps,
+                         blit=False)
+    return _render_or_embed(anim, fig, fps=fps, n_frames=n_frames, dpi=dpi,
+                            save=save, embed=embed, progress=progress,
+                            inline_format=inline_format, n_sel=len(sel),
+                            kind='Phase-space')
 
 
 def _to_html5_video_with_progress(anim, fps, n_frames, dpi, progress):

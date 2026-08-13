@@ -357,6 +357,120 @@ def test_trajectory_animation_returns_funcanimation_and_saves(tmp_path):
     assert out.exists() and out.stat().st_size > 0
 
 
+def _synthetic_path(n=60):
+    """One synthetic bright path [z, r, wt+phi] bouncing near the equator, with a
+    monotonically advancing RF phase (so 'time'/'phase' are well defined)."""
+    t = np.linspace(0, 1, n)
+    return np.column_stack([1e-3 * np.sin(2 * np.pi * t),
+                            0.1 + 1e-4 * np.abs(np.sin(np.pi * t)),
+                            np.linspace(0, 4 * np.pi, n)])
+
+
+def test_phase_quantity_keys_aliases_and_bad_key():
+    """_phase_quantity gives one finite value per recorded step (length n, so any
+    pair composes) for every axis key; aliases target the same series; an unknown
+    key is an actionable ValueError."""
+    from cavsim2d.analysis.multipacting.plots import _phase_quantity, _PHASE_KEYS
+
+    path = _synthetic_path()
+    dt, omega = 1e-11, 2 * np.pi * 1300e6
+    n = len(path)
+    for key in _PHASE_KEYS:
+        vals, label = _phase_quantity(path, dt, omega, key)
+        assert len(vals) == n and np.all(np.isfinite(vals)), key
+        assert isinstance(label, str) and label
+    # aliases resolve to the same quantity
+    assert np.allclose(_phase_quantity(path, dt, omega, 'v')[0],
+                       _phase_quantity(path, dt, omega, 'speed')[0])
+    assert np.allclose(_phase_quantity(path, dt, omega, 'ke')[0],
+                       _phase_quantity(path, dt, omega, 'energy')[0])
+    # case-insensitive; energy is non-negative; RF phase wraps into one cycle
+    assert np.all(_phase_quantity(path, dt, omega, 'ENERGY')[0] >= 0)
+    ph, _ = _phase_quantity(path, dt, omega, 'phase')
+    assert ph.min() >= 0 and ph.max() < 360
+    with pytest.raises(ValueError, match='unknown phase-space quantity'):
+        _phase_quantity(path, dt, omega, 'momentum')
+
+
+def test_phase_space_animation_returns_funcanimation_and_saves(tmp_path):
+    """animate_phase_space builds a FuncAnimation for any x/y combination and,
+    given `save`, writes the file. Synthetic bright path — no heavy solver; the
+    axis extraction + selection + writer plumbing is what's under test."""
+    import matplotlib
+    matplotlib.use('Agg')
+    from matplotlib.animation import FuncAnimation
+    from cavsim2d.analysis.multipacting.plots import phase_space_animation
+
+    path = _synthetic_path()
+
+    class _P:
+        bright_set = [path]
+        phis_v = np.linspace(0, 2 * np.pi, 4)
+
+    class _S:
+        particles = [_P()]
+        epk = np.array([30.0])
+        results = {'freq [MHz]': 1300.0}
+
+    # default axes (z, r) build without saving
+    anim = phase_space_animation(_S, progress=False, embed=False)
+    assert isinstance(anim, FuncAnimation)
+
+    # a mixed velocity/energy phase space with a SIGNED colour (-> linear norm),
+    # saved to file
+    out = tmp_path / 'ps.gif'
+    anim = phase_space_animation(_S, x='vz', y='energy', color_by='vz',
+                                 step=2, trail=5, fps=10, save=str(out),
+                                 progress=False, embed=False)
+    assert isinstance(anim, FuncAnimation)
+    assert out.exists() and out.stat().st_size > 0
+
+
+def test_phase_space_animation_follow_zoom_tightens():
+    """zoom='follow' is an adaptive camera on the phase-space axes too: the box
+    re-frames each frame onto the live window and closes in as the orbit decays,
+    while zoom='auto' holds one fixed box for the whole animation."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from cavsim2d.analysis.multipacting.plots import phase_space_animation
+
+    # a decaying-amplitude orbit: its recent-window extent shrinks over time, so a
+    # following camera must tighten while a fixed box (sized to the whole orbit)
+    # cannot.
+    n = 120
+    t = np.linspace(0, 1, n)
+    z = 1e-3 * np.sin(6 * np.pi * t) * np.exp(-2.5 * t)
+    r = 0.1 + 1e-4 * np.cos(6 * np.pi * t) * np.exp(-2.5 * t)
+    path = np.column_stack([z, r, np.linspace(0, 8 * np.pi, n)])
+
+    class _P:
+        bright_set = [path]
+        phis_v = np.linspace(0, 2 * np.pi, 4)
+
+    class _S:
+        particles = [_P()]
+        epk = np.array([30.0])
+        results = {'freq [MHz]': 1300.0}
+
+    def spans(zoom):
+        anim = phase_space_animation(_S, x='z', y='r', trail=20, zoom=zoom,
+                                     progress=False, embed=False)
+        ax = plt.gcf().axes[0]
+        out = []
+        for f in (25, 50, 80, 110):
+            anim._func(f)                       # render that frame
+            out.append(ax.get_xlim()[1] - ax.get_xlim()[0])
+        plt.close('all')
+        return out
+
+    fixed = spans('auto')
+    assert max(fixed) - min(fixed) < 1e-9        # one box for the whole animation
+    moving = spans('follow')
+    assert max(moving) - min(moving) > 1e-3      # the camera actually moves
+    assert moving[-1] < moving[0]                # ends closer in than it began
+
+
 def test_draw_trajectory_uses_sequences_and_equal_aspect():
     """_draw_trajectory plots the start marker with sequences (the scalar
     set_data crash inherited from PyMultipact) and keeps equal aspect."""

@@ -221,4 +221,62 @@ still works::
 Inline playback is controlled by ``embed`` (``'auto'`` plays in a notebook
 unless ``save`` was given; ``True``/``False`` forces it).
 
+Phase space
+***********
+``animate_phase_space(x, y)`` is the phase-space companion: the same moving-head,
+fading-trail video, but you choose what each axis (and the colour) plots. Any two
+per-point quantities compose:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 20 60
+
+   * - key
+     - unit
+     - quantity
+   * - ``'z'`` / ``'r'``
+     - mm
+     - axial / radial position (stored directly)
+   * - ``'vz'`` / ``'vr'``
+     - m/s
+     - axial / radial velocity
+   * - ``'speed'`` (``'v'``)
+     - m/s
+     - speed :math:`|v|`
+   * - ``'energy'`` (``'ke'``)
+     - eV
+     - relativistic kinetic energy
+   * - ``'phase'``
+     - deg
+     - RF phase (wrapped to one cycle)
+   * - ``'time'``
+     - ns
+     - elapsed time since launch
+
+.. code-block:: python
+
+    mp.animate_phase_space()                          # default: z vs r (real space)
+    mp.animate_phase_space(x='z', y='vz')             # axial phase space
+    mp.animate_phase_space(x='phase', y='energy')     # the RF "bucket" view
+    mp.animate_phase_space(x='z', y='vz', zoom='follow')    # adaptive camera
+    mp.animate_phase_space(x='vz', y='vr', color_by='time', save='ps.mp4')
+
+Selection (``epk_i`` / ``phi_i`` / ``traj``), ``trail`` / ``step`` / ``fps``,
+``save``, ``embed`` and the returned ``FuncAnimation`` behave exactly as for
+``animate_trajectories``. ``zoom='auto'`` (default) fixes one box around all the
+selected points; ``zoom='follow'`` is an **adaptive camera** that re-frames each
+axis onto the particles still alive every frame (exponentially smoothed by
+``zoom_smooth``), so an orbit that starts wide closes in as the electrons localise
+— the same idea as the trajectory ``zoom='follow'``, adapted to the independent,
+mixed-unit axes. Unlike the real-space plot there is no cavity-wall overlay and no
+equal aspect.
+
+.. note::
+
+   Only ``z``/``r`` are stored; ``vz``/``vr``/``speed``/``energy`` are
+   **finite-differenced** from the recorded position history (the same derivation
+   the trajectory colouring uses), so velocity axes look jagged near wall impacts.
+   The animation shows only the 20-hit **bright set** (resonant survivors), and the
+   tracker is axisymmetric, so these are 2-D projections — there is no 3-D momentum.
+
 See the worked example: :doc:`examples/multipacting/tesla`.

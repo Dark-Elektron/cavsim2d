@@ -1735,7 +1735,8 @@ class MultipactingSolver:
       given in the config; a key in both warns that the config wins.
     - Results: ``counter`` / ``epk`` / ``final_energy`` / ``results``;
       ``plot_counter()`` / ``plot_final_energy()`` / ``plot_enhanced_counter()`` /
-      ``plot_distance_map(i)`` / ``plot_trajectories()`` / ``animate_trajectories()``
+      ``plot_distance_map(i)`` / ``plot_trajectories()`` /
+      ``animate_trajectories()`` / ``animate_phase_space(x, y)``
     """
 
     #: Eigenmode config for the auto-run: monopole, magnetic end-planes, and a
@@ -2435,6 +2436,37 @@ class MultipactingSolver:
                                     progress=progress, embed=embed,
                                     zoom_smooth=zoom_smooth, zoom_min=zoom_min,
                                     inline_format=inline_format)
+
+    def animate_phase_space(self, x='z', y='r', epk_i=None, phi_i=None, traj=None,
+                            color_by='energy', trail=40, step=1, fps=30, save=None,
+                            dpi=120, progress=True, embed='auto',
+                            inline_format='auto', zoom='auto', zoom_smooth=0.15):
+        """Animate the surviving trajectories in a **phase-space projection** —
+        the companion to :meth:`animate_trajectories`, with the user free to
+        choose what each axis plots.
+
+        ``x``, ``y`` and ``color_by`` each name a per-point quantity: ``'z'`` /
+        ``'r'`` [mm], ``'vz'`` / ``'vr'`` / ``'speed'`` [m/s], ``'energy'`` [eV],
+        ``'phase'`` [deg] or ``'time'`` [ns] — any combination (default
+        ``x='z', y='r'``, the real-space projection). Velocity and energy are
+        finite-differenced from the recorded positions (the same derivation the
+        trajectory colouring uses), so velocity axes look jagged near impacts.
+
+        Selection (``epk_i`` / ``phi_i`` / ``traj``), ``trail``, ``step``,
+        ``fps``, ``save`` (``.gif`` / ``.mp4``), ``embed`` and ``inline_format``
+        behave as in :meth:`animate_trajectories`. ``zoom='auto'`` (default) uses
+        one fixed box around all selected points; ``zoom='follow'`` is an
+        **adaptive camera** that re-frames each axis onto the particles still
+        alive every frame (smoothed by ``zoom_smooth``). Returns the
+        :class:`~matplotlib.animation.FuncAnimation`."""
+        # Deferred: pulls in matplotlib.animation (only needed here).
+        from cavsim2d.analysis.multipacting.plots import phase_space_animation
+        return phase_space_animation(self, x=x, y=y, epk_i=epk_i, phi_i=phi_i,
+                                     traj=traj, color_by=color_by, trail=trail,
+                                     step=step, fps=fps, save=save, dpi=dpi,
+                                     progress=progress, embed=embed,
+                                     inline_format=inline_format, zoom=zoom,
+                                     zoom_smooth=zoom_smooth)
 
 
 # ---------------------------------------------------------------------------
