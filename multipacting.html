@@ -900,6 +900,16 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#phase-space" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="multipacting:phase space (reference label)"><span>Phase space</span></span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2501,6 +2511,16 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#phase-space" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="multipacting:phase space (reference label)"><span>Phase space</span></span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2722,6 +2742,73 @@ still works:</p>
 </div>
 <p>Inline playback is controlled by <code class="docutils literal notranslate"><span class="pre">embed</span></code> (<code class="docutils literal notranslate"><span class="pre">'auto'</span></code> plays in a notebook
 unless <code class="docutils literal notranslate"><span class="pre">save</span></code> was given; <code class="docutils literal notranslate"><span class="pre">True</span></code>/<code class="docutils literal notranslate"><span class="pre">False</span></code> forces it).</p>
+<h2 id="phase-space">Phase space<a class="headerlink" href="#phase-space" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">animate_phase_space(x,</span> <span class="pre">y)</span></code> is the phase-space companion: the same moving-head,
+fading-trail video, but you choose what each axis (and the colour) plots. Any two
+per-point quantities compose:</p>
+<table class="docutils data align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>key</p></th>
+<th class="head"><p>unit</p></th>
+<th class="head"><p>quantity</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">'z'</span></code> / <code class="docutils literal notranslate"><span class="pre">'r'</span></code></p></td>
+<td><p>mm</p></td>
+<td><p>axial / radial position (stored directly)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'vz'</span></code> / <code class="docutils literal notranslate"><span class="pre">'vr'</span></code></p></td>
+<td><p>m/s</p></td>
+<td><p>axial / radial velocity</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">'speed'</span></code> (<code class="docutils literal notranslate"><span class="pre">'v'</span></code>)</p></td>
+<td><p>m/s</p></td>
+<td><p>speed <span class="math notranslate nohighlight">\(|v|\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'energy'</span></code> (<code class="docutils literal notranslate"><span class="pre">'ke'</span></code>)</p></td>
+<td><p>eV</p></td>
+<td><p>relativistic kinetic energy</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">'phase'</span></code></p></td>
+<td><p>deg</p></td>
+<td><p>RF phase (wrapped to one cycle)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'time'</span></code></p></td>
+<td><p>ns</p></td>
+<td><p>elapsed time since launch</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">mp</span><span class="o">.</span><span class="n">animate_phase_space</span><span class="p">()</span>                          <span class="c1"># default: z vs r (real space)</span>
+<span class="n">mp</span><span class="o">.</span><span class="n">animate_phase_space</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;vz&#39;</span><span class="p">)</span>             <span class="c1"># axial phase space</span>
+<span class="n">mp</span><span class="o">.</span><span class="n">animate_phase_space</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;phase&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;energy&#39;</span><span class="p">)</span>     <span class="c1"># the RF &quot;bucket&quot; view</span>
+<span class="n">mp</span><span class="o">.</span><span class="n">animate_phase_space</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;vz&#39;</span><span class="p">,</span> <span class="n">zoom</span><span class="o">=</span><span class="s1">&#39;follow&#39;</span><span class="p">)</span>    <span class="c1"># adaptive camera</span>
+<span class="n">mp</span><span class="o">.</span><span class="n">animate_phase_space</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;vz&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;vr&#39;</span><span class="p">,</span> <span class="n">color_by</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="s1">&#39;ps.mp4&#39;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>Selection (<code class="docutils literal notranslate"><span class="pre">epk_i</span></code> / <code class="docutils literal notranslate"><span class="pre">phi_i</span></code> / <code class="docutils literal notranslate"><span class="pre">traj</span></code>), <code class="docutils literal notranslate"><span class="pre">trail</span></code> / <code class="docutils literal notranslate"><span class="pre">step</span></code> / <code class="docutils literal notranslate"><span class="pre">fps</span></code>,
+<code class="docutils literal notranslate"><span class="pre">save</span></code>, <code class="docutils literal notranslate"><span class="pre">embed</span></code> and the returned <code class="docutils literal notranslate"><span class="pre">FuncAnimation</span></code> behave exactly as for
+<code class="docutils literal notranslate"><span class="pre">animate_trajectories</span></code>. <code class="docutils literal notranslate"><span class="pre">zoom='auto'</span></code> (default) fixes one box around all the
+selected points; <code class="docutils literal notranslate"><span class="pre">zoom='follow'</span></code> is an <strong>adaptive camera</strong> that re-frames each
+axis onto the particles still alive every frame (exponentially smoothed by
+<code class="docutils literal notranslate"><span class="pre">zoom_smooth</span></code>), so an orbit that starts wide closes in as the electrons localise
+— the same idea as the trajectory <code class="docutils literal notranslate"><span class="pre">zoom='follow'</span></code>, adapted to the independent,
+mixed-unit axes. Unlike the real-space plot there is no cavity-wall overlay and no
+equal aspect.</p>
+<div class="note admonition">
+<p class="admonition-title">Note</p>
+<p>Only <code class="docutils literal notranslate"><span class="pre">z</span></code>/<code class="docutils literal notranslate"><span class="pre">r</span></code> are stored; <code class="docutils literal notranslate"><span class="pre">vz</span></code>/<code class="docutils literal notranslate"><span class="pre">vr</span></code>/<code class="docutils literal notranslate"><span class="pre">speed</span></code>/<code class="docutils literal notranslate"><span class="pre">energy</span></code> are
+<strong>finite-differenced</strong> from the recorded position history (the same derivation
+the trajectory colouring uses), so velocity axes look jagged near wall impacts.
+The animation shows only the 20-hit <strong>bright set</strong> (resonant survivors), and the
+tracker is axisymmetric, so these are 2-D projections — there is no 3-D momentum.</p>
+</div>
 <p>See the worked example: <a class="reference internal" href="examples/multipacting/tesla.html"><span class="doc">Multipacting: the TESLA mid-cell</span></a>.</p>
 
 
