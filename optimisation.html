@@ -1285,6 +1285,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2467,36 +2515,36 @@
 <h2 id="configuration-dictionary">Configuration Dictionary<a class="headerlink" href="#configuration-dictionary" title="Link to this heading">¶</a></h2>
 <p>Optimisation is driven by a nested configuration dictionary:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">optimisation_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
-        <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-        <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="s1">'tune_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'freqs'</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+        <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+        <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span>
     <span class="p">},</span>
-    <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
-        <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
-        <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
-        <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
-        <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">85.0</span><span class="p">],</span>
-        <span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">93.5</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">],</span>
-        <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">170.0</span><span class="p">,</span> <span class="mf">170.0</span><span class="p">]</span>
+    <span class="s1">'bounds'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'A'</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+        <span class="s1">'B'</span><span class="p">:</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">80.0</span><span class="p">],</span>
+        <span class="s1">'a'</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+        <span class="s1">'b'</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+        <span class="s1">'Ri'</span><span class="p">:</span> <span class="p">[</span><span class="mf">60.0</span><span class="p">,</span> <span class="mf">85.0</span><span class="p">],</span>
+        <span class="s1">'L'</span><span class="p">:</span> <span class="p">[</span><span class="mf">93.5</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">],</span>
+        <span class="s1">'Req'</span><span class="p">:</span> <span class="p">[</span><span class="mf">170.0</span><span class="p">,</span> <span class="mf">170.0</span><span class="p">]</span>
     <span class="p">},</span>
-    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span>
-        <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Epk/Eacc []&#39;</span><span class="p">],</span>
-        <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">],</span>
-        <span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">],</span>
-        <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZL&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
-        <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;ZT&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]</span>
+    <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'monopole:Epk/Eacc []'</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'monopole:Bpk/Eacc [mT/MV/m]'</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">'max'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'ZL'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+        <span class="p">[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'ZT'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]</span>
     <span class="p">],</span>
-    <span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+    <span class="s1">'initial_points'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">'method'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'LHS'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'seed'</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
     <span class="p">},</span>
-    <span class="s1">&#39;no_of_generation&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">5</span>
+    <span class="s1">'no_of_generation'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">'crossover_factor'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">'elites_for_crossover'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">'mutation_factor'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">'chaos_factor'</span><span class="p">:</span> <span class="mi">5</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2536,9 +2584,9 @@
 <p>Each row carries the candidate’s geometry variables and its objective values, so the front can be sorted and picked from directly, e.g. <code class="docutils literal notranslate"><span class="pre">opt.pareto.sort_values('monopole:Epk/Eacc</span> <span class="pre">[]')</span></code>.</p>
 <h2 id="visualisation">Visualisation<a class="headerlink" href="#visualisation" title="Link to this heading">¶</a></h2>
 <p>The objective space can be viewed several ways via <code class="docutils literal notranslate"><span class="pre">kind=</span></code> (<code class="docutils literal notranslate"><span class="pre">'scatter'</span></code>, <code class="docutils literal notranslate"><span class="pre">'pcp'</span></code> parallel-coordinates, <code class="docutils literal notranslate"><span class="pre">'radar'</span></code>, <code class="docutils literal notranslate"><span class="pre">'heatmap'</span></code>), with <code class="docutils literal notranslate"><span class="pre">normalise=True|False</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;scatter&#39;</span><span class="p">)</span>      <span class="c1"># pairwise scatter matrix of objectives</span>
-<span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;pcp&#39;</span><span class="p">)</span>          <span class="c1"># parallel coordinates — one line per design</span>
-<span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;radar&#39;</span><span class="p">)</span>        <span class="c1"># a polygon fingerprint per design</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'scatter'</span><span class="p">)</span>      <span class="c1"># pairwise scatter matrix of objectives</span>
+<span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'pcp'</span><span class="p">)</span>          <span class="c1"># parallel coordinates — one line per design</span>
+<span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'radar'</span><span class="p">)</span>        <span class="c1"># a polygon fingerprint per design</span>
 <span class="n">opt</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">color_by_gen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># every candidate, coloured by generation</span>
 <span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto_history</span><span class="p">()</span>            <span class="c1"># the front from each generation</span>
 <span class="n">opt</span><span class="o">.</span><span class="n">plot_convergence</span><span class="p">()</span>               <span class="c1"># fitness against generation</span>

@@ -789,6 +789,52 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dielectric-regions" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:dielectric regions (reference label)"><span>Dielectric regions</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dielectric regions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-changes-in-the-solve" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:what changes in the solve (reference label)"><span>What changes in the solve</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dielectric-loss" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:dielectric loss (reference label)"><span>Dielectric loss</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:limits (reference label)"><span>Limits</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#accessing-results" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -1295,6 +1341,54 @@
   
   <span class="md-ellipsis">
     <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
     
   </span>
   
@@ -2452,6 +2546,52 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dielectric-regions" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:dielectric regions (reference label)"><span>Dielectric regions</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dielectric regions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-changes-in-the-solve" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:what changes in the solve (reference label)"><span>What changes in the solve</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dielectric-loss" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:dielectric loss (reference label)"><span>Dielectric loss</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="eigenmode:limits (reference label)"><span>Limits</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#accessing-results" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2517,20 +2657,20 @@ The config is merged over a complete set of defaults, and the <strong>merged</st
 what runs and what <code class="docutils literal notranslate"><span class="pre">eigenmode/config.json</span></code> records: a saved config always
 contains every setting the run used.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">eigenmode_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
-        <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-        <span class="s1">&#39;adaptive&#39;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">&#39;tol&#39;</span><span class="p">:</span> <span class="mf">1e-12</span><span class="p">,</span>
-            <span class="s1">&#39;max_refinements&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="s1">&#39;max_ndof&#39;</span><span class="p">:</span> <span class="mi">100000</span>
+    <span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span>
+    <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'h'</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+        <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s1">'adaptive'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">'tol'</span><span class="p">:</span> <span class="mf">1e-12</span><span class="p">,</span>
+            <span class="s1">'max_refinements'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+            <span class="s1">'max_ndof'</span><span class="p">:</span> <span class="mi">100000</span>
         <span class="p">}</span>
     <span class="p">},</span>
-    <span class="s1">&#39;conductivity&#39;</span><span class="p">:</span> <span class="mf">5.96e7</span><span class="p">,</span>
-    <span class="s1">&#39;surface_resistance&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="s1">&#39;mode_of_interest&#39;</span><span class="p">:</span> <span class="mi">9</span>
+    <span class="s1">'conductivity'</span><span class="p">:</span> <span class="mf">5.96e7</span><span class="p">,</span>
+    <span class="s1">'surface_resistance'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s1">'mode_of_interest'</span><span class="p">:</span> <span class="mi">9</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2559,6 +2699,25 @@ Specifies the azimuthal mode number(s) to solve. Accepts an integer (<code class
 <dt><code class="docutils literal notranslate"><span class="pre">surface_resistance</span></code></dt><dd><p><em>(float, default: None, in Ohm)</em> Explicit surface resistance. Useful for superconducting cavities (SRF) where the BCS surface resistance replaces the normal-conducting calculation.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">mode_of_interest</span></code></dt><dd><p><em>(int, list, or dict)</em> 1-based index of the physical mode(s) whose results are reported. For monopole modes, this defaults to the accelerating <span class="math notranslate nohighlight">\(\pi\)</span>-mode (index equals <code class="docutils literal notranslate"><span class="pre">n_cells</span></code>).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">materials</span></code></dt><dd><p><em>(dict, default: None)</em> Overrides the properties of dielectric regions declared
+on the cavity with <code class="xref py py-meth docutils literal notranslate"><span class="pre">add_dielectric()</span></code>, e.g.
+<code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'eps_r':</span> <span class="pre">3.8,</span> <span class="pre">'tan_delta':</span> <span class="pre">1e-4}}</span></code> (shorthands:
+<code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">3.8}</span></code>, or a complex <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">3.8</span> <span class="pre">-</span> <span class="pre">3.8e-4j}</span></code>). Overrides
+<em>merge</em> onto the declared properties, so <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'tan_delta':</span> <span class="pre">0.05}}</span></code> is
+a loss sweep that leaves <code class="docutils literal notranslate"><span class="pre">eps_r</span></code> alone. Naming a region the cavity does not
+have raises, so a typo cannot silently fall back to vacuum. See
+<a class="reference internal" href="#dielectric-regions"><span class="std std-ref">Dielectric regions</span></a>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">loss_model</span></code></dt><dd><p><em>(str, default: None)</em> How a complex permittivity reaches <code class="docutils literal notranslate"><span class="pre">Q</span></code>:
+<code class="docutils literal notranslate"><span class="pre">'lossless'</span></code> (real eigenproblem, dielectric loss added perturbatively),
+<code class="docutils literal notranslate"><span class="pre">'lossy'</span></code> (full complex eigenproblem), or <code class="docutils literal notranslate"><span class="pre">'auto'</span></code> / <code class="docutils literal notranslate"><span class="pre">None</span></code> — the default —
+which inspects the loss tangents and switches to <code class="docutils literal notranslate"><span class="pre">'lossy'</span></code> above
+<span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>. Asking for <code class="docutils literal notranslate"><span class="pre">'lossless'</span></code> above that threshold is
+honoured, with a warning. See <a class="reference internal" href="#dielectric-loss"><span class="std std-ref">Dielectric loss</span></a>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arnoldi_vectors</span></code></dt><dd><p><em>(int, default: 6)</em> Krylov vectors per shift in the lossy eigensolve. Raise it
+if a lossy run warns that a mode did not converge.</p>
 </dd>
 </dl>
 <h2 id="quantities-of-interest-qois">Quantities of Interest (QOIs)<a class="headerlink" href="#quantities-of-interest-qois" title="Link to this heading">¶</a></h2>
@@ -2618,6 +2777,123 @@ Specifies the azimuthal mode number(s) to solve. Accepts an integer (<code class
 </tr>
 </tbody>
 </table>
+<h2 id="dielectric-regions">Dielectric regions<a class="headerlink" href="#dielectric-regions" title="Link to this heading">¶</a></h2>
+<p>By default a cavity is vacuum throughout. <code class="xref py py-meth docutils literal notranslate"><span class="pre">add_dielectric()</span></code>
+fills part of it with a dielectric — a ceramic window, a beam-pipe liner, an
+absorber ring:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span> <span class="o">=</span> <span class="n">Pillbox</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mf">37.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">)</span>
+
+<span class="c1"># a 0.5 mm-thick quartz tube lining the 5 mm aperture, full length</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">add_dielectric</span><span class="p">(</span><span class="s1">'quartz'</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1e4</span><span class="p">,</span> <span class="mf">1e4</span><span class="p">),</span> <span class="n">r</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span> <span class="n">maxh</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
+
+<span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mesh_config</span><span class="o">=</span><span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+</code></pre></div>
+</div>
+<p>The region is an axisymmetric <strong>rectangular ring</strong> in the (z, r) meridian plane —
+an annular cylinder in 3D. All lengths are in <strong>millimetres</strong>, like every other
+cavity dimension, and the region is <em>clipped</em> to the cavity, so a generous span
+such as <code class="docutils literal notranslate"><span class="pre">z=(-1e4,</span> <span class="pre">1e4)</span></code> simply means “the full length”.</p>
+<p><code class="docutils literal notranslate"><span class="pre">maxh</span></code> sets the local element size <strong>inside</strong> the region. A thin shell needs
+it: a 0.5 mm tube wall in a cavity meshed at the default <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">20</span></code> would
+otherwise be crossed by a single element.</p>
+<h3 id="what-changes-in-the-solve">What changes in the solve<a class="headerlink" href="#what-changes-in-the-solve" title="Link to this heading">¶</a></h3>
+<p>Weighting the mass form by <span class="math notranslate nohighlight">\(\varepsilon_r\)</span> solves
+<span class="math notranslate nohighlight">\(\nabla\times\nabla\times \mathbf{E} = \lambda\, \varepsilon_r \mathbf{E}\)</span>,
+so the eigenvalue is still <span class="math notranslate nohighlight">\(\lambda = k_0^2 = (\omega/c_0)^2\)</span> and the
+frequency conversion is unchanged. The stored energy carries
+<span class="math notranslate nohighlight">\(\varepsilon_r\)</span> <strong>inside</strong> the integral, so <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">G</span></code>, <code class="docutils literal notranslate"><span class="pre">Rsh</span></code>
+and <code class="docutils literal notranslate"><span class="pre">GR/Q</span></code> all follow.</p>
+<p>No special interface treatment is needed: <code class="docutils literal notranslate"><span class="pre">HCurl</span></code> enforces tangential-<span class="math notranslate nohighlight">\(E\)</span>
+continuity and <span class="math notranslate nohighlight">\(u_\varphi = r E_\varphi\)</span> is tangential to any r-z
+interface — exactly the physical dielectric interface conditions. Normal
+<span class="math notranslate nohighlight">\(D\)</span> continuity is natural.</p>
+<p>One extra QOI appears per region, <code class="docutils literal notranslate"><span class="pre">Epk_&lt;material&gt;</span> <span class="pre">[MV/m]</span></code>: <span class="math notranslate nohighlight">\(E\)</span> is
+discontinuous across the interface, so the peak field <em>inside</em> the dielectric —
+the one that matters for breakdown — is not visible in the wall-sampled <code class="docutils literal notranslate"><span class="pre">Epk</span></code>.</p>
+<h3 id="dielectric-loss"><span id="eigenmode-dielectric-loss"></span>Dielectric loss<a class="headerlink" href="#dielectric-loss" title="Link to this heading">¶</a></h3>
+<p>A region can be lossy. With the <span class="math notranslate nohighlight">\(e^{+j\omega t}\)</span> convention the
+permittivity is <span class="math notranslate nohighlight">\(\varepsilon_r = \varepsilon_r' - j\varepsilon_r''\)</span> and
+<span class="math notranslate nohighlight">\(\tan\delta = \varepsilon_r''/\varepsilon_r'\)</span>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">add_dielectric</span><span class="p">(</span><span class="s1">'alumina'</span><span class="p">,</span> <span class="mf">9.8</span><span class="p">,</span> <span class="n">tan_delta</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span>
+                   <span class="n">z</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1e4</span><span class="p">,</span> <span class="mf">1e4</span><span class="p">),</span> <span class="n">r</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span> <span class="n">maxh</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>There are two ways to get <span class="math notranslate nohighlight">\(Q\)</span> out of that, and they cost very different
+amounts.</p>
+<p><strong>Perturbation</strong> (the default up to <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>). The cavity is
+solved as if it were lossless and the loss is integrated over the resulting field:</p>
+<div class="math notranslate nohighlight">
+\[Q_{\text{diel}} = \frac{\int \varepsilon_r'\,|\mathbf{E}|^2\, r\,dr\,dz}
+                       {\int \varepsilon_r''\,|\mathbf{E}|^2\, r\,dr\,dz},
+\qquad
+\frac{1}{Q} = \frac{1}{Q_{\text{wall}}} + \frac{1}{Q_{\text{diel}}}\]</div>
+<p>This costs nothing beyond the lossless solve. It is accurate to
+<span class="math notranslate nohighlight">\(O(\tan^2\delta)\)</span>, and the reported frequency and field distribution are the
+lossless ones — so it is the right tool for low-loss dielectrics (sapphire,
+alumina, quartz windows) and says nothing about the frequency pull a lossy
+material causes.</p>
+<p><strong>Full complex eigenproblem</strong> (the default above <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>).
+The resonant frequency itself is solved for as a complex number,
+<span class="math notranslate nohighlight">\(\omega = \omega_r + \mathrm{i}\alpha\)</span>, and</p>
+<div class="math notranslate nohighlight">
+\[Q_{\text{diel}} = \frac{\omega_r}{2\alpha}\]</div>
+<p>so <span class="math notranslate nohighlight">\(Q\)</span>, the frequency <strong>and the mode shape</strong> are all the lossy ones. This is
+what a lossy ferrite or an absorber at <span class="math notranslate nohighlight">\(\tan\delta \sim 0.1\)</span>–<span class="math notranslate nohighlight">\(1\)</span>
+needs, and it costs roughly twice a lossless solve. See
+<a class="reference internal" href="theory/eigenmode.html#lossy-dielectrics"><span class="std std-ref">Lossy Dielectrics</span></a> for the formulation.</p>
+<p>Which one ran is never left to inference — a run with a lossy material reports:</p>
+<table class="docutils data align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">model</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'lossless'</span></code>, <code class="docutils literal notranslate"><span class="pre">'perturbation'</span></code> or <code class="docutils literal notranslate"><span class="pre">'lossy'</span></code> — how <code class="docutils literal notranslate"><span class="pre">Q_diel</span></code> was obtained</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code></p></td>
+<td><p>total <span class="math notranslate nohighlight">\(Q\)</span>, wall and dielectric combined</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Q_wall</span> <span class="pre">[]</span></code></p></td>
+<td><p>wall loss alone (what <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code> was before this feature)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Q_diel</span> <span class="pre">[]</span></code></p></td>
+<td><p>dielectric loss alone</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Pdiel</span> <span class="pre">[W]</span></code></p></td>
+<td><p>dielectric power dissipation at the solved field amplitude</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tan_delta</span> <span class="pre">[]</span></code></p></td>
+<td><p>the largest loss tangent in the run</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">G</span> <span class="pre">[Ohm]</span></code> stays <span class="math notranslate nohighlight">\(Q_{\text{wall}} R_s\)</span>: the geometry factor is a property
+of the wall and the mode shape, so folding dielectric loss into it would make a
+material-independent quantity depend on the filling. A run with no dielectric
+loss adds none of these keys.</p>
+<p><code class="docutils literal notranslate"><span class="pre">tan_delta</span></code> is a UQ variable like any geometric one (<code class="docutils literal notranslate"><span class="pre">'alumina:tan_delta'</span></code>),
+and changing it invalidates cached results.</p>
+<h3 id="limits">Limits<a class="headerlink" href="#limits" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\mu_r\)</span> is <em>rejected</em>, not ignored: magnetic materials change the
+stiffness form, not just the mass form.</p></li>
+<li><p>A <strong>conductive</strong> loss, <span class="math notranslate nohighlight">\(\varepsilon_r'' = \sigma/(\omega\varepsilon_0)\)</span>, is
+not modelled, because it makes the permittivity depend on the answer; pass a loss
+tangent evaluated at the frequency of interest instead.</p></li>
+<li><p>Wall loss is always treated perturbatively, on both paths.</p></li>
+<li><p><strong>Eigenmode only.</strong> <code class="docutils literal notranslate"><span class="pre">wakefield</span></code> and <code class="docutils literal notranslate"><span class="pre">multipacting</span></code> raise on a cavity with
+dielectric regions rather than returning a vacuum answer for it.</p></li>
+<li><p><strong>Native geometry only.</strong> Cavities meshed from an imported <code class="docutils literal notranslate"><span class="pre">.geo</span></code> file cannot
+carry regions (gmsh writes a single physical surface and the STEP round-trip
+drops surface names), so this raises too. Every built-in model has a native
+<code class="docutils literal notranslate"><span class="pre">profile()</span></code>.</p></li>
+</ul>
 <h2 id="accessing-results">Accessing Results<a class="headerlink" href="#accessing-results" title="Link to this heading">¶</a></h2>
 <p>To read the output results directly in Python:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># Primary mode of interest QOIs (all cavities)</span>
@@ -2625,8 +2901,8 @@ Specifies the azimuthal mode number(s) to solve. Accepts an integer (<code class
 
 <span class="c1"># Access local result objects</span>
 <span class="n">q</span> <span class="o">=</span> <span class="n">tesla</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resonant frequency: </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R/Q: </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> Ohm&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Resonant frequency: </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"R/Q: </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="si">}</span><span class="s2"> Ohm"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <h2 id="results-as-a-table">Results as a table<a class="headerlink" href="#results-as-a-table" title="Link to this heading">¶</a></h2>
@@ -2664,23 +2940,26 @@ study uses, so it slices the same way:</p>
 </tbody>
 </table>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># the dipole modes, strongest coupling first</span>
-<span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">polarisation</span> <span class="o">==</span> <span class="s1">&#39;dipole&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">polarisation</span> <span class="o">==</span> <span class="s1">'dipole'</span><span class="p">]</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">)</span>
 
 <span class="c1"># the accelerating (TM) monopole modes: TE modes have no E_z, so R/Q = 0</span>
 <span class="n">mono</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">m</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
-<span class="n">mono</span><span class="p">[</span><span class="n">mono</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">]</span>
+<span class="n">mono</span><span class="p">[</span><span class="n">mono</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">]</span>
 </code></pre></div>
 </div>
 <p>See the worked examples: <a class="reference internal" href="examples/eigenmode/elliptical_tesla.html"><span class="doc">Eigenmode: the TESLA elliptical cavity</span></a> (TESLA cell,
-modes, impedance) and <a class="reference internal" href="examples/eigenmode/pillbox.html"><span class="doc">Eigenmode analysis: the pillbox cavity</span></a> (analytic verification).</p>
+modes, impedance), <a class="reference internal" href="examples/eigenmode/pillbox.html"><span class="doc">Eigenmode analysis: the pillbox cavity</span></a> (analytic verification) and
+<a class="reference internal" href="examples/eigenmode/dielectric_quartz_tube.html"><span class="doc">Dielectrics: a quartz tube in a perturbation cavity</span></a> (a dielectric-loaded cavity) and
+<a class="reference internal" href="examples/eigenmode/dielectric_loss.html"><span class="doc">Dielectric loss: perturbation vs the full complex eigenproblem</span></a> (lossless vs perturbative vs fully lossy,
+swept over <span class="math notranslate nohighlight">\(\tan\delta\)</span>).</p>
 <h2 id="visualisation">Visualisation<a class="headerlink" href="#visualisation" title="Link to this heading">¶</a></h2>
 <p>Meshes and field profiles are properties of the individual <code class="docutils literal notranslate"><span class="pre">Cavity</span></code> objects:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># Plot the finite element mesh</span>
 <span class="n">tesla</span><span class="o">.</span><span class="n">show_mesh</span><span class="p">()</span>          <span class="c1"># interactive NGSolve/webgui view</span>
 
 <span class="c1"># Plot the electric (E) and magnetic (H) field magnitudes for the fundamental mode</span>
-<span class="n">tesla</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>
-<span class="n">tesla</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">tesla</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">'E'</span><span class="p">)</span>
+<span class="n">tesla</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">'H'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 

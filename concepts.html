@@ -1305,6 +1305,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2549,7 +2597,7 @@ records the complete, self-consistent parameter set the tuner converged on).</p>
 time you touch them, so within a session a completed analysis is never re-run.</p>
 <p>An entire project reloads in one call. Each cavity also saves a small
 <code class="docutils literal notranslate"><span class="pre">geometry/model.json</span></code> describing its type and parameters, so:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;my_project&#39;</span><span class="p">)</span>     <span class="c1"># reconstruct every cavity + its cached results</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'my_project'</span><span class="p">)</span>     <span class="c1"># reconstruct every cavity + its cached results</span>
 </code></pre></div>
 </div>
 <p>returns a Study with every cavity reconstructed (the right model type, pointing at
@@ -2575,13 +2623,13 @@ every setting it used, not just the keys you passed. Config keys double as keywo
 arguments. Truthy values (never mere presence) switch features on.</p>
 <p>Eigenmode (<code class="docutils literal notranslate"><span class="pre">cav.eigenmode.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_eigenmode</span></code>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
-  <span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span>   <span class="c1"># &#39;monopole&#39;|&#39;dipole&#39;|... , an m, or a list</span>
-  <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>              <span class="c1"># None -&gt; n_cells + 2</span>
-  <span class="s1">&#39;mode_of_interest&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>     <span class="c1"># 1-based; None -&gt; the accelerating pi-mode</span>
-  <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>  <span class="c1"># magnetic/electric on the two end planes</span>
-  <span class="s1">&#39;conductivity&#39;</span><span class="p">:</span> <span class="mf">5.96e7</span><span class="p">,</span>       <span class="c1"># [S/m]; or set &#39;surface_resistance&#39; for SRF</span>
-  <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;adaptive&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>  <span class="c1"># h in mm, p order &gt;= 2</span>
-  <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>            <span class="c1"># attach to propagate geometry uncertainty</span>
+  <span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span>   <span class="c1"># 'monopole'|'dipole'|... , an m, or a list</span>
+  <span class="s1">'n_modes'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>              <span class="c1"># None -&gt; n_cells + 2</span>
+  <span class="s1">'mode_of_interest'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>     <span class="c1"># 1-based; None -&gt; the accelerating pi-mode</span>
+  <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>  <span class="c1"># magnetic/electric on the two end planes</span>
+  <span class="s1">'conductivity'</span><span class="p">:</span> <span class="mf">5.96e7</span><span class="p">,</span>       <span class="c1"># [S/m]; or set 'surface_resistance' for SRF</span>
+  <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'adaptive'</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>  <span class="c1"># h in mm, p order &gt;= 2</span>
+  <span class="s1">'uq_config'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>            <span class="c1"># attach to propagate geometry uncertainty</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2593,31 +2641,31 @@ wakefield below runs on the <strong>ABCI</strong> backend (its own deck, meshed 
 <code class="docutils literal notranslate"><span class="pre">cav.profile()</span></code>), adaptivity applies to eigenmode/multipacting only.</p>
 <p>Wakefield (<code class="docutils literal notranslate"><span class="pre">cav.wakefield.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_wakefield</span></code>) — ABCI backend:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
-  <span class="s1">&#39;MROT&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>               <span class="c1"># 0 longitudinal, 1 transverse, 2 both</span>
-  <span class="s1">&#39;wakelength&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>        <span class="c1"># [m]</span>
-  <span class="s1">&#39;bunch_length&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>      <span class="c1"># [mm]</span>
-  <span class="s1">&#39;beampipe_length&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># [m]; None -&gt; 3x the axial length</span>
-  <span class="s1">&#39;save_fields&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>     <span class="c1"># True/{&#39;nshot&#39;: N} -&gt; E-field-line snapshots</span>
-  <span class="s1">&#39;operating_points&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-  <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="s1">'MROT'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>               <span class="c1"># 0 longitudinal, 1 transverse, 2 both</span>
+  <span class="s1">'wakelength'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>        <span class="c1"># [m]</span>
+  <span class="s1">'bunch_length'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>      <span class="c1"># [mm]</span>
+  <span class="s1">'beampipe_length'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># [m]; None -&gt; 3x the axial length</span>
+  <span class="s1">'save_fields'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>     <span class="c1"># True/{'nshot': N} -&gt; E-field-line snapshots</span>
+  <span class="s1">'operating_points'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="s1">'uq_config'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
 <p>Tune (<code class="docutils literal notranslate"><span class="pre">cav.tune.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_tune</span></code>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
-  <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>                       <span class="c1"># target [MHz] (list for many cavities)</span>
-  <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>      <span class="c1"># {cell block: handle}; schedule several</span>
-  <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>             <span class="c1"># the solve used at each tuning step</span>
+  <span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>                       <span class="c1"># target [MHz] (list for many cavities)</span>
+  <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>      <span class="c1"># {cell block: handle}; schedule several</span>
+  <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>             <span class="c1"># the solve used at each tuning step</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
 <p>See <a class="reference internal" href="tuning.html"><span class="doc">Cavity Tuning</span></a> for the cell-block keys and the multicell mid/end recipe.</p>
 <p>UQ (<code class="docutils literal notranslate"><span class="pre">uq_config</span></code>, nested inside an eigenmode/wakefield/tune config):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
-  <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="s1">&#39;Ri&#39;</span><span class="p">],</span>   <span class="c1"># geometry variables to perturb</span>
-  <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>        <span class="c1"># relative (or absolute) spread per variable</span>
-  <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>  <span class="c1"># or a Gaussian/LHS Monte-Carlo design</span>
-  <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span><span class="p">,</span>       <span class="c1"># or &#39;multicell&#39; (per-half-cell perturb)</span>
+  <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'Ri'</span><span class="p">],</span>   <span class="c1"># geometry variables to perturb</span>
+  <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>        <span class="c1"># relative (or absolute) spread per variable</span>
+  <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Quadrature'</span><span class="p">,</span> <span class="s1">'Stroud3'</span><span class="p">],</span>  <span class="c1"># or a Gaussian/LHS Monte-Carlo design</span>
+  <span class="s1">'cell_complexity'</span><span class="p">:</span> <span class="s1">'simplecell'</span><span class="p">,</span>       <span class="c1"># or 'multicell' (per-half-cell perturb)</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>

@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2522,18 +2570,18 @@
 <p>A Bezier spline with a <strong>smooth iris</strong>: <code class="docutils literal notranslate"><span class="pre">p1</span></code> and <code class="docutils literal notranslate"><span class="pre">p4</span></code> sit at the beam-pipe radius, so the wall leaves the pipe tangentially (C1 continuity) instead of at a sharp corner.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;p0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
-        <span class="s1">&#39;p3&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">78</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">&#39;p4&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">90</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p5&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">120</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
-<span class="n">spline</span> <span class="o">=</span> <span class="n">SplineCavity</span><span class="p">({</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">),</span> <span class="s1">&#39;beampipe&#39;</span><span class="p">:</span> <span class="s1">&#39;both&#39;</span><span class="p">},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;Bezier&#39;</span><span class="p">)</span>
-<span class="n">spline</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;spline&#39;</span>
-<span class="n">spline</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;spline_mp&#39;</span><span class="p">))</span>
-<span class="n">spline</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'p0'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p1'</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p2'</span><span class="p">:</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+        <span class="s1">'p3'</span><span class="p">:</span> <span class="p">[</span><span class="mi">78</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">'p4'</span><span class="p">:</span> <span class="p">[</span><span class="mi">90</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p5'</span><span class="p">:</span> <span class="p">[</span><span class="mi">120</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
+<span class="n">spline</span> <span class="o">=</span> <span class="n">SplineCavity</span><span class="p">({</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">),</span> <span class="s1">'beampipe'</span><span class="p">:</span> <span class="s1">'both'</span><span class="p">},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'Bezier'</span><span class="p">)</span>
+<span class="n">spline</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'spline'</span>
+<span class="n">spline</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'spline_mp'</span><span class="p">))</span>
+<span class="n">spline</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/ffe796c5f7f1c9a32b78e2a7effe493b0e66213eb2b8a3de616fe87ea4348bbb.png" src="../../_images/ffe796c5f7f1c9a32b78e2a7effe493b0e66213eb2b8a3de616fe87ea4348bbb.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2544,7 +2592,7 @@
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">set_mesh_parameters</span><span class="p">(</span><span class="n">h</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">pec_maxh</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">compute_field</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;modes [MHz]:&#39;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">field_frequencies</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'modes [MHz]:'</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">field_frequencies</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
@@ -2556,7 +2604,7 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">show_field</span><span class="p">(</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>      <span class="c1"># &#39;H&#39; for the magnetic field; mode=i for HOMs</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">show_field</span><span class="p">(</span><span class="s1">'E'</span><span class="p">)</span>      <span class="c1"># 'H' for the magnetic field; mode=i for HOMs</span>
 </code></pre></div>
 </div>
 </div>
@@ -2577,7 +2625,7 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/a9889f7cf6e4d8ec385f65601090f85b2772d662f16e22c13ca11b09dff0e458.png" src="../../_images/a9889f7cf6e4d8ec385f65601090f85b2772d662f16e22c13ca11b09dff0e458.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;z [mm]&#39;, ylabel=&#39;r [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='z [mm]', ylabel='r [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2590,7 +2638,7 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/6dfb13481475c3965abbf0d5bba972ac1bff3895393616eca840f7ba5640f51b.png" src="../../_images/6dfb13481475c3965abbf0d5bba972ac1bff3895393616eca840f7ba5640f51b.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;impact energy [eV]&#39;, ylabel=&#39;secondary yield $\\delta$&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='impact energy [eV]', ylabel='secondary yield $\\delta$'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2598,10 +2646,10 @@
 <h2 id="the-sweep">The sweep<a class="headerlink" href="#the-sweep" title="Link to this heading">¶</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;proc_count&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;epks&#39;</span><span class="p">:</span> <span class="n">EPKS</span><span class="p">,</span> <span class="s1">&#39;phis&#39;</span><span class="p">:</span> <span class="n">PHIS</span><span class="p">})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'proc_count'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'epks'</span><span class="p">:</span> <span class="n">EPKS</span><span class="p">,</span> <span class="s1">'phis'</span><span class="p">:</span> <span class="n">PHIS</span><span class="p">})</span>
 <span class="n">mp</span> <span class="o">=</span> <span class="n">spline</span><span class="o">.</span><span class="n">multipacting</span>
 <span class="n">ax</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">plot_counter</span><span class="p">()</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Spline cavity - peak c20/c0 = </span><span class="si">{</span><span class="n">mp</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Spline cavity - peak c20/c0 = </span><span class="si">{</span><span class="n">mp</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2624,7 +2672,7 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/ad33a331bb395a5124561c29e57b08c2aac2a9adeb1e3f7b26eb6a419b6bf46d.png" src="../../_images/ad33a331bb395a5124561c29e57b08c2aac2a9adeb1e3f7b26eb6a419b6bf46d.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$E_{\\mathrm{pk}}$ [MV/m]&#39;, ylabel=&#39;$e_{20}/c_0$&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$E_{\\mathrm{pk}}$ [MV/m]', ylabel='$e_{20}/c_0$'&gt;
 </code></pre></div>
 </div>
 </div>

@@ -1285,6 +1285,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2472,10 +2520,10 @@
 <h2 id="configuration-dictionary">Configuration Dictionary<a class="headerlink" href="#configuration-dictionary" title="Link to this heading">¶</a></h2>
 <p>The tuning process is controlled by a configuration dictionary:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">tune_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
-    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="s1">'freqs'</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+    <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2491,7 +2539,7 @@
 </ul>
 <p>The value selects the geometric variable, typically <code class="docutils literal notranslate"><span class="pre">'Req'</span></code> (equator radius) for elliptical cells, but any handle the model declares works — <code class="docutils literal notranslate"><span class="pre">'A'</span></code>, <code class="docutils literal notranslate"><span class="pre">'B'</span></code>, <code class="docutils literal notranslate"><span class="pre">'L'</span></code> for elliptical cells, <code class="docutils literal notranslate"><span class="pre">'Req'</span></code> for a pillbox, <code class="docutils literal notranslate"><span class="pre">'R6'</span></code> for the RF gun, or a spline control-point coordinate such as <code class="docutils literal notranslate"><span class="pre">'p2_r'</span></code>. The value may also be a <strong>list</strong> of handles to tune in sequence.</p>
 <p>Scheduling several cell types in one call runs them <strong>in order</strong>, so later stages see the earlier ones already tuned:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="s1">&#39;end-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;L&#39;</span><span class="p">}</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'end-cell'</span><span class="p">:</span> <span class="s1">'L'</span><span class="p">}</span>
 </code></pre></div>
 </div>
 <p>Each model declares its own handles — the tuner asks the model rather than assuming a fixed list. See <a class="reference internal" href="examples/tuning/cavity_types.html"><span class="doc">Tuning across cavity types</span></a> for the same call driving four different geometries.</p>

@@ -1243,6 +1243,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2394,10 +2442,10 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">R</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">230.0</span><span class="p">,</span> <span class="mf">200.0</span>                         <span class="c1"># mm</span>
 <span class="n">chi01</span> <span class="o">=</span> <span class="n">jn_zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">f_analytic</span> <span class="o">=</span> <span class="n">c0</span> <span class="o">*</span> <span class="n">chi01</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">R</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-6</span>   <span class="c1"># MHz</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;analytic TM010 = </span><span class="si">{</span><span class="n">f_analytic</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1"> MHz&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'analytic TM010 = </span><span class="si">{</span><span class="n">f_analytic</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
 
-<span class="n">cav</span> <span class="o">=</span> <span class="n">Pillbox</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>  <span class="c1"># closed cylinder</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;cylinder&#39;</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">Pillbox</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>  <span class="c1"># closed cylinder</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'cylinder'</span>
 </code></pre></div>
 </div>
 </div>
@@ -2413,11 +2461,11 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">study_mesh_convergence</span><span class="p">(</span>
     <span class="n">h</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">p_passes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">p_step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-    <span class="n">n_modes</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">polarisation</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;monopole&#39;</span><span class="p">,),</span>
+    <span class="n">n_modes</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">polarisation</span><span class="o">=</span><span class="p">(</span><span class="s1">'monopole'</span><span class="p">,),</span>
     <span class="n">max_refinements</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">max_ndof</span><span class="o">=</span><span class="mi">80000</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">convergence_df_data</span>
-<span class="n">df</span><span class="p">[[</span><span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="s1">&#39;h_pass&#39;</span><span class="p">,</span> <span class="s1">&#39;No of DOFs&#39;</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;max_err&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[[</span><span class="s1">'p'</span><span class="p">,</span> <span class="s1">'h_pass'</span><span class="p">,</span> <span class="s1">'No of DOFs'</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'max_err'</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2552,17 +2600,17 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 <p>Plot the fundamental’s relative error against the analytic value versus the number of degrees of freedom, one curve per polynomial order. Higher <span class="math notranslate nohighlight">\(p\)</span> reaches a given accuracy on far fewer DOFs — the hallmark of a high-order method.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">fund</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;mode_index&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;0-0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<span class="n">fund</span><span class="p">[</span><span class="s1">&#39;rel_err&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fund</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">f_analytic</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="n">f_analytic</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">fund</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">'mode_index'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'0-0'</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">fund</span><span class="p">[</span><span class="s1">'rel_err'</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fund</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span> <span class="o">-</span> <span class="n">f_analytic</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="n">f_analytic</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">))</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fund</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;p&#39;</span><span class="p">)):</span>
-    <span class="n">g</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;No of DOFs&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;No of DOFs&#39;</span><span class="p">],</span> <span class="n">g</span><span class="p">[</span><span class="s1">&#39;rel_err&#39;</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-            <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">WARM</span><span class="p">)],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;p = </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;degrees of freedom&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;relative error in $f_</span><span class="si">{010}</span><span class="s1">$&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Adaptive h-refinement at each polynomial order&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fund</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">'p'</span><span class="p">)):</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'No of DOFs'</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">'No of DOFs'</span><span class="p">],</span> <span class="n">g</span><span class="p">[</span><span class="s1">'rel_err'</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="s1">'o'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">WARM</span><span class="p">)],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'p = </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">'log'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">'log'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'degrees of freedom'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'relative error in $f_</span><span class="si">{010}</span><span class="s1">$'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Adaptive h-refinement at each polynomial order'</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
@@ -2576,8 +2624,8 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 <p>The best frequency reached at each order — for this cavity, cubic elements (<span class="math notranslate nohighlight">\(p=3\)</span>) hit part-per-million accuracy with a modest mesh.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">best</span> <span class="o">=</span> <span class="n">fund</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;rel_err&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;p&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-<span class="n">best</span><span class="p">[[</span><span class="s1">&#39;No of DOFs&#39;</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;rel_err&#39;</span><span class="p">]]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">best</span> <span class="o">=</span> <span class="n">fund</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'rel_err'</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">'p'</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<span class="n">best</span><span class="p">[[</span><span class="s1">'No of DOFs'</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'rel_err'</span><span class="p">]]</span>
 </code></pre></div>
 </div>
 </div>

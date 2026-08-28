@@ -1297,6 +1297,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2496,13 +2544,13 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">base</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.652</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
-<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">&#39;compare_demo&#39;</span><span class="p">)</span>
+<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">'compare_demo'</span><span class="p">)</span>
 <span class="n">cavs</span><span class="p">,</span> <span class="n">names</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">Ri</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">40</span><span class="p">):</span>
     <span class="n">cell</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">copy</span><span class="p">();</span> <span class="n">cell</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">Ri</span>
-    <span class="n">cavs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span>
-                                 <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Ri</span><span class="si">{</span><span class="n">Ri</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">))</span>
-    <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Ri = </span><span class="si">{</span><span class="n">Ri</span><span class="si">}</span><span class="s1"> mm&#39;</span><span class="p">)</span>
+    <span class="n">cavs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span>
+                                 <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">'Ri</span><span class="si">{</span><span class="n">Ri</span><span class="si">}</span><span class="s1">'</span><span class="p">))</span>
+    <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Ri = </span><span class="si">{</span><span class="n">Ri</span><span class="si">}</span><span class="s1"> mm'</span><span class="p">)</span>
 <span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">(</span><span class="n">cavs</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2512,8 +2560,8 @@
 <p>One call runs the eigenmode analysis for every cavity in the study.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-                     <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+                     <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
 </code></pre></div>
 </div>
 </div>
@@ -2522,17 +2570,17 @@
 <p><code class="docutils literal notranslate"><span class="pre">study.eigenmode.plot_fm_scatter()</span></code> overlays each cavity’s fundamental-mode QOIs. A wider iris lowers the frequency and R/Q and raises the peak-field ratios — the classic aperture trade-off.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_scatter</span><span class="p">(</span><span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">,</span>
-                                      <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">,</span> <span class="s1">&#39;Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_scatter</span><span class="p">(</span><span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span>
+                                      <span class="s1">'Epk/Eacc []'</span><span class="p">,</span> <span class="s1">'Bpk/Eacc [mT/MV/m]'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/518f4b7a2f061476cdfc28958dfdcf13ed540ae145ccbed673e6ddc6ab6a80c5.png" src="../../_images/518f4b7a2f061476cdfc28958dfdcf13ed540ae145ccbed673e6ddc6ab6a80c5.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;freq [MHz]&#39;: &lt;Axes: label=&#39;freq [MHz]&#39;, ylabel=&#39;$f$ [MHz]&#39;&gt;,
- &#39;R/Q [Ohm]&#39;: &lt;Axes: label=&#39;R/Q [Ohm]&#39;, ylabel=&#39;$R/Q ~\\mathrm{[\\Omega]}$&#39;&gt;,
- &#39;Epk/Eacc []&#39;: &lt;Axes: label=&#39;Epk/Eacc []&#39;, ylabel=&#39;$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$&#39;&gt;,
- &#39;Bpk/Eacc [mT/MV/m]&#39;: &lt;Axes: label=&#39;Bpk/Eacc [mT/MV/m]&#39;, ylabel=&#39;$B_\\mathrm{pk}/E_\\mathrm{acc} ~\\mathrm{[mT/MV/m]}$&#39;&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'freq [MHz]': &lt;Axes: label='freq [MHz]', ylabel='$f$ [MHz]'&gt;,
+ 'R/Q [Ohm]': &lt;Axes: label='R/Q [Ohm]', ylabel='$R/Q ~\\mathrm{[\\Omega]}$'&gt;,
+ 'Epk/Eacc []': &lt;Axes: label='Epk/Eacc []', ylabel='$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$'&gt;,
+ 'Bpk/Eacc [mT/MV/m]': &lt;Axes: label='Bpk/Eacc [mT/MV/m]', ylabel='$B_\\mathrm{pk}/E_\\mathrm{acc} ~\\mathrm{[mT/MV/m]}$'&gt;}
 </code></pre></div>
 </div>
 </div>
@@ -2540,15 +2588,15 @@
 <h2 id="the-same-data-as-bars">4. The same data as bars<a class="headerlink" href="#the-same-data-as-bars" title="Link to this heading">¶</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_bar</span><span class="p">(</span><span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">,</span> <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_bar</span><span class="p">(</span><span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'Epk/Eacc []'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/21395274e9c9d64214d629b89a194f136664be7be1249bb8cfa26d79f4d4332f.png" src="../../_images/21395274e9c9d64214d629b89a194f136664be7be1249bb8cfa26d79f4d4332f.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;freq [MHz]&#39;: &lt;Axes: label=&#39;freq [MHz]&#39;, ylabel=&#39;$f$ [MHz]&#39;&gt;,
- &#39;R/Q [Ohm]&#39;: &lt;Axes: label=&#39;R/Q [Ohm]&#39;, ylabel=&#39;$R/Q ~\\mathrm{[\\Omega]}$&#39;&gt;,
- &#39;Epk/Eacc []&#39;: &lt;Axes: label=&#39;Epk/Eacc []&#39;, ylabel=&#39;$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$&#39;&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'freq [MHz]': &lt;Axes: label='freq [MHz]', ylabel='$f$ [MHz]'&gt;,
+ 'R/Q [Ohm]': &lt;Axes: label='R/Q [Ohm]', ylabel='$R/Q ~\\mathrm{[\\Omega]}$'&gt;,
+ 'Epk/Eacc []': &lt;Axes: label='Epk/Eacc []', ylabel='$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$'&gt;}
 </code></pre></div>
 </div>
 </div>

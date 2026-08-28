@@ -542,6 +542,52 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lossy-dielectrics" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:lossy dielectrics (reference label)"><span>Lossy Dielectrics</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lossy Dielectrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#perturbative-treatment" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:perturbative treatment (reference label)"><span>Perturbative Treatment</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-complex-eigenproblem" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:full complex eigenproblem (reference label)"><span>Full Complex Eigenproblem</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selection" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:selection (reference label)"><span>Selection</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -1421,6 +1467,54 @@
   
   <span class="md-ellipsis">
     <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
     
   </span>
   
@@ -2676,6 +2770,52 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lossy-dielectrics" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:lossy dielectrics (reference label)"><span>Lossy Dielectrics</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lossy Dielectrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#perturbative-treatment" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:perturbative treatment (reference label)"><span>Perturbative Treatment</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-complex-eigenproblem" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:full complex eigenproblem (reference label)"><span>Full Complex Eigenproblem</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selection" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="theory/eigenmode:selection (reference label)"><span>Selection</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2866,6 +3006,88 @@
 <p>The transverse shunt impedance over Q is normalized by the off-axis factor to remain independent of the choice of <span class="math notranslate nohighlight">\(r_0\)</span>:</p>
 <div class="math notranslate nohighlight">
 \[\left( \frac{R}{Q} \right)_t = \frac{V_t^2}{\omega U r_0^{2(m-1)}}\]</div>
+<h2 id="lossy-dielectrics">Lossy Dielectrics<a class="headerlink" href="#lossy-dielectrics" title="Link to this heading">¶</a></h2>
+<p>A dielectric sub-domain enters the eigenproblem through the mass form alone: the
+weak form above is assembled with <span class="math notranslate nohighlight">\(\varepsilon_r\)</span> inside the
+<span class="math notranslate nohighlight">\(b(\cdot,\cdot)\)</span> integral, so the eigenvalue is still
+<span class="math notranslate nohighlight">\(\lambda = k_0^2 = (\omega/c_0)^2\)</span> and no interface condition has to be
+imposed by hand — <span class="math notranslate nohighlight">\(H(\text{curl})\)</span> enforces tangential-<span class="math notranslate nohighlight">\(\mathbf{E}\)</span>
+continuity and <span class="math notranslate nohighlight">\(u_\phi = r E_\phi\)</span> is tangential to any <span class="math notranslate nohighlight">\(r\)</span>-<span class="math notranslate nohighlight">\(z\)</span>
+interface, while normal <span class="math notranslate nohighlight">\(\mathbf{D}\)</span> continuity is natural.</p>
+<p>With the <span class="math notranslate nohighlight">\(e^{+\mathrm{i}\omega t}\)</span> convention a lossy medium has</p>
+<div class="math notranslate nohighlight">
+\[\varepsilon_r = \varepsilon_r' - \mathrm{i}\varepsilon_r'',
+\qquad \tan\delta = \frac{\varepsilon_r''}{\varepsilon_r'}\]</div>
+<p>and <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> offers two treatments of the imaginary part.</p>
+<h3 id="perturbative-treatment">Perturbative Treatment<a class="headerlink" href="#perturbative-treatment" title="Link to this heading">¶</a></h3>
+<p>The lossless problem is solved with <span class="math notranslate nohighlight">\(\varepsilon_r'\)</span> and the loss is
+evaluated afterwards on the resulting field, exactly as the wall loss is:</p>
+<div class="math notranslate nohighlight">
+\[P_{\text{diel}} = \frac{1}{2}\,\omega\,\varepsilon_0
+   \int \varepsilon_r''\,|\mathbf{E}|^2\,\mathrm{d}V,
+\qquad
+U = \frac{1}{2}\,\varepsilon_0 \int \varepsilon_r'\,|\mathbf{E}|^2\,\mathrm{d}V\]</div>
+<p>so that</p>
+<div class="math notranslate nohighlight">
+\[Q_{\text{diel}} = \frac{\omega U}{P_{\text{diel}}}
+   = \frac{\int \varepsilon_r'\,|\mathbf{E}|^2\, r\,\mathrm{d}A}
+          {\int \varepsilon_r''\,|\mathbf{E}|^2\, r\,\mathrm{d}A},
+\qquad
+\frac{1}{Q} = \frac{1}{Q_{\text{wall}}} + \frac{1}{Q_{\text{diel}}}\]</div>
+<p>The matrices, the eigensolver and the gradient-kernel projector are untouched.
+The error is <span class="math notranslate nohighlight">\(O(\tan^2\delta)\)</span> in the eigenvalue, and because the
+integration is performed over the lossless mode the treatment cannot represent
+the field redistribution the loss causes — nor any frequency shift, since the
+real eigenproblem never saw <span class="math notranslate nohighlight">\(\varepsilon_r''\)</span>.</p>
+<h3 id="full-complex-eigenproblem">Full Complex Eigenproblem<a class="headerlink" href="#full-complex-eigenproblem" title="Link to this heading">¶</a></h3>
+<p>Weighting the mass form by the complex <span class="math notranslate nohighlight">\(\varepsilon_r\)</span> gives</p>
+<div class="math notranslate nohighlight">
+\[A\mathbf{x} = \lambda B\mathbf{x}, \qquad
+B = B' - \mathrm{i}B'', \qquad \lambda \in \mathbb{C}\]</div>
+<p>with <span class="math notranslate nohighlight">\(A\)</span> real symmetric positive semi-definite and <span class="math notranslate nohighlight">\(B\)</span> complex
+<strong>symmetric</strong> — not Hermitian. Three consequences follow:</p>
+<ul>
+<li><p><span class="math notranslate nohighlight">\(\lambda\)</span> is complex, so <span class="math notranslate nohighlight">\(\omega = c_0\sqrt{\lambda}\)</span> has
+<span class="math notranslate nohighlight">\(\mathbf{E} \propto e^{-\alpha t}\)</span> with <span class="math notranslate nohighlight">\(\alpha = \operatorname{Im}\omega\)</span>;
+the stored energy decays as <span class="math notranslate nohighlight">\(e^{-2\alpha t} = e^{-\omega_r t/Q}\)</span>, giving</p>
+<div class="math notranslate nohighlight">
+\[Q_{\text{diel}} = \frac{\operatorname{Re}\omega}{2\operatorname{Im}\omega}\]</div>
+</li>
+<li><p>eigenvectors are no longer <span class="math notranslate nohighlight">\(B\)</span>-orthogonal in the Hermitian sense: they
+satisfy <span class="math notranslate nohighlight">\(\mathbf{x}_i^T B \mathbf{x}_j = 0\)</span> (transpose, no conjugate);</p></li>
+<li><p>the preconditioned inverse iteration (PINVIT) used for the real problem assumes
+a Hermitian pencil and does not apply.</p></li>
+</ul>
+<p>The spectrum is therefore reached with <strong>shift-and-invert Arnoldi</strong> on
+<span class="math notranslate nohighlight">\((A - \sigma B)^{-1} B\)</span>. On a 2D meridian mesh the shifted matrix is small
+enough to factorise with a sparse direct solver, so no preconditioner is needed.</p>
+<p>The choice of shifts is what makes this tractable. The gradient kernel
+<span class="math notranslate nohighlight">\(\mathcal{K}_m\)</span> is still present at <span class="math notranslate nohighlight">\(\lambda \approx 0\)</span> and is
+high-dimensional; under the shift-invert map every kernel vector lands at
+magnitude <span class="math notranslate nohighlight">\(|1/\sigma|\)</span>, so a shift far from the band lets the kernel crowd
+the Krylov space. <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> first solves the <em>lossless</em> problem and centres one
+Arnoldi run on each lossless eigenvalue: the physical mode then maps to
+<span class="math notranslate nohighlight">\(\sim 1/(\sigma \tan\delta)\)</span>, orders of magnitude above the kernel cluster.
+Each run’s best eigenpair is accepted only if its relative residual</p>
+<div class="math notranslate nohighlight">
+\[\frac{\|A\mathbf{x} - \lambda B\mathbf{x}\|}{|\lambda|\,\|B\mathbf{x}\|}\]</div>
+<p>is small; otherwise the shift is re-centred on the eigenvalue just found and the
+run repeated, which is what large <span class="math notranslate nohighlight">\(\tan\delta\)</span> requires, since the mode has
+then moved far from its lossless position. Accepted modes are deduplicated and
+sorted by <span class="math notranslate nohighlight">\(\operatorname{Re}\lambda\)</span>.</p>
+<p>Wall loss remains perturbative on both paths. Folding it into the eigenproblem
+through a Leontovich impedance boundary condition would introduce
+<span class="math notranslate nohighlight">\(Z_s = (1+\mathrm{i})\sqrt{\omega\mu/2\sigma} \propto \sqrt{\omega}\)</span> and make
+the problem nonlinear in <span class="math notranslate nohighlight">\(\omega\)</span>. A conductive dielectric loss,
+<span class="math notranslate nohighlight">\(\varepsilon_r'' = \sigma/(\omega\varepsilon_0)\)</span>, is nonlinear in
+<span class="math notranslate nohighlight">\(\omega\)</span> for the same reason and is likewise not modelled.</p>
+<h3 id="selection">Selection<a class="headerlink" href="#selection" title="Link to this heading">¶</a></h3>
+<p>The perturbative treatment is used up to <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span> and the
+complex eigenproblem above it. The threshold follows from the
+<span class="math notranslate nohighlight">\(O(\tan^2\delta)\)</span> error: at <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span> the two agree to a
+few parts in <span class="math notranslate nohighlight">\(10^{5}\)</span>, and by <span class="math notranslate nohighlight">\(\tan\delta \sim 1\)</span> they differ by tens
+of percent in both <span class="math notranslate nohighlight">\(Q\)</span> and frequency. <code class="docutils literal notranslate"><span class="pre">eigenmode_config['loss_model']</span></code>
+overrides the choice.</p>
 <h2 id="impedance-spectrum-from-eigenfrequencies-and-quality-factors">Impedance Spectrum from Eigenfrequencies and Quality Factors<a class="headerlink" href="#impedance-spectrum-from-eigenfrequencies-and-quality-factors" title="Link to this heading">¶</a></h2>
 <p>The impedance spectrum the beam sees can be <em>reconstructed</em> from the eigenmode
 results alone: each resonant mode behaves as a parallel <span class="math notranslate nohighlight">\(RLC\)</span> resonator,

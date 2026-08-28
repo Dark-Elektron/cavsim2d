@@ -1297,6 +1297,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2492,14 +2540,14 @@
 <span class="n">apply_style</span><span class="p">()</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">fundamental</span><span class="p">(</span><span class="n">cav</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Solve the monopole and return the fundamental freq + R/Q as a row.&#39;&#39;&#39;</span>
+<span class="w">    </span><span class="sd">'''Solve the monopole and return the fundamental freq + R/Q as a row.'''</span>
     <span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="n">name</span><span class="p">))</span>
     <span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="n">name</span><span class="p">])</span>
-    <span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-                         <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
+    <span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+                         <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
     <span class="n">q</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">],</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">]}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">'freq [MHz]'</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">],</span>
+            <span class="s1">'Epk/Eacc []'</span><span class="p">:</span> <span class="n">q</span><span class="p">[</span><span class="s1">'Epk/Eacc []'</span><span class="p">]}</span>
 </code></pre></div>
 </div>
 </div>
@@ -2509,28 +2557,28 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">ft</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.22</span><span class="p">,</span> <span class="mf">66.13</span><span class="p">,</span> <span class="mf">30.22</span><span class="p">,</span> <span class="mf">23.11</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">,</span> <span class="mf">171.20</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
-<span class="n">flat</span> <span class="o">=</span> <span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flattop&#39;</span><span class="p">)</span>
-<span class="n">flat</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="n">flat</span> <span class="o">=</span> <span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'flattop'</span><span class="p">)</span>
+<span class="n">flat</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/aa3c1f9da9a1e5cd059aafb3dece8f352208b521de299646efbc7ed6dfccbcca.png" src="../../_images/aa3c1f9da9a1e5cd059aafb3dece8f352208b521de299646efbc7ed6dfccbcca.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_ft</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">flat</span><span class="p">,</span> <span class="s1">&#39;flattop&#39;</span><span class="p">);</span> <span class="n">row_ft</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_ft</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">flat</span><span class="p">,</span> <span class="s1">'flattop'</span><span class="p">);</span> <span class="n">row_ft</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;freq [MHz]&#39;: 796.3470914042377,
- &#39;R/Q [Ohm]&#39;: 94.78932536488439,
- &#39;Epk/Eacc []&#39;: 2.136414777989721}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'freq [MHz]': 796.3470914042377,
+ 'R/Q [Ohm]': 94.78932536488439,
+ 'Epk/Eacc []': 2.136414777989721}
 </code></pre></div>
 </div>
 </div>
@@ -2539,31 +2587,31 @@
 <p>A free-form wall defined by control points and fitted with a Bezier spline — for shapes the elliptical parameterisation can’t express.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;p0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
-        <span class="s1">&#39;p3&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">&#39;p4&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p5&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
-<span class="n">spline</span> <span class="o">=</span> <span class="n">SplineCavity</span><span class="p">({</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">)},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;Bezier&#39;</span><span class="p">)</span>
-<span class="n">spline</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;spline&#39;</span>
-<span class="n">spline</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'p0'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p1'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p2'</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+        <span class="s1">'p3'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">'p4'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p5'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
+<span class="n">spline</span> <span class="o">=</span> <span class="n">SplineCavity</span><span class="p">({</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">)},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'Bezier'</span><span class="p">)</span>
+<span class="n">spline</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'spline'</span>
+<span class="n">spline</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/670193c0d5eafaccb870527807abb50c7c35ed4d5e46dafa7cb16dd714bf18a7.png" src="../../_images/670193c0d5eafaccb870527807abb50c7c35ed4d5e46dafa7cb16dd714bf18a7.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_sp</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">spline</span><span class="p">,</span> <span class="s1">&#39;spline&#39;</span><span class="p">);</span> <span class="n">row_sp</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_sp</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">spline</span><span class="p">,</span> <span class="s1">'spline'</span><span class="p">);</span> <span class="n">row_sp</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;freq [MHz]&#39;: 1534.5573276089435,
- &#39;R/Q [Ohm]&#39;: 103.23637568995248,
- &#39;Epk/Eacc []&#39;: 6.313393732419441}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'freq [MHz]': 1534.5573276089435,
+ 'R/Q [Ohm]': 103.23637568995248,
+ 'Epk/Eacc []': 6.313393732419441}
 </code></pre></div>
 </div>
 </div>
@@ -2572,32 +2620,32 @@
 <p>A photoinjector gun geometry (dimensions in metres, angles in radians) — a very different beast, but the same eigenmode call finds its VHF accelerating mode.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;y1&#39;</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">&#39;R2&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T2&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">&#39;L3&#39;</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;R4&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;L5&#39;</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">&#39;R6&#39;</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">&#39;L7&#39;</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">&#39;R8&#39;</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;T9&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">&#39;R10&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T10&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
-                    <span class="s1">&#39;L11&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;R12&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;L13&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;R14&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
-<span class="n">rfgun</span> <span class="o">=</span> <span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">);</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;rfgun&#39;</span>
-<span class="n">rfgun</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'y1'</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">'R2'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T2'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">'L3'</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
+                    <span class="s1">'R4'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'L5'</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">'R6'</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">'L7'</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">'R8'</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
+                    <span class="s1">'T9'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">'R10'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T10'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
+                    <span class="s1">'L11'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'R12'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'L13'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'R14'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'x'</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
+<span class="n">rfgun</span> <span class="o">=</span> <span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">);</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'rfgun'</span>
+<span class="n">rfgun</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/75118b97d299e8f159519aa54e06a7401a2d4844419c8d5196248ab90a487330.png" src="../../_images/75118b97d299e8f159519aa54e06a7401a2d4844419c8d5196248ab90a487330.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_gun</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">rfgun</span><span class="p">,</span> <span class="s1">&#39;rfgun&#39;</span><span class="p">);</span> <span class="n">row_gun</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">row_gun</span> <span class="o">=</span> <span class="n">fundamental</span><span class="p">(</span><span class="n">rfgun</span><span class="p">,</span> <span class="s1">'rfgun'</span><span class="p">);</span> <span class="n">row_gun</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;freq [MHz]&#39;: 213.06834851302116,
- &#39;R/Q [Ohm]&#39;: 133.66762013858826,
- &#39;Epk/Eacc []&#39;: 16.866599375611564}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'freq [MHz]': 213.06834851302116,
+ 'R/Q [Ohm]': 133.66762013858826,
+ 'Epk/Eacc []': 16.866599375611564}
 </code></pre></div>
 </div>
 </div>
@@ -2606,7 +2654,7 @@
 <p>Each shape solved through the identical <code class="docutils literal notranslate"><span class="pre">run_eigenmode</span></code> call:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;flat-top&#39;</span><span class="p">:</span> <span class="n">row_ft</span><span class="p">,</span> <span class="s1">&#39;spline&#39;</span><span class="p">:</span> <span class="n">row_sp</span><span class="p">,</span> <span class="s1">&#39;RF gun&#39;</span><span class="p">:</span> <span class="n">row_gun</span><span class="p">})</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">'flat-top'</span><span class="p">:</span> <span class="n">row_ft</span><span class="p">,</span> <span class="s1">'spline'</span><span class="p">:</span> <span class="n">row_sp</span><span class="p">,</span> <span class="s1">'RF gun'</span><span class="p">:</span> <span class="n">row_gun</span><span class="p">})</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>

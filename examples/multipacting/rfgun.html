@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2459,19 +2507,19 @@
 <h2 id="the-cavity">The cavity<a class="headerlink" href="#the-cavity" title="Link to this heading">¶</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;y1&#39;</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">&#39;R2&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T2&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">&#39;L3&#39;</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;R4&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;L5&#39;</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">&#39;R6&#39;</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">&#39;L7&#39;</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">&#39;R8&#39;</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;T9&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">&#39;R10&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T10&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
-                    <span class="s1">&#39;L11&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;R12&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;L13&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;R14&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
-<span class="n">rfgun</span> <span class="o">=</span> <span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">);</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;rfgun&#39;</span>
-<span class="n">rfgun</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;rfgun_mp&#39;</span><span class="p">))</span>
-<span class="n">rfgun</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'y1'</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">'R2'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T2'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">'L3'</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
+                    <span class="s1">'R4'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'L5'</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">'R6'</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">'L7'</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">'R8'</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
+                    <span class="s1">'T9'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">'R10'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T10'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
+                    <span class="s1">'L11'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'R12'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'L13'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'R14'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'x'</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
+<span class="n">rfgun</span> <span class="o">=</span> <span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">);</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'rfgun'</span>
+<span class="n">rfgun</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'rfgun_mp'</span><span class="p">))</span>
+<span class="n">rfgun</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/75118b97d299e8f159519aa54e06a7401a2d4844419c8d5196248ab90a487330.png" src="../../_images/75118b97d299e8f159519aa54e06a7401a2d4844419c8d5196248ab90a487330.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2481,7 +2529,7 @@
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">set_mesh_parameters</span><span class="p">(</span><span class="n">h</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">pec_maxh</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">compute_field</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;modes [MHz]:&#39;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">field_frequencies</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'modes [MHz]:'</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">field_frequencies</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
@@ -2493,7 +2541,7 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">show_field</span><span class="p">(</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">show_field</span><span class="p">(</span><span class="s1">'E'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2512,17 +2560,17 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/59978aaedf4b7e960f77321478b315079581119b57be1f88e2f23347dab87d9f.png" src="../../_images/59978aaedf4b7e960f77321478b315079581119b57be1f88e2f23347dab87d9f.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;z [mm]&#39;, ylabel=&#39;r [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='z [mm]', ylabel='r [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;proc_count&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;epks&#39;</span><span class="p">:</span> <span class="n">EPKS</span><span class="p">,</span> <span class="s1">&#39;phis&#39;</span><span class="p">:</span> <span class="n">PHIS</span><span class="p">})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'proc_count'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'epks'</span><span class="p">:</span> <span class="n">EPKS</span><span class="p">,</span> <span class="s1">'phis'</span><span class="p">:</span> <span class="n">PHIS</span><span class="p">})</span>
 <span class="n">mp</span> <span class="o">=</span> <span class="n">rfgun</span><span class="o">.</span><span class="n">multipacting</span>
 <span class="n">ax</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">plot_counter</span><span class="p">()</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;RF gun - peak c20/c0 = </span><span class="si">{</span><span class="n">mp</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">'RF gun - peak c20/c0 = </span><span class="si">{</span><span class="n">mp</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 </div>

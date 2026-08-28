@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2466,21 +2514,21 @@
 <p>A <code class="docutils literal notranslate"><span class="pre">SplineCavity</span></code> is parameterised by Bézier control points, so its uncertain variables are point <em>coordinates</em> (here the radius of <code class="docutils literal notranslate"><span class="pre">p3</span></code>, the equator control point). A 2% spread on it moves the frequency and R/Q.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;p0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
-        <span class="s1">&#39;p3&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">&#39;p4&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p5&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
-<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;spline_uq&#39;</span><span class="p">))</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">SplineCavity</span><span class="p">({</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">)},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;Bezier&#39;</span><span class="p">)],</span> <span class="p">[</span><span class="s1">&#39;SPLINE&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">geom</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'p0'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p1'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p2'</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+        <span class="s1">'p3'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">'p4'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p5'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}</span>
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'spline_uq'</span><span class="p">))</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">SplineCavity</span><span class="p">({</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">geom</span><span class="p">)},</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'Bezier'</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'SPLINE'</span><span class="p">])</span>
 
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;p3_r&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;monopole:freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;stroud3&#39;</span><span class="p">],</span> <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">],</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'uq_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'p3_r'</span><span class="p">],</span>
+        <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole:freq [MHz]'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">],</span>
+        <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'stroud3'</span><span class="p">],</span> <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">],</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">},</span>
 <span class="p">})</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">uq_fm_results</span><span class="p">[</span><span class="s1">&#39;SPLINE&#39;</span><span class="p">]</span>
-<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;expe&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;stdDev&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">uq_fm_results</span><span class="p">[</span><span class="s1">'SPLINE'</span><span class="p">]</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">':'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">'mean'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'expe'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'stdDev'</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
              <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2527,23 +2575,23 @@
 <p>The exact same call, a different model: a 2% spread on the gun’s <code class="docutils literal notranslate"><span class="pre">R6</span></code> wall radius. Nothing about the UQ setup is elliptical-specific.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;y1&#39;</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">&#39;R2&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T2&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">&#39;L3&#39;</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;R4&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;L5&#39;</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">&#39;R6&#39;</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">&#39;L7&#39;</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">&#39;R8&#39;</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
-                    <span class="s1">&#39;T9&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">&#39;R10&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;T10&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
-                    <span class="s1">&#39;L11&#39;</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">&#39;R12&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;L13&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;R14&#39;</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
-<span class="n">cavs_g</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;gun_uq&#39;</span><span class="p">))</span>
-<span class="n">cavs_g</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">)],</span> <span class="p">[</span><span class="s1">&#39;GUN&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">gun</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'y1'</span><span class="p">:</span> <span class="mf">1.5e-2</span><span class="p">,</span> <span class="s1">'R2'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T2'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="s1">'L3'</span><span class="p">:</span> <span class="mf">24e-2</span><span class="p">,</span>
+                    <span class="s1">'R4'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'L5'</span><span class="p">:</span> <span class="mf">11e-2</span><span class="p">,</span> <span class="s1">'R6'</span><span class="p">:</span> <span class="mf">6e-2</span><span class="p">,</span> <span class="s1">'L7'</span><span class="p">:</span> <span class="mf">19e-2</span><span class="p">,</span> <span class="s1">'R8'</span><span class="p">:</span> <span class="mf">4e-2</span><span class="p">,</span>
+                    <span class="s1">'T9'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="s1">'R10'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'T10'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">40</span><span class="p">),</span>
+                    <span class="s1">'L11'</span><span class="p">:</span> <span class="mf">5e-2</span><span class="p">,</span> <span class="s1">'R12'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'L13'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'R14'</span><span class="p">:</span> <span class="mf">3e-2</span><span class="p">,</span> <span class="s1">'x'</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">}}</span>
+<span class="n">cavs_g</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'gun_uq'</span><span class="p">))</span>
+<span class="n">cavs_g</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">RFGun</span><span class="p">(</span><span class="n">gun</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'GUN'</span><span class="p">])</span>
 
 <span class="n">cavs_g</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;R6&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;monopole:freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;stroud3&#39;</span><span class="p">],</span> <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">],</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'uq_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'R6'</span><span class="p">],</span>
+        <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole:freq [MHz]'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">],</span>
+        <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'stroud3'</span><span class="p">],</span> <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">],</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">},</span>
 <span class="p">})</span>
-<span class="n">res_g</span> <span class="o">=</span> <span class="n">cavs_g</span><span class="o">.</span><span class="n">uq_fm_results</span><span class="p">[</span><span class="s1">&#39;GUN&#39;</span><span class="p">]</span>
-<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;expe&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;stdDev&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
+<span class="n">res_g</span> <span class="o">=</span> <span class="n">cavs_g</span><span class="o">.</span><span class="n">uq_fm_results</span><span class="p">[</span><span class="s1">'GUN'</span><span class="p">]</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">':'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">'mean'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'expe'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'stdDev'</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
              <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">res_g</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2590,14 +2638,14 @@
 <p><code class="docutils literal notranslate"><span class="pre">eigenmode.plot_fm_scatter(uq=True)</span></code> shows each figure of merit as a mean with a <span class="math notranslate nohighlight">\(\pm1\sigma\)</span> error bar and the nominal design point — the built-in UQ comparison plot.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_scatter</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;freq&#39;</span><span class="p">,</span> <span class="s1">&#39;R/Q&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_scatter</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">qois</span><span class="o">=</span><span class="p">[</span><span class="s1">'freq'</span><span class="p">,</span> <span class="s1">'R/Q'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/e05569ddfcf948c8fd9fad9203f609ac91d3c300b78bc1bfe4526377232f4aab.png" src="../../_images/e05569ddfcf948c8fd9fad9203f609ac91d3c300b78bc1bfe4526377232f4aab.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;monopole:freq [MHz]&#39;: &lt;Axes: label=&#39;monopole:freq [MHz]&#39;, xlabel=&#39;$f$ [MHz]&#39;&gt;,
- &#39;monopole:R/Q [Ohm]&#39;: &lt;Axes: label=&#39;monopole:R/Q [Ohm]&#39;, xlabel=&#39;$R/Q ~\\mathrm{[\\Omega]}$&#39;&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'monopole:freq [MHz]': &lt;Axes: label='monopole:freq [MHz]', xlabel='$f$ [MHz]'&gt;,
+ 'monopole:R/Q [Ohm]': &lt;Axes: label='monopole:R/Q [Ohm]', xlabel='$R/Q ~\\mathrm{[\\Omega]}$'&gt;}
 </code></pre></div>
 </div>
 </div>

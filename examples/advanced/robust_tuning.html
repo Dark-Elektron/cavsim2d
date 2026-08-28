@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2466,17 +2514,17 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">ft</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.22</span><span class="p">,</span> <span class="mf">66.13</span><span class="p">,</span> <span class="mf">30.22</span><span class="p">,</span> <span class="mf">23.11</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">,</span> <span class="mf">171.20</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
-<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;ft_tune&#39;</span><span class="p">))</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)],</span> <span class="p">[</span><span class="s1">&#39;FT&#39;</span><span class="p">])</span>
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'ft_tune'</span><span class="p">))</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'FT'</span><span class="p">])</span>
 
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span>
-    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">790.0</span><span class="p">,</span>
-    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span> <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}},</span>
+    <span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">790.0</span><span class="p">,</span>
+    <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span> <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}},</span>
 <span class="p">})</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">cavities_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tuned Req = </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;Req_m&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm at </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;FREQ&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">cavities_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'mid-cell'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tuned Req = </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">'parameters'</span><span class="p">][</span><span class="s1">'Req_m'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm at </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">'FREQ'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2490,20 +2538,20 @@
 <p>Add a <code class="docutils literal notranslate"><span class="pre">uq_config</span></code> with a 2% spread on the semi-axes <code class="docutils literal notranslate"><span class="pre">A,</span> <span class="pre">B</span></code>. Same call, now UQ-averaged.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs2</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;ft_rtune&#39;</span><span class="p">))</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
-<span class="n">cavs2</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;FT&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs2</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'ft_rtune'</span><span class="p">))</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavityFlatTop</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">ft</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>
+<span class="n">cavs2</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">'FT'</span><span class="p">])</span>
 
 <span class="n">cavs2</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span>
-    <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">790.0</span><span class="p">,</span>
-    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span> <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}},</span>
-    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;monopole:freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;stroud3&#39;</span><span class="p">],</span> <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">],</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-        <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span> <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span><span class="p">,</span>
+    <span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">790.0</span><span class="p">,</span>
+    <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span> <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}},</span>
+    <span class="s1">'uq_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">],</span>
+        <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole:freq [MHz]'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">],</span>
+        <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'stroud3'</span><span class="p">],</span> <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">],</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">'cell_type'</span><span class="p">:</span> <span class="s1">'mid-cell'</span><span class="p">,</span> <span class="s1">'cell_complexity'</span><span class="p">:</span> <span class="s1">'simplecell'</span><span class="p">,</span>
     <span class="p">},</span>
 <span class="p">})</span>
 </code></pre></div>
@@ -2514,9 +2562,9 @@
 <p>Read from <code class="docutils literal notranslate"><span class="pre">&lt;cav&gt;/tuned/tune_info/uq_tune_results.json</span></code>. As in any robust tuning, the <strong>frequency is pinned</strong> (tuned onto target for every node, so ~zero spread) and the residual uncertainty surfaces in R/Q.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">uq</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;uq_tune_results.json&#39;</span><span class="p">)))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">uq</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">folder</span><span class="p">,</span> <span class="s1">'uq_tune_results.json'</span><span class="p">)))</span>
 <span class="n">stats</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">uq</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
-<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;expe&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;stdDev&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">':'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="p">{</span><span class="s1">'mean'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'expe'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s1">'stdDev'</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span>
              <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">stats</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
 </code></pre></div>
 </div>

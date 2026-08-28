@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2504,16 +2552,16 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;wake&#39;</span><span class="p">)</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;wake&#39;</span><span class="p">))</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'wake'</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'wake'</span><span class="p">))</span>
 
-<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/2fb30acd0fce4459c3a758be319f51e58dcd8d476de5540db68a1492472f1031.png" src="../../_images/2fb30acd0fce4459c3a758be319f51e58dcd8d476de5540db68a1492472f1031.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2522,16 +2570,16 @@
 <p><code class="docutils literal notranslate"><span class="pre">MROT=2</span></code> computes both the longitudinal and transverse polarisations; <code class="docutils literal notranslate"><span class="pre">wakelength</span></code> is the length of wake to compute [m] and <code class="docutils literal notranslate"><span class="pre">bunch_length</span></code> the rms bunch length [mm].</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;MROT&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;wakelength&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">&#39;bunch_length&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'MROT'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'wakelength'</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">'bunch_length'</span><span class="p">:</span> <span class="mi">25</span><span class="p">})</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">qois</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;|k_loss| [V/pC]&#39;: 0.1803,
- &#39;k_FM [V/pC]&#39;: 0.14338,
- &#39;k_loss_HOM [V/pC]&#39;: 0.03691999999999998,
- &#39;|k_kick| [V/pC/m]&#39;: 5.774}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'|k_loss| [V/pC]': 0.1803,
+ 'k_FM [V/pC]': 0.14338,
+ 'k_loss_HOM [V/pC]': 0.03691999999999998,
+ '|k_kick| [V/pC/m]': 5.774}
 </code></pre></div>
 </div>
 </div>
@@ -2540,13 +2588,13 @@
 <p>The longitudinal impedance <span class="math notranslate nohighlight">\(|Z_\parallel|\)</span> vs frequency (its peaks are the cavity’s higher-order modes):</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">&#39;longitudinal&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/3e46e9693ca02250a1a62ea5c7c7b916f3ac62ffcc16acdd84e2edc3e1483c60.png" src="../../_images/3e46e9693ca02250a1a62ea5c7c7b916f3ac62ffcc16acdd84e2edc3e1483c60.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;f [MHz]&#39;, ylabel=&#39;$|Z_\\parallel|$ [k$\\Omega$]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='f [MHz]', ylabel='$|Z_\\parallel|$ [k$\\Omega$]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2554,13 +2602,13 @@
 <p>The transverse (dipole) impedance <span class="math notranslate nohighlight">\(|Z_\perp|\)</span>:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">&#39;transverse&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'transverse'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/4636d23ca5698fad74ac2ea80c825e31165179c939db3dbd943570c41691002e.png" src="../../_images/4636d23ca5698fad74ac2ea80c825e31165179c939db3dbd943570c41691002e.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;f [MHz]&#39;, ylabel=&#39;$|Z_\\perp|$ [k$\\Omega$/m]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='f [MHz]', ylabel='$|Z_\\perp|$ [k$\\Omega$/m]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2569,13 +2617,13 @@
 <p>The longitudinal wake potential behind the bunch head:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_wake</span><span class="p">(</span><span class="s1">&#39;longitudinal&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_wake</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/a8736f7fab7b50244b12828dead21aee0098847326ea840dbb7efb6ff6b6d97a.png" src="../../_images/a8736f7fab7b50244b12828dead21aee0098847326ea840dbb7efb6ff6b6d97a.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: title={&#39;center&#39;: &#39;Longitudinal wake&#39;}, xlabel=&#39;S [m]&#39;, ylabel=&#39;$W_\\parallel$ [V/pC]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: title={'center': 'Longitudinal wake'}, xlabel='S [m]', ylabel='$W_\\parallel$ [V/pC]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2589,7 +2637,7 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/388ce51526c45fee38495ded4873b29441bdcdf0375fff89cbc224fb6559cc32.png" src="../../_images/388ce51526c45fee38495ded4873b29441bdcdf0375fff89cbc224fb6559cc32.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;f [MHz]&#39;, ylabel=&#39;$k_{\\mathrm{loss}}(F)$ [V/pC]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='f [MHz]', ylabel='$k_{\\mathrm{loss}}(F)$ [V/pC]'&gt;
 </code></pre></div>
 </div>
 </div>

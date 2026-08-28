@@ -1305,6 +1305,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2517,7 +2565,7 @@
 
 <span class="c1"># Initialize the project folder</span>
 <span class="c1"># This directory will hold all meshes, solver inputs, and result JSON files</span>
-<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">&#39;./tutorial_project&#39;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">'./tutorial_project'</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Define dimensions for a standard 9-cell TESLA cavity (in mm)</span>
 <span class="c1"># IC: [A, B, a, b, Ri, L, Req]</span>
@@ -2527,16 +2575,16 @@
 <span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.815</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
 
 <span class="c1"># Create the elliptical cavity object</span>
-<span class="n">tesla</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+<span class="n">tesla</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <h2 id="step-2-inspect-and-add-the-cavity">Step 2: Inspect and Add the Cavity<a class="headerlink" href="#step-2-inspect-and-add-the-cavity" title="Link to this heading">¶</a></h2>
 <p>You can inspect the geometry properties or plot the cavity boundary profile using matplotlib:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># Plot the geometry profile</span>
-<span class="n">tesla</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="n">tesla</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 
 <span class="c1"># Add the cavity to the study manager</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">],</span> <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">tesla</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">'TESLA'</span><span class="p">],</span> <span class="n">plot_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">'TESLA'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 <h2 id="step-3-run-the-eigenmode-solve">Step 3: Run the Eigenmode Solve<a class="headerlink" href="#step-3-run-the-eigenmode-solve" title="Link to this heading">¶</a></h2>
@@ -2545,7 +2593,7 @@
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">()</span>
 
 <span class="c1"># Print the fundamental mode Quantities of Interest (QOIs)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fundamental Mode Quantities of Interest:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Fundamental Mode Quantities of Interest:"</span><span class="p">)</span>
 <span class="n">pp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2555,8 +2603,8 @@
 <span class="n">cavs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">show_mesh</span><span class="p">()</span>
 
 <span class="c1"># Plot the electric (E) and magnetic (H) field magnitudes for the fundamental mode (mode 1)</span>
-<span class="n">cavs</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>
-<span class="n">cavs</span><span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">cavs</span><span class="p">[</span><span class="s1">'TESLA'</span><span class="p">]</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">'E'</span><span class="p">)</span>
+<span class="n">cavs</span><span class="p">[</span><span class="s1">'TESLA'</span><span class="p">]</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">'H'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">¶</a></h2>

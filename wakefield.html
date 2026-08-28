@@ -1295,6 +1295,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2495,12 +2543,12 @@ can equally be passed as a keyword argument — <code class="docutils literal no
 of defaults, and the <strong>merged</strong> dict is what runs and what
 <code class="docutils literal notranslate"><span class="pre">wakefield/config.json</span></code> records:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">wakefield_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;wakelength&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
-    <span class="s1">&#39;bunch_length&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
-    <span class="s1">&#39;MROT&#39;</span><span class="p">:</span> <span class="s1">&#39;both&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="s1">&#39;operating_points&#39;</span><span class="p">:</span> <span class="n">op_points</span>
+    <span class="s1">'wakelength'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">'bunch_length'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="s1">'MROT'</span><span class="p">:</span> <span class="s1">'both'</span><span class="p">,</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">'operating_points'</span><span class="p">:</span> <span class="n">op_points</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2527,12 +2575,12 @@ of defaults, and the <strong>merged</strong> dict is what runs and what
 <h2 id="operating-points">Operating Points<a class="headerlink" href="#operating-points" title="Link to this heading">¶</a></h2>
 <p>Operating points describe the beam parameters at a given machine energy. Each entry maps a label to its beam parameters:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">op_points</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;Z&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;freq [MHz]&quot;</span><span class="p">:</span> <span class="mf">400.79</span><span class="p">,</span>
-        <span class="s2">&quot;E [GeV]&quot;</span><span class="p">:</span> <span class="mf">45.6</span><span class="p">,</span>
-        <span class="s2">&quot;I0 [mA]&quot;</span><span class="p">:</span> <span class="mi">1280</span><span class="p">,</span>
-        <span class="s2">&quot;sigma_SR [mm]&quot;</span><span class="p">:</span> <span class="mf">4.32</span><span class="p">,</span>
-        <span class="s2">&quot;Nb [1e11]&quot;</span><span class="p">:</span> <span class="mf">2.76</span>
+    <span class="s2">"Z"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"freq [MHz]"</span><span class="p">:</span> <span class="mf">400.79</span><span class="p">,</span>
+        <span class="s2">"E [GeV]"</span><span class="p">:</span> <span class="mf">45.6</span><span class="p">,</span>
+        <span class="s2">"I0 [mA]"</span><span class="p">:</span> <span class="mi">1280</span><span class="p">,</span>
+        <span class="s2">"sigma_SR [mm]"</span><span class="p">:</span> <span class="mf">4.32</span><span class="p">,</span>
+        <span class="s2">"Nb [1e11]"</span><span class="p">:</span> <span class="mf">2.76</span>
     <span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -2543,13 +2591,13 @@ of defaults, and the <strong>merged</strong> dict is what runs and what
 one, so a single cavity and a whole study plot the same way:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># single cavity — longitudinal impedance (|Z| vs f), in kOhm by default</span>
 <span class="n">ax</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">()</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">&#39;transverse&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">)</span>   <span class="c1"># MOhm/m</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'transverse'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'M'</span><span class="p">)</span>   <span class="c1"># MOhm/m</span>
 
 <span class="c1"># wake potential (W vs s)</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_wake</span><span class="p">()</span>
 
 <span class="c1"># cumulative loss / kick factor *spectra* k(F) vs frequency</span>
-<span class="c1"># (ABCI&#39;s &#39;Loss Factor Spectrum Integrated upto F&#39;)</span>
+<span class="c1"># (ABCI's 'Loss Factor Spectrum Integrated upto F')</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_k_loss</span><span class="p">()</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_k_kick</span><span class="p">()</span>
 

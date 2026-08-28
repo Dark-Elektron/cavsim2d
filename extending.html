@@ -1305,6 +1305,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2539,13 +2587,13 @@ three for free.</p></li>
 <h2 id="the-profile-api">The Profile API<a class="headerlink" href="#the-profile-api" title="Link to this heading">¶</a></h2>
 <p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Profile</span></code> is built by walking the wall from the axis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Profile</span>
-<span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">&#39;my-cavity&#39;</span><span class="p">)</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">'my-cavity'</span><span class="p">)</span>
 <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">z0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>                    <span class="c1"># begin on the axis (r = 0)</span>
-<span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="s1">&#39;PMC&#39;</span><span class="p">)</span>             <span class="c1"># straight segment to (z, r) with a label</span>
-<span class="n">p</span><span class="o">.</span><span class="n">arc_to</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">through</span><span class="p">,</span> <span class="s1">&#39;PEC&#39;</span><span class="p">)</span>     <span class="c1"># arc through an intermediate point</span>
+<span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="s1">'PMC'</span><span class="p">)</span>             <span class="c1"># straight segment to (z, r) with a label</span>
+<span class="n">p</span><span class="o">.</span><span class="n">arc_to</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">through</span><span class="p">,</span> <span class="s1">'PEC'</span><span class="p">)</span>     <span class="c1"># arc through an intermediate point</span>
 <span class="n">p</span><span class="o">.</span><span class="n">ellipse_arc_to</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>              <span class="c1"># exact ellipse arc (see the elliptical model)</span>
 <span class="n">p</span><span class="o">.</span><span class="n">spline_to</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>                   <span class="c1"># Bézier spline (see the spline model)</span>
-<span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)</span>                     <span class="c1"># close back along the axis</span>
+<span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">'AXI'</span><span class="p">)</span>                     <span class="c1"># close back along the axis</span>
 </code></pre></div>
 </div>
 <p>Boundary labels are the only physics the outline carries:</p>
@@ -2586,41 +2634,41 @@ equator and back — three parameters, all straight segments:</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ConeCavity</span><span class="p">(</span><span class="n">Cavity</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single-cell cone cavity. dims = [L, Req, Ri] in mm.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""A single-cell cone cavity. dims = [L, Req, Ri] in mm."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;cone&#39;</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'cone'</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
         <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="n">dims</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_cells</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="s1">&#39;cone&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">beampipe</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Req</span><span class="p">),</span> <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ri</span><span class="p">)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">],</span> <span class="s1">&#39;BP&#39;</span><span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="s1">'cone'</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beampipe</span> <span class="o">=</span> <span class="s1">'none'</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'L'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="s1">'Req'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Req</span><span class="p">),</span> <span class="s1">'Ri'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ri</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'IC'</span><span class="p">:</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">],</span> <span class="s1">'BP'</span><span class="p">:</span> <span class="s1">'none'</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">profile</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="s1">&#39;Ri&#39;</span><span class="p">))</span>
+            <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'L'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'Ri'</span><span class="p">))</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">&#39;cone&#39;</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">'cone'</span><span class="p">)</span>
         <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">&#39;PMC&#39;</span><span class="p">)</span>     <span class="c1"># left aperture plane</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="s1">&#39;PEC&#39;</span><span class="p">)</span>       <span class="c1"># taper up to the equator</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">&#39;PEC&#39;</span><span class="p">)</span>      <span class="c1"># taper down to the right aperture</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;PMC&#39;</span><span class="p">)</span>     <span class="c1"># right aperture plane</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)</span>                   <span class="c1"># close along the axis</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">'PMC'</span><span class="p">)</span>     <span class="c1"># left aperture plane</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="s1">'PEC'</span><span class="p">)</span>       <span class="c1"># taper up to the equator</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">'PEC'</span><span class="p">)</span>      <span class="c1"># taper down to the right aperture</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">'PMC'</span><span class="p">)</span>     <span class="c1"># right aperture plane</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">'AXI'</span><span class="p">)</span>                   <span class="c1"># close along the axis</span>
         <span class="k">return</span> <span class="n">p</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_cells</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">projectDir</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projectDir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">uq_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;uq&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">'geometry'</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uq_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">'uq'</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">geo_filepath</span> <span class="o">=</span> <span class="kc">None</span>       <span class="c1"># native-only: the solver meshes profile()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_geometry_snapshot</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">rebuild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">ConeCavity</span><span class="p">([</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;Req&#39;</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;Ri&#39;</span><span class="p">]],</span>
+        <span class="k">return</span> <span class="n">ConeCavity</span><span class="p">([</span><span class="n">parameters</span><span class="p">[</span><span class="s1">'L'</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">'Req'</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">'Ri'</span><span class="p">]],</span>
                           <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2628,15 +2676,15 @@ equator and back — three parameters, all straight segments:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Study</span>
 
 <span class="n">cav</span> <span class="o">=</span> <span class="n">ConeCavity</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">20</span><span class="p">])</span>          <span class="c1"># L = Req = 100 mm, Ri = 20 mm</span>
-<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">&#39;project_dir&#39;</span><span class="p">)</span>
-<span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;cone&#39;</span><span class="p">])</span>
+<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">'project_dir'</span><span class="p">)</span>
+<span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">'cone'</span><span class="p">])</span>
 
-<span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">])</span>
+<span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">])</span>
 
 <span class="c1"># tuning, UQ and optimisation all work through rebuild() + self.parameters:</span>
-<span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1500.0</span><span class="p">,</span> <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">}})</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">])</span>   <span class="c1"># ~1500 MHz</span>
+<span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1500.0</span><span class="p">,</span> <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">}})</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">])</span>   <span class="c1"># ~1500 MHz</span>
 </code></pre></div>
 </div>
 <p>Because <code class="docutils literal notranslate"><span class="pre">profile()</span></code> labels its wall <code class="docutils literal notranslate"><span class="pre">PEC</span></code> and its apertures <code class="docutils literal notranslate"><span class="pre">PMC</span></code>, the same

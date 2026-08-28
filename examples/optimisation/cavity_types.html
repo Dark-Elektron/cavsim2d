@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2454,7 +2502,7 @@ instead of elliptical semi-axes.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Study</span><span class="p">,</span> <span class="n">SplineCavity</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.style</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_style</span>
 
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">)</span>
 <span class="n">apply_style</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2467,10 +2515,10 @@ coordinate the optimiser can address by name. We tune the equator point radius
 profile.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">SPLINE</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;p0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
-                       <span class="s1">&#39;p3&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">&#39;p4&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p5&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}}</span>
-<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;spline_opt&#39;</span><span class="p">))</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">SplineCavity</span><span class="p">(</span><span class="n">SPLINE</span><span class="p">)],</span> <span class="p">[</span><span class="s1">&#39;spline&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">SPLINE</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'p0'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p1'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p2'</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+                       <span class="s1">'p3'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">'p4'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p5'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}}</span>
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'spline_opt'</span><span class="p">))</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">SplineCavity</span><span class="p">(</span><span class="n">SPLINE</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'spline'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
@@ -2483,19 +2531,19 @@ change.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;no_of_generation&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}},</span>
-    <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;p1_r&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">55</span><span class="p">,</span> <span class="mi">80</span><span class="p">],</span> <span class="s1">&#39;p2_z&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">36</span><span class="p">],</span> <span class="s1">&#39;p3_z&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">78</span><span class="p">,</span> <span class="mi">92</span><span class="p">],</span> <span class="s1">&#39;p3_r&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">96</span><span class="p">,</span> <span class="mi">110</span><span class="p">]},</span>
-    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Epk/Eacc []&#39;</span><span class="p">],</span>
-                   <span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">]],</span>
-    <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;p2_r&#39;</span><span class="p">},</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                    <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}},</span>
-    <span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;weights&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="s1">'initial_points'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'no_of_generation'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'method'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'LHS'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'seed'</span><span class="p">:</span> <span class="mi">3</span><span class="p">}},</span>
+    <span class="s1">'bounds'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'p1_r'</span><span class="p">:</span> <span class="p">[</span><span class="mi">55</span><span class="p">,</span> <span class="mi">80</span><span class="p">],</span> <span class="s1">'p2_z'</span><span class="p">:</span> <span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">36</span><span class="p">],</span> <span class="s1">'p3_z'</span><span class="p">:</span> <span class="p">[</span><span class="mi">78</span><span class="p">,</span> <span class="mi">92</span><span class="p">],</span> <span class="s1">'p3_r'</span><span class="p">:</span> <span class="p">[</span><span class="mi">96</span><span class="p">,</span> <span class="mi">110</span><span class="p">]},</span>
+    <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'monopole:Epk/Eacc []'</span><span class="p">],</span>
+                   <span class="p">[</span><span class="s1">'max'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">]],</span>
+    <span class="s1">'tune_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'p2_r'</span><span class="p">},</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'n_cells'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">}},</span>
+    <span class="s1">'mutation_factor'</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'crossover_factor'</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'elites_for_crossover'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">'chaos_factor'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'weights'</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
 <span class="p">}</span>
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_optimisation</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 <span class="n">opt</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">optimisation</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;evaluated candidates: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">history</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Pareto-front size:    </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'evaluated candidates: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">history</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Pareto-front size:    </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2524,14 +2572,14 @@ non-dominated designs are the Pareto front (see
 front views on a case with a broader trade-off).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;scatter&#39;</span><span class="p">,</span> <span class="n">color_by_gen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'scatter'</span><span class="p">,</span> <span class="n">color_by_gen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/42fc3c103e68034e6630678054dcff961d7691a3e1d97ae29b827e08fadd6b69.png" src="../../_images/42fc3c103e68034e6630678054dcff961d7691a3e1d97ae29b827e08fadd6b69.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 400x400 with 1 Axes&gt;,
- array([[&lt;Axes: xlabel=&#39;monopole:Epk/Eacc []&#39;, ylabel=&#39;monopole:R/Q [Ohm]&#39;&gt;]],
+ array([[&lt;Axes: xlabel='monopole:Epk/Eacc []', ylabel='monopole:R/Q [Ohm]'&gt;]],
        dtype=object))
 </code></pre></div>
 </div>
@@ -2540,7 +2588,7 @@ front views on a case with a broader trade-off).</p>
 <p>The best designs found, in the spline’s own variables:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;p1_r&#39;</span><span class="p">,</span> <span class="s1">&#39;p2_z&#39;</span><span class="p">,</span> <span class="s1">&#39;p3_z&#39;</span><span class="p">,</span> <span class="s1">&#39;p3_r&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">opt</span><span class="o">.</span><span class="n">objective_vars</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'p1_r'</span><span class="p">,</span> <span class="s1">'p2_z'</span><span class="p">,</span> <span class="s1">'p3_z'</span><span class="p">,</span> <span class="s1">'p3_r'</span><span class="p">]</span> <span class="o">+</span> <span class="n">opt</span><span class="o">.</span><span class="n">objective_vars</span>
 <span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
 </div>

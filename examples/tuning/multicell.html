@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2507,20 +2555,20 @@ See the <a class="reference internal" href="../../tuning.html"><span class="doc 
 
 <span class="n">apply_style</span><span class="p">()</span>
 
-<span class="n">EIG</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-       <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span> <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}</span>
+<span class="n">EIG</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+       <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span> <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">pi_mode</span><span class="p">(</span><span class="n">cav</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve and return (pi-mode frequency [MHz], field flatness [%]).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Solve and return (pi-mode frequency [MHz], field flatness [%])."""</span>
     <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">EIG</span><span class="p">)</span>
     <span class="n">q</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span>
-    <span class="k">return</span> <span class="n">q</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">],</span> <span class="n">q</span><span class="p">[</span><span class="s1">&#39;ff [%]&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">q</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="n">q</span><span class="p">[</span><span class="s1">'ff [%]'</span><span class="p">]</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">axis_field</span><span class="p">(</span><span class="n">cav</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;On-axis |Ez| profile of the last-solved mode, peak-normalised.&quot;&quot;&quot;</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">pol_folder</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;Ez_0_abs.csv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">z</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;z(0, 0)&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-    <span class="n">ez</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;|Ez(0, 0)|&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">"""On-axis |Ez| profile of the last-solved mode, peak-normalised."""</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">pol_folder</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="s1">'Ez_0_abs.csv'</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">'</span><span class="se">\t</span><span class="s1">'</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">'z(0, 0)'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">ez</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">'|Ez(0, 0)|'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">ez</span> <span class="o">/</span> <span class="n">ez</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2535,12 +2583,12 @@ each end. <code class="docutils literal notranslate"><span class="pre">beampipe=
 
 <span class="k">def</span><span class="w"> </span><span class="nf">fresh</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
     <span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">TESLA</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">TESLA</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="n">TESLA</span><span class="p">),</span>
-                           <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+                           <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
     <span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="n">name</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">cav</span>
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">&#39;view&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;9-cell cavity, detuned (Req = 108 mm)&#39;</span><span class="p">)</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">'view'</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'9-cell cavity, detuned (Req = 108 mm)'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2554,13 +2602,13 @@ each end. <code class="docutils literal notranslate"><span class="pre">beampipe=
 beam-pipe-loaded end cells are left untuned, so the field is far from flat.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_mid</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">&#39;mid_only&#39;</span><span class="p">)</span>
-<span class="n">cav_mid</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>
-                  <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-                  <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-                                       <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_mid</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">'mid_only'</span><span class="p">)</span>
+<span class="n">cav_mid</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>
+                  <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+                  <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+                                       <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
 <span class="n">f_mid</span><span class="p">,</span> <span class="n">ff_mid</span> <span class="o">=</span> <span class="n">pi_mode</span><span class="p">(</span><span class="n">cav_mid</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mid cells only:  pi-mode = </span><span class="si">{</span><span class="n">f_mid</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz,  field flatness = </span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> %&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"mid cells only:  pi-mode = </span><span class="si">{</span><span class="n">f_mid</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz,  field flatness = </span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> %"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2577,8 +2625,8 @@ signature of untuned, beam-pipe-loaded ends.</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">z</span><span class="p">,</span> <span class="n">ez</span> <span class="o">=</span> <span class="n">axis_field</span><span class="p">(</span><span class="n">cav_mid</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">ez</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;z [mm]&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;|Ez| (normalised)&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mid cells only — field flatness </span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'z [mm]'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'|Ez| (normalised)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">'mid cells only — field flatness </span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2594,13 +2642,13 @@ order, the end-cell tune sees the already-tuned interior and lengthens the end
 cells just enough to compensate the beam-pipe loading.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">&#39;mid_and_end&#39;</span><span class="p">)</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>
-              <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="s1">&#39;end-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;L&#39;</span><span class="p">},</span>
-              <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-                                   <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span> <span class="o">=</span> <span class="n">fresh</span><span class="p">(</span><span class="s1">'mid_and_end'</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span>
+              <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'end-cell'</span><span class="p">:</span> <span class="s1">'L'</span><span class="p">},</span>
+              <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+                                   <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
 <span class="n">f_full</span><span class="p">,</span> <span class="n">ff_full</span> <span class="o">=</span> <span class="n">pi_mode</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mid + end cells: pi-mode = </span><span class="si">{</span><span class="n">f_full</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz,  field flatness = </span><span class="si">{</span><span class="n">ff_full</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> %&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"mid + end cells: pi-mode = </span><span class="si">{</span><span class="n">f_full</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz,  field flatness = </span><span class="si">{</span><span class="n">ff_full</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> %"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2615,10 +2663,10 @@ cells just enough to compensate the beam-pipe loading.</p>
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">z2</span><span class="p">,</span> <span class="n">ez2</span> <span class="o">=</span> <span class="n">axis_field</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">ez</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;mid only (</span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%)&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z2</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">ez2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;mid + end (</span><span class="si">{</span><span class="n">ff_full</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%)&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;z [mm]&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;|Ez| (normalised)&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;flattening the field with independent end-cell tuning&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">ez</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'mid only (</span><span class="si">{</span><span class="n">ff_mid</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z2</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">ez2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'mid + end (</span><span class="si">{</span><span class="n">ff_full</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">%)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'z [mm]'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'|Ez| (normalised)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'flattening the field with independent end-cell tuning'</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
@@ -2634,16 +2682,16 @@ equator radius, the end cells on a half-length. Both live on the single tuned
 cavity, whose π-mode is the target frequency.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">mid</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">]</span>
-<span class="n">end</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;end-cell&#39;</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mid cells:  Req = </span><span class="si">{</span><span class="n">mid</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;Req_m&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm   (tuned </span><span class="si">{</span><span class="n">mid</span><span class="p">[</span><span class="s1">&#39;TUNED VARIABLES&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;end cells:  L   = </span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;L_el&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm   (tuned </span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;TUNED VARIABLES&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">mid</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'mid-cell'</span><span class="p">]</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'end-cell'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"mid cells:  Req = </span><span class="si">{</span><span class="n">mid</span><span class="p">[</span><span class="s1">'parameters'</span><span class="p">][</span><span class="s1">'Req_m'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm   (tuned </span><span class="si">{</span><span class="n">mid</span><span class="p">[</span><span class="s1">'TUNED VARIABLES'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"end cells:  L   = </span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">'parameters'</span><span class="p">][</span><span class="s1">'L_el'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm   (tuned </span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">'TUNED VARIABLES'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>mid cells:  Req = 103.365 mm   (tuned [&#39;Req_m&#39;])
-end cells:  L   = 61.072 mm   (tuned [&#39;L_el&#39;])
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>mid cells:  Req = 103.365 mm   (tuned ['Req_m'])
+end cells:  L   = 61.072 mm   (tuned ['L_el'])
 </code></pre></div>
 </div>
 </div>
@@ -2655,10 +2703,10 @@ end cells:  L   = 61.072 mm   (tuned [&#39;L_el&#39;])
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;before tuning&#39;</span><span class="p">)</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">tuned</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;C3&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;after tuning&#39;</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'C0'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'before tuning'</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">tuned</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'C3'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'after tuning'</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;geometry before and after tuning&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'geometry before and after tuning'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 </div>

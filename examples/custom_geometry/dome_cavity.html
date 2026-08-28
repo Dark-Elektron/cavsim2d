@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2532,41 +2580,41 @@ segment replaces the straight tapers, giving an exact circular wall.</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DomeCavity</span><span class="p">(</span><span class="n">Cavity</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A rounded single-cell cavity whose entire wall is one circular arc bulging</span>
-<span class="sd">    from the aperture out to the equator. dims = [L, Req, Ri] in mm.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""A rounded single-cell cavity whose entire wall is one circular arc bulging</span>
+<span class="sd">    from the aperture out to the equator. dims = [L, Req, Ri] in mm."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dome&#39;</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'dome'</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
         <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="n">dims</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">beampipe</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;dome&#39;</span><span class="p">,</span> <span class="s1">&#39;none&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="s1">&#39;Req&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Req</span><span class="p">),</span> <span class="s1">&#39;Ri&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ri</span><span class="p">)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;IC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">],</span> <span class="s1">&#39;BP&#39;</span><span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">beampipe</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'dome'</span><span class="p">,</span> <span class="s1">'none'</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'L'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="s1">'Req'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Req</span><span class="p">),</span> <span class="s1">'Ri'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ri</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'IC'</span><span class="p">:</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">],</span> <span class="s1">'BP'</span><span class="p">:</span> <span class="s1">'none'</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">profile</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">,</span> <span class="s1">&#39;Ri&#39;</span><span class="p">))</span>
+            <span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-3</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'L'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'Ri'</span><span class="p">))</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">Req</span> <span class="o">&lt;=</span> <span class="n">Ri</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">&#39;dome&#39;</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="s1">'dome'</span><span class="p">)</span>
         <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">&#39;PMC&#39;</span><span class="p">)</span>                             <span class="c1"># left aperture plane</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">arc_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="n">through</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">Req</span><span class="p">),</span> <span class="n">boundary</span><span class="o">=</span><span class="s1">&#39;PEC&#39;</span><span class="p">)</span>  <span class="c1"># one arc wall (curved!)</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;PMC&#39;</span><span class="p">)</span>                             <span class="c1"># right aperture plane</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">&#39;AXI&#39;</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="s1">'PMC'</span><span class="p">)</span>                             <span class="c1"># left aperture plane</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">arc_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="n">through</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">Req</span><span class="p">),</span> <span class="n">boundary</span><span class="o">=</span><span class="s1">'PEC'</span><span class="p">)</span>  <span class="c1"># one arc wall (curved!)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">L</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">'PMC'</span><span class="p">)</span>                             <span class="c1"># right aperture plane</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">'AXI'</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">p</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_cells</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">projectDir</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projectDir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">uq_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">&#39;uq&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">'geometry'</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uq_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">self_dir</span><span class="p">,</span> <span class="s1">'uq'</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">geo_filepath</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_geometry_snapshot</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">rebuild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">DomeCavity</span><span class="p">([</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;Req&#39;</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;Ri&#39;</span><span class="p">]],</span>
+        <span class="k">return</span> <span class="n">DomeCavity</span><span class="p">([</span><span class="n">parameters</span><span class="p">[</span><span class="s1">'L'</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">'Req'</span><span class="p">],</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">'Ri'</span><span class="p">]],</span>
                           <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2576,15 +2624,15 @@ segment replaces the straight tapers, giving an exact circular wall.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span> <span class="o">=</span> <span class="n">DomeCavity</span><span class="p">([</span><span class="mi">90</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">20</span><span class="p">])</span>
-<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;dome&#39;</span><span class="p">))</span>
-<span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;dome&#39;</span><span class="p">])</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'dome'</span><span class="p">))</span>
+<span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">'dome'</span><span class="p">])</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/6b5c12ab0124ee7b9e183086acc8fac5e00361d6515b796c50dc07dbe3007876.png" src="../../_images/6b5c12ab0124ee7b9e183086acc8fac5e00361d6515b796c50dc07dbe3007876.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2592,11 +2640,11 @@ segment replaces the straight tapers, giving an exact circular wall.</p>
 <h2 id="eigenmode">3. Eigenmode<a class="headerlink" href="#eigenmode" title="Link to this heading">¶</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}})</span>
 <span class="n">q</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;frequency : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R/Q       : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> Ohm&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epk/Eacc  : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"frequency : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"R/Q       : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> Ohm"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Epk/Eacc  : </span><span class="si">{</span><span class="n">q</span><span class="p">[</span><span class="s1">'Epk/Eacc []'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2611,7 +2659,7 @@ Epk/Eacc  : 7.594
 <p>The mode itself — an interactive NGSolve (webgui) view of the electric field. Drag to rotate, and use <strong>Open Controls</strong> to switch field component or clip:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>   <span class="c1"># webgui; pass which=&#39;H&#39; for the magnetic field</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">'E'</span><span class="p">)</span>   <span class="c1"># webgui; pass which='H' for the magnetic field</span>
 </code></pre></div>
 </div>
 </div>
@@ -2629,9 +2677,9 @@ sweep a range of peak fields and launch phases (kept small so it runs quickly).<
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">mp</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">multipacting</span>
 <span class="n">mp</span><span class="o">.</span><span class="n">set_emission_points</span><span class="p">([</span><span class="o">-</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">],</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>   <span class="c1"># band around the equator [m]</span>
-<span class="n">mp</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">&#39;epks&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1e6</span><span class="p">,</span> <span class="mf">40e6</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span>
-        <span class="s1">&#39;phis&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
-        <span class="s1">&#39;v_init&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;proc_count&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">})</span>
+<span class="n">mp</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'epks'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1e6</span><span class="p">,</span> <span class="mf">40e6</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span>
+        <span class="s1">'phis'</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="s1">'v_init'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'proc_count'</span><span class="p">:</span> <span class="mi">4</span><span class="p">})</span>
 <span class="n">mp</span><span class="o">.</span><span class="n">plot_counter</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2644,7 +2692,7 @@ sweep a range of peak fields and launch phases (kept small so it runs quickly).<
 </code></pre></div>
 </div>
 <img alt="../../_images/8268702f281e740db218fe4c038a4f93ef4a8b834653298a8a5209d34da8a019.png" src="../../_images/8268702f281e740db218fe4c038a4f93ef4a8b834653298a8a5209d34da8a019.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$E_{\\mathrm{pk}}$ [MV/m]&#39;, ylabel=&#39;$c_{20}/c_0$&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$E_{\\mathrm{pk}}$ [MV/m]', ylabel='$c_{20}/c_0$'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2652,11 +2700,11 @@ sweep a range of peak fields and launch phases (kept small so it runs quickly).<
 <h2 id="tune">5. Tune<a class="headerlink" href="#tune" title="Link to this heading">¶</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span>
-                <span class="s1">&#39;tol&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>   <span class="c1"># coarse demo mesh: match the secant tol to its noise floor</span>
-                <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tuned Req = </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;Req&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm  -&gt;  </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;FREQ&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span>
+                <span class="s1">'tol'</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>   <span class="c1"># coarse demo mesh: match the secant tol to its noise floor</span>
+                <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">}}})</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'mid-cell'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tuned Req = </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">'parameters'</span><span class="p">][</span><span class="s1">'Req'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> mm  -&gt;  </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">'FREQ'</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2680,8 +2728,8 @@ too. The one property unique to an adaptive run is the convergence history:
 settles as degrees of freedom are added.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span>
-                     <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;adaptive&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}})</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span><span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span>
+                     <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'adaptive'</span><span class="p">:</span> <span class="kc">True</span><span class="p">}})</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">show_mesh</span><span class="p">()</span>   <span class="c1"># interactive NGSolve (webgui) view of the refined mesh</span>
 </code></pre></div>
 </div>
@@ -2715,8 +2763,8 @@ settles as degrees of freedom are added.</p>
 <div class="cell_output docutils container">
 <img alt="../../_images/ac3fa0d3fe9a0db66e103a39da3f4b99e64b01f6f537aea54abbb37ccfc35451.png" src="../../_images/ac3fa0d3fe9a0db66e103a39da3f4b99e64b01f6f537aea54abbb37ccfc35451.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 1100x400 with 2 Axes&gt;,
- array([&lt;Axes: title={&#39;center&#39;: &#39;Error vs DOFs&#39;}, xlabel=&#39;Number of DOFs&#39;, ylabel=&#39;Recovery error&#39;&gt;,
-        &lt;Axes: title={&#39;center&#39;: &#39;Frequency vs DOFs&#39;}, xlabel=&#39;Number of DOFs&#39;, ylabel=&#39;Frequency [MHz]&#39;&gt;],
+ array([&lt;Axes: title={'center': 'Error vs DOFs'}, xlabel='Number of DOFs', ylabel='Recovery error'&gt;,
+        &lt;Axes: title={'center': 'Frequency vs DOFs'}, xlabel='Number of DOFs', ylabel='Frequency [MHz]'&gt;],
        dtype=object))
 </code></pre></div>
 </div>

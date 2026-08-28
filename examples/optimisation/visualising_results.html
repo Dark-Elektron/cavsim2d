@@ -1206,6 +1206,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2478,7 +2526,7 @@ a real trade-off surface to explore. See the <a class="reference internal" href=
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Study</span><span class="p">,</span> <span class="n">EllipticalCavity</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.style</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_style</span>
 
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>   <span class="c1"># quiet matplotlib tight_layout notices</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">)</span>   <span class="c1"># quiet matplotlib tight_layout notices</span>
 <span class="n">apply_style</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -2490,27 +2538,27 @@ a real trade-off surface to explore. See the <a class="reference internal" href=
 small — a handful of candidates over two generations — so it runs in a few minutes.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;opt3&#39;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'opt3'</span><span class="p">))</span>
 <span class="n">mid</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)],</span> <span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'TESLA'</span><span class="p">])</span>
 
 <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;initial_points&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;no_of_generation&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;LHS&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}},</span>
-    <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">38</span><span class="p">,</span> <span class="mi">48</span><span class="p">],</span> <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">38</span><span class="p">,</span> <span class="mi">48</span><span class="p">],</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">17</span><span class="p">,</span> <span class="mi">21</span><span class="p">]},</span>
-    <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Epk/Eacc []&#39;</span><span class="p">],</span>
-                   <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">],</span>
-                   <span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">]],</span>
-    <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mid-cell&#39;</span><span class="p">:</span> <span class="s1">&#39;Req&#39;</span><span class="p">},</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                    <span class="s1">&#39;eigenmode_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                                         <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">}},</span>
-    <span class="s1">&#39;mutation_factor&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;crossover_factor&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;elites_for_crossover&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="s1">&#39;chaos_factor&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;weights&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="s1">'initial_points'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'no_of_generation'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'method'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'LHS'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'seed'</span><span class="p">:</span> <span class="mi">5</span><span class="p">}},</span>
+    <span class="s1">'bounds'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'A'</span><span class="p">:</span> <span class="p">[</span><span class="mi">38</span><span class="p">,</span> <span class="mi">48</span><span class="p">],</span> <span class="s1">'B'</span><span class="p">:</span> <span class="p">[</span><span class="mi">38</span><span class="p">,</span> <span class="mi">48</span><span class="p">],</span> <span class="s1">'a'</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">],</span> <span class="s1">'b'</span><span class="p">:</span> <span class="p">[</span><span class="mi">17</span><span class="p">,</span> <span class="mi">21</span><span class="p">]},</span>
+    <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'monopole:Epk/Eacc []'</span><span class="p">],</span>
+                   <span class="p">[</span><span class="s1">'min'</span><span class="p">,</span> <span class="s1">'monopole:Bpk/Eacc [mT/MV/m]'</span><span class="p">],</span>
+                   <span class="p">[</span><span class="s1">'max'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">]],</span>
+    <span class="s1">'tune_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="mf">1300.0</span><span class="p">,</span> <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">},</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'n_cells'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                                         <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">}},</span>
+    <span class="s1">'mutation_factor'</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'crossover_factor'</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'elites_for_crossover'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">'chaos_factor'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'weights'</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
 <span class="p">}</span>
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_optimisation</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 <span class="n">opt</span> <span class="o">=</span> <span class="n">cavs</span><span class="o">.</span><span class="n">optimisation</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;evaluated candidates: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">history</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Pareto-front size:    </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;objectives:           </span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">objective_vars</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'evaluated candidates: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">history</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Pareto-front size:    </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'objectives:           </span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">objective_vars</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2527,7 +2575,7 @@ small — a handful of candidates over two generations — so it runs in a few m
 <img alt="../../_images/b2dad580401cc14d2f2e06cbc4a0a6c3ca16df1c722b249a59dc5c1ac562d7a5.png" src="../../_images/b2dad580401cc14d2f2e06cbc4a0a6c3ca16df1c722b249a59dc5c1ac562d7a5.png" />
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>evaluated candidates: 16
 Pareto-front size:    4
-objectives:           [&#39;monopole:Epk/Eacc []&#39;, &#39;monopole:Bpk/Eacc [mT/MV/m]&#39;, &#39;monopole:R/Q [Ohm]&#39;]
+objectives:           ['monopole:Epk/Eacc []', 'monopole:Bpk/Eacc [mT/MV/m]', 'monopole:R/Q [Ohm]']
 </code></pre></div>
 </div>
 </div>
@@ -2538,16 +2586,16 @@ the optimiser offers complementary views (<code class="docutils literal notransl
 every pair of objectives:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;scatter&#39;</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'scatter'</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/c934e56da41954076b4b221907dd42f9779317d2d63d5fa9ea667bd3aa807134.png" src="../../_images/c934e56da41954076b4b221907dd42f9779317d2d63d5fa9ea667bd3aa807134.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 800x800 with 4 Axes&gt;,
- array([[&lt;Axes: ylabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;&gt;, &lt;Axes: &gt;],
-        [&lt;Axes: xlabel=&#39;monopole:Epk/Eacc []&#39;, ylabel=&#39;monopole:R/Q [Ohm]&#39;&gt;,
-         &lt;Axes: xlabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;&gt;]], dtype=object))
+ array([[&lt;Axes: ylabel='monopole:Bpk/Eacc [mT/MV/m]'&gt;, &lt;Axes: &gt;],
+        [&lt;Axes: xlabel='monopole:Epk/Eacc []', ylabel='monopole:R/Q [Ohm]'&gt;,
+         &lt;Axes: xlabel='monopole:Bpk/Eacc [mT/MV/m]'&gt;]], dtype=object))
 </code></pre></div>
 </div>
 </div>
@@ -2556,14 +2604,14 @@ every pair of objectives:</p>
 objective axes — crossing lines are the sign of a trade-off:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;pcp&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'pcp'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/d21847abe73bb687b19b0fa2c648842caf87318e256d12b02ae701313b88d597.png" src="../../_images/d21847abe73bb687b19b0fa2c648842caf87318e256d12b02ae701313b88d597.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 600x500 with 1 Axes&gt;,
- &lt;Axes: title={&#39;center&#39;: &#39;Pareto front — parallel coordinates (normalised)&#39;}, ylabel=&#39;Normalised value&#39;&gt;)
+ &lt;Axes: title={'center': 'Pareto front — parallel coordinates (normalised)'}, ylabel='Normalised value'&gt;)
 </code></pre></div>
 </div>
 </div>
@@ -2572,14 +2620,14 @@ objective axes — crossing lines are the sign of a trade-off:</p>
 objectives — a compact fingerprint of where each design is strong:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;radar&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_pareto</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'radar'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/78ab92c9a1449a3a9a6b50614198a46b4d6fbc2f18e2bb61f4c10c859376632d.png" src="../../_images/78ab92c9a1449a3a9a6b50614198a46b4d6fbc2f18e2bb61f4c10c859376632d.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 700x700 with 1 Axes&gt;,
- &lt;PolarAxes: title={&#39;center&#39;: &#39;Pareto front — radar (normalised)&#39;}&gt;)
+ &lt;PolarAxes: title={'center': 'Pareto front — radar (normalised)'}&gt;)
 </code></pre></div>
 </div>
 </div>
@@ -2589,7 +2637,7 @@ objectives — a compact fingerprint of where each design is strong:</p>
 so you can watch the population march toward the front:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;scatter&#39;</span><span class="p">,</span> <span class="n">color_by_gen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opt</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'scatter'</span><span class="p">,</span> <span class="n">color_by_gen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">normalise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2602,9 +2650,9 @@ so you can watch the population march toward the front:</p>
 </div>
 <img alt="../../_images/fd27b1a25f438481c2eadc71d677ef6bdb1d0ba6c5fba8a4fe40767935925604.png" src="../../_images/fd27b1a25f438481c2eadc71d677ef6bdb1d0ba6c5fba8a4fe40767935925604.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 800x800 with 4 Axes&gt;,
- array([[&lt;Axes: ylabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;&gt;, &lt;Axes: &gt;],
-        [&lt;Axes: xlabel=&#39;monopole:Epk/Eacc []&#39;, ylabel=&#39;monopole:R/Q [Ohm]&#39;&gt;,
-         &lt;Axes: xlabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;&gt;]], dtype=object))
+ array([[&lt;Axes: ylabel='monopole:Bpk/Eacc [mT/MV/m]'&gt;, &lt;Axes: &gt;],
+        [&lt;Axes: xlabel='monopole:Epk/Eacc []', ylabel='monopole:R/Q [Ohm]'&gt;,
+         &lt;Axes: xlabel='monopole:Bpk/Eacc [mT/MV/m]'&gt;]], dtype=object))
 </code></pre></div>
 </div>
 </div>
@@ -2619,9 +2667,9 @@ so you can watch the population march toward the front:</p>
 <div class="cell_output docutils container">
 <img alt="../../_images/bdf09d8a2f8a3077abe292bd88b036fa28500c387bd13faa4999cf0e3efe0cfc.png" src="../../_images/bdf09d8a2f8a3077abe292bd88b036fa28500c387bd13faa4999cf0e3efe0cfc.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 1500x400 with 4 Axes&gt;,
- {&#39;monopole:Epk/Eacc [] vs monopole:Bpk/Eacc [mT/MV/m]&#39;: &lt;Axes: label=&#39;monopole:Epk/Eacc [] vs monopole:Bpk/Eacc [mT/MV/m]&#39;, xlabel=&#39;monopole:Epk/Eacc []&#39;, ylabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;&gt;,
-  &#39;monopole:Epk/Eacc [] vs monopole:R/Q [Ohm]&#39;: &lt;Axes: label=&#39;monopole:Epk/Eacc [] vs monopole:R/Q [Ohm]&#39;, xlabel=&#39;monopole:Epk/Eacc []&#39;, ylabel=&#39;monopole:R/Q [Ohm]&#39;&gt;,
-  &#39;monopole:Bpk/Eacc [mT/MV/m] vs monopole:R/Q [Ohm]&#39;: &lt;Axes: label=&#39;monopole:Bpk/Eacc [mT/MV/m] vs monopole:R/Q [Ohm]&#39;, xlabel=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;, ylabel=&#39;monopole:R/Q [Ohm]&#39;&gt;})
+ {'monopole:Epk/Eacc [] vs monopole:Bpk/Eacc [mT/MV/m]': &lt;Axes: label='monopole:Epk/Eacc [] vs monopole:Bpk/Eacc [mT/MV/m]', xlabel='monopole:Epk/Eacc []', ylabel='monopole:Bpk/Eacc [mT/MV/m]'&gt;,
+  'monopole:Epk/Eacc [] vs monopole:R/Q [Ohm]': &lt;Axes: label='monopole:Epk/Eacc [] vs monopole:R/Q [Ohm]', xlabel='monopole:Epk/Eacc []', ylabel='monopole:R/Q [Ohm]'&gt;,
+  'monopole:Bpk/Eacc [mT/MV/m] vs monopole:R/Q [Ohm]': &lt;Axes: label='monopole:Bpk/Eacc [mT/MV/m] vs monopole:R/Q [Ohm]', xlabel='monopole:Bpk/Eacc [mT/MV/m]', ylabel='monopole:R/Q [Ohm]'&gt;})
 </code></pre></div>
 </div>
 </div>
@@ -2636,8 +2684,8 @@ so you can watch the population march toward the front:</p>
 <div class="cell_output docutils container">
 <img alt="../../_images/b2dad580401cc14d2f2e06cbc4a0a6c3ca16df1c722b249a59dc5c1ac562d7a5.png" src="../../_images/b2dad580401cc14d2f2e06cbc4a0a6c3ca16df1c722b249a59dc5c1ac562d7a5.png" />
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 1200x400 with 2 Axes&gt;,
- (&lt;Axes: title={&#39;center&#39;: &#39;Hypervolume indicator&#39;}, xlabel=&#39;Generation $n$&#39;, ylabel=&#39;Hypervolume&#39;&gt;,
-  &lt;Axes: title={&#39;center&#39;: &#39;Relative HV change&#39;}, xlabel=&#39;Generation $n$&#39;, ylabel=&#39;$|\\Delta \\mathrm{HV}| / \\mathrm{HV}_n$&#39;&gt;))
+ (&lt;Axes: title={'center': 'Hypervolume indicator'}, xlabel='Generation $n$', ylabel='Hypervolume'&gt;,
+  &lt;Axes: title={'center': 'Relative HV change'}, xlabel='Generation $n$', ylabel='$|\\Delta \\mathrm{HV}| / \\mathrm{HV}_n$'&gt;))
 </code></pre></div>
 </div>
 </div>
@@ -2648,7 +2696,7 @@ geometry variables and objective values — ready to sort and pick from.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">obj</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">objective_vars</span>
-<span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">obj</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">]</span> <span class="o">+</span> <span class="n">obj</span>
 <span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -2729,7 +2777,7 @@ geometry variables and objective values — ready to sort and pick from.</p>
 <p>For example, the lowest-peak-field design on the front:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">best</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;monopole:Epk/Eacc []&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">best</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">pareto</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'monopole:Epk/Eacc []'</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">best</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
 </code></pre></div>
 </div>

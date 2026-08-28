@@ -648,6 +648,16 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#material-regions" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="geometry:material regions (reference label)"><span>Material regions</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#one-geometry-every-analysis" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -1341,6 +1351,54 @@
   
   <span class="md-ellipsis">
     <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
     
   </span>
   
@@ -2478,6 +2536,16 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#material-regions" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="geometry:material regions (reference label)"><span>Material regions</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#one-geometry-every-analysis" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2610,6 +2678,29 @@ label</strong>:</p>
 <p>These labels are the only “physics” the geometry carries; the solver reads them to
 set boundary conditions. <code class="docutils literal notranslate"><span class="pre">cav.plot('geometry')</span></code> draws the meridian (the upper
 half only — the analysed domain).</p>
+<h2 id="material-regions">Material regions<a class="headerlink" href="#material-regions" title="Link to this heading">¶</a></h2>
+<p>The meridian encloses one region, vacuum by default. A cavity can also declare
+<strong>dielectric sub-regions</strong> with
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">add_dielectric()</span></code> — an axisymmetric
+rectangular ring in <code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">r)</span></code>, i.e. an annular cylinder in 3D:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># a 0.5 mm-thick quartz tube lining a 5 mm aperture, running the full length</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">add_dielectric</span><span class="p">(</span><span class="s1">'quartz'</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1e4</span><span class="p">,</span> <span class="mf">1e4</span><span class="p">),</span> <span class="n">r</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span> <span class="n">maxh</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>Lengths are in <strong>millimetres</strong>, like every other cavity dimension, and the region
+is clipped to the cavity — so a generous <code class="docutils literal notranslate"><span class="pre">z</span></code> span simply means “the full
+length”. <code class="docutils literal notranslate"><span class="pre">maxh</span></code> sets the local element size inside the region, which a thin
+shell needs.</p>
+<p>Internally the profile face is split into one named face per region plus the
+background (<code class="docutils literal notranslate"><span class="pre">'Domain'</span></code>), and the pieces are glued so the mesh is <strong>conformal</strong>
+across each interface. That is what lets the <code class="docutils literal notranslate"><span class="pre">HCurl</span></code> space enforce
+tangential-<code class="docutils literal notranslate"><span class="pre">E</span></code> continuity — the physical dielectric interface condition — with
+no special handling in the solver. Each interface becomes its own boundary named
+<code class="docutils literal notranslate"><span class="pre">IF_&lt;material&gt;</span></code>, distinct from <code class="docutils literal notranslate"><span class="pre">PEC</span></code>/<code class="docutils literal notranslate"><span class="pre">PMC</span></code> so it carries no boundary
+condition; it can be addressed for local refinement via <code class="docutils literal notranslate"><span class="pre">edge_maxh</span></code>.</p>
+<p>Material regions are used by the <strong>eigenmode</strong> solver only; see
+<a class="reference internal" href="eigenmode.html#dielectric-regions"><span class="std std-ref">Dielectric regions</span></a> for the physics, the extra QOIs and the
+limits.</p>
 <h2 id="one-geometry-every-analysis"><span id="geometry-one-for-all"></span>One geometry, every analysis<a class="headerlink" href="#one-geometry-every-analysis" title="Link to this heading">¶</a></h2>
 <p>The single meridian serves all three analyses, and the differences between them
 live entirely in the <strong>configuration dictionaries</strong> (see
@@ -2643,7 +2734,7 @@ is seven parameters <code class="docutils literal notranslate"><span class="pre"
 <p>The wall inclination <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is <em>derived</em> from these (an optional 8th slot is
 accepted and ignored on input). A full cell mirrors the half-cell about the
 equator plane and the axis; a multi-cell cavity chains <code class="docutils literal notranslate"><span class="pre">n_cells</span></code> of them:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">EllipticalCavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">mid_cell</span><span class="p">,</span> <span class="n">end_cell_left</span><span class="p">,</span> <span class="n">end_cell_right</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">EllipticalCavity</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="n">mid_cell</span><span class="p">,</span> <span class="n">end_cell_left</span><span class="p">,</span> <span class="n">end_cell_right</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mid_cell</span></code> sets the interior cells; <code class="docutils literal notranslate"><span class="pre">end_cell_left</span></code> / <code class="docutils literal notranslate"><span class="pre">end_cell_right</span></code> set
@@ -2661,24 +2752,30 @@ equator is wanted (e.g. some low-beta or crab geometries).</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">S</span></code>    — inter-cell drift length (the straight gap between adjacent cells at <code class="docutils literal notranslate"><span class="pre">Ri</span></code>; 0 to butt cells together).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">L_bp</span></code> — beam-pipe length added at each end selected by <code class="docutils literal notranslate"><span class="pre">beampipe</span></code>.</p></li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">Pillbox</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">L_bp</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">Pillbox</span><span class="p">(</span><span class="n">n_cells</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">Req</span><span class="p">,</span> <span class="n">Ri</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">L_bp</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <h3 id="spline-cavity-splinecavity">Spline cavity (<code class="xref py py-class docutils literal notranslate"><span class="pre">SplineCavity</span></code>)<a class="headerlink" href="#spline-cavity-splinecavity" title="Link to this heading">¶</a></h3>
 <p>A free-form wall defined by six Bézier <strong>control points</strong> <code class="docutils literal notranslate"><span class="pre">p0</span> <span class="pre">..</span> <span class="pre">p5</span></code>, each a
 <code class="docutils literal notranslate"><span class="pre">[z,</span> <span class="pre">r]</span></code> coordinate pair:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">SplineCavity</span><span class="p">({</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;p0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">&#39;p1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
-                           <span class="s1">&#39;p3&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">&#39;p4&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">&#39;p5&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">SplineCavity</span><span class="p">({</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'p0'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">35</span><span class="p">],</span> <span class="s1">'p1'</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p2'</span><span class="p">:</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+                           <span class="s1">'p3'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span> <span class="s1">'p4'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s1">'p5'</span><span class="p">:</span> <span class="p">[</span><span class="mi">115</span><span class="p">,</span> <span class="mi">35</span><span class="p">]}})</span>
 </code></pre></div>
 </div>
 <p>Each coordinate is individually addressable as a tune / UQ variable named
 <code class="docutils literal notranslate"><span class="pre">p&lt;i&gt;_z</span></code> and <code class="docutils literal notranslate"><span class="pre">p&lt;i&gt;_r</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">'p2_r'</span></code>, <code class="docutils literal notranslate"><span class="pre">'p3_z'</span></code>). Placing a control point
 at the pipe radius gives a <em>C1</em>-continuous (smooth, non-sharp) iris.</p>
+<p>For a spline cavity, <code class="docutils literal notranslate"><span class="pre">cav.plot('geometry')</span></code> also overlays the <strong>control points
+and the polygon connecting them</strong> (dashed, over the interpolated wall) — so you
+can see where each <code class="docutils literal notranslate"><span class="pre">p&lt;i&gt;</span></code> sits relative to the curve it shapes. It is on by
+default; pass <code class="docutils literal notranslate"><span class="pre">control_points=False</span></code> to hide it (or <code class="docutils literal notranslate"><span class="pre">True</span></code> to force it).
+<code class="docutils literal notranslate"><span class="pre">cav.control_polygons()</span></code> returns the placed control polygons (metres, one per
+cell) if you want to draw them yourself.</p>
 <h3 id="rf-gun-rfgun">RF gun (<code class="xref py py-class docutils literal notranslate"><span class="pre">RFGun</span></code>)<a class="headerlink" href="#rf-gun-rfgun" title="Link to this heading">¶</a></h3>
 <p>A photoinjector / VHF-gun profile built from a dictionary of named segment
 lengths, radii and angles (<code class="docutils literal notranslate"><span class="pre">y1,</span> <span class="pre">R2,</span> <span class="pre">T2,</span> <span class="pre">L3,</span> <span class="pre">R4,</span> <span class="pre">L5,</span> <span class="pre">R6,</span> <span class="pre">L7,</span> <span class="pre">R8,</span> <span class="pre">T9,</span> <span class="pre">R10,</span> <span class="pre">T10,</span>
 <span class="pre">L11,</span> <span class="pre">R12,</span> <span class="pre">L13,</span> <span class="pre">R14,</span> <span class="pre">x</span></code>):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">RFGun</span><span class="p">({</span><span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">RFGun</span><span class="p">({</span><span class="s1">'geometry'</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}},</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>Every entry is a scalar tune / UQ variable. A cathode beam pipe can be added with

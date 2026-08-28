@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cross-cutting-keys" class="md-skip">
+        <a href="#discovering-the-options" class="md-skip">
           Skip to content
         </a>
       
@@ -660,6 +660,16 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#discovering-the-options" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="configuration:discovering the options (reference label)"><span>Discovering the options</span></span>
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#cross-cutting-keys" class="md-nav__link">
@@ -1305,6 +1315,54 @@
   
   <span class="md-ellipsis">
     <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
     
   </span>
   
@@ -2432,6 +2490,16 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#discovering-the-options" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="configuration:discovering the options (reference label)"><span>Discovering the options</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cross-cutting-keys" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2529,6 +2597,19 @@ same as passing it in the dict; an explicit kwarg wins.</p></li>
 <li><p><strong>Truthy, not present.</strong> Features switch on for a <em>truthy</em> value (an empty
 <code class="docutils literal notranslate"><span class="pre">uq_config={}</span></code> does <strong>not</strong> trigger UQ).</p></li>
 </ul>
+<h2 id="discovering-the-options">Discovering the options<a class="headerlink" href="#discovering-the-options" title="Link to this heading">¶</a></h2>
+<p>You do not have to memorise these — every default is available at runtime:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cav.config_sample(kind)</span></code> <strong>prints</strong> the complete default config for <em>kind</em>
+(<code class="docutils literal notranslate"><span class="pre">'eigenmode'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wakefield'</span></code>, <code class="docutils literal notranslate"><span class="pre">'tune'</span></code>, <code class="docutils literal notranslate"><span class="pre">'multipacting'</span></code> or <code class="docutils literal notranslate"><span class="pre">'uq'</span></code>) —
+every available key with its default value — and returns it as a dict.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.sample_cfg</span></code> returns that same default for <strong>one</strong> solver without
+printing, e.g. <code class="docutils literal notranslate"><span class="pre">cfg</span> <span class="pre">=</span> <span class="pre">cav.eigenmode.sample_cfg</span></code> — a fresh copy you can edit and
+pass straight to <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.run(cfg)</span></code>. (<code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.config</span></code> is different:
+it is the <em>saved</em> config of a run that has already happened.)</p></li>
+</ul>
+<p>Both read the solvers’ own defaults — the exact dicts <code class="docutils literal notranslate"><span class="pre">run()</span></code> merges over — so
+they never drift from what a run actually uses.</p>
 <h2 id="cross-cutting-keys">Cross-cutting keys<a class="headerlink" href="#cross-cutting-keys" title="Link to this heading">¶</a></h2>
 <p>These appear in several configs:</p>
 <dl class="simple">
@@ -2570,6 +2651,19 @@ mode (<code class="docutils literal notranslate"><span class="pre">m</span> <spa
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">surface_resistance</span></code></dt><dd><p><em>(float, default None)</em> Fixed surface resistance [Ohm] override (e.g. for SRF),
 used instead of <code class="docutils literal notranslate"><span class="pre">conductivity</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">materials</span></code></dt><dd><p><em>(dict, default None)</em> Overrides the properties of dielectric regions declared with
+<code class="docutils literal notranslate"><span class="pre">cav.add_dielectric</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'eps_r':</span> <span class="pre">3.8,</span> <span class="pre">'tan_delta':</span> <span class="pre">1e-4}}</span></code>.
+Overrides <em>merge</em>, so <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'tan_delta':</span> <span class="pre">0.05}}</span></code> sweeps the loss and leaves
+<code class="docutils literal notranslate"><span class="pre">eps_r</span></code> alone. Naming a region the cavity does not have raises.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">loss_model</span></code></dt><dd><p><em>(str, default None)</em> How a complex permittivity reaches Q: <code class="docutils literal notranslate"><span class="pre">'lossless'</span></code> (real
+eigenproblem, dielectric loss added perturbatively), <code class="docutils literal notranslate"><span class="pre">'lossy'</span></code> (full complex
+eigenproblem), or <code class="docutils literal notranslate"><span class="pre">None</span></code> / <code class="docutils literal notranslate"><span class="pre">'auto'</span></code> — inspect the loss tangents and switch to
+<code class="docutils literal notranslate"><span class="pre">'lossy'</span></code> above <code class="docutils literal notranslate"><span class="pre">tan_delta</span> <span class="pre">=</span> <span class="pre">1e-2</span></code>. Forcing <code class="docutils literal notranslate"><span class="pre">'lossless'</span></code> above that threshold
+is honoured, with a warning. Q is tagged <code class="docutils literal notranslate"><span class="pre">'Q</span> <span class="pre">model'</span></code> in the QOIs.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arnoldi_vectors</span></code></dt><dd><p><em>(int, default 6)</em> Krylov vectors per shift in the lossy eigensolve.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">f_shift</span></code></dt><dd><p><em>(float, default 0)</em> Spectral shift for the eigensolver.</p>
 </dd>

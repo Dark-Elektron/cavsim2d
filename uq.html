@@ -1275,6 +1275,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2442,19 +2490,19 @@
 <h2 id="interface">Interface<a class="headerlink" href="#interface" title="Link to this heading">¶</a></h2>
 <p>UQ capabilities are integrated directly into existing analyses by nesting a <code class="docutils literal notranslate"><span class="pre">uq_config</span></code> sub-dictionary inside the solver configuration (e.g. inside <code class="docutils literal notranslate"><span class="pre">eigenmode_config</span></code> or <code class="docutils literal notranslate"><span class="pre">wakefield_config</span></code>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">uq_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
-    <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Quadrature&#39;</span><span class="p">,</span> <span class="s1">&#39;Stroud3&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;distribution&#39;</span><span class="p">:</span> <span class="s1">&#39;gaussian&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;cell_type&#39;</span><span class="p">:</span> <span class="s1">&#39;mid-cell&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;simplecell&#39;</span>
+    <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'L'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">],</span>
+    <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
+    <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Quadrature'</span><span class="p">,</span> <span class="s1">'Stroud3'</span><span class="p">],</span>
+    <span class="s1">'distribution'</span><span class="p">:</span> <span class="s1">'gaussian'</span><span class="p">,</span>
+    <span class="s1">'cell_type'</span><span class="p">:</span> <span class="s1">'mid-cell'</span><span class="p">,</span>
+    <span class="s1">'cell_complexity'</span><span class="p">:</span> <span class="s1">'simplecell'</span>
 <span class="p">}</span>
 
 <span class="n">eigenmode_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="n">uq_config</span>
+    <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'uq_config'</span><span class="p">:</span> <span class="n">uq_config</span>
 <span class="p">}</span>
 
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">(</span><span class="n">eigenmode_config</span><span class="p">)</span>

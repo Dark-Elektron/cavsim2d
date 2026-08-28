@@ -1307,6 +1307,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2519,9 +2567,9 @@
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">midcell</span>   <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.652</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>   <span class="c1"># A, B, a, b, Ri, L, Req</span>
 <span class="n">endcell_l</span> <span class="o">=</span> <span class="p">[</span><span class="mf">40.34</span><span class="p">,</span> <span class="mf">40.34</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">55.7251</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
 <span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.8407</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
-<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">&#39;dispersion_demo&#39;</span><span class="p">)</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;tesla&#39;</span><span class="p">)</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+<span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">'dispersion_demo'</span><span class="p">)</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'tesla'</span><span class="p">)</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">'TESLA'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
@@ -2531,10 +2579,10 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span>
-    <span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
-    <span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="s1">&#39;dipole&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
+    <span class="s1">'n_cells'</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="s1">'polarisation'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'dipole'</span><span class="p">],</span>
+    <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
 <span class="p">})</span>
 </code></pre></div>
 </div>
@@ -2559,12 +2607,12 @@
 <p>Select a single polarisation and passband. <code class="docutils literal notranslate"><span class="pre">bands</span></code> is 1-based; passband 1 is the fundamental.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">plot_dispersion</span><span class="p">(</span><span class="n">pol</span><span class="o">=</span><span class="s1">&#39;monopole&#39;</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">plot_dispersion</span><span class="p">(</span><span class="n">pol</span><span class="o">=</span><span class="s1">'monopole'</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;phase advance per cell&#39;, ylabel=&#39;$f$ [MHz]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='phase advance per cell', ylabel='$f$ [MHz]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2580,7 +2628,7 @@
 <div class="cell_output docutils container">
 <img alt="../../_images/c2718cd57408ffa498f17f13eb82c51423ef04f6d811e3497f2cf0d52528713d.png" src="../../_images/c2718cd57408ffa498f17f13eb82c51423ef04f6d811e3497f2cf0d52528713d.png" />
 <img alt="../../_images/d1b66e5fab0d34c1a4351716cf67bf104302c1ae3c9d78896d508a339d09a4d3.png" src="../../_images/d1b66e5fab0d34c1a4351716cf67bf104302c1ae3c9d78896d508a339d09a4d3.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: title={&#39;center&#39;: &#39;Eigenfrequency spectrum — TESLA&#39;}, xlabel=&#39;frequency [MHz]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: title={'center': 'Eigenfrequency spectrum — TESLA'}, xlabel='frequency [MHz]'&gt;
 </code></pre></div>
 </div>
 </div>

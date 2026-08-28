@@ -14,7 +14,7 @@
         <link rel="prev" href="compare_cavities.html">
       
       
-        <link rel="next" href="../tuning/index.html">
+        <link rel="next" href="dielectric_quartz_tube.html">
       
       
       <link rel="icon" href="">
@@ -1339,6 +1339,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2600,33 +2648,33 @@
 <p>A TESLA-like cell in a one-cavity study (UQ perturbs the geometry, so it runs through <code class="docutils literal notranslate"><span class="pre">Study</span></code>). The <code class="docutils literal notranslate"><span class="pre">uq_config</span></code> uses the <strong>multicell</strong> complexity with <code class="docutils literal notranslate"><span class="pre">independent_half_cells=True</span></code>: each half-cell’s <code class="docutils literal notranslate"><span class="pre">Ri</span></code>/<code class="docutils literal notranslate"><span class="pre">Req</span></code> is drawn from a Gaussian (σ = 0.3 mm, <code class="docutils literal notranslate"><span class="pre">method=['normal',</span> <span class="pre">N]</span></code>), then the shared seams are welded (averaged). Setting the objectives to the figures of merit records them for every perturbed geometry in <code class="docutils literal notranslate"><span class="pre">uq/table.csv</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\Soske\Documents\git_projects\cavsim2d_simulations\testdelete&#39;</span><span class="p">,</span> <span class="s1">&#39;multicell_uq&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="sa">r</span><span class="s1">'C:\Users\Soske\Documents\git_projects\cavsim2d_simulations\testdelete'</span><span class="p">,</span> <span class="s1">'multicell_uq'</span><span class="p">)</span>
 <span class="n">midcell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.652</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>  <span class="c1"># &lt;- A, B, a, b, Ri, L, Req</span>
 <span class="n">endcell_l</span> <span class="o">=</span> <span class="p">[</span><span class="mf">40.34</span><span class="p">,</span> <span class="mf">40.34</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">55.7251</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
 <span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.8407</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;tesla&#39;</span><span class="p">)</span>
-<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;TESLA&#39;</span><span class="p">])</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'tesla'</span><span class="p">)</span>
+<span class="n">cavs</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">cav</span><span class="p">],</span> <span class="p">[</span><span class="s1">'TESLA'</span><span class="p">])</span>
 
 <span class="n">tune_config</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">&#39;freqs&#39;</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
-        <span class="c1"># &#39;cell_type&#39;: {&#39;end-cell&#39;: &#39;L&#39;},</span>
+        <span class="s1">'freqs'</span><span class="p">:</span> <span class="mi">1300</span><span class="p">,</span>
+        <span class="c1"># 'cell_type': {'end-cell': 'L'},</span>
     <span class="p">}</span>
 <span class="n">cavs</span><span class="o">.</span><span class="n">run_eigenmode</span><span class="p">({</span>
-    <span class="s1">&#39;n_cells&#39;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>   <span class="c1"># peak fields need a fine mesh (see note below)</span>
-    <span class="s1">&#39;uq_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;cell_complexity&#39;</span><span class="p">:</span> <span class="s1">&#39;multicell&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;independent_half_cells&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Ri&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;normal&#39;</span><span class="p">,</span> <span class="n">N_SAMPLES</span><span class="p">],</span>
-        <span class="s1">&#39;perturbation_mode&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;add&#39;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span>   <span class="c1"># sigma = 0.3 mm</span>
-        <span class="s1">&#39;delta&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span>
-        <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;monopole:freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:Epk/Eacc []&#39;</span><span class="p">,</span>
-                       <span class="s1">&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:R/Q [Ohm]&#39;</span><span class="p">,</span>
-                       <span class="s1">&#39;monopole:G [Ohm]&#39;</span><span class="p">,</span> <span class="s1">&#39;monopole:kcc [%]&#39;</span><span class="p">,</span>
-                       <span class="s1">&#39;monopole:ff [%]&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;processes&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-        <span class="s1">&#39;tune_config&#39;</span><span class="p">:</span> <span class="n">tune_config</span>
+    <span class="s1">'n_cells'</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>   <span class="c1"># peak fields need a fine mesh (see note below)</span>
+    <span class="s1">'uq_config'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'cell_complexity'</span><span class="p">:</span> <span class="s1">'multicell'</span><span class="p">,</span>
+        <span class="s1">'independent_half_cells'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Ri'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">],</span>
+        <span class="s1">'method'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'normal'</span><span class="p">,</span> <span class="n">N_SAMPLES</span><span class="p">],</span>
+        <span class="s1">'perturbation_mode'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'add'</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span>   <span class="c1"># sigma = 0.3 mm</span>
+        <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span>
+        <span class="s1">'objectives'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole:freq [MHz]'</span><span class="p">,</span> <span class="s1">'monopole:Epk/Eacc []'</span><span class="p">,</span>
+                       <span class="s1">'monopole:Bpk/Eacc [mT/MV/m]'</span><span class="p">,</span> <span class="s1">'monopole:R/Q [Ohm]'</span><span class="p">,</span>
+                       <span class="s1">'monopole:G [Ohm]'</span><span class="p">,</span> <span class="s1">'monopole:kcc [%]'</span><span class="p">,</span>
+                       <span class="s1">'monopole:ff [%]'</span><span class="p">],</span>
+        <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+        <span class="s1">'tune_config'</span><span class="p">:</span> <span class="n">tune_config</span>
     <span class="p">},</span>
 <span class="p">})</span>
 </code></pre></div>
@@ -2643,11 +2691,11 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/88e51250f334ffd86537fedd8e8ae88c1f88dd14b4785fdab71cee84c00396c6.png" src="../../_images/88e51250f334ffd86537fedd8e8ae88c1f88dd14b4785fdab71cee84c00396c6.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;monopole:freq [MHz]&#39;: &lt;Axes: label=&#39;monopole:freq [MHz]&#39;, title={&#39;center&#39;: &#39;freq [MHz]&#39;}, ylabel=&#39;Density&#39;&gt;,
- &#39;monopole:Epk/Eacc []&#39;: &lt;Axes: label=&#39;monopole:Epk/Eacc []&#39;, title={&#39;center&#39;: &#39;Epk/Eacc []&#39;}&gt;,
- &#39;monopole:Bpk/Eacc [mT/MV/m]&#39;: &lt;Axes: label=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;, title={&#39;center&#39;: &#39;Bpk/Eacc [mT/MV/m]&#39;}&gt;,
- &#39;monopole:R/Q [Ohm]&#39;: &lt;Axes: label=&#39;monopole:R/Q [Ohm]&#39;, title={&#39;center&#39;: &#39;R/Q [Ohm]&#39;}&gt;,
- &#39;monopole:G [Ohm]&#39;: &lt;Axes: label=&#39;monopole:G [Ohm]&#39;, title={&#39;center&#39;: &#39;G [Ohm]&#39;}&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'monopole:freq [MHz]': &lt;Axes: label='monopole:freq [MHz]', title={'center': 'freq [MHz]'}, ylabel='Density'&gt;,
+ 'monopole:Epk/Eacc []': &lt;Axes: label='monopole:Epk/Eacc []', title={'center': 'Epk/Eacc []'}&gt;,
+ 'monopole:Bpk/Eacc [mT/MV/m]': &lt;Axes: label='monopole:Bpk/Eacc [mT/MV/m]', title={'center': 'Bpk/Eacc [mT/MV/m]'}&gt;,
+ 'monopole:R/Q [Ohm]': &lt;Axes: label='monopole:R/Q [Ohm]', title={'center': 'R/Q [Ohm]'}&gt;,
+ 'monopole:G [Ohm]': &lt;Axes: label='monopole:G [Ohm]', title={'center': 'G [Ohm]'}&gt;}
 </code></pre></div>
 </div>
 </div>
@@ -2656,48 +2704,48 @@
 <p>Each half-cell’s radius is perturbed independently (<strong>before</strong> continuity); welding averages the two half-cells that meet at a shared equator, which <strong>narrows</strong> that distribution. The apertures (<code class="docutils literal notranslate"><span class="pre">Ri</span></code>) of a single cell are not shared, so their before/after distributions coincide; the equator (<code class="docutils literal notranslate"><span class="pre">Req</span></code>) is shared and visibly tightens.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_node_distribution</span><span class="p">([</span><span class="s1">&#39;Ri&#39;</span><span class="p">,</span> <span class="s1">&#39;Req&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_node_distribution</span><span class="p">([</span><span class="s1">'Ri'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">])</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/8493d9e44e436550bdc2485be45ee7e405034d8ee33860c7ff469a73bb0eb812.png" src="../../_images/8493d9e44e436550bdc2485be45ee7e405034d8ee33860c7ff469a73bb0eb812.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;Ri1&#39;: &lt;Axes: label=&#39;Ri1&#39;, xlabel=&#39;Ri1&#39;, ylabel=&#39;Density&#39;&gt;,
- &#39;Ri2&#39;: &lt;Axes: label=&#39;Ri2&#39;, xlabel=&#39;Ri2&#39;&gt;,
- &#39;Ri3&#39;: &lt;Axes: label=&#39;Ri3&#39;, xlabel=&#39;Ri3&#39;&gt;,
- &#39;Ri4&#39;: &lt;Axes: label=&#39;Ri4&#39;, xlabel=&#39;Ri4&#39;&gt;,
- &#39;Ri5&#39;: &lt;Axes: label=&#39;Ri5&#39;, xlabel=&#39;Ri5&#39;&gt;,
- &#39;Ri6&#39;: &lt;Axes: label=&#39;Ri6&#39;, xlabel=&#39;Ri6&#39;&gt;,
- &#39;Ri7&#39;: &lt;Axes: label=&#39;Ri7&#39;, xlabel=&#39;Ri7&#39;&gt;,
- &#39;Ri8&#39;: &lt;Axes: label=&#39;Ri8&#39;, xlabel=&#39;Ri8&#39;&gt;,
- &#39;Ri9&#39;: &lt;Axes: label=&#39;Ri9&#39;, xlabel=&#39;Ri9&#39;&gt;,
- &#39;Ri10&#39;: &lt;Axes: label=&#39;Ri10&#39;, xlabel=&#39;Ri10&#39;&gt;,
- &#39;Ri11&#39;: &lt;Axes: label=&#39;Ri11&#39;, xlabel=&#39;Ri11&#39;&gt;,
- &#39;Ri12&#39;: &lt;Axes: label=&#39;Ri12&#39;, xlabel=&#39;Ri12&#39;&gt;,
- &#39;Ri13&#39;: &lt;Axes: label=&#39;Ri13&#39;, xlabel=&#39;Ri13&#39;&gt;,
- &#39;Ri14&#39;: &lt;Axes: label=&#39;Ri14&#39;, xlabel=&#39;Ri14&#39;&gt;,
- &#39;Ri15&#39;: &lt;Axes: label=&#39;Ri15&#39;, xlabel=&#39;Ri15&#39;&gt;,
- &#39;Ri16&#39;: &lt;Axes: label=&#39;Ri16&#39;, xlabel=&#39;Ri16&#39;&gt;,
- &#39;Ri17&#39;: &lt;Axes: label=&#39;Ri17&#39;, xlabel=&#39;Ri17&#39;&gt;,
- &#39;Ri18&#39;: &lt;Axes: label=&#39;Ri18&#39;, xlabel=&#39;Ri18&#39;&gt;,
- &#39;Req1&#39;: &lt;Axes: label=&#39;Req1&#39;, xlabel=&#39;Req1&#39;, ylabel=&#39;Density&#39;&gt;,
- &#39;Req2&#39;: &lt;Axes: label=&#39;Req2&#39;, xlabel=&#39;Req2&#39;&gt;,
- &#39;Req3&#39;: &lt;Axes: label=&#39;Req3&#39;, xlabel=&#39;Req3&#39;&gt;,
- &#39;Req4&#39;: &lt;Axes: label=&#39;Req4&#39;, xlabel=&#39;Req4&#39;&gt;,
- &#39;Req5&#39;: &lt;Axes: label=&#39;Req5&#39;, xlabel=&#39;Req5&#39;&gt;,
- &#39;Req6&#39;: &lt;Axes: label=&#39;Req6&#39;, xlabel=&#39;Req6&#39;&gt;,
- &#39;Req7&#39;: &lt;Axes: label=&#39;Req7&#39;, xlabel=&#39;Req7&#39;&gt;,
- &#39;Req8&#39;: &lt;Axes: label=&#39;Req8&#39;, xlabel=&#39;Req8&#39;&gt;,
- &#39;Req9&#39;: &lt;Axes: label=&#39;Req9&#39;, xlabel=&#39;Req9&#39;&gt;,
- &#39;Req10&#39;: &lt;Axes: label=&#39;Req10&#39;, xlabel=&#39;Req10&#39;&gt;,
- &#39;Req11&#39;: &lt;Axes: label=&#39;Req11&#39;, xlabel=&#39;Req11&#39;&gt;,
- &#39;Req12&#39;: &lt;Axes: label=&#39;Req12&#39;, xlabel=&#39;Req12&#39;&gt;,
- &#39;Req13&#39;: &lt;Axes: label=&#39;Req13&#39;, xlabel=&#39;Req13&#39;&gt;,
- &#39;Req14&#39;: &lt;Axes: label=&#39;Req14&#39;, xlabel=&#39;Req14&#39;&gt;,
- &#39;Req15&#39;: &lt;Axes: label=&#39;Req15&#39;, xlabel=&#39;Req15&#39;&gt;,
- &#39;Req16&#39;: &lt;Axes: label=&#39;Req16&#39;, xlabel=&#39;Req16&#39;&gt;,
- &#39;Req17&#39;: &lt;Axes: label=&#39;Req17&#39;, xlabel=&#39;Req17&#39;&gt;,
- &#39;Req18&#39;: &lt;Axes: label=&#39;Req18&#39;, xlabel=&#39;Req18&#39;&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'Ri1': &lt;Axes: label='Ri1', xlabel='Ri1', ylabel='Density'&gt;,
+ 'Ri2': &lt;Axes: label='Ri2', xlabel='Ri2'&gt;,
+ 'Ri3': &lt;Axes: label='Ri3', xlabel='Ri3'&gt;,
+ 'Ri4': &lt;Axes: label='Ri4', xlabel='Ri4'&gt;,
+ 'Ri5': &lt;Axes: label='Ri5', xlabel='Ri5'&gt;,
+ 'Ri6': &lt;Axes: label='Ri6', xlabel='Ri6'&gt;,
+ 'Ri7': &lt;Axes: label='Ri7', xlabel='Ri7'&gt;,
+ 'Ri8': &lt;Axes: label='Ri8', xlabel='Ri8'&gt;,
+ 'Ri9': &lt;Axes: label='Ri9', xlabel='Ri9'&gt;,
+ 'Ri10': &lt;Axes: label='Ri10', xlabel='Ri10'&gt;,
+ 'Ri11': &lt;Axes: label='Ri11', xlabel='Ri11'&gt;,
+ 'Ri12': &lt;Axes: label='Ri12', xlabel='Ri12'&gt;,
+ 'Ri13': &lt;Axes: label='Ri13', xlabel='Ri13'&gt;,
+ 'Ri14': &lt;Axes: label='Ri14', xlabel='Ri14'&gt;,
+ 'Ri15': &lt;Axes: label='Ri15', xlabel='Ri15'&gt;,
+ 'Ri16': &lt;Axes: label='Ri16', xlabel='Ri16'&gt;,
+ 'Ri17': &lt;Axes: label='Ri17', xlabel='Ri17'&gt;,
+ 'Ri18': &lt;Axes: label='Ri18', xlabel='Ri18'&gt;,
+ 'Req1': &lt;Axes: label='Req1', xlabel='Req1', ylabel='Density'&gt;,
+ 'Req2': &lt;Axes: label='Req2', xlabel='Req2'&gt;,
+ 'Req3': &lt;Axes: label='Req3', xlabel='Req3'&gt;,
+ 'Req4': &lt;Axes: label='Req4', xlabel='Req4'&gt;,
+ 'Req5': &lt;Axes: label='Req5', xlabel='Req5'&gt;,
+ 'Req6': &lt;Axes: label='Req6', xlabel='Req6'&gt;,
+ 'Req7': &lt;Axes: label='Req7', xlabel='Req7'&gt;,
+ 'Req8': &lt;Axes: label='Req8', xlabel='Req8'&gt;,
+ 'Req9': &lt;Axes: label='Req9', xlabel='Req9'&gt;,
+ 'Req10': &lt;Axes: label='Req10', xlabel='Req10'&gt;,
+ 'Req11': &lt;Axes: label='Req11', xlabel='Req11'&gt;,
+ 'Req12': &lt;Axes: label='Req12', xlabel='Req12'&gt;,
+ 'Req13': &lt;Axes: label='Req13', xlabel='Req13'&gt;,
+ 'Req14': &lt;Axes: label='Req14', xlabel='Req14'&gt;,
+ 'Req15': &lt;Axes: label='Req15', xlabel='Req15'&gt;,
+ 'Req16': &lt;Axes: label='Req16', xlabel='Req16'&gt;,
+ 'Req17': &lt;Axes: label='Req17', xlabel='Req17'&gt;,
+ 'Req18': &lt;Axes: label='Req18', xlabel='Req18'&gt;}
 </code></pre></div>
 </div>
 </div>
@@ -2712,10 +2760,10 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/48ce7ac07f3fbbd17e22ebd350fca724def9397d8cba3c5941d6ee64843db311.png" src="../../_images/48ce7ac07f3fbbd17e22ebd350fca724def9397d8cba3c5941d6ee64843db311.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{&#39;monopole:freq [MHz]&#39;: &lt;Axes: label=&#39;monopole:freq [MHz]&#39;, xlabel=&#39;$f$ [MHz]&#39;&gt;,
- &#39;monopole:Epk/Eacc []&#39;: &lt;Axes: label=&#39;monopole:Epk/Eacc []&#39;, xlabel=&#39;$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$&#39;&gt;,
- &#39;monopole:Bpk/Eacc [mT/MV/m]&#39;: &lt;Axes: label=&#39;monopole:Bpk/Eacc [mT/MV/m]&#39;, xlabel=&#39;$B_\\mathrm{pk}/E_\\mathrm{acc} ~\\mathrm{[mT/MV/m]}$&#39;&gt;,
- &#39;monopole:R/Q [Ohm]&#39;: &lt;Axes: label=&#39;monopole:R/Q [Ohm]&#39;, xlabel=&#39;$R/Q ~\\mathrm{[\\Omega]}$&#39;&gt;}
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'monopole:freq [MHz]': &lt;Axes: label='monopole:freq [MHz]', xlabel='$f$ [MHz]'&gt;,
+ 'monopole:Epk/Eacc []': &lt;Axes: label='monopole:Epk/Eacc []', xlabel='$E_\\mathrm{pk}/E_\\mathrm{acc} ~[\\cdot]$'&gt;,
+ 'monopole:Bpk/Eacc [mT/MV/m]': &lt;Axes: label='monopole:Bpk/Eacc [mT/MV/m]', xlabel='$B_\\mathrm{pk}/E_\\mathrm{acc} ~\\mathrm{[mT/MV/m]}$'&gt;,
+ 'monopole:R/Q [Ohm]': &lt;Axes: label='monopole:R/Q [Ohm]', xlabel='$R/Q ~\\mathrm{[\\Omega]}$'&gt;}
 </code></pre></div>
 </div>
 </div>
@@ -2731,9 +2779,9 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/5305df3d3b07d8d15c97b67ab6ba4e2330a74f0cf4c6dfe1f573b45b358b964a.png" src="../../_images/5305df3d3b07d8d15c97b67ab6ba4e2330a74f0cf4c6dfe1f573b45b358b964a.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([&lt;Axes: ylabel=&#39;freq [MHz]&#39;&gt;, &lt;Axes: ylabel=&#39;Epk/Eacc []&#39;&gt;,
-       &lt;Axes: ylabel=&#39;Bpk/Eacc [mT/MV/m]&#39;&gt;, &lt;Axes: ylabel=&#39;R/Q [Ohm]&#39;&gt;,
-       &lt;Axes: ylabel=&#39;G [Ohm]&#39;&gt;], dtype=object)
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([&lt;Axes: ylabel='freq [MHz]'&gt;, &lt;Axes: ylabel='Epk/Eacc []'&gt;,
+       &lt;Axes: ylabel='Bpk/Eacc [mT/MV/m]'&gt;, &lt;Axes: ylabel='R/Q [Ohm]'&gt;,
+       &lt;Axes: ylabel='G [Ohm]'&gt;], dtype=object)
 </code></pre></div>
 </div>
 </div>
@@ -2843,11 +2891,11 @@
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/ec3aa1c7e431481685f416fbea7e5ef95364a801881665e770c158cef8e56b7d.png" src="../../_images/ec3aa1c7e431481685f416fbea7e5ef95364a801881665e770c158cef8e56b7d.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([&lt;Axes: title={&#39;center&#39;: &#39;freq [MHz]&#39;}, xlabel=&#39;actual&#39;, ylabel=&#39;surrogate (CV)&#39;&gt;,
-       &lt;Axes: title={&#39;center&#39;: &#39;Epk/Eacc []&#39;}, xlabel=&#39;actual&#39;, ylabel=&#39;surrogate (CV)&#39;&gt;,
-       &lt;Axes: title={&#39;center&#39;: &#39;Bpk/Eacc [mT/MV/m]&#39;}, xlabel=&#39;actual&#39;, ylabel=&#39;surrogate (CV)&#39;&gt;,
-       &lt;Axes: title={&#39;center&#39;: &#39;R/Q [Ohm]&#39;}, xlabel=&#39;actual&#39;, ylabel=&#39;surrogate (CV)&#39;&gt;,
-       &lt;Axes: title={&#39;center&#39;: &#39;G [Ohm]&#39;}, xlabel=&#39;actual&#39;, ylabel=&#39;surrogate (CV)&#39;&gt;],
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([&lt;Axes: title={'center': 'freq [MHz]'}, xlabel='actual', ylabel='surrogate (CV)'&gt;,
+       &lt;Axes: title={'center': 'Epk/Eacc []'}, xlabel='actual', ylabel='surrogate (CV)'&gt;,
+       &lt;Axes: title={'center': 'Bpk/Eacc [mT/MV/m]'}, xlabel='actual', ylabel='surrogate (CV)'&gt;,
+       &lt;Axes: title={'center': 'R/Q [Ohm]'}, xlabel='actual', ylabel='surrogate (CV)'&gt;,
+       &lt;Axes: title={'center': 'G [Ohm]'}, xlabel='actual', ylabel='surrogate (CV)'&gt;],
       dtype=object)
 </code></pre></div>
 </div>
@@ -2857,7 +2905,7 @@
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="n">d</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">cavity</span><span class="o">.</span><span class="n">uq_dir</span>
-<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;nodes.csv&#39;</span><span class="p">,</span><span class="s1">&#39;table.csv&#39;</span><span class="p">,</span><span class="s1">&#39;surrogate.json&#39;</span><span class="p">,</span><span class="s1">&#39;sobol.json&#39;</span><span class="p">):</span>
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'nodes.csv'</span><span class="p">,</span><span class="s1">'table.csv'</span><span class="p">,</span><span class="s1">'surrogate.json'</span><span class="p">,</span><span class="s1">'sobol.json'</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)))</span>
 </code></pre></div>
 </div>
@@ -2881,14 +2929,14 @@ sobol.json True
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># Corno et al. (2020), Table 1 — averaged TM010 spectra [MHz], two vendors (RI, EZ)</span>
 <span class="n">corno</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;DESY RI&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1275.832</span><span class="p">,</span> <span class="mf">1277.951</span><span class="p">,</span> <span class="mf">1281.194</span><span class="p">,</span> <span class="mf">1285.178</span><span class="p">,</span> <span class="mf">1289.423</span><span class="p">,</span>
+    <span class="s1">'DESY RI'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mean'</span><span class="p">:</span> <span class="p">[</span><span class="mf">1275.832</span><span class="p">,</span> <span class="mf">1277.951</span><span class="p">,</span> <span class="mf">1281.194</span><span class="p">,</span> <span class="mf">1285.178</span><span class="p">,</span> <span class="mf">1289.423</span><span class="p">,</span>
                          <span class="mf">1293.442</span><span class="p">,</span> <span class="mf">1296.762</span><span class="p">,</span> <span class="mf">1298.944</span><span class="p">,</span> <span class="mf">1299.702</span><span class="p">],</span>
-                <span class="s1">&#39;std&#39;</span><span class="p">:</span>  <span class="p">[</span><span class="mf">0.226</span><span class="p">,</span> <span class="mf">0.212</span><span class="p">,</span> <span class="mf">0.186</span><span class="p">,</span> <span class="mf">0.157</span><span class="p">,</span> <span class="mf">0.124</span><span class="p">,</span> <span class="mf">0.089</span><span class="p">,</span> <span class="mf">0.064</span><span class="p">,</span> <span class="mf">0.052</span><span class="p">,</span> <span class="mf">0.050</span><span class="p">]},</span>
-    <span class="s1">&#39;DESY EZ&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1274.734</span><span class="p">,</span> <span class="mf">1276.926</span><span class="p">,</span> <span class="mf">1280.294</span><span class="p">,</span> <span class="mf">1284.460</span><span class="p">,</span> <span class="mf">1288.921</span><span class="p">,</span>
+                <span class="s1">'std'</span><span class="p">:</span>  <span class="p">[</span><span class="mf">0.226</span><span class="p">,</span> <span class="mf">0.212</span><span class="p">,</span> <span class="mf">0.186</span><span class="p">,</span> <span class="mf">0.157</span><span class="p">,</span> <span class="mf">0.124</span><span class="p">,</span> <span class="mf">0.089</span><span class="p">,</span> <span class="mf">0.064</span><span class="p">,</span> <span class="mf">0.052</span><span class="p">,</span> <span class="mf">0.050</span><span class="p">]},</span>
+    <span class="s1">'DESY EZ'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mean'</span><span class="p">:</span> <span class="p">[</span><span class="mf">1274.734</span><span class="p">,</span> <span class="mf">1276.926</span><span class="p">,</span> <span class="mf">1280.294</span><span class="p">,</span> <span class="mf">1284.460</span><span class="p">,</span> <span class="mf">1288.921</span><span class="p">,</span>
                          <span class="mf">1293.161</span><span class="p">,</span> <span class="mf">1296.649</span><span class="p">,</span> <span class="mf">1298.946</span><span class="p">,</span> <span class="mf">1299.716</span><span class="p">],</span>
-                <span class="s1">&#39;std&#39;</span><span class="p">:</span>  <span class="p">[</span><span class="mf">0.268</span><span class="p">,</span> <span class="mf">0.245</span><span class="p">,</span> <span class="mf">0.208</span><span class="p">,</span> <span class="mf">0.168</span><span class="p">,</span> <span class="mf">0.129</span><span class="p">,</span> <span class="mf">0.090</span><span class="p">,</span> <span class="mf">0.066</span><span class="p">,</span> <span class="mf">0.054</span><span class="p">,</span> <span class="mf">0.052</span><span class="p">]},</span>
+                <span class="s1">'std'</span><span class="p">:</span>  <span class="p">[</span><span class="mf">0.268</span><span class="p">,</span> <span class="mf">0.245</span><span class="p">,</span> <span class="mf">0.208</span><span class="p">,</span> <span class="mf">0.168</span><span class="p">,</span> <span class="mf">0.129</span><span class="p">,</span> <span class="mf">0.090</span><span class="p">,</span> <span class="mf">0.066</span><span class="p">,</span> <span class="mf">0.054</span><span class="p">,</span> <span class="mf">0.052</span><span class="p">]},</span>
 <span class="p">}</span>
-<span class="c1"># The passband comes straight from the UQ study&#39;s cavity (its nominal solve</span>
+<span class="c1"># The passband comes straight from the UQ study's cavity (its nominal solve</span>
 <span class="c1"># already computed the monopole modes) — no separate run needed.</span>
 <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_tm010_spectrum</span><span class="p">(</span><span class="n">reference</span><span class="o">=</span><span class="n">corno</span><span class="p">,</span> <span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">density_cap</span><span class="o">=</span><span class="mf">10.5</span><span class="p">)</span>
 </code></pre></div>
@@ -2896,14 +2944,14 @@ sobol.json True
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/de1b0b5978a2ced4ec954be1a20268bc9b7e571c8b8928bac1e7d65867a2fc9b.png" src="../../_images/de1b0b5978a2ced4ec954be1a20268bc9b7e571c8b8928bac1e7d65867a2fc9b.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;freq [MHz]&#39;, ylabel=&#39;probability density&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='freq [MHz]', ylabel='probability density'&gt;
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_spectra</span><span class="p">(</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="n">density_cap</span><span class="o">=</span><span class="mf">5.2</span><span class="p">,</span> <span class="n">break_axis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">freq_range</span><span class="o">=</span><span class="p">[[</span><span class="mi">1275</span><span class="p">,</span> <span class="mi">1301</span><span class="p">],</span> <span class="p">[</span><span class="mi">2360</span><span class="p">,</span> <span class="mi">2460</span><span class="p">]])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_spectra</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="n">density_cap</span><span class="o">=</span><span class="mf">5.2</span><span class="p">,</span> <span class="n">break_axis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">freq_range</span><span class="o">=</span><span class="p">[[</span><span class="mi">1275</span><span class="p">,</span> <span class="mi">1301</span><span class="p">],</span> <span class="p">[</span><span class="mi">2360</span><span class="p">,</span> <span class="mi">2460</span><span class="p">]])</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="o">%</span><span class="k">matplotlib</span> widget
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>

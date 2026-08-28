@@ -1317,6 +1317,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2569,21 +2617,21 @@ for TE modes (<span class="math notranslate nohighlight">\(p \ge 1\)</span>).</p
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">R</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">230.0</span><span class="p">,</span> <span class="mf">200.0</span>            <span class="c1"># mm</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">Pillbox</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>  <span class="c1"># closed cylinder</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;pillbox&#39;</span>
+<span class="n">cav</span> <span class="o">=</span> <span class="n">Pillbox</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">L</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>  <span class="c1"># closed cylinder</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">'pillbox'</span>
 
 <span class="c1"># A cavity analysed on its own writes its results to a workspace folder. Point it</span>
 <span class="c1"># at a temporary one so running these docs leaves nothing behind; drop this line</span>
 <span class="c1"># and it lands in ./pillbox/ next to you, ready for cav.save(...).</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">&#39;pillbox&#39;</span><span class="p">))</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'pillbox'</span><span class="p">))</span>
 
-<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <img alt="../../_images/7fec8a04b70b4eae5a83a646c38ef1758ab9a1ef7a06b28acbe4822b24324f2a.png" src="../../_images/7fec8a04b70b4eae5a83a646c38ef1758ab9a1ef7a06b28acbe4822b24324f2a.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel=&#39;$z$ [mm]&#39;, ylabel=&#39;$r$ [mm]&#39;&gt;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
 </code></pre></div>
 </div>
 </div>
@@ -2595,17 +2643,17 @@ set what we care about: the monopole family, a handful of modes, and the mesh
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">({</span>
-    <span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="s1">&#39;monopole&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+    <span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span>
+    <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
 <span class="p">})</span>
 
 <span class="n">qois</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;fundamental : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R/Q         : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> Ohm&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q           : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;Q []&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epk/Eacc    : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;Epk/Eacc []&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"fundamental : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"R/Q         : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> Ohm"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Q           : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">'Q []'</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Epk/Eacc    : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">'Epk/Eacc []'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2624,9 +2672,9 @@ check it, and then look at the mesh the solver actually used and the field it fo
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">c0</span> <span class="o">=</span> <span class="mf">299792458.0</span>
 <span class="n">f_TM010</span> <span class="o">=</span> <span class="n">c0</span> <span class="o">*</span> <span class="n">jn_zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">R</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-6</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;analytic TM010 : </span><span class="si">{</span><span class="n">f_TM010</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cavsim2d       : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;relative error : </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">qois</span><span class="p">[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">f_TM010</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_TM010</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"analytic TM010 : </span><span class="si">{</span><span class="n">f_TM010</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cavsim2d       : </span><span class="si">{</span><span class="n">qois</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"relative error : </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">qois</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">f_TM010</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_TM010</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2653,7 +2701,7 @@ relative error : 1.32e-07
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># the accelerating field of the fundamental: |E| peaks on axis, as it must</span>
-<span class="n">cav</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">)</span>
+<span class="n">cav</span><span class="o">.</span><span class="n">show_fields</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">'E'</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2693,7 +2741,7 @@ results filter and plot like any other table.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>
-<span class="n">df</span><span class="p">[[</span><span class="s1">&#39;mode_index&#39;</span><span class="p">,</span> <span class="s1">&#39;polarisation&#39;</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">,</span> <span class="s1">&#39;Q []&#39;</span><span class="p">]]</span>
+<span class="n">df</span><span class="p">[[</span><span class="s1">'mode_index'</span><span class="p">,</span> <span class="s1">'polarisation'</span><span class="p">,</span> <span class="s1">'mode'</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'Q []'</span><span class="p">]]</span>
 </code></pre></div>
 </div>
 </div>
@@ -2800,15 +2848,15 @@ azimuthal orders as the polarisation.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">({</span>
-    <span class="s1">&#39;polarisation&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">)),</span>      <span class="c1"># m = 0, 1, ..., 8</span>
-    <span class="s1">&#39;n_modes&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
-    <span class="s1">&#39;rerun&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="s1">&#39;boundary_conditions&#39;</span><span class="p">:</span> <span class="s1">&#39;mm&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;mesh_config&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+    <span class="s1">'polarisation'</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">)),</span>      <span class="c1"># m = 0, 1, ..., 8</span>
+    <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s1">'rerun'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span>
+    <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
 <span class="p">})</span>
 
 <span class="n">df</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> modes across </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;polarisation&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2"> polarisations&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> modes across </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="s1">'polarisation'</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2"> polarisations"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2823,7 +2871,7 @@ and sorted, exactly as the solver returns them:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">analytic_modes</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">R_mm</span><span class="p">,</span> <span class="n">L_mm</span><span class="p">,</span> <span class="n">n_modes</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Lowest *n_modes* pillbox frequencies [MHz] for azimuthal order m.&#39;&#39;&#39;</span>
+<span class="w">    </span><span class="sd">'''Lowest *n_modes* pillbox frequencies [MHz] for azimuthal order m.'''</span>
     <span class="n">Rm</span><span class="p">,</span> <span class="n">Lm</span> <span class="o">=</span> <span class="n">R_mm</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="n">L_mm</span> <span class="o">*</span> <span class="mf">1e-3</span>
     <span class="n">f</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">chi</span> <span class="ow">in</span> <span class="n">jn_zeros</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">20</span><span class="p">):</span>                    <span class="c1"># TM_mnp, p &gt;= 0</span>
@@ -2842,22 +2890,22 @@ and sorted, exactly as the solver returns them:</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">),</span> <span class="n">axs</span><span class="o">.</span><span class="n">ravel</span><span class="p">()):</span>
-    <span class="n">num</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">)[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="n">ana</span> <span class="o">=</span> <span class="n">analytic_modes</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
 
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">ana</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">mfc</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
-            <span class="n">label</span><span class="o">=</span><span class="s1">&#39;analytic&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;cavsim2d&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;$m = </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s1">$&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">ana</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">'o'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">mfc</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s1">'analytic'</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">'o'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">'cavsim2d'</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">'$m = </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s1">$'</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;mode index&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'mode index'</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]:</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;frequency [MHz]&#39;</span><span class="p">)</span>
-<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">)</span>
-<span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;Pillbox: first 100 modes for each azimuthal order, &#39;</span>
-             <span class="s1">&#39;cavsim2d vs the closed form&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.995</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'frequency [MHz]'</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">'lower right'</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">'Pillbox: first 100 modes for each azimuthal order, '</span>
+             <span class="s1">'cavsim2d vs the closed form'</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.995</span><span class="p">)</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
@@ -2875,10 +2923,10 @@ raise <code class="docutils literal notranslate"><span class="pre">p</span></cod
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">):</span>
-    <span class="n">num</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">)[</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[:</span><span class="mi">100</span><span class="p">]</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[:</span><span class="mi">100</span><span class="p">]</span>
     <span class="n">ana</span> <span class="o">=</span> <span class="n">analytic_modes</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
     <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">num</span> <span class="o">-</span> <span class="n">ana</span><span class="p">)</span> <span class="o">/</span> <span class="n">ana</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;m = </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">:  max relative error over </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">num</span><span class="p">)</span><span class="si">}</span><span class="s2"> modes = </span><span class="si">{</span><span class="n">err</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"m = </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">:  max relative error over </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">num</span><span class="p">)</span><span class="si">}</span><span class="s2"> modes = </span><span class="si">{</span><span class="n">err</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2903,25 +2951,25 @@ mode accelerates a beam on axis. <strong>TE modes have no <span class="math notr
 monopole spectrum by <span class="math notranslate nohighlight">\(R/Q\)</span> and the TE modes drop out at zero:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">mono</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;freq [MHz]&#39;</span><span class="p">)</span>
-<span class="n">is_te</span> <span class="o">=</span> <span class="n">mono</span><span class="p">[</span><span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">1e-6</span>          <span class="c1"># TE: no longitudinal field</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">mono</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)</span>
+<span class="n">is_te</span> <span class="o">=</span> <span class="n">mono</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">1e-6</span>          <span class="c1"># TE: no longitudinal field</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">stem</span><span class="p">(</span><span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">],</span> <span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">&#39;R/Q [Ohm]&#39;</span><span class="p">],</span>
-        <span class="n">basefmt</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">linefmt</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">markerfmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;TM (accelerating)&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">&#39;freq [MHz]&#39;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">is_te</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
-        <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;TE (no $E_z$)&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">stem</span><span class="p">(</span><span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">],</span>
+        <span class="n">basefmt</span><span class="o">=</span><span class="s1">' '</span><span class="p">,</span> <span class="n">linefmt</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">markerfmt</span><span class="o">=</span><span class="s1">'o'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'TM (accelerating)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mono</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">is_te</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">is_te</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+        <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">'x'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'TE (no $E_z$)'</span><span class="p">)</span>
 
 <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3000</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;frequency [MHz]&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$R/Q$ [$\Omega$]&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Monopole spectrum: only the TM modes accelerate&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'frequency [MHz]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">'$R/Q$ [$\Omega$]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Monopole spectrum: only the TM modes accelerate'</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">is_te</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mono</span><span class="p">)</span><span class="si">}</span><span class="s2"> monopole modes are TE (R/Q = 0)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">is_te</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mono</span><span class="p">)</span><span class="si">}</span><span class="s2"> monopole modes are TE (R/Q = 0)"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>

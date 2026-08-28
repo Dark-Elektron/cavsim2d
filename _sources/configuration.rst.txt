@@ -12,6 +12,22 @@ all of their keys. See :doc:`concepts` for the conventions they share:
 - **Truthy, not present.** Features switch on for a *truthy* value (an empty
   ``uq_config={}`` does **not** trigger UQ).
 
+Discovering the options
+-----------------------
+
+You do not have to memorise these — every default is available at runtime:
+
+- ``cav.config_sample(kind)`` **prints** the complete default config for *kind*
+  (``'eigenmode'``, ``'wakefield'``, ``'tune'``, ``'multipacting'`` or ``'uq'``) —
+  every available key with its default value — and returns it as a dict.
+- ``cav.<solver>.sample_cfg`` returns that same default for **one** solver without
+  printing, e.g. ``cfg = cav.eigenmode.sample_cfg`` — a fresh copy you can edit and
+  pass straight to ``cav.eigenmode.run(cfg)``. (``cav.<solver>.config`` is different:
+  it is the *saved* config of a run that has already happened.)
+
+Both read the solvers' own defaults — the exact dicts ``run()`` merges over — so
+they never drift from what a run actually uses.
+
 Cross-cutting keys
 ------------------
 
@@ -57,6 +73,19 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
 ``surface_resistance``
    *(float, default None)* Fixed surface resistance [Ohm] override (e.g. for SRF),
    used instead of ``conductivity``.
+``materials``
+   *(dict, default None)* Overrides the properties of dielectric regions declared with
+   ``cav.add_dielectric``, e.g. ``{'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}}``.
+   Overrides *merge*, so ``{'quartz': {'tan_delta': 0.05}}`` sweeps the loss and leaves
+   ``eps_r`` alone. Naming a region the cavity does not have raises.
+``loss_model``
+   *(str, default None)* How a complex permittivity reaches Q: ``'lossless'`` (real
+   eigenproblem, dielectric loss added perturbatively), ``'lossy'`` (full complex
+   eigenproblem), or ``None`` / ``'auto'`` — inspect the loss tangents and switch to
+   ``'lossy'`` above ``tan_delta = 1e-2``. Forcing ``'lossless'`` above that threshold
+   is honoured, with a warning. Q is tagged ``'Q model'`` in the QOIs.
+``arnoldi_vectors``
+   *(int, default 6)* Krylov vectors per shift in the lossy eigensolve.
 ``f_shift``
    *(float, default 0)* Spectral shift for the eigensolver.
 ``normalization_length``

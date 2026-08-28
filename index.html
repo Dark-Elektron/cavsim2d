@@ -1202,6 +1202,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2386,6 +2434,12 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="theory/eigenmode.html#lossy-dielectrics">Lossy Dielectrics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="theory/eigenmode.html#perturbative-treatment">Perturbative Treatment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="theory/eigenmode.html#full-complex-eigenproblem">Full Complex Eigenproblem</a></li>
+<li class="toctree-l4"><a class="reference internal" href="theory/eigenmode.html#selection">Selection</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="theory/eigenmode.html#impedance-spectrum-from-eigenfrequencies-and-quality-factors">Impedance Spectrum from Eigenfrequencies and Quality Factors</a></li>
 <li class="toctree-l3"><a class="reference internal" href="theory/eigenmode.html#zienkiewicz-zhu-zz-error-estimator">Zienkiewicz–Zhu (ZZ) Error Estimator</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="theory/eigenmode.html#a-posteriori-error-estimation">A Posteriori Error Estimation</a></li>
@@ -2444,6 +2498,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="geometry.html">Geometry and parameterisation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="geometry.html#the-unified-geometry-model">The unified geometry model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#material-regions">Material regions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="geometry.html#one-geometry-every-analysis">One geometry, every analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="geometry.html#built-in-parameterisations">Built-in parameterisations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="geometry.html#elliptical-cavity-ellipticalcavity">Elliptical cavity (<code class="xref py py-class docutils literal notranslate"><span class="pre">EllipticalCavity</span></code>)</a></li>
@@ -2458,6 +2513,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#discovering-the-options">Discovering the options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#cross-cutting-keys">Cross-cutting keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#eigenmode-cav-eigenmode-run-study-run-eigenmode">Eigenmode — <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_eigenmode</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#wakefield-cav-wakefield-run-study-run-wakefield">Wakefield — <code class="docutils literal notranslate"><span class="pre">cav.wakefield.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_wakefield</span></code></a></li>
@@ -2485,6 +2541,12 @@
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#interface">Interface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#configuration-dictionary">Configuration Dictionary</a></li>
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#quantities-of-interest-qois">Quantities of Interest (QOIs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="eigenmode.html#dielectric-regions">Dielectric regions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="eigenmode.html#what-changes-in-the-solve">What changes in the solve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="eigenmode.html#dielectric-loss">Dielectric loss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="eigenmode.html#limits">Limits</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#accessing-results">Accessing Results</a></li>
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#results-as-a-table">Results as a table</a></li>
 <li class="toctree-l2"><a class="reference internal" href="eigenmode.html#visualisation">Visualisation</a></li>
@@ -2546,6 +2608,8 @@
 <li class="toctree-l2"><a class="reference internal" href="examples/eigenmode/mesh_convergence.html#where-to-go-next">Where to go next</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/eigenmode/compare_cavities.html">Comparing several cavities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/eigenmode/multicell_uq_sa.html">Multicell UQ and sensitivity analysis (WEPB015)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/eigenmode/dielectric_quartz_tube.html">Dielectrics: a quartz tube in a perturbation cavity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/eigenmode/dielectric_loss.html">Dielectric loss: perturbation vs the full complex eigenproblem</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples/tuning/index.html">Tuning</a><ul>
