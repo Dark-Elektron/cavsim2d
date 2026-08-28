@@ -16,7 +16,7 @@ EIGENMODE_KEYS = {
     'processes', 'rerun', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
     'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
-    'mode_of_interest',
+    'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
     'opt', 'target', 'solver_save_directory',
 }
 UQ_KEYS = {
@@ -144,6 +144,14 @@ def validate_eigenmode_config(cfg):
                 require(cfg[key] > 0,
                         f"eigenmode_config: '{key}' must be greater than zero.")
         _check_mode_of_interest(cfg)
+        # Explicit None means "unset" under the complete-config convention, so only
+        # a typed value is checked. A misspelled loss model must not fall through to
+        # the default and silently return a perturbative Q for a lossy material.
+        if cfg.get('loss_model') is not None:
+            require(str(cfg['loss_model']).lower() in
+                    ('auto', 'lossless', 'perturbation', 'lossy'),
+                    f"eigenmode_config: 'loss_model'={cfg['loss_model']!r} must be one of "
+                    "'auto' (default), 'lossless', 'perturbation' or 'lossy'.")
         if isinstance(cfg.get('uq_config'), dict):
             validate_uq_config(cfg['uq_config'])
 

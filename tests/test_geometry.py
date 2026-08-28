@@ -310,6 +310,61 @@ def test_spline_kind_alias_and_unknown():
     assert bad.profile() is None                      # falls back; writer then raises
 
 
+def test_spline_control_polygons_placement():
+    """control_polygons() returns one placed control polygon per cell, in metres,
+    each following the previous along z — the poles profile() splines through."""
+    from cavsim2d import SplineCavity
+    cav = SplineCavity({'geometry': dict(SPLINE_GEOM), 'n_cells': 2}, kind='Bezier')
+    polys = cav.control_polygons()
+    assert len(polys) == 2 and all(p.shape == (6, 2) for p in polys)
+    # cell 0 spans p0..p5 in z; cell 1 begins where cell 0 ended (iris to iris)
+    assert polys[0][0][0] == pytest.approx(0.0)
+    assert polys[0][-1][0] == pytest.approx(0.115)           # 115 mm -> m
+    assert polys[1][0][0] == pytest.approx(polys[0][-1][0])  # cells connect
+    # not a valid control-point set -> None (never raises)
+    assert SplineCavity({'geometry': {'p0': [0, 35]}}, kind='Bezier').control_polygons() is None
+
+
+def test_plot_geometry_overlays_spline_control_points():
+    """cav.plot('geometry') overlays the control points + connecting polygon for a
+    spline by default; control_points=False hides them; a non-spline no-ops."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from cavsim2d import SplineCavity, EllipticalCavity
+
+    def _cp_lines(ax):
+        return [ln for ln in ax.lines
+                if ln.get_linestyle() == '--' and ln.get_marker() == 'o']
+
+    cav = SplineCavity({'geometry': dict(SPLINE_GEOM), 'n_cells': 2,
+                        'beampipe': 'both', 'beampipe_length': 40}, kind='Bezier')
+    ax = cav.plot('geometry', show=False)                    # default -> shown
+    cps = _cp_lines(ax)
+    assert len(cps) == 2                                     # one polyline per cell
+    # the overlay sits in the same shifted-mm frame as the wall (aligned, not at 0)
+    wz = ax.lines[0].get_data()[0]
+    cz = cps[0].get_data()[0]
+    assert wz.min() <= cz.min() and cz.max() <= wz.max()
+    assert cz.min() == pytest.approx(40.0)                   # after the 40 mm left pipe
+    plt.close('all')
+
+    ax = cav.plot('geometry', show=False, control_points=False)
+    assert _cp_lines(ax) == []
+    plt.close('all')
+
+    ax = cav.plot('geometry', show=False, mirror=True)       # mirrored -> 2 per cell
+    assert len(_cp_lines(ax)) == 4
+    plt.close('all')
+
+    # a model without control points never crashes, even when explicitly asked
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+    ec = EllipticalCavity(1, mid, mid, mid, beampipe='none')
+    ax = ec.plot('geometry', show=False, control_points=True)
+    assert _cp_lines(ax) == []
+    plt.close('all')
+
+
 def test_spline_wall_length_matches_the_true_curve():
     """The native wall reproduces the analytic arc length of the spline.
 

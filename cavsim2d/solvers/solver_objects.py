@@ -3,6 +3,7 @@
 Each solver class manages its own folder, configuration, and results.
 Solvers are attached to Cavity or Study instances as lazy properties.
 """
+import copy
 import json
 import os
 import pickle
@@ -53,9 +54,32 @@ DEFAULT_EIGENMODE_CONFIG = {
     'rerun': True,
     'conductivity': 5.96e7,          # copper [S/m]
     'surface_resistance': None,      # fixed Rs override (e.g. SRF)
+    'materials': None,               # {'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}} -
+                                     # overrides the properties of regions declared
+                                     # via cav.add_dielectric()
+    'loss_model': None,              # None/'auto' -> inspect tan_delta; 'lossless',
+                                     # 'perturbation' or 'lossy' to force one
     'uq_config': None,
     'mesh_config': {'h': 20, 'p': 3, 'adaptive': None},
 }
+
+
+def _require_vacuum(cavity, analysis):
+    """Raise if *cavity* has dielectric regions.
+
+    Only the eigenmode solver models materials. The others would happily mesh the
+    cavity and return a perfectly plausible **vacuum** answer for a dielectric-loaded
+    structure, so this fails loudly instead.
+    """
+    diel = list(getattr(cavity, 'dielectrics', ()) or ())
+    if diel:
+        names = [d['material'] for d in diel]
+        raise NotImplementedError(
+            f"cavity {cavity.name!r} has dielectric region(s) {names}, which the "
+            f"{analysis} solver does not model — it would silently solve the vacuum "
+            f"problem and report it as a result. Dielectrics are supported by the "
+            f"eigenmode solver only. Use cav.clear_dielectrics() to run {analysis} on "
+            "the vacuum geometry.")
 
 DEFAULT_WAKEFIELD_CONFIG = {
     'solver': 'abci',
@@ -225,6 +249,14 @@ class TuneSolver:
             else:
                 self._config = {}
         return self._config
+
+    @property
+    def sample_cfg(self):
+        """A fresh copy of this solver's **default** tune config — every
+        available key with its default value, ready to copy, edit and pass to
+        :meth:`run`. Unlike :attr:`config` (the *saved* config of a run that has
+        happened), this needs no prior run. See also ``cav.config_sample('tune')``."""
+        return copy.deepcopy(DEFAULT_TUNE_CONFIG)
 
     @property
     def qois(self):
@@ -397,6 +429,15 @@ class EigenmodeSolver:
             else:
                 self._config = {}
         return self._config
+
+    @property
+    def sample_cfg(self):
+        """A fresh copy of this solver's **default** eigenmode config — every
+        available key with its default value, ready to copy, edit and pass to
+        :meth:`run`. Unlike :attr:`config` (the *saved* config of a run that has
+        happened), this needs no prior run. See also
+        ``cav.config_sample('eigenmode')``."""
+        return copy.deepcopy(DEFAULT_EIGENMODE_CONFIG)
 
     @property
     def qois(self):
@@ -1414,6 +1455,15 @@ class WakefieldSolver:
         return self._config
 
     @property
+    def sample_cfg(self):
+        """A fresh copy of this solver's **default** wakefield config — every
+        available key with its default value, ready to copy, edit and pass to
+        :meth:`run`. Unlike :attr:`config` (the *saved* config of a run that has
+        happened), this needs no prior run. See also
+        ``cav.config_sample('wakefield')``."""
+        return copy.deepcopy(DEFAULT_WAKEFIELD_CONFIG)
+
+    @property
     def backend(self):
         """The wakefield backend for this cavity (from ``config['solver']``,
         default ``'abci'``). All reads go through it, so the result schema is the
@@ -1469,6 +1519,7 @@ class WakefieldSolver:
         a keyword argument (``run(wakelength=80)``); kwargs override the
         config dict.
         """
+        _require_vacuum(self.cavity, 'wakefield')
         merged_config = merge_config(DEFAULT_WAKEFIELD_CONFIG, wakefield_config, kwargs)
 
         self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
@@ -2087,6 +2138,15 @@ class MultipactingSolver:
         return self._config
 
     @property
+    def sample_cfg(self):
+        """A fresh copy of this solver's **default** multipacting config — every
+        available key with its default value, ready to copy, edit and pass to
+        :meth:`run`. Unlike :attr:`config` (the *saved* config of a run that has
+        happened), this needs no prior run. See also
+        ``cav.config_sample('multipacting')``."""
+        return copy.deepcopy(DEFAULT_MULTIPACTING_CONFIG)
+
+    @property
     def results(self):
         """The saved sweep result dict (``multipacting/mresults.pkl``), or {}."""
         if self._results is None:
@@ -2178,6 +2238,7 @@ class MultipactingSolver:
         # Deferred: same ngsolve-heavy path as the driver.
         from cavsim2d.analysis.multipacting.fields import solve_multipacting_field
 
+        _require_vacuum(self.cavity, 'multipacting')
         user_cfg = merge_config({}, config, kwargs)
         overlap = sorted(set(self._staged) & set(user_cfg))
         if overlap:
@@ -2625,7 +2686,12 @@ class OptimisationSolver:
             if len(added) > 1:
                 info(f"Optimisation uses one template cavity; using the first of "
                      f"{len(added)} ({added[0].name}).")
-            template_cav = added[0].rebuild(added[0].parameters)
+            # Carry any dielectric regions across: rebuild() works from the
+            # parameter dict, which does not contain them, so the template would
+            # otherwise be a vacuum copy of a loaded cavity. (Note the tuning
+            # step inside optimisation is still vacuum-only.)
+            template_cav = added[0]._carry_dielectrics_to(
+                added[0].rebuild(added[0].parameters))
         else:
             # Midpoint of each bound for the swept params, defaults otherwise.
             # Order must match EllipticalCavity constructor: A, B, a, b, Ri, L, Req

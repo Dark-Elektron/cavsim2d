@@ -191,6 +191,115 @@ The transverse shunt impedance over Q is normalized by the off-axis factor to re
    \left( \frac{R}{Q} \right)_t = \frac{V_t^2}{\omega U r_0^{2(m-1)}}
 
 
+Lossy Dielectrics
+-----------------
+
+A dielectric sub-domain enters the eigenproblem through the mass form alone: the
+weak form above is assembled with :math:`\varepsilon_r` inside the
+:math:`b(\cdot,\cdot)` integral, so the eigenvalue is still
+:math:`\lambda = k_0^2 = (\omega/c_0)^2` and no interface condition has to be
+imposed by hand — :math:`H(\text{curl})` enforces tangential-:math:`\mathbf{E}`
+continuity and :math:`u_\phi = r E_\phi` is tangential to any :math:`r`-:math:`z`
+interface, while normal :math:`\mathbf{D}` continuity is natural.
+
+With the :math:`e^{+\mathrm{i}\omega t}` convention a lossy medium has
+
+.. math::
+   \varepsilon_r = \varepsilon_r' - \mathrm{i}\varepsilon_r'',
+   \qquad \tan\delta = \frac{\varepsilon_r''}{\varepsilon_r'}
+
+and ``cavsim2d`` offers two treatments of the imaginary part.
+
+Perturbative Treatment
+^^^^^^^^^^^^^^^^^^^^^^
+
+The lossless problem is solved with :math:`\varepsilon_r'` and the loss is
+evaluated afterwards on the resulting field, exactly as the wall loss is:
+
+.. math::
+   P_{\text{diel}} = \frac{1}{2}\,\omega\,\varepsilon_0
+      \int \varepsilon_r''\,|\mathbf{E}|^2\,\mathrm{d}V,
+   \qquad
+   U = \frac{1}{2}\,\varepsilon_0 \int \varepsilon_r'\,|\mathbf{E}|^2\,\mathrm{d}V
+
+so that
+
+.. math::
+   Q_{\text{diel}} = \frac{\omega U}{P_{\text{diel}}}
+      = \frac{\int \varepsilon_r'\,|\mathbf{E}|^2\, r\,\mathrm{d}A}
+             {\int \varepsilon_r''\,|\mathbf{E}|^2\, r\,\mathrm{d}A},
+   \qquad
+   \frac{1}{Q} = \frac{1}{Q_{\text{wall}}} + \frac{1}{Q_{\text{diel}}}
+
+The matrices, the eigensolver and the gradient-kernel projector are untouched.
+The error is :math:`O(\tan^2\delta)` in the eigenvalue, and because the
+integration is performed over the lossless mode the treatment cannot represent
+the field redistribution the loss causes — nor any frequency shift, since the
+real eigenproblem never saw :math:`\varepsilon_r''`.
+
+Full Complex Eigenproblem
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Weighting the mass form by the complex :math:`\varepsilon_r` gives
+
+.. math::
+   A\mathbf{x} = \lambda B\mathbf{x}, \qquad
+   B = B' - \mathrm{i}B'', \qquad \lambda \in \mathbb{C}
+
+with :math:`A` real symmetric positive semi-definite and :math:`B` complex
+**symmetric** — not Hermitian. Three consequences follow:
+
+- :math:`\lambda` is complex, so :math:`\omega = c_0\sqrt{\lambda}` has
+  :math:`\mathbf{E} \propto e^{-\alpha t}` with :math:`\alpha = \operatorname{Im}\omega`;
+  the stored energy decays as :math:`e^{-2\alpha t} = e^{-\omega_r t/Q}`, giving
+
+  .. math::
+     Q_{\text{diel}} = \frac{\operatorname{Re}\omega}{2\operatorname{Im}\omega}
+
+- eigenvectors are no longer :math:`B`-orthogonal in the Hermitian sense: they
+  satisfy :math:`\mathbf{x}_i^T B \mathbf{x}_j = 0` (transpose, no conjugate);
+- the preconditioned inverse iteration (PINVIT) used for the real problem assumes
+  a Hermitian pencil and does not apply.
+
+The spectrum is therefore reached with **shift-and-invert Arnoldi** on
+:math:`(A - \sigma B)^{-1} B`. On a 2D meridian mesh the shifted matrix is small
+enough to factorise with a sparse direct solver, so no preconditioner is needed.
+
+The choice of shifts is what makes this tractable. The gradient kernel
+:math:`\mathcal{K}_m` is still present at :math:`\lambda \approx 0` and is
+high-dimensional; under the shift-invert map every kernel vector lands at
+magnitude :math:`|1/\sigma|`, so a shift far from the band lets the kernel crowd
+the Krylov space. ``cavsim2d`` first solves the *lossless* problem and centres one
+Arnoldi run on each lossless eigenvalue: the physical mode then maps to
+:math:`\sim 1/(\sigma \tan\delta)`, orders of magnitude above the kernel cluster.
+Each run's best eigenpair is accepted only if its relative residual
+
+.. math::
+   \frac{\|A\mathbf{x} - \lambda B\mathbf{x}\|}{|\lambda|\,\|B\mathbf{x}\|}
+
+is small; otherwise the shift is re-centred on the eigenvalue just found and the
+run repeated, which is what large :math:`\tan\delta` requires, since the mode has
+then moved far from its lossless position. Accepted modes are deduplicated and
+sorted by :math:`\operatorname{Re}\lambda`.
+
+Wall loss remains perturbative on both paths. Folding it into the eigenproblem
+through a Leontovich impedance boundary condition would introduce
+:math:`Z_s = (1+\mathrm{i})\sqrt{\omega\mu/2\sigma} \propto \sqrt{\omega}` and make
+the problem nonlinear in :math:`\omega`. A conductive dielectric loss,
+:math:`\varepsilon_r'' = \sigma/(\omega\varepsilon_0)`, is nonlinear in
+:math:`\omega` for the same reason and is likewise not modelled.
+
+Selection
+^^^^^^^^^
+
+The perturbative treatment is used up to :math:`\tan\delta = 10^{-2}` and the
+complex eigenproblem above it. The threshold follows from the
+:math:`O(\tan^2\delta)` error: at :math:`\tan\delta = 10^{-2}` the two agree to a
+few parts in :math:`10^{5}`, and by :math:`\tan\delta \sim 1` they differ by tens
+of percent in both :math:`Q` and frequency. ``eigenmode_config['loss_model']``
+overrides the choice.
+
+
 Impedance Spectrum from Eigenfrequencies and Quality Factors
 ------------------------------------------------------------
 

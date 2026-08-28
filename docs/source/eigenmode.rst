@@ -76,6 +76,28 @@ Settings description:
 ``mode_of_interest``
    *(int, list, or dict)* 1-based index of the physical mode(s) whose results are reported. For monopole modes, this defaults to the accelerating :math:`\pi`-mode (index equals ``n_cells``).
 
+``materials``
+   *(dict, default: None)* Overrides the properties of dielectric regions declared
+   on the cavity with :meth:`~cavsim2d.models.base.Cavity.add_dielectric`, e.g.
+   ``{'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}}`` (shorthands:
+   ``{'quartz': 3.8}``, or a complex ``{'quartz': 3.8 - 3.8e-4j}``). Overrides
+   *merge* onto the declared properties, so ``{'quartz': {'tan_delta': 0.05}}`` is
+   a loss sweep that leaves ``eps_r`` alone. Naming a region the cavity does not
+   have raises, so a typo cannot silently fall back to vacuum. See
+   :ref:`eigenmode:Dielectric regions`.
+
+``loss_model``
+   *(str, default: None)* How a complex permittivity reaches ``Q``:
+   ``'lossless'`` (real eigenproblem, dielectric loss added perturbatively),
+   ``'lossy'`` (full complex eigenproblem), or ``'auto'`` / ``None`` — the default —
+   which inspects the loss tangents and switches to ``'lossy'`` above
+   :math:`\tan\delta = 10^{-2}`. Asking for ``'lossless'`` above that threshold is
+   honoured, with a warning. See :ref:`eigenmode:Dielectric loss`.
+
+``arnoldi_vectors``
+   *(int, default: 6)* Krylov vectors per shift in the lossy eigensolve. Raise it
+   if a lossy run warns that a mode did not converge.
+
 Quantities of Interest (QOIs)
 *****************************
 Once computed, the figures of merit are written to ``eigenmode/<polarisation_name>/qois.json`` and stored on the cavity objects. The table below summarises the output keys:
@@ -117,6 +139,141 @@ Once computed, the figures of merit are written to ``eigenmode/<polarisation_nam
    * - ``Bpk/Eacc [mT/MV/m]``
      - mT/(MV/m)
      - Peak magnetic field normalised by the accelerating gradient.
+
+Dielectric regions
+******************
+
+By default a cavity is vacuum throughout. :meth:`~cavsim2d.models.base.Cavity.add_dielectric`
+fills part of it with a dielectric — a ceramic window, a beam-pipe liner, an
+absorber ring:
+
+.. code-block:: python
+
+    cav = Pillbox(1, [20, 37.5, 2.5, 0, 5], beampipe='both')
+
+    # a 0.5 mm-thick quartz tube lining the 5 mm aperture, full length
+    cav.add_dielectric('quartz', 3.8, z=(-1e4, 1e4), r=(2.0, 2.5), maxh=0.15)
+
+    cav.eigenmode.run(mesh_config={'h': 3, 'p': 3})
+
+The region is an axisymmetric **rectangular ring** in the (z, r) meridian plane —
+an annular cylinder in 3D. All lengths are in **millimetres**, like every other
+cavity dimension, and the region is *clipped* to the cavity, so a generous span
+such as ``z=(-1e4, 1e4)`` simply means "the full length".
+
+``maxh`` sets the local element size **inside** the region. A thin shell needs
+it: a 0.5 mm tube wall in a cavity meshed at the default ``h = 20`` would
+otherwise be crossed by a single element.
+
+What changes in the solve
+-------------------------
+
+Weighting the mass form by :math:`\varepsilon_r` solves
+:math:`\nabla\times\nabla\times \mathbf{E} = \lambda\, \varepsilon_r \mathbf{E}`,
+so the eigenvalue is still :math:`\lambda = k_0^2 = (\omega/c_0)^2` and the
+frequency conversion is unchanged. The stored energy carries
+:math:`\varepsilon_r` **inside** the integral, so ``R/Q``, ``Q``, ``G``, ``Rsh``
+and ``GR/Q`` all follow.
+
+No special interface treatment is needed: ``HCurl`` enforces tangential-:math:`E`
+continuity and :math:`u_\varphi = r E_\varphi` is tangential to any r-z
+interface — exactly the physical dielectric interface conditions. Normal
+:math:`D` continuity is natural.
+
+One extra QOI appears per region, ``Epk_<material> [MV/m]``: :math:`E` is
+discontinuous across the interface, so the peak field *inside* the dielectric —
+the one that matters for breakdown — is not visible in the wall-sampled ``Epk``.
+
+.. _eigenmode-dielectric-loss:
+
+Dielectric loss
+---------------
+
+A region can be lossy. With the :math:`e^{+j\omega t}` convention the
+permittivity is :math:`\varepsilon_r = \varepsilon_r' - j\varepsilon_r''` and
+:math:`\tan\delta = \varepsilon_r''/\varepsilon_r'`:
+
+.. code-block:: python
+
+    cav.add_dielectric('alumina', 9.8, tan_delta=1e-4,
+                       z=(-1e4, 1e4), r=(2.0, 2.5), maxh=0.15)
+
+There are two ways to get :math:`Q` out of that, and they cost very different
+amounts.
+
+**Perturbation** (the default up to :math:`\tan\delta = 10^{-2}`). The cavity is
+solved as if it were lossless and the loss is integrated over the resulting field:
+
+.. math::
+
+   Q_{\text{diel}} = \frac{\int \varepsilon_r'\,|\mathbf{E}|^2\, r\,dr\,dz}
+                          {\int \varepsilon_r''\,|\mathbf{E}|^2\, r\,dr\,dz},
+   \qquad
+   \frac{1}{Q} = \frac{1}{Q_{\text{wall}}} + \frac{1}{Q_{\text{diel}}}
+
+This costs nothing beyond the lossless solve. It is accurate to
+:math:`O(\tan^2\delta)`, and the reported frequency and field distribution are the
+lossless ones — so it is the right tool for low-loss dielectrics (sapphire,
+alumina, quartz windows) and says nothing about the frequency pull a lossy
+material causes.
+
+**Full complex eigenproblem** (the default above :math:`\tan\delta = 10^{-2}`).
+The resonant frequency itself is solved for as a complex number,
+:math:`\omega = \omega_r + \mathrm{i}\alpha`, and
+
+.. math::
+
+   Q_{\text{diel}} = \frac{\omega_r}{2\alpha}
+
+so :math:`Q`, the frequency **and the mode shape** are all the lossy ones. This is
+what a lossy ferrite or an absorber at :math:`\tan\delta \sim 0.1`–:math:`1`
+needs, and it costs roughly twice a lossless solve. See
+:ref:`theory/eigenmode:Lossy Dielectrics` for the formulation.
+
+Which one ran is never left to inference — a run with a lossy material reports:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Key
+     - Description
+   * - ``Q model``
+     - ``'lossless'``, ``'perturbation'`` or ``'lossy'`` — how ``Q_diel`` was obtained
+   * - ``Q []``
+     - total :math:`Q`, wall and dielectric combined
+   * - ``Q_wall []``
+     - wall loss alone (what ``Q []`` was before this feature)
+   * - ``Q_diel []``
+     - dielectric loss alone
+   * - ``Pdiel [W]``
+     - dielectric power dissipation at the solved field amplitude
+   * - ``tan_delta []``
+     - the largest loss tangent in the run
+
+``G [Ohm]`` stays :math:`Q_{\text{wall}} R_s`: the geometry factor is a property
+of the wall and the mode shape, so folding dielectric loss into it would make a
+material-independent quantity depend on the filling. A run with no dielectric
+loss adds none of these keys.
+
+``tan_delta`` is a UQ variable like any geometric one (``'alumina:tan_delta'``),
+and changing it invalidates cached results.
+
+Limits
+------
+
+- :math:`\mu_r` is *rejected*, not ignored: magnetic materials change the
+  stiffness form, not just the mass form.
+- A **conductive** loss, :math:`\varepsilon_r'' = \sigma/(\omega\varepsilon_0)`, is
+  not modelled, because it makes the permittivity depend on the answer; pass a loss
+  tangent evaluated at the frequency of interest instead.
+- Wall loss is always treated perturbatively, on both paths.
+- **Eigenmode only.** ``wakefield`` and ``multipacting`` raise on a cavity with
+  dielectric regions rather than returning a vacuum answer for it.
+- **Native geometry only.** Cavities meshed from an imported ``.geo`` file cannot
+  carry regions (gmsh writes a single physical surface and the STEP round-trip
+  drops surface names), so this raises too. Every built-in model has a native
+  ``profile()``.
 
 Accessing Results
 *****************
@@ -170,7 +327,10 @@ Each row holds all the QOIs as columns, plus:
     mono[mono['R/Q [Ohm]'] > 1e-6]
 
 See the worked examples: :doc:`examples/eigenmode/elliptical_tesla` (TESLA cell,
-modes, impedance) and :doc:`examples/eigenmode/pillbox` (analytic verification).
+modes, impedance), :doc:`examples/eigenmode/pillbox` (analytic verification) and
+:doc:`examples/eigenmode/dielectric_quartz_tube` (a dielectric-loaded cavity) and
+:doc:`examples/eigenmode/dielectric_loss` (lossless vs perturbative vs fully lossy,
+swept over :math:`\tan\delta`).
 
 Visualisation
 *************

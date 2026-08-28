@@ -1,8 +1,9 @@
 Eigenmode
 =========
 
-Worked examples of the eigenmode solver — figures of merit, higher-order modes
-and the mode-reconstructed impedance.
+Worked examples of the eigenmode solver — figures of merit, higher-order modes,
+the mode-reconstructed impedance, dielectric-loaded cavities and
+dielectric loss.
 
 .. toctree::
    :maxdepth: 1
@@ -14,3 +15,5 @@ and the mode-reconstructed impedance.
    mesh_convergence
    compare_cavities
    multicell_uq_sa
+   dielectric_quartz_tube
+   dielectric_loss

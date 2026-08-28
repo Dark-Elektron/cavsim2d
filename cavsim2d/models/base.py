@@ -305,7 +305,10 @@ class Cavity(ABC):
                 return expanded
         if name in self.parameters or name in self.tune_variables():
             return [name]
-        known = ', '.join(sorted(self.tune_variables()))
+        # Dielectric regions declare their own handles, '<material>:<field>'.
+        if self._dielectric_slot(name) is not None:
+            return [name]
+        known = ', '.join(sorted(self.tune_variables() | self.dielectric_variables()))
         if not known:
             raise ValueError(
                 f"{type(self).__name__} is not parameterised, so {name!r} cannot be "
@@ -315,11 +318,17 @@ class Cavity(ABC):
             f"It accepts: {known}.")
 
     def get_tune_value(self, name):
-        """Read the tune variable *name*. See :meth:`tune_variables`."""
+        """Read the variable *name* — a geometry parameter, or a
+        ``<material>:<field>`` dielectric variable. See :meth:`tune_variables`
+        and :meth:`dielectric_variables`."""
+        if self._dielectric_slot(name) is not None:
+            return self.get_dielectric_value(name)
         return self.parameters[name]
 
     def set_tune_value(self, name, value):
-        """Write the tune variable *name*. See :meth:`tune_variables`."""
+        """Write the variable *name*. See :meth:`get_tune_value`."""
+        if self._dielectric_slot(name) is not None:
+            return self.set_dielectric_value(name, value)
         self.parameters[name] = value
 
     def half_cells(self):
@@ -358,6 +367,20 @@ class Cavity(ABC):
             f"fresh instance built from those parameters."
         )
 
+    def _carry_dielectrics_to(self, clone):
+        """Copy this cavity's dielectric regions onto a rebuilt *clone*.
+
+        ``rebuild()`` reconstructs a cavity from its **parameter dict**, and the
+        regions are not in it — so every generic clone path (tuning, UQ, sweeps)
+        would otherwise hand back a quietly *vacuum* copy of a dielectric-loaded
+        cavity. Carrying them here keeps a sweep or a UQ study over a loaded
+        geometry loaded.
+        """
+        for d in self.dielectrics:
+            if not any(e['material'] == d['material'] for e in clone.dielectrics):
+                clone.dielectrics.append(dict(d))
+        return clone
+
     def clone_for_tuning(self, tuned_parameters, tuned_self_dir, beampipe=None):
         """A cavity of this type carrying ``tuned_parameters``, living in
         ``tuned_self_dir`` (typically ``<self_dir>/tuned/``).
@@ -366,8 +389,9 @@ class Cavity(ABC):
         own ``geometry/`` folder with a freshly written geometry, and empty result
         caches so later eigenmode/wakefield runs write into the clone's folders.
         """
-        clone = self.rebuild(tuned_parameters,
-                             beampipe=self.beampipe if beampipe is None else beampipe)
+        clone = self._carry_dielectrics_to(
+            self.rebuild(tuned_parameters,
+                         beampipe=self.beampipe if beampipe is None else beampipe))
         clone.name = self.name
         clone.projectDir = self.projectDir
         clone.self_dir = str(tuned_self_dir)
@@ -431,7 +455,7 @@ class Cavity(ABC):
                     except (TypeError, ValueError):
                         pass
 
-        clone = self.rebuild(params, beampipe=self.beampipe)
+        clone = self._carry_dielectrics_to(self.rebuild(params, beampipe=self.beampipe))
         clone.name = self.name
         clone.projectDir = self.projectDir
         clone.self_dir = str(tuned_dir)
@@ -469,6 +493,216 @@ class Cavity(ABC):
                     var_name, var_value = match.groups()
                     self.parameters[var_name] = float(var_value)
 
+    # ─── Material regions ─────────────────────────────────────────────────
+
+    @property
+    def dielectrics(self):
+        """The dielectric regions declared on this cavity (see
+        :meth:`add_dielectric`). Lazily created so models that build instances
+        without going through ``__init__`` still work."""
+        if getattr(self, '_dielectrics', None) is None:
+            self._dielectrics = []
+        return self._dielectrics
+
+    def add_dielectric(self, material, eps_r, *, tan_delta=0.0, z, r, maxh=None,
+                       color=(1.0, 1.0, 0.0)):
+        """Fill part of the cavity with a dielectric.
+
+        The region is an axisymmetric **rectangular ring** in the (z, r) meridian
+        plane — an annular cylinder in 3D — which is the shape dielectric loading
+        usually takes: a ceramic window, a beam-pipe liner, an absorber ring.
+
+        Parameters
+        ----------
+        material : str
+            Name of the region. It becomes the mesh material name and the key in
+            ``eigenmode_config['materials']``.
+        eps_r : float
+            Real relative permittivity, eps'. Magnetic materials (``mu_r``) are not
+            modelled yet and are rejected rather than silently ignored.
+        tan_delta : float, optional
+            Loss tangent, ``eps''/eps'`` — default 0 (lossless). With the
+            ``exp(+j w t)`` convention the permittivity is ``eps'(1 - j tan_delta)``.
+            How it reaches Q is chosen by ``eigenmode_config['loss_model']``: by
+            default the solver treats it perturbatively up to ``tan_delta = 1e-2``
+            and switches to the full complex eigenproblem above that. See
+            :func:`~cavsim2d.solvers.NGSolve.eigen_ngsolve.resolve_loss_model`.
+        z, r : (lo, hi) pairs, **millimetres**
+            Extent of the region, in the same units as every other cavity
+            dimension. Clipped to the cavity, so a generous span is fine — e.g.
+            ``z=(-1e4, 1e4)`` for "the full length".
+        maxh : float, optional
+            Local mesh size **in millimetres** inside the region. A thin shell
+            needs this: a 0.5 mm tube wall in a cavity meshed at the default
+            ``h = 20`` would otherwise be crossed by a single element.
+        color : (r, g, b), optional
+            Face colour for the region, default **yellow** ``(1, 1, 0)``. Carried
+            onto the meshed face so the dielectric shows up when the geometry or
+            mesh is drawn (e.g. ``ngsolve.Draw``). Purely cosmetic — it does not
+            affect the solve.
+
+        Examples
+        --------
+        A 0.5 mm-thick quartz tube lining a 5 mm-diameter aperture, running the
+        full length of the cavity::
+
+            cav.add_dielectric('quartz', 3.8, z=(-1e4, 1e4), r=(2.5, 3.0), maxh=0.25)
+
+        The same tube in a lossy ceramic::
+
+            cav.add_dielectric('ceramic', 9.8, tan_delta=2e-4,
+                               z=(-1e4, 1e4), r=(2.5, 3.0), maxh=0.25)
+
+        Notes
+        -----
+        Dielectrics are supported by the **eigenmode** solver only, and only on
+        cavities with a native ``profile()``. Wakefield and multipacting raise on
+        a cavity that has them rather than quietly solving the vacuum problem.
+        """
+        eps_r = float(eps_r)
+        tan_delta = float(tan_delta or 0.0)
+        if eps_r <= 0:
+            raise ValueError(f"eps_r must be positive, got {eps_r!r}.")
+        if tan_delta < 0:
+            raise ValueError(
+                f"tan_delta must be >= 0 (a negative loss tangent is gain, not "
+                f"loss), got {tan_delta!r}.")
+        if len(z) != 2 or len(r) != 2:
+            raise ValueError("'z' and 'r' must each be a (lo, hi) pair in mm, "
+                             f"got z={z!r}, r={r!r}.")
+        if float(min(z)) == float(max(z)) or float(min(r)) == float(max(r)):
+            raise ValueError(f"dielectric {material!r} has zero extent "
+                             f"(z={tuple(z)}, r={tuple(r)}); both spans must be "
+                             "non-degenerate, in mm.")
+        if any(d['material'] == material for d in self.dielectrics):
+            raise ValueError(f"cavity {self.name!r} already has a dielectric region "
+                             f"named {material!r}; use clear_dielectrics() to reset.")
+        self.dielectrics.append({
+            'material': str(material),
+            'eps_r': eps_r,
+            'tan_delta': tan_delta,
+            'z': (float(min(z)), float(max(z))),
+            'r': (float(min(r)), float(max(r))),
+            'maxh': None if maxh is None else float(maxh),
+            'color': tuple(float(c) for c in color),
+        })
+        return self
+
+    def clear_dielectrics(self):
+        """Remove every dielectric region, returning the cavity to all-vacuum."""
+        self.dielectrics.clear()
+        return self
+
+    #: Fields of a dielectric region that UQ / sensitivity can perturb, written
+    #: ``<material>:<field>``. ``wall`` is derived (``r_out - r_in``) and moves the
+    #: inner radius, which is the physical case: a tube sits in the bore, so its
+    #: outer diameter is fixed by the aperture and the wall thickness varies.
+    DIELECTRIC_FIELDS = ('eps_r', 'tan_delta', 'r_in', 'r_out', 'wall', 'z_lo', 'z_hi')
+
+    def dielectric_variables(self):
+        """UQ variable names for the dielectric regions, ``<material>:<field>``.
+
+        A cavity declares these the same way it declares geometry handles — by
+        having the regions — so nothing central needs updating when a region is
+        added. Empty for an all-vacuum cavity.
+        """
+        return {'%s:%s' % (d['material'], f)
+                for d in self.dielectrics for f in self.DIELECTRIC_FIELDS}
+
+    def _dielectric_slot(self, name):
+        """``(region dict, field)`` for a ``<material>:<field>`` name, or None."""
+        if not isinstance(name, str) or ':' not in name:
+            return None
+        material, _, field = name.partition(':')
+        if field not in self.DIELECTRIC_FIELDS:
+            return None
+        for d in self.dielectrics:
+            if d['material'] == material:
+                return d, field
+        return None
+
+    def get_dielectric_value(self, name):
+        """Read a ``<material>:<field>`` dielectric variable."""
+        slot = self._dielectric_slot(name)
+        if slot is None:
+            raise ValueError(
+                f"{name!r} is not a dielectric variable of cavity {self.name!r} "
+                f"(has {sorted(self.dielectric_variables()) or 'none'}).")
+        d, field = slot
+        if field in ('eps_r', 'tan_delta'):
+            return d.get(field, 0.0)
+        if field == 'wall':
+            return d['r'][1] - d['r'][0]
+        return {'r_in': d['r'][0], 'r_out': d['r'][1],
+                'z_lo': d['z'][0], 'z_hi': d['z'][1]}[field]
+
+    def set_dielectric_value(self, name, value):
+        """Write a ``<material>:<field>`` dielectric variable."""
+        slot = self._dielectric_slot(name)
+        if slot is None:
+            raise ValueError(
+                f"{name!r} is not a dielectric variable of cavity {self.name!r} "
+                f"(has {sorted(self.dielectric_variables()) or 'none'}).")
+        d, field = slot
+        value = float(value)
+        if field == 'eps_r':
+            if value <= 0:
+                raise ValueError(f"{name} must stay positive, got {value!r}.")
+            d['eps_r'] = value
+        elif field == 'tan_delta':
+            # A UQ/optimisation step that walks tan_delta negative would come back
+            # as a negative Q, which reads as a solver bug rather than an out-of-
+            # range input.
+            if value < 0:
+                raise ValueError(
+                    f"{name} must stay >= 0 (a negative loss tangent is gain, not "
+                    f"loss), got {value!r}.")
+            d['tan_delta'] = value
+        elif field == 'wall':
+            # Hold the outer radius (set by the bore) and move the inner one.
+            if not 0 < value < d['r'][1]:
+                raise ValueError(
+                    f"{name} must satisfy 0 < wall < r_out ({d['r'][1]:g} mm), "
+                    f"got {value!r}.")
+            d['r'] = (d['r'][1] - value, d['r'][1])
+        elif field in ('r_in', 'r_out'):
+            r = list(d['r'])
+            r[0 if field == 'r_in' else 1] = value
+            if not 0 <= r[0] < r[1]:
+                raise ValueError(
+                    f"{name}={value!r} gives a degenerate region (r={tuple(r)}); "
+                    "need 0 <= r_in < r_out.")
+            d['r'] = (r[0], r[1])
+        else:
+            z = list(d['z'])
+            z[0 if field == 'z_lo' else 1] = value
+            if z[0] >= z[1]:
+                raise ValueError(
+                    f"{name}={value!r} gives a degenerate region (z={tuple(z)}).")
+            d['z'] = (z[0], z[1])
+        return self
+
+    def dielectric_values(self):
+        """``{variable: value}`` for every dielectric variable — the row UQ records."""
+        return {n: self.get_dielectric_value(n) for n in sorted(self.dielectric_variables())}
+
+    def _dielectric_signature(self):
+        """Flat numeric keys describing the dielectric regions.
+
+        Folded into the geometry snapshot so that changing a permittivity — or
+        adding/removing a region — invalidates cached results exactly the way a
+        changed dimension does. Without this, editing ``eps_r`` and rerunning with
+        ``rerun=False`` would silently serve the previous run's numbers.
+        """
+        sig = {}
+        for d in self.dielectrics:
+            m = d['material']
+            sig[f'_dielectric:{m}:eps_r'] = d['eps_r']
+            sig[f'_dielectric:{m}:tan_delta'] = d.get('tan_delta', 0.0)
+            sig[f'_dielectric:{m}:z0'], sig[f'_dielectric:{m}:z1'] = d['z']
+            sig[f'_dielectric:{m}:r0'], sig[f'_dielectric:{m}:r1'] = d['r']
+        return sig
+
     def _write_geometry_snapshot(self):
         """Persist current ``self.parameters`` next to the geometry file.
 
@@ -483,7 +717,8 @@ class Cavity(ABC):
         try:
             geo_dir.mkdir(parents=True, exist_ok=True)
             with open(geo_dir / 'parameters.json', 'w') as f:
-                json.dump(dict(self.parameters), f, indent=2, default=str)
+                json.dump({**dict(self.parameters), **self._dielectric_signature()},
+                          f, indent=2, default=str)
         except Exception:
             # Snapshot is advisory — never block geometry writes on IO.
             pass
@@ -504,6 +739,7 @@ class Cavity(ABC):
             'cell_parameterisation': getattr(self, 'cell_parameterisation', 'simplecell'),
             'name': self.name,
             'parameters': dict(self.parameters),
+            'dielectrics': [dict(d) for d in self.dielectrics],
         }
 
     @classmethod
@@ -521,6 +757,11 @@ class Cavity(ABC):
         stub.plot_label = state.get('plot_label', None)
         cav = stub.rebuild(dict(state['parameters']), beampipe=stub.beampipe)
         cav.name = state.get('name', cav.name)
+        for d in state.get('dielectrics', ()) or ():
+            cav.add_dielectric(d['material'], d['eps_r'],
+                               tan_delta=d.get('tan_delta', 0.0), z=d['z'], r=d['r'],
+                               maxh=d.get('maxh'),
+                               color=d.get('color', (1.0, 1.0, 0.0)))
         return cav
 
     def _check_geometry_mismatch(self, analysis):
@@ -541,7 +782,7 @@ class Cavity(ABC):
                 saved = json.load(f)
         except Exception:
             return True
-        cur = dict(self.parameters)
+        cur = {**dict(self.parameters), **self._dielectric_signature()}
         changed = []
         for k in set(cur.keys()) | set(saved.keys()):
             vc, vs = cur.get(k), saved.get(k)
@@ -1818,7 +2059,8 @@ class Cavity(ABC):
         gfu_E, gfu_H = ngsolve_mevp.load_fields(self._eigenmode_pol_dir(pol), mode)
         return gfu_E, gfu_H
 
-    def _plot_profile(self, profile, ax=None, mirror=False, fill=True, **kwargs):
+    def _plot_profile(self, profile, ax=None, mirror=False, fill=True,
+                      control_points=None, **kwargs):
         """Draw a cavity's meridian outline straight from its :class:`Profile`.
 
         Geometry-independent: works for every model, since each builds a Profile.
@@ -1826,14 +2068,19 @@ class Cavity(ABC):
         axisymmetric domain, so that is what is drawn by default; pass
         ``mirror=True`` to reflect it about the axis for the full cross-section.
         ``fill`` shades the interior.
+
+        ``control_points`` overlays a spline cavity's control points and the
+        polygon connecting them: ``None`` (default) shows them automatically for
+        cavities that expose ``control_polygons()`` (i.e. splines), ``True`` forces
+        it, ``False`` hides it.
         """
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(8, 3))
             pts = np.asarray(profile.contour_points(3e-4, skip=('AXI',)), dtype=float)
             z, r = pts[:, 0] * 1e3, pts[:, 1] * 1e3          # metres -> mm
-            z = z - z.min()                                  # start every cavity at z = 0,
-            #                                                  so different types align when compared
+            z_shift = z.min()                                # start every cavity at z = 0,
+            z = z - z_shift                                  # so different types align when compared
             color = kwargs.pop('color', None) or getattr(self, 'color', None) or WARM[1]
             lw = kwargs.pop('lw', kwargs.pop('linewidth', 1.8))
             label = kwargs.pop('label', self.name)
@@ -1844,10 +2091,44 @@ class Cavity(ABC):
             ax.plot(z, r, color=color, lw=lw, label=label, **kwargs)
             if mirror:
                 ax.plot(z, -r, color=color, lw=lw, **kwargs)
+            self._overlay_control_points(ax, z_shift, mirror, control_points)
             ax.set_aspect('equal')
             ax.set_xlabel('$z$ [mm]')
             ax.set_ylabel(r'$r$ [mm]')
             return ax
+
+    def _overlay_control_points(self, ax, z_shift_mm, mirror, control_points):
+        """Overlay spline control points and their connecting control polygon on a
+        geometry plot, in the same shifted-mm frame as the wall.
+
+        Drawn when *control_points* is ``True``, or when it is ``None`` (default)
+        and this cavity exposes ``control_polygons()`` (i.e. a spline). A silent
+        no-op for models without control points; ``control_points=False`` always
+        suppresses it. Dashed polygon + open markers, so the interpolated wall
+        still reads clearly underneath.
+        """
+        if control_points is False:
+            return
+        maker = getattr(self, 'control_polygons', None)
+        polys = maker() if callable(maker) else None
+        if not polys:
+            if control_points:                    # explicitly asked but none exist
+                info(f"{type(self).__name__} '{self.name}' has no control points "
+                     "to overlay.")
+            return
+        cp_color = WARM[4]
+        for i, poly in enumerate(polys):
+            poly = np.asarray(poly, dtype=float)
+            pz = poly[:, 0] * 1e3 - z_shift_mm
+            pr = poly[:, 1] * 1e3
+            # label only the first cell's polygon, so a legend shows one entry.
+            ax.plot(pz, pr, ls='--', lw=1.0, marker='o', ms=5, color=cp_color,
+                    mfc='white', mec=cp_color, zorder=6,
+                    label='control points' if i == 0 else '_nolegend_')
+            if mirror:
+                ax.plot(pz, -pr, ls='--', lw=1.0, marker='o', ms=5, color=cp_color,
+                        mfc='white', mec=cp_color, zorder=6, label='_nolegend_')
+        return ax
 
     def plot(self, what, ax=None, scale_x=1, show=True, **kwargs):
         """Plot a static view of this cavity (``what='geometry'`` or
@@ -1989,7 +2270,7 @@ class Cavity(ABC):
             return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter)
         self._eigenmode_artifact_error(pol, 'mesh.vol', 'mesh')
 
-    def show_fields(self, mode=1, which='E', plotter='ngsolve', pol='monopole'):
+    def show_fields(self, mode=0, which='E', plotter='ngsolve', pol='monopole'):
         """Interactive NGSolve (webgui) view of the eigenmode fields.
 
         For m-pole results pass ``pol`` ('dipole', 'quadrupole', ... or the mode
@@ -2146,24 +2427,35 @@ class Cavity(ABC):
         # Display the layout
         display(out, ui)
 
-    def config_sample(self, kind):
-        if kind == 'eigenmode':
-            return EIGENMODE_CONFIG
+    def config_sample(self, kind, show=True):
+        """Show every configurable entry of a solver config, with its default.
 
-        if kind == 'wakefield':
-            return WAKEFIELD_CONFIG
+        Prints the complete default config for *kind* — all available options with
+        their default values — and returns it as a dict you can copy, edit and pass
+        to the matching ``run(...)``. *kind* is one of ``'eigenmode'``,
+        ``'wakefield'``, ``'tune'``, ``'multipacting'`` or ``'uq'``.
 
-        if kind == 'tune':
-            return TUNE_CONFIG
-
-        if kind == 'uq':
-            return UQ_CONFIG
-
-        if kind == 'optimisation':
-            pass
-
-        if kind == 'sa':
-            return
+        The defaults come from the solvers themselves (the same dicts ``run()``
+        merges over), so this never drifts from what a run actually uses. For one
+        solver's default without the printout, use ``cav.<solver>.sample_cfg``
+        (e.g. ``cav.eigenmode.sample_cfg``).
+        """
+        samplers = {
+            'eigenmode': lambda: self.eigenmode.sample_cfg,
+            'wakefield': lambda: self.wakefield.sample_cfg,
+            'tune': lambda: self.tune.sample_cfg,
+            'multipacting': lambda: self.multipacting.sample_cfg,
+            'uq': lambda: copy.deepcopy(UQ_CONFIG),
+        }
+        if kind not in samplers:
+            info(f"config_sample: unknown kind {kind!r}. "
+                 f"Choose one of: {', '.join(samplers)}.")
+            return None
+        cfg = samplers[kind]()
+        if show:
+            print(f"# default {kind} config - every available option, with its default\n"
+                  + json.dumps(cfg, indent=2, default=str))
+        return cfg
     # def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=False):
     #
     #     fig, ax = plt.subplots(figsize=(12, 6))
@@ -2694,7 +2986,12 @@ class Cavity(ABC):
                 if k in params:
                     params[k] = v
 
-            scav = self.rebuild(params)
+            scav = self._carry_dielectrics_to(self.rebuild(params))
+            # Dielectric variables are not in `parameters`, so rebuild() cannot
+            # carry them; overlay them onto the clone's own regions.
+            for k, v in row.items():
+                if scav._dielectric_slot(k) is not None:
+                    scav.set_dielectric_value(k, v)
             scav.name = str(key)
             scav.projectDir = folder
             scav.self_dir = os.path.join(folder, str(key))

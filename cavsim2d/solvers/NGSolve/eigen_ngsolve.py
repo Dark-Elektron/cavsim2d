@@ -12,7 +12,8 @@ from cavsim2d.utils.shared_functions import *
 from ngsolve import *
 from ngsolve import (x, y, dx, pi, Mesh, exp, BND, # type: ignore
                      GridFunction, BilinearForm, InnerProduct, curl, grad, Conj, # type: ignore
-                     Integrate, TaskManager, HCurl, H1, Preconditioner, solvers, Norm, IdentityMatrix) # type: ignore
+                     Integrate, TaskManager, HCurl, H1, Preconditioner, solvers, Norm, # type: ignore
+                     IdentityMatrix, ArnoldiSolver) # type: ignore
 from ngsolve.la import Embedding # type: ignore
 from ngsolve.webgui import Draw
 from ngsolve.comp import VorB # type: ignore
@@ -32,6 +33,29 @@ eps0 = 8.85418782e-12
 c0 = 299792458
 SIGMA_COPPER = 5.96e7  # electrical conductivity of copper [S/m]
 DEFAULT_N_MODES = 10
+# Loss tangent above which perturbation theory stops being trustworthy and the
+# automatic loss model switches to the full complex eigenproblem: perturbation is
+# O(tan_delta^2) in the eigenvalue and blind to field redistribution.
+LOSSY_TAN_DELTA = 1e-2
+# Krylov vectors per shift in the lossy (Arnoldi) solve. len(vecs) eigenpairs
+# nearest the shift come back, from a Krylov space of 2*len(vecs)+1.
+DEFAULT_ARNOLDI_VECTORS = 6
+# Relative eigenpair residual below which an Arnoldi Ritz pair counts as a
+# converged mode. Unconverged pairs come back looking like extra modes at
+# plausible frequencies, so they are filtered on this rather than on a heuristic.
+ARNOLDI_RESIDUAL_TOL = 1e-8
+# After the last refinement pass the remaining pairs are judged on two looser
+# bounds. Below WARN a mode is simply accurate enough to report without comment;
+# between WARN and ACCEPT it is a real but loosely converged mode, worth saying so
+# about; above ACCEPT it is a Krylov artefact and is dropped. Measured separation
+# on this formulation: converged pairs sit at 1e-12 and below, real-but-loose ones
+# at 1e-7..1e-4, artefacts at 1e-2 and above.
+ARNOLDI_RESIDUAL_WARN = 1e-5
+ARNOLDI_RESIDUAL_ACCEPT = 1e-3
+# Shift-refinement passes. Pass 1 centres on the lossless eigenvalues; each further
+# pass re-centres on what the previous one found, which is what a large tan_delta
+# needs and a small one never triggers.
+ARNOLDI_MAX_PASSES = 3
 # Radius [m] below which a point counts as "on the axis". The 1/r weights in the
 # azimuthal field are singular there but the fields are defined by their limit,
 # so the weight is clamped rather than evaluated (the axis is measure-zero in
@@ -59,6 +83,208 @@ def mesh_h_metres(mesh_config, default=20):
     return h * 1e-3
 
 
+def parse_materials(materials):
+    """Validated ``{name: (eps_re, eps_im)}`` for a *materials* mapping.
+
+    Each entry is a bare number or a dict::
+
+        {'quartz': 3.8}                                  # lossless shorthand
+        {'quartz': {'eps_r': 3.8}}
+        {'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}}    # eps = 3.8*(1 - 1e-4j)
+        {'quartz': 3.8 - 3.8e-4j}                        # complex shorthand
+
+    The convention is ``exp(+j w t)``, so a lossy permittivity is
+    ``eps_r = eps' - j eps''`` with ``tan_delta = eps''/eps' >= 0``. A *negative*
+    loss tangent (gain) is rejected: it would come back as a negative Q and read
+    as a solver bug rather than as the input error it is.
+
+    ``mu_r`` is still refused rather than ignored — magnetic materials change the
+    stiffness form, not just the mass form.
+    """
+    props = {}
+    for name, entry in (materials or {}).items():
+        if isinstance(entry, bool):
+            raise ValueError(f"materials[{name!r}] must be a number or a dict, got {entry!r}.")
+        if isinstance(entry, (int, float, complex)):
+            entry = {'eps_r': entry}
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"materials[{name!r}] must be a number or a dict like "
+                f"{{'eps_r': 3.8, 'tan_delta': 1e-4}}, got {entry!r}.")
+        unsupported = set(entry) - {'eps_r', 'tan_delta'}
+        if unsupported:
+            raise NotImplementedError(
+                f"materials[{name!r}] sets {sorted(unsupported)}, which the eigenmode "
+                "solver does not support yet — it models dielectrics (eps_r, tan_delta) "
+                "only. Magnetic materials (mu_r) would change the weak form and the Q "
+                "bookkeeping, so they are rejected rather than silently ignored.")
+        eps = complex(entry.get('eps_r', 1.0))
+        td = entry.get('tan_delta', None)
+        if eps.imag and td is not None:
+            raise ValueError(
+                f"materials[{name!r}] gives BOTH a complex eps_r ({eps!r}) and a "
+                f"tan_delta ({td!r}); they are two spellings of the same quantity. "
+                "Pass one or the other.")
+        if td is not None and float(td) < 0:
+            raise ValueError(
+                f"materials[{name!r}]['tan_delta'] must be >= 0 (a negative loss tangent "
+                f"is gain, not loss), got {td!r}.")
+        eps_re = eps.real
+        if eps_re <= 0:
+            raise ValueError(
+                f"materials[{name!r}]: the real part of eps_r must be positive, "
+                f"got {eps_re!r}.")
+        # exp(+jwt) => eps = eps' - j eps''. A user writing 3.8+0.01j means the same
+        # material as 3.8-0.01j, so the sign of the shorthand is not load-bearing.
+        eps_im = abs(eps.imag) if eps.imag else eps_re * float(td or 0.0)
+        props[name] = (eps_re, eps_im)
+    return props
+
+
+def _check_material_names(mesh, props):
+    """Raise if any material name is not a region of *mesh*."""
+    available = set(mesh.GetMaterials())
+    for name in props:
+        if name not in available:
+            raise ValueError(
+                f"materials names {name!r}, which is not a region of this mesh. "
+                f"Available materials: {sorted(available)}. Add the region first "
+                f"with cav.add_dielectric({name!r}, ...) — a name that does not match "
+                "would otherwise solve the vacuum problem silently.")
+
+
+def material_cfs(mesh, materials):
+    """**Real** relative permittivity (eps') as a mesh-material-keyed CoefficientFunction.
+
+    Returns ``None`` when there is nothing to weight — no materials given, or every
+    one of them has eps' = 1. Callers **must** keep their plain vacuum expression in
+    that case, so a single-domain cavity assembles exactly the forms it always did
+    and cannot regress.
+
+    This is the coefficient the *lossless* forms and the stored energy U use; the
+    loss part is :func:`material_loss_cfs` and the two together are
+    :func:`material_complex_cfs`. See :func:`parse_materials` for the accepted
+    spellings.
+    """
+    props = parse_materials(materials)
+    if not props:
+        return None
+    _check_material_names(mesh, props)
+    eps = {name: re_ for name, (re_, _) in props.items()}
+    if all(v == 1.0 for v in eps.values()):
+        return None
+    return mesh.MaterialCF(eps, default=1.0)
+
+
+def material_loss_cfs(mesh, materials):
+    """Imaginary relative permittivity (eps'' = eps' * tan_delta) as a
+    CoefficientFunction, or ``None`` if every region is lossless.
+
+    ``None`` is the signal that no dielectric-loss bookkeeping is needed at all, so
+    a lossless run reports exactly the QOIs it always did.
+    """
+    props = parse_materials(materials)
+    if not props:
+        return None
+    _check_material_names(mesh, props)
+    loss = {name: im for name, (_, im) in props.items()}
+    if all(v == 0.0 for v in loss.values()):
+        return None
+    return mesh.MaterialCF(loss, default=0.0)
+
+
+def material_complex_cfs(mesh, materials):
+    """Complex relative permittivity ``eps' - j eps''`` as a CoefficientFunction.
+
+    This is the mass-form coefficient of the **lossy** eigenproblem, which makes B
+    complex symmetric (not Hermitian) and the eigenvalue complex. Returns ``None``
+    only for an all-vacuum, lossless mapping.
+    """
+    props = parse_materials(materials)
+    if not props:
+        return None
+    _check_material_names(mesh, props)
+    eps = {name: complex(re_, -im) for name, (re_, im) in props.items()}
+    if all(v == 1.0 + 0j for v in eps.values()):
+        return None
+    return mesh.MaterialCF(eps, default=1.0 + 0j)
+
+
+def max_tan_delta(materials):
+    """Largest loss tangent in a materials mapping (0.0 if lossless or empty).
+
+    This is the number the automatic lossless-vs-lossy choice is made on, so the
+    *worst* region governs: a single lossy absorber ring in an otherwise low-loss
+    structure is what redistributes the mode.
+    """
+    props = parse_materials(materials)
+    return max((im / re_ for re_, im in props.values()), default=0.0)
+
+
+def resolve_loss_model(materials, eigenmode_config=None):
+    """Which dielectric-loss treatment this run uses: ``'lossless'``,
+    ``'perturbation'`` or ``'lossy'``.
+
+    Three treatments, one knob:
+
+    - ``'lossless'`` — real eigenproblem, no dielectric loss anywhere. What every
+      vacuum cavity has always done, bit for bit.
+    - ``'perturbation'`` — the same real eigenproblem, with the dielectric loss
+      added afterwards as a volume integral over the lossless field (see
+      :meth:`NGSolveMEVP.evaluate_qois`). The error is O(tan_delta^2) in the
+      eigenvalue and it cannot capture field redistribution, so it is the right
+      tool up to ``tan_delta ~ 1e-2``.
+    - ``'lossy'`` — the full complex eigenproblem (complex spaces, complex
+      symmetric mass matrix, shift-and-invert Arnoldi). Q comes straight out of
+      the complex eigenvalue and the mode *shape* is the lossy one.
+
+    ``eigenmode_config['loss_model']`` selects explicitly; the default (``None`` or
+    ``'auto'``) inspects the loss tangents and picks ``'lossy'`` above
+    :data:`LOSSY_TAN_DELTA`. Asking for the cheap path anyway is honoured — with a
+    warning, because at ``tan_delta ~ 0.1`` a perturbative Q is wrong by percent
+    and the frequency is wrong too.
+    """
+    td = max_tan_delta(materials)
+    requested = (eigenmode_config or {}).get('loss_model', None)
+    if requested is None:
+        requested = 'auto'
+    requested = str(requested).lower()
+    if requested not in ('auto', 'lossless', 'perturbation', 'lossy'):
+        raise ValueError(
+            f"eigenmode_config['loss_model']={requested!r} is not one of "
+            "'auto' (default), 'lossless', 'perturbation' or 'lossy'.")
+
+    if td == 0.0:
+        if requested == 'lossy':
+            warnings.warn(
+                "eigenmode_config['loss_model']='lossy' but no material has a loss "
+                "tangent, so there is no dielectric loss to solve for; using the real "
+                "(lossless) eigenproblem. Set tan_delta on a region — via "
+                "cav.add_dielectric(..., tan_delta=...) or "
+                "eigenmode_config['materials'] — to make the lossy path meaningful.",
+                UserWarning, stacklevel=3)
+        return 'lossless'
+
+    if requested == 'lossy':
+        return 'lossy'
+    if requested == 'auto':
+        return 'lossy' if td > LOSSY_TAN_DELTA else 'perturbation'
+
+    # Explicit 'lossless'/'perturbation' with real loss present: honour it, but say
+    # what it costs. The loss is still reported (perturbatively) — dropping it
+    # silently is the one outcome that reads as a correct answer and is not.
+    if td > LOSSY_TAN_DELTA:
+        warnings.warn(
+            f"eigenmode_config['loss_model']={requested!r} was requested but the largest "
+            f"loss tangent is {td:.3g} (> {LOSSY_TAN_DELTA:g}), where perturbation theory "
+            "is no longer reliable: the O(tan_delta^2) eigenvalue error and the "
+            "un-modelled field redistribution both matter. Continuing as asked — Q is "
+            "tagged 'perturbation' in the QOIs. Use loss_model='lossy' (or 'auto') for "
+            "the full complex eigenproblem.",
+            UserWarning, stacklevel=3)
+    return 'perturbation'
+
+
 def surface_resistance(w, conductivity=SIGMA_COPPER, rs=None):
     """Surface resistance [Ohm] at angular frequency *w*.
 
@@ -71,26 +297,37 @@ def surface_resistance(w, conductivity=SIGMA_COPPER, rs=None):
 
 
 @functools.lru_cache(maxsize=None)
-def direct_solver_available(name):
+def direct_solver_available(name, complex_matrix=False):
     """Whether this NGSolve build can actually factorise with backend *name*.
 
     Which sparse direct solvers are compiled in varies by platform and by how
     NGSolve was built (pip wheel, conda, source), so this probes a 2x2 problem
     rather than guessing. Cached: the probe runs at most once per backend.
+
+    *complex_matrix* probes a **complex symmetric, indefinite** matrix — the shape
+    the lossy eigenproblem factorises in shift-and-invert. It is a genuinely
+    different question from the real one: a Cholesky-type backend can be present
+    and still refuse it, and finding that out at the eigensolve is a crash deep
+    inside Arnoldi rather than a solver-choice message here.
     """
     try:
         face = WorkPlane().Rectangle(1, 1).Face()
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=1.0))
-        fes = H1(mesh, order=1)
+        fes = H1(mesh, order=1, complex=complex_matrix)
         u, v = fes.TnT()
-        a = BilinearForm(grad(u) * grad(v) * dx + u * v * dx).Assemble()
+        form = grad(u) * grad(v) * dx + u * v * dx
+        if complex_matrix:
+            # Complex symmetric and indefinite, like (A - shift*B) with a shift
+            # inside the spectrum.
+            form = grad(u) * grad(v) * dx - (1 + 1j) * u * v * dx
+        a = BilinearForm(form).Assemble()
         a.mat.Inverse(fes.FreeDofs(), inverse=name)
         return True
     except Exception:
         return False
 
 
-def default_direct_solver():
+def default_direct_solver(complex_matrix=False):
     """Name of the sparse direct-solver backend for the monopole eigenproblem.
 
     Preference order by platform, filtered by what the build actually provides:
@@ -101,14 +338,25 @@ def default_direct_solver():
 
     Falls back to ``sparsecholesky``, which is always built in. Override per run
     with ``eigenmode_config['direct_solver']``.
+
+    Pass *complex_matrix* for the lossy path, whose shifted matrix is complex
+    symmetric and indefinite; a backend that cannot factorise that is skipped
+    here rather than failing inside Arnoldi.
     """
     if platform.system() == 'Windows':
         preferred = ('pardiso', 'umfpack')
     else:
         preferred = ('umfpack', 'pardiso')
     for name in preferred:
-        if direct_solver_available(name):
+        if direct_solver_available(name, complex_matrix):
             return name
+    if complex_matrix and not direct_solver_available('sparsecholesky', True):
+        raise RuntimeError(
+            "the lossy (complex) eigenproblem needs a sparse direct solver that can "
+            "factorise a complex symmetric indefinite matrix, and this NGSolve build "
+            f"provides none of {preferred + ('sparsecholesky',)}. Use "
+            "eigenmode_config['loss_model']='lossless' for the perturbative Q, or "
+            "install an NGSolve build with UMFPACK or PARDISO.")
     return 'sparsecholesky'
 
 
@@ -132,6 +380,10 @@ class NGSolveMEVP:
         self.mesh = None
         self.fields = None
         self._last_adaptive_history = None
+        # Per-mode dielectric Q of the last solve, read off the complex eigenvalue.
+        # None on every path but 'lossy', where it cannot be recovered from the
+        # returned fields alone.
+        self._last_dielectric_q = None
 
     @staticmethod
     def requested_n_modes(cav=None, eigenmode_config=None, n_modes=None):
@@ -159,6 +411,53 @@ class NGSolveMEVP:
     def pinvit_n_modes(requested_n_modes):
         """PINVIT search size: always two more than requested."""
         return int(requested_n_modes) + 2
+
+    @staticmethod
+    def resolve_materials(cav, eigenmode_config=None):
+        """``{material: {'eps_r': ..., 'tan_delta': ...}}`` for *cav*, or None if it
+        is all vacuum.
+
+        The cavity's own :meth:`~cavsim2d.models.base.Cavity.add_dielectric`
+        declarations are the source of truth for which regions exist;
+        ``eigenmode_config['materials']`` may override the *properties* of an
+        already-declared region, so a sweep over eps_r or tan_delta needs no
+        geometry change. Naming a region that was never added raises — otherwise a
+        typo would solve the vacuum problem and report it as a dielectric result.
+
+        Overrides **merge** onto the declared properties, so
+        ``{'quartz': {'tan_delta': 0.05}}`` is a loss sweep on the declared eps_r
+        rather than a silent reset of it to 1.
+
+        ``tan_delta`` is omitted from a region that declares none, so a lossless
+        cavity produces exactly the mapping (and hence exactly the QOIs) it always
+        did.
+        """
+        mats = {}
+        for d in (getattr(cav, 'dielectrics', ()) or ()):
+            props = {'eps_r': float(d['eps_r'])}
+            if float(d.get('tan_delta', 0.0) or 0.0):
+                props['tan_delta'] = float(d['tan_delta'])
+            mats[d['material']] = props
+        override = (eigenmode_config or {}).get('materials') or {}
+        for name, props in override.items():
+            if name not in mats:
+                raise ValueError(
+                    f"eigenmode_config['materials'] names {name!r}, which is not a "
+                    f"dielectric region of this cavity (has {sorted(mats) or 'none'}). "
+                    f"Declare it first with cav.add_dielectric({name!r}, eps_r, z=..., "
+                    "r=...); this key only overrides the properties of an existing region.")
+            if isinstance(props, (int, float, complex)) and not isinstance(props, bool):
+                props = {'eps_r': props}
+            merged = dict(mats[name])
+            merged.update(props)
+            if isinstance(merged.get('eps_r'), complex):
+                # A complex eps_r override supersedes a declared tan_delta rather
+                # than colliding with it (parse_materials refuses both at once).
+                merged.pop('tan_delta', None)
+            if merged.get('tan_delta') == 0:
+                merged.pop('tan_delta')
+            mats[name] = merged
+        return mats or None
 
     @staticmethod
     def modes_of_interest(cav, m, eigenmode_config=None, n_modes=None):
@@ -277,10 +576,33 @@ class NGSolveMEVP:
         - Import: otherwise mesh the cavity's ``.geo`` file via gmsh
           (elliptical, spline, imported CAD).
         """
+        dielectrics = list(getattr(cav, 'dielectrics', ()) or ())
+
         maker = getattr(cav, 'profile', None)
         profile = maker() if callable(maker) else None
         if profile is not None:
-            return profile.mesh(maxh=maxh, order=order)
+            region_maxh = {}
+            for d in dielectrics:
+                # Model API is in mm (like every other cavity dimension); Profile
+                # works in metres.
+                profile.add_region(d['material'],
+                                   z=tuple(v * 1e-3 for v in d['z']),
+                                   r=tuple(v * 1e-3 for v in d['r']),
+                                   color=d.get('color', (1.0, 1.0, 0.0)))
+                if d.get('maxh'):
+                    region_maxh[d['material']] = float(d['maxh']) * 1e-3
+            return profile.mesh(maxh=maxh, order=order,
+                                region_maxh=region_maxh or None)
+
+        if dielectrics:
+            raise RuntimeError(
+                f"{type(cav).__name__} {cav.name!r} has dielectric regions "
+                f"({[d['material'] for d in dielectrics]}) but no native profile(), so it "
+                "would be meshed from its .geo file — a path that cannot carry them. gmsh "
+                "writes a single Physical Surface and the STEP round-trip drops surface "
+                "names entirely, so the regions would vanish and the vacuum problem would "
+                "be solved silently. Dielectrics are supported on native-profile cavities "
+                "only.")
 
         if not cav.geo_filepath:
             raise RuntimeError(
@@ -367,6 +689,11 @@ class NGSolveMEVP:
         n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
         rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
+        materials = self.resolve_materials(cav, eigenmode_config)
+        # Lossless / perturbative / full complex — decided once, from the loss
+        # tangents and eigenmode_config['loss_model'], and reported in the QOIs so a
+        # Q is never ambiguous about how it was obtained.
+        loss_model = resolve_loss_model(materials, eigenmode_config)
 
         # Active-length normalisation. Elliptical cavities store the half-cell
         # length as 'L_m'; otherwise take an explicit 'normalization_length'
@@ -380,7 +707,10 @@ class NGSolveMEVP:
         # resolve *this* polarisation's modes (adaptive=None -> single solve).
         mesh = self._build_mesh(cav, mesh_h, mesh_p)
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, pol_dir, mesh, mesh_p,
-                                                          n_modes, m=m, adaptive=adaptive)
+                                                          n_modes, m=m, adaptive=adaptive,
+                                                          materials=materials,
+                                                          loss_model=loss_model)
+        q_diel = self._last_dielectric_q
         # Save after solving: adaptive refinement mutates *mesh* in place, so
         # this persists the finest mesh actually used for the QOIs.
         self.save_mesh(pol_dir, mesh)
@@ -401,7 +731,8 @@ class NGSolveMEVP:
             q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=idx,
                                    n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
                                    conductivity=conductivity, surface_resistance_ohm=rs_ohm,
-                                   write_axis=(idx == moi[0]))
+                                   write_axis=(idx == moi[0]), materials=materials,
+                                   loss_model=loss_model, q_diel=q_diel)
             # String metadata (UQ coerces the qois table to numerics and drops
             # text columns; a bare int would be averaged into nonsense stats).
             q['mode_of_interest'] = str(idx + 1)
@@ -418,7 +749,9 @@ class NGSolveMEVP:
         for ii in range(len(freq_fes)):
             qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=ii,
                                                     n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
-                                                    conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                                                    conductivity=conductivity, surface_resistance_ohm=rs_ohm,
+                                                    materials=materials, loss_model=loss_model,
+                                                    q_diel=q_diel)
 
         with open(os.path.join(pol_dir, 'qois_all_modes.json'), "w") as f:
             json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
@@ -597,7 +930,8 @@ class NGSolveMEVP:
         cfg.setdefault('max_refinements', 8)
         return cfg
 
-    def _build_system(self, mesh, mesh_p, m_pol, f_shift=0, direct_solver=None):
+    def _build_system(self, mesh, mesh_p, m_pol, f_shift=0, direct_solver=None,
+                      materials=None, complex_fes=False):
         """Build the reusable space, forms and preconditioner for azimuthal order
         *m_pol* — the single formulation used for **every** polarisation.
 
@@ -622,9 +956,15 @@ class NGSolveMEVP:
         a fresh space per pass instead leaves stale spaces registered on the
         mesh, and netgen's ``Refine()`` then updates them onto freed memory —
         an access violation on the second refinement.
+
+        With *complex_fes* the same forms are assembled in **complex** arithmetic and
+        the mass coefficient becomes ``eps' - j eps''``. That makes B complex
+        symmetric rather than Hermitian, so the eigenvalue is complex and the
+        Hermitian eigensolver (PINVIT) no longer applies — this system is solved by
+        :meth:`_solve_lossy_system` instead of :meth:`_solve_system`.
         """
         if direct_solver is None:
-            direct_solver = default_direct_solver()
+            direct_solver = default_direct_solver(complex_fes)
         # p >= 2 is required: at p=1 the HCurl(p) x H1(p+1) product space is
         # rank-deficient for this formulation and the PINVIT reduced eigenproblem
         # comes out with NaNs (scipy.linalg.eigh then raises a cryptic "array must
@@ -636,20 +976,42 @@ class NGSolveMEVP:
                 "eigensolve returns NaN. Use p>=2 (set via mesh_config['p'], "
                 "default 3).")
         r = y
-        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
-        fes_phi = H1(mesh, order=mesh_p + 1, dirichlet="PEC|AXI")
+        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC", complex=complex_fes)
+        fes_phi = H1(mesh, order=mesh_p + 1, dirichlet="PEC|AXI", complex=complex_fes)
         fes = fes_rz * fes_phi
         (u, u_phi), (v, v_phi) = fes.TnT()
+
+        # Dielectric weighting. Weighting the mass form by eps_r solves
+        # curl(curl E) = lambda * eps_r * E, so lambda is STILL k0^2 = (w/c0)^2 and
+        # the frequency conversion below is unchanged. eps_r is a single scalar
+        # factor on the whole bracket because every term comes from the same
+        # |E|^2. eps_cf is None for a vacuum cavity, in which case the plain
+        # expression is assembled verbatim.
+        #
+        # No interface treatment is needed: HCurl enforces tangential-E continuity
+        # and u_phi = r*E_phi is tangential to any r-z interface, which are exactly
+        # the physical dielectric interface conditions. Normal D continuity is
+        # natural. The gradient kernel is also untouched, so the b-orthogonal
+        # projector in _solve_system stays valid (curl of a gradient vanishes
+        # pointwise, and B stays SPD for eps_r > 0).
+        # The lossy path weights the mass form by the COMPLEX permittivity; the
+        # lossless/perturbative path keeps the real one, so its assembled matrices
+        # are bit-for-bit what they always were.
+        eps_cf = (material_complex_cfs(mesh, materials) if complex_fes
+                  else material_cfs(mesh, materials))
 
         stiff = (r * curl(u) * curl(v)
                  + 1 / r * (m_pol**2 * u * v
                             + m_pol * u * grad(v_phi)
                             + m_pol * grad(u_phi) * v
                             + grad(u_phi) * grad(v_phi))) * dx
-        mass = (r * u * v + 1 / r * u_phi * v_phi) * dx
+        mass_expr = (r * u * v + 1 / r * u_phi * v_phi)
+        mass = (mass_expr if eps_cf is None else eps_cf * mass_expr) * dx
 
-        # Search around a frequency if a shift is provided
-        if f_shift and f_shift != 'default':
+        # Search around a frequency if a shift is provided. Not on the complex
+        # path: shift-and-invert Arnoldi applies its own shift, so folding one into
+        # `a` here would apply it twice.
+        if f_shift and f_shift != 'default' and not complex_fes:
             shift_lam = (2 * pi * f_shift * 1e6 / c0)**2
             a = BilinearForm(stiff - shift_lam * mass)
         else:
@@ -657,8 +1019,9 @@ class NGSolveMEVP:
         b = BilinearForm(mass)
 
         return {'fes': fes, 'fes_rz': fes_rz, 'fes_phi': fes_phi,
-                'a': a, 'b': b, 'm': m_pol,
-                'f_shift': f_shift, 'direct_solver': direct_solver}
+                'a': a, 'b': b, 'm': m_pol, 'eps_cf': eps_cf,
+                'f_shift': f_shift, 'direct_solver': direct_solver,
+                'complex_fes': bool(complex_fes)}
 
     def _solve_system(self, system, n_modes, pinvit_maxit=20):
         """Update, assemble and solve the reusable *system* on its (possibly
@@ -693,8 +1056,15 @@ class NGSolveMEVP:
             evals_, evecs_ = solvers.PINVIT(a.mat, b.mat, pre=projpre,
                                             num=self.pinvit_n_modes(n_modes),
                                             maxit=pinvit_maxit, printrates=False)
-            mask_ = np.array(evals_) > 1
-            evals = np.array(evals_)[mask_]
+            # Drop any residual gradient-kernel mode. The threshold is RELATIVE:
+            # kernel eigenvalues sit at ~1e-10 while physical ones are ~1e3, so
+            # this selects identically to the old absolute `> 1` on every vacuum
+            # cavity — but `> 1` is a fixed 47.7 MHz floor, and a high-eps_r fill
+            # divides lambda by eps_r, which could push a genuine mode under it.
+            evals_ = np.array(evals_)
+            lam_max = float(np.max(evals_)) if len(evals_) else 0.0
+            mask_ = evals_ > 1e-6 * lam_max
+            evals = evals_[mask_]
             evecs = np.array(evecs_)[mask_]
 
             if f_shift and f_shift != 'default':
@@ -725,19 +1095,298 @@ class NGSolveMEVP:
 
         return freq_fes, gfu_E, gfu_H
 
+    @staticmethod
+    def _dedupe_shifts(lams, rtol=1e-3):
+        """Distinct shift-and-invert centres for a list of eigenvalues.
+
+        Nearly-degenerate modes (a dipole pair, the two ends of a flat passband)
+        would otherwise each pay for their own factorisation and return the same
+        cluster twice. Values within *rtol* of one already kept collapse onto it.
+        """
+        shifts = []
+        for lam in sorted(float(np.real(l)) for l in lams):
+            if lam <= 0:
+                continue
+            if shifts and abs(lam - shifts[-1]) <= rtol * abs(lam):
+                continue
+            shifts.append(lam)
+        return shifts
+
+    @staticmethod
+    def _normalise_mode(mesh, gfu, eps_re_cf):
+        """Put a lossy eigenvector on the same scale (and phase) as a real one.
+
+        An eigenvector has no intrinsic amplitude, so every *absolute* QOI —
+        ``U``, ``Ploss``, ``Pdiel``, ``Epk``, ``Hpk``, ``Vacc``, ``Eacc`` — is
+        reported at whatever scale the eigensolver happened to return. PINVIT
+        returns B-normalised vectors, so the real path has a fixed convention;
+        Arnoldi does not, and its scale is not even stable between two runs of the
+        same problem. Left alone, the lossy path reports absolute quantities that
+        change run to run and disagree with the lossless path in the small-loss
+        limit, where the two must agree.
+
+        The convention imposed here is the real path's, written with the **real**
+        permittivity, ``integral eps_r' |E|^2 r dA = 1``. Using eps_r' (not the
+        complex eps_r) is what makes the two paths converge as tan_delta -> 0.
+
+        The global phase is fixed too — the largest coefficient is rotated onto the
+        positive real axis. No QOI depends on it (they all go through |.| or
+        ``abs``), but it makes a saved lossy field reproducible instead of differing
+        by an arbitrary phase on every run.
+        """
+        u_gf, uphi_gf = gfu.components
+        density = (y * InnerProduct(u_gf, u_gf)
+                   + 1 / y * uphi_gf * Conj(uphi_gf))
+        if eps_re_cf is not None:
+            density = eps_re_cf * density
+        norm2 = Integrate(density, mesh).real
+        if norm2 <= 0:
+            return
+        fv = gfu.vec.FV().NumPy()
+        scale = 1.0 / np.sqrt(norm2)
+        k = int(np.argmax(np.abs(fv)))
+        if fv[k] != 0:
+            scale = scale * abs(fv[k]) / fv[k]
+        fv *= scale
+
+    @staticmethod
+    def _eigen_residual(mat_a, mat_b, lam, vec, free_mask=None):
+        """Relative eigenpair residual ``||A x - lam B x|| / (|lam| ||B x||)``.
+
+        The convergence test for a single Arnoldi Ritz pair. Constrained DOFs are
+        masked out (*free_mask*, a boolean array over the DOFs): the forms carry no
+        equation there, so whatever sits on those rows is not part of the residual.
+        """
+        ax = mat_a.CreateColVector()
+        bx = mat_b.CreateColVector()
+        ax.data = mat_a * vec
+        bx.data = mat_b * vec
+        a_np = np.asarray(ax.FV().NumPy())
+        b_np = np.asarray(bx.FV().NumPy())
+        if free_mask is not None:
+            a_np, b_np = a_np[free_mask], b_np[free_mask]
+        denom = abs(lam) * np.linalg.norm(b_np)
+        if denom == 0:
+            return np.inf
+        return float(np.linalg.norm(a_np - lam * b_np) / denom)
+
+    def _solve_lossy_system(self, mesh, mesh_p, m_pol, materials, lam_shifts,
+                            n_modes, direct_solver=None, n_arnoldi=None):
+        """Solve the **complex** (lossy-dielectric) eigenproblem by shift-and-invert
+        Arnoldi, returning ``(freq_fes, gfu_E, gfu_H, q_diel)``.
+
+        With eps_r = eps' - j eps'' the mass matrix is complex **symmetric**, not
+        Hermitian: lambda = (w/c0)^2 is complex, so PINVIT/LOBPCG (which assume a
+        Hermitian pencil) do not apply and the spectrum has to be reached with
+        Arnoldi on ``(A - sigma B)^-1 B``. On a 2D meridian mesh the shifted matrix
+        is small enough to factorise directly, so no preconditioner engineering is
+        needed.
+
+        **The shifts come from the lossless solve.** That is what makes this
+        tractable: the gradient kernel is still there at lambda ~ 0 and it is huge
+        (one mode per potential DOF), so a shift far from the band lets the kernel
+        cluster — all of it at |1/sigma| under the shift-invert map — crowd the
+        Krylov space and starve the physical modes. Centred on a lossless
+        eigenvalue the physical mode maps to ~1/(sigma*tan_delta), orders of
+        magnitude above the kernel, and Arnoldi finds it first. Each shift is
+        pulled 0.1% off its eigenvalue so that a *lossless* material (a user who
+        forces ``loss_model='lossy'`` with tan_delta = 0) cannot land on an exactly
+        singular matrix.
+
+        Each shift contributes the one eigenpair it converges best, and every pair
+        is gated on its residual before it counts as a mode; a shift that falls
+        short is re-centred on the eigenvalue it just found and tried again. That
+        second pass is what a large tan_delta needs: the lossless shift is only a
+        good centre while the mode has not moved far, and by tan_delta ~ 0.1 the
+        upper modes come back half-converged from it. The accepted modes are then
+        deduplicated (two shifts can land on the same mode once the loss moves the
+        spectrum appreciably) and sorted by Re(lambda), which recovers the passband
+        in order.
+
+        Q_diel is read straight off the eigenvalue: w = c0*sqrt(lambda) has
+        ``|E| ~ exp(-Im(w) t)``, energy ~ exp(-2 Im(w) t) = exp(-Re(w) t / Q), so
+        ``Q = Re(w) / (2 Im(w))``. Magnitudes are taken so the answer does not
+        depend on which complex-conjugate branch the eigensolver returns.
+        """
+        if direct_solver is None:
+            direct_solver = default_direct_solver(True)
+        n_arnoldi = int(n_arnoldi or DEFAULT_ARNOLDI_VECTORS)
+        shifts = self._dedupe_shifts(lam_shifts)
+        if not shifts:
+            raise RuntimeError(
+                "the lossy eigensolve has no shifts to centre on — the lossless solve "
+                "returned no positive eigenvalue to seed it with.")
+
+        system = self._build_system(mesh, mesh_p, m_pol, 0, direct_solver, materials,
+                                    complex_fes=True)
+        fes, a, b = system['fes'], system['a'], system['b']
+
+        with TaskManager():
+            fes.Update()
+            a.Assemble()
+            b.Assemble()
+            free_mask = np.fromiter((bool(d) for d in fes.FreeDofs()),
+                                    dtype=bool, count=fes.ndof)
+
+            def arnoldi_at(sigma):
+                """Best (lowest-residual) physical eigenpair near complex *sigma*."""
+                vecs = [GridFunction(fes).vec.CreateVector() for _ in range(n_arnoldi)]
+                lam = ArnoldiSolver(a.mat, b.mat, fes.FreeDofs(), vecs, complex(sigma),
+                                    inverse=direct_solver)
+                pairs = [(complex(l), v) for l, v in zip(lam, vecs)]
+                # Same relative kernel filter as the real path: the gradient modes
+                # sit at ~1e-10 of the physical eigenvalues, and an absolute floor
+                # would be a fixed frequency floor that a high-eps_r fill can push a
+                # real mode under.
+                lam_max = max((abs(l) for l, _ in pairs), default=0.0)
+                pairs = [(l, v) for l, v in pairs
+                         if abs(l) > 1e-6 * lam_max and l.real > 0]
+                if not pairs:
+                    return None
+                scored = [(self._eigen_residual(a.mat, b.mat, l, v, free_mask), l, v)
+                          for l, v in pairs]
+                return min(scored, key=lambda t: t[0])
+
+            # One mode per shift, refined until it converges. Arnoldi returns
+            # len(vecs) Ritz pairs whether or not they converged, and an unconverged
+            # one is the dangerous kind of wrong — it looks like an extra mode at a
+            # plausible frequency — so the relative residual
+            # ||A x - lam B x|| / (|lam| ||B x||) is the gate. A *lossless* shift is
+            # only a good centre while the loss is small: at tan_delta ~ 0.1 the mode
+            # has moved further than the shift-invert map tolerates and the high
+            # modes come back half-converged. Re-shifting onto the eigenvalue just
+            # found fixes that in one more pass, and costs a factorisation only for
+            # the modes that actually needed it.
+            targets = [complex(sig * (1 - 1e-3)) for sig in shifts]
+            accepted, poor = [], []
+            for _pass in range(ARNOLDI_MAX_PASSES):
+                retry = []
+                for sigma in targets:
+                    best = arnoldi_at(sigma)
+                    if best is None:
+                        continue
+                    res, lam, vec = best
+                    if res < ARNOLDI_RESIDUAL_TOL:
+                        accepted.append((lam, vec))
+                    else:
+                        # Shift onto the eigenvalue itself, held 1e-4 off so the
+                        # shifted matrix cannot be exactly singular.
+                        retry.append((res, lam, vec, lam * (1 - 1e-4)))
+                poor = retry
+                targets = [t[3] for t in retry]
+                if not targets:
+                    break
+            for res, lam, vec, _ in poor:
+                # Still short of tolerance after the last pass. Dropping a real mode
+                # would renumber every mode above it, which is worse than reporting a
+                # slightly loose one — so the bar for keeping it is generous, and only
+                # a residual big enough to mean "not a mode" drops it.
+                if res < ARNOLDI_RESIDUAL_WARN:
+                    accepted.append((lam, vec))
+                elif res < ARNOLDI_RESIDUAL_ACCEPT:
+                    # warnings.warn, not the verbosity-gated warning(): a mode that
+                    # did not converge is a correctness problem, and a silent one
+                    # reads as a clean result.
+                    warnings.warn(
+                        f"lossy eigensolve: the mode near "
+                        f"{c0 * np.sqrt(lam).real / (2 * np.pi) * 1e-6:.3f} MHz converged "
+                        f"only to a relative residual of {res:.1e}. Raise "
+                        f"eigenmode_config['arnoldi_vectors'] (currently {n_arnoldi}) "
+                        f"if that accuracy is not enough.", UserWarning, stacklevel=2)
+                    accepted.append((lam, vec))
+                else:
+                    warnings.warn(
+                        f"lossy eigensolve: dropping an unconverged eigenvalue "
+                        f"(relative residual {res:.1e}) rather than reporting it as a "
+                        f"mode. The remaining modes are renumbered, so check "
+                        f"'mode_of_interest' against the reported frequencies.",
+                        UserWarning, stacklevel=2)
+
+            accepted.sort(key=lambda t: t[0].real)
+            modes = []
+            for lam, vec in accepted:
+                # Distinct shifts can converge onto the same mode once the loss is
+                # large enough to move the modes appreciably. The tolerance is loose
+                # because two Arnoldi runs converge the same mode to slightly
+                # different residuals, not to the same digits.
+                if modes and abs(lam - modes[-1][0]) <= 1e-6 * abs(lam):
+                    continue
+                modes.append((lam, vec))
+            if len(modes) < len(shifts):
+                warnings.warn(
+                    f"lossy eigensolve: {len(modes)} distinct mode(s) for "
+                    f"{len(shifts)} requested — two shifts converged onto the same "
+                    f"mode. The modes are renumbered, so check 'mode_of_interest' "
+                    f"against the reported frequencies; raising "
+                    f"eigenmode_config['arnoldi_vectors'] (currently {n_arnoldi}) may "
+                    f"separate them.", UserWarning, stacklevel=2)
+
+            inv_r = IfPos(y - AXIS_EPS, 1 / y, 0)
+            eps_re_cf = material_cfs(mesh, materials)
+            freq_fes, gfu_E, gfu_H, q_diel = [], [], [], []
+            for lam, vec in modes:
+                w_c = c0 * np.sqrt(complex(lam))          # complex angular frequency
+                freq = abs(w_c.real) / (2 * np.pi) * 1e-6
+                freq_fes.append(freq)
+                q_diel.append(abs(w_c.real) / (2 * abs(w_c.imag)) if w_c.imag else np.inf)
+
+                gfu = GridFunction(fes)
+                gfu.vec.data = vec
+                self._normalise_mode(mesh, gfu, eps_re_cf)
+                gfu_E.append(gfu)
+                u_gf, uphi_gf = gfu.components
+                w = 2 * pi * freq * 1e6
+                gfu_H.append((inv_r / (mu0 * w) * (m_pol * u_gf + grad(uphi_gf)),
+                              1 / (mu0 * w) * curl(u_gf)))
+
+        return freq_fes, gfu_E, gfu_H, q_diel
+
     def _solve_modes(self, mesh, mesh_p, m_pol, n_modes, save_dir=None,
-                     f_shift=0, direct_solver=None, pinvit_maxit=20):
+                     f_shift=0, direct_solver=None, pinvit_maxit=20, materials=None,
+                     loss_model='lossless', n_arnoldi=None):
         """Solve the Maxwell eigenproblem for a single azimuthal order *m_pol*.
 
         The one entry point for every polarisation (m = 0 monopole included);
         builds a fresh system and solves it. See :meth:`_build_system`.
+
+        *loss_model* (see :func:`resolve_loss_model`) selects the treatment of a
+        complex permittivity. ``'lossless'`` and ``'perturbation'`` both solve the
+        real eigenproblem here — they differ only in the post-processing
+        :meth:`evaluate_qois` does. ``'lossy'`` solves the real problem *first*
+        anyway, to seed the complex solve's shifts, then replaces the result with
+        the complex one.
+
+        The dielectric Q of the last solve is left on ``self._last_dielectric_q``
+        (a list parallel to the returned frequencies, or None): the lossy path gets
+        it from the eigenvalue, and it cannot be recomputed from the returned
+        fields alone.
         """
         n_modes = self.requested_n_modes(n_modes=n_modes)
-        system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver)
+        system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver, materials)
         freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+        self._last_dielectric_q = None
+        if loss_model == 'lossy':
+            freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
+                mesh, mesh_p, m_pol, materials, freq_fes, n_modes,
+                direct_solver=direct_solver, n_arnoldi=n_arnoldi)
         if save_dir:
-            self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m_pol, freq_fes)
+            self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m_pol, freq_fes,
+                             materials=materials)
         return freq_fes, gfu_E, gfu_H
+
+    def _lossy_pass(self, mesh, mesh_p, m_pol, materials, freq_lossless, n_modes,
+                    direct_solver=None, n_arnoldi=None):
+        """Re-solve the (already-solved, lossless) problem with complex eps_r.
+
+        Takes the lossless frequencies as the shift seeds and hands back
+        ``(freq_fes, gfu_E, gfu_H, q_diel)``. Split out so the adaptive driver can
+        refine on the cheap real problem and pay for the complex solve exactly
+        once, on the finest mesh.
+        """
+        lam_shifts = [(2 * pi * f * 1e6 / c0) ** 2 for f in freq_lossless]
+        return self._solve_lossy_system(mesh, mesh_p, m_pol, materials, lam_shifts,
+                                        n_modes, direct_solver=direct_solver,
+                                        n_arnoldi=n_arnoldi)
 
     @staticmethod
     def _mode_error_field(mesh, gfu, fes_rec, fes_rec_vec):
@@ -753,14 +1402,17 @@ class NGSolveMEVP:
           space *fes_rec_vec* — this is the whole error for a **TE** mode, whose
           ``u`` (and hence ``curl(u)``) is identically zero.
 
-        Each recovery gap is integrated element-wise as ``integral r*(f - proj)^2``
-        and the two are summed. Returns a per-element numpy array (non-negative).
+        Each recovery gap is integrated element-wise as ``integral r*|f - proj|^2``
+        and the two are summed. Returns a per-element numpy array (non-negative);
+        the conjugates make it a magnitude on a complex (lossy) space too, where an
+        un-conjugated square would be complex and its ``abs`` would not be an
+        error norm.
         """
         u, uphi = gfu.components
         h = curl(u)
         hstar = GridFunction(fes_rec)
         hstar.Set(h)
-        err = np.abs(Integrate(y * (h - hstar) * (h - hstar), mesh, VOL,
+        err = np.abs(Integrate(y * (h - hstar) * Conj(h - hstar), mesh, VOL,
                                element_wise=True).NumPy())
 
         g = grad(uphi)
@@ -778,7 +1430,8 @@ class NGSolveMEVP:
         one's max for the per-mode convergence tolerance.
         """
         _, fes_rec = fes_rz.CreateGradient()
-        fes_rec_vec = VectorH1(mesh, order=fes_rz.globalorder)
+        fes_rec_vec = VectorH1(mesh, order=fes_rz.globalorder,
+                               complex=fes_rz.is_complex)
         return [self._mode_error_field(mesh, g, fes_rec, fes_rec_vec) for g in gfu_list]
 
     @staticmethod
@@ -866,7 +1519,8 @@ class NGSolveMEVP:
                 json.dump(history, f, indent=4, separators=(',', ': '))
         return freq_fes, gfu_E, gfu_H
 
-    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None, m=0, adaptive=None):
+    def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None, m=0, adaptive=None,
+                            materials=None, loss_model='lossless'):
         """Assemble and solve the Maxwell eigenvalue problem for azimuthal order
         *m*. Returns (freqs, E_fields, H_fields).
 
@@ -874,20 +1528,28 @@ class NGSolveMEVP:
         mesh is refined in place to resolve the requested modes — the recovery
         error estimator is polarisation-agnostic, so this drives refinement for
         any *m* — and the returned fields are those of the finest refinement.
+
+        A ``'lossy'`` *loss_model* (complex permittivity, see
+        :func:`resolve_loss_model`) runs the real problem first and then re-solves
+        it complex, seeded by the lossless spectrum. Adaptive refinement therefore
+        stays on the cheap real problem and the complex solve is paid for exactly
+        once, on the finest mesh.
         """
         n_modes = self.requested_n_modes(cav, n_modes=n_modes)
 
         f_shift = 0
         direct_solver = default_direct_solver()
         pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
+        n_arnoldi = None
         if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
             f_shift = cav.eigenmode_config.get('f_shift', 0)
             direct_solver = cav.eigenmode_config.get('direct_solver', direct_solver)
             pinvit_maxit = int(cav.eigenmode_config.get('pinvit_maxit', pinvit_maxit))
+            n_arnoldi = cav.eigenmode_config.get('arnoldi_vectors', None)
         elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
              f_shift = cav['f_shift']
 
-        system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver)
+        system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver, materials)
         freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
 
         self._last_adaptive_history = None
@@ -896,7 +1558,21 @@ class NGSolveMEVP:
                 mesh, mesh_p, n_modes, pinvit_maxit, system,
                 adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
 
-        self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes)
+        self._last_dielectric_q = None
+        if loss_model == 'lossy':
+            # Free the real solution first: the complex space alone is twice the
+            # memory, and nothing below reads the lossless fields.
+            del gfu_E, gfu_H, system
+            gc.collect()
+            # direct_solver is deliberately re-resolved rather than carried over
+            # from the config: the shifted matrix here is complex symmetric and
+            # indefinite, which not every backend that handles the real problem can
+            # factorise.
+            freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
+                mesh, mesh_p, m, materials, freq_fes, n_modes,
+                direct_solver=None, n_arnoldi=n_arnoldi)
+
+        self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes, materials=materials)
         return freq_fes, gfu_E, gfu_H
 
     def solve_convergence(self, cav, eigenmode_config=None):
@@ -931,6 +1607,7 @@ class NGSolveMEVP:
         n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = eigenmode_config.get('conductivity', SIGMA_COPPER)
         rs_ohm = eigenmode_config.get('surface_resistance', None)
+        materials = self.resolve_materials(cav, eigenmode_config)
         L_mono = cav.parameters.get('L_m', None)
         if L_mono is None:
             L_mono = eigenmode_config.get('normalization_length', None)
@@ -941,7 +1618,7 @@ class NGSolveMEVP:
         pinvit_maxit = int(eigenmode_config.get('pinvit_maxit', 20))
 
         mesh = self._build_mesh(cav, mesh_h, mesh_p)
-        system = self._build_system(mesh, mesh_p, 0, f_shift, direct_solver)
+        system = self._build_system(mesh, mesh_p, 0, f_shift, direct_solver, materials)
 
         rows = []
         for level in range(max_ref + 1):
@@ -964,7 +1641,8 @@ class NGSolveMEVP:
                 for ii in range(len(freq_fes)):
                     q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii,
                                            n_cells=cav.n_cells, L=L_mono,
-                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm,
+                                           materials=materials)
                     # composite key '<m>-<mode>' — polarisation then mode index,
                     # e.g. '0-0' monopole mode 0, '1-0' dipole mode 0.
                     q['mode_index'] = f"{q['m']}-{ii}"
@@ -973,12 +1651,14 @@ class NGSolveMEVP:
 
             mpole_spaces = []
             for m_pol in [pp for pp in pols if pp > 0]:
-                fr_m, gE_m, gH_m = self._solve_modes(mesh, mesh_p, m_pol, n_modes)
+                fr_m, gE_m, gH_m = self._solve_modes(mesh, mesh_p, m_pol, n_modes,
+                                                     materials=materials)
                 m_err = self._error_fields(mesh, gE_m[0].components[0].space, gE_m) if gE_m else []
                 for ii in range(len(fr_m)):
                     q = self.evaluate_qois(mesh, gE_m, gH_m, fr_m, m_pol, mode_idx=ii,
                                            n_cells=cav.n_cells, L=L_mpole,
-                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm)
+                                           conductivity=conductivity, surface_resistance_ohm=rs_ohm,
+                                           materials=materials)
                     q['mode_index'] = f"{q['m']}-{ii}"
                     q['max_err'] = float(m_err[ii].max()) if len(m_err[ii]) else 0.0
                     level_rows.append(q)
@@ -1014,9 +1694,37 @@ class NGSolveMEVP:
     # ──────────────────────────────────────────────────────────────────────
 
     @staticmethod
+    def _peak_field_per_material(mesh, u_gf, uphi_gf, materials):
+        """``{'Epk_<material> [MV/m]': value}`` — peak |E| inside each material.
+
+        Sampled at points pulled slightly off each element's vertices toward its
+        centroid. A vertex *on* a material interface is ambiguous — E jumps there,
+        so ``mesh(z, r)`` could return either side's value — while a point strictly
+        inside the element belongs to exactly one material and still sits close
+        enough to the boundary to capture the peak.
+        """
+        e_mag = sqrt(Norm(u_gf) ** 2
+                     + Norm(uphi_gf * IfPos(y - AXIS_EPS, 1 / y, 0)) ** 2)
+        out = {}
+        for mat in sorted(set(materials)):
+            best = 0.0
+            for el in mesh.Materials(mat).Elements():
+                vs = [mesh[v].point for v in el.vertices]
+                cz = sum(p[0] for p in vs) / len(vs)
+                cr = sum(p[1] for p in vs) / len(vs)
+                for (pz, pr) in vs:
+                    zz, rr = 0.95 * pz + 0.05 * cz, 0.95 * pr + 0.05 * cr
+                    try:
+                        best = max(best, e_mag(mesh(zz, rr)))
+                    except Exception:
+                        continue
+            out[f'Epk_{mat} [MV/m]'] = best * 1e-6
+        return out
+
+    @staticmethod
     def evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m=0, beta=1, save_dir=None, mode_idx=1,
                       n_cells=1, L=1, conductivity=SIGMA_COPPER, surface_resistance_ohm=None,
-                      write_axis=False):
+                      write_axis=False, materials=None, loss_model=None, q_diel=None):
         """Cavity figures of merit for azimuthal order *m*, mode *mode_idx*.
 
         One evaluator for every polarisation — the eigenproblem is the unified
@@ -1035,12 +1743,33 @@ class NGSolveMEVP:
         Everything else — stored energy, peak surface fields, the H1-projected
         surface-loss integral, Q, G, k_cc — is one expression with the
         polarisation's azimuthal factor. The wall material enters Q/Ploss/Rsh/G
-        through the surface resistance (copper by default; pass
+        surface resistance (copper by default; pass
         *surface_resistance_ohm* for a fixed Rs, e.g. SRF niobium); G is
         material-independent.
+
+        **Dielectric loss.** When a material carries a loss tangent, ``'Q []'`` is
+        the *total* Q, ``1/Q = 1/Q_wall + 1/Q_diel``, and the two contributions are
+        reported alongside it with ``'Q model'`` naming how Q_diel was obtained:
+
+        - ``'perturbation'`` — from the volume integral
+          ``P_diel = 0.5 w eps0 int eps'' |E|^2 dV`` over the *lossless* field,
+          which is exactly the same bookkeeping as the wall loss;
+        - ``'lossy'`` — from the complex eigenvalue of the full lossy solve,
+          passed in as *q_diel*.
+
+        The geometry factor G stays ``Q_wall * Rs``: it is a property of the wall
+        and the mode shape, so folding dielectric loss into it would make a
+        material-independent quantity depend on the filling.
+
+        A run with no dielectric loss adds none of these keys, so its QOIs are
+        exactly what they always were.
         """
         w = 2 * pi * freq_fes[mode_idx] * 1e6
+        # NOTE: this c0 is the BEAM velocity in the transit-time factor, not the
+        # wave speed in the medium. It stays c0 even with a dielectric present —
+        # do not "correct" it to c0/sqrt(eps_r).
         k_wave = w / (beta * c0)
+        eps_cf = material_cfs(mesh, materials)
         u_gf, uphi_gf = gfu_E[mode_idx].components
         H_inplane, H_phi = gfu_H[mode_idx]
         az = 2 * pi if m == 0 else pi          # azimuthal integral factor
@@ -1056,8 +1785,27 @@ class NGSolveMEVP:
         # Stored energy. |E|^2 = |E_inplane|^2 + |E_phi|^2 with E_phi = u_phi/r,
         # so r*|E|^2 = r*|u|^2 + |u_phi|^2/r. The phi integral gives 2*pi (m=0)
         # or pi (m>=1, cos^2/sin^2 average).
-        U = az * 0.5 * eps0 * Integrate(
-            y * InnerProduct(u_gf, Conj(u_gf)) + 1 / y * uphi_gf * Conj(uphi_gf), mesh).real
+        #
+        # With a dielectric, eps_r goes INSIDE the integral — it varies in space,
+        # so it is not a prefactor. This is the load-bearing line of the whole
+        # material extension: R/Q, Q, G, Rsh and GR/Q all inherit U, so weighting
+        # it wrongly corrupts every derived figure of merit at once.
+        # InnerProduct conjugates its second argument, so this is |u|^2 for a
+        # complex (lossy) field and u.u for a real one — the same quantity either
+        # way. u_phi is scalar, so its modulus is spelled out.
+        e2_density = (y * InnerProduct(u_gf, u_gf)
+                      + 1 / y * uphi_gf * Conj(uphi_gf))
+        energy_density = e2_density if eps_cf is None else eps_cf * e2_density
+        U = az * 0.5 * eps0 * Integrate(energy_density, mesh).real
+
+        # Dielectric loss, perturbatively: P_diel = 0.5 w eps0 int eps'' |E|^2 dV is
+        # the SAME volume integral as U with eps' -> eps'', so it inherits the
+        # r-weighting and the azimuthal factor unchanged. eps_im_cf is None unless
+        # some region has a loss tangent, which is what keeps a lossless run's QOIs
+        # untouched.
+        eps_im_cf = material_loss_cfs(mesh, materials)
+        Pdiel_pert = (0.0 if eps_im_cf is None else
+                      az * 0.5 * w * eps0 * Integrate(eps_im_cf * e2_density, mesh).real)
 
         norm_u = Norm(u_gf)
         xpnts_surf = np.array(list(get_boundary_nodes(mesh, 'PEC')))
@@ -1113,7 +1861,7 @@ class NGSolveMEVP:
         Hin_gf = GridFunction(VectorH1(mesh, order=order_, complex=True))
         Hin_gf.Set(H_inplane)
         Ploss = az * 0.5 * Rs * Integrate(
-            y * (Hphi_gf * Conj(Hphi_gf) + InnerProduct(Hin_gf, Conj(Hin_gf))), mesh,
+            y * (Hphi_gf * Conj(Hphi_gf) + InnerProduct(Hin_gf, Hin_gf)), mesh,
             definedon=mesh.Boundaries('PEC')).real
 
         # Cell-to-cell coupling: mode vs the lowest passband mode (index 0).
@@ -1122,11 +1870,34 @@ class NGSolveMEVP:
         else:
             kcc = 0
 
-        Q = w * U / Ploss
-        G = Q * Rs
+        # Wall Q and the geometry factor: both are wall-only by definition, so
+        # they are computed before any dielectric loss is folded in.
+        Q_wall = w * U / Ploss
+        G = Q_wall * Rs
 
-        # Axis field flatness (min/max of the on-axis |E| peaks)
-        peaks, _ = find_peaks(Ez_axis, distance=n_ax_pts // 100, width=100)
+        # Total Q. Q_diel comes from the complex eigenvalue on the lossy path and
+        # from the perturbation integral otherwise; either way the wall loss is the
+        # perturbative contribution added here (a Leontovich impedance BC would make
+        # the eigenproblem nonlinear in w, which is not worth it for a wall).
+        Q_diel = None
+        if loss_model == 'lossy' and q_diel is not None and mode_idx < len(q_diel):
+            # A non-finite Q_diel means the eigenvalue came back purely real, i.e.
+            # this mode sees no loss at all. Report no dielectric loss rather than an
+            # infinity, which JSON cannot round-trip.
+            qd = float(q_diel[mode_idx])
+            Q_diel = qd if np.isfinite(qd) and qd > 0 else None
+            Pdiel = w * U / Q_diel if Q_diel else 0.0
+        elif Pdiel_pert > 0:
+            Pdiel = Pdiel_pert
+            Q_diel = w * U / Pdiel
+        else:
+            Pdiel = 0.0
+        Q = w * U / (Ploss + Pdiel)
+
+        # Axis field flatness (min/max of the on-axis |E| peaks). ``distance``
+        # must stay >= 1: an axis shorter than 20 mm gives n_ax_pts < 100, and
+        # find_peaks then raises — killing the whole solve over a cosmetic QOI.
+        peaks, _ = find_peaks(Ez_axis, distance=max(1, n_ax_pts // 100), width=100)
         try:
             ff = min(Ez_axis[peaks]) / max(Ez_axis[peaks]) * 100
         except ValueError:
@@ -1152,8 +1923,27 @@ class NGSolveMEVP:
             "Bpk/Eacc [mT/MV/m]": mu0 * Hpk * 1e9 / Eout,
             "G [Ohm]": G,
             "GR/Q [Ohm^2]": G * RoQ,
+            "U [J]": U,
+            "Ploss [W]": Ploss,
             "No of Mesh Elements": mesh.GetNE(VorB.VOL),
         }
+        if materials:
+            # How this Q was obtained. A dielectric-loaded result without this tag
+            # is ambiguous — the same cavity has three defensible Q values — so the
+            # tag ships with every materials run, lossless ones included.
+            qois["Q model"] = (loss_model if loss_model in ('lossless', 'perturbation', 'lossy')
+                               else ('perturbation' if Q_diel is not None else 'lossless'))
+            if Q_diel is not None:
+                qois["Q_wall []"] = Q_wall
+                qois["Q_diel []"] = Q_diel
+                qois["Pdiel [W]"] = Pdiel
+                qois["tan_delta []"] = max_tan_delta(materials)
+            # Peak |E| inside each material. E is DISCONTINUOUS across a dielectric
+            # interface (normal D is what is continuous), so the PEC-wall sample
+            # above cannot see the in-dielectric peak — which is the field that
+            # matters for breakdown in a dielectric-loaded structure.
+            qois.update(NGSolveMEVP._peak_field_per_material(mesh, u_gf, uphi_gf,
+                                                             materials))
         if m >= 1:
             # Transverse-specific keys (the shared Vacc/Eacc/R-Q above already
             # hold the transverse analogues for m>=1).
@@ -1183,7 +1973,7 @@ class NGSolveMEVP:
     # ──────────────────────────────────────────────────────────────────────
 
     def save_fields(self, project_folder, gfu_E, gfu_H, mesh_p, m, freqs,
-                    geom_order=None):
+                    geom_order=None, materials=None):
         """Persist the eigenmode fields so they reload consistently — including
         after **adaptive** refinement.
 
@@ -1206,8 +1996,17 @@ class NGSolveMEVP:
         element edges — reload must not curve it (see ``solve_multipacting_field``)."""
         n = len(gfu_E)
         geom_order = int(mesh_p if geom_order is None else geom_order)
+        # 'materials' records what the fields were solved in. At mu_r = 1 the H
+        # envelopes reload correctly without it (H = curl(E)/(mu0 w) is exact), so
+        # this is provenance plus the hook a future mu_r would need. Absent in old
+        # caches -> None -> vacuum, so they stay loadable.
+        # 'complex' records the arithmetic the fields were solved in: a lossy solve
+        # returns complex coefficient vectors, and rebuilding them on a real space
+        # would silently drop the phase (and the loss with it).
+        is_complex = bool(n and gfu_E[0].space.is_complex)
         meta = {'mesh_p': int(mesh_p), 'm': int(m), 'n_modes': int(n),
-                'geom_order': geom_order, 'freqs': [float(v) for v in freqs]}
+                'geom_order': geom_order, 'freqs': [float(v) for v in freqs],
+                'materials': materials, 'complex': is_complex}
         if n:
             # Persist the (round-tripping) flattened mesh, then reload it so the
             # saved vectors live on the exact space reload will rebuild.
@@ -1216,14 +2015,16 @@ class NGSolveMEVP:
             flat = self.load_mesh(project_folder)
             if geom_order > 1:
                 flat.Curve(geom_order)
-            fes = self._build_system(flat, mesh_p, m)['fes']
+            fes = self._build_system(flat, mesh_p, m, materials=materials,
+                                     complex_fes=is_complex)['fes']
             fes.Update()
+            dtype = complex if is_complex else float
             vecs = []
             for g in gfu_E:
                 fg = GridFunction(fes)
                 fg.components[0].Set(g.components[0])       # HCurl E block
                 fg.components[1].Set(g.components[1])       # H1 u_phi block
-                vecs.append(np.asarray(fg.vec.FV().NumPy(), dtype=float).copy())
+                vecs.append(np.asarray(fg.vec.FV().NumPy(), dtype=dtype).copy())
             np.save(os.path.join(project_folder, 'gfu_E_vecs.npy'), np.stack(vecs))
         else:
             np.save(os.path.join(project_folder, 'gfu_E_vecs.npy'), np.empty((0, 0)))
@@ -1267,7 +2068,11 @@ class NGSolveMEVP:
         geom_order = int(meta.get('geom_order', meta['mesh_p']))
         if geom_order > 1:
             mesh.Curve(geom_order)
-        fes = self._build_system(mesh, meta['mesh_p'], meta['m'])['fes']
+        # Absent in caches written before the lossy path existed -> real, which is
+        # what those caches are.
+        fes = self._build_system(mesh, meta['mesh_p'], meta['m'],
+                                 materials=meta.get('materials'),
+                                 complex_fes=bool(meta.get('complex', False)))['fes']
         fes.Update()
         vecs = np.load(os.path.join(folder, 'gfu_E_vecs.npy'))
         m_pol = meta['m']

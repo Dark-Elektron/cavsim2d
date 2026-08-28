@@ -421,6 +421,12 @@ def shapes_to_dataframe(cavs_dict):
     data = []
     for name, cav in cavs_dict.items():
         row = cav.parameters.copy()  # extract the parameter dictionary
+        # Dielectric variables ('<material>:<field>') live outside `parameters`,
+        # so add them explicitly or a UQ over eps_r / tube dimensions would
+        # record - and spawn - nothing.
+        getter = getattr(cav, 'dielectric_values', None)
+        if callable(getter):
+            row.update(getter())
         row['name'] = name  # optionally include the cavity name as a column
         data.append(row)
 

@@ -25,6 +25,36 @@ These labels are the only "physics" the geometry carries; the solver reads them 
 set boundary conditions. ``cav.plot('geometry')`` draws the meridian (the upper
 half only — the analysed domain).
 
+Material regions
+----------------
+
+The meridian encloses one region, vacuum by default. A cavity can also declare
+**dielectric sub-regions** with
+:meth:`~cavsim2d.models.base.Cavity.add_dielectric` — an axisymmetric
+rectangular ring in ``(z, r)``, i.e. an annular cylinder in 3D:
+
+.. code-block:: python
+
+    # a 0.5 mm-thick quartz tube lining a 5 mm aperture, running the full length
+    cav.add_dielectric('quartz', 3.8, z=(-1e4, 1e4), r=(2.0, 2.5), maxh=0.15)
+
+Lengths are in **millimetres**, like every other cavity dimension, and the region
+is clipped to the cavity — so a generous ``z`` span simply means "the full
+length". ``maxh`` sets the local element size inside the region, which a thin
+shell needs.
+
+Internally the profile face is split into one named face per region plus the
+background (``'Domain'``), and the pieces are glued so the mesh is **conformal**
+across each interface. That is what lets the ``HCurl`` space enforce
+tangential-``E`` continuity — the physical dielectric interface condition — with
+no special handling in the solver. Each interface becomes its own boundary named
+``IF_<material>``, distinct from ``PEC``/``PMC`` so it carries no boundary
+condition; it can be addressed for local refinement via ``edge_maxh``.
+
+Material regions are used by the **eigenmode** solver only; see
+:ref:`eigenmode:Dielectric regions` for the physics, the extra QOIs and the
+limits.
+
 .. _geometry-one-for-all:
 
 One geometry, every analysis
@@ -104,6 +134,13 @@ A free-form wall defined by six Bézier **control points** ``p0 .. p5``, each a
 Each coordinate is individually addressable as a tune / UQ variable named
 ``p<i>_z`` and ``p<i>_r`` (e.g. ``'p2_r'``, ``'p3_z'``). Placing a control point
 at the pipe radius gives a *C1*-continuous (smooth, non-sharp) iris.
+
+For a spline cavity, ``cav.plot('geometry')`` also overlays the **control points
+and the polygon connecting them** (dashed, over the interpolated wall) — so you
+can see where each ``p<i>`` sits relative to the curve it shapes. It is on by
+default; pass ``control_points=False`` to hide it (or ``True`` to force it).
+``cav.control_polygons()`` returns the placed control polygons (metres, one per
+cell) if you want to draw them yourself.
 
 RF gun (:class:`~cavsim2d.models.rfgun.RFGun`)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

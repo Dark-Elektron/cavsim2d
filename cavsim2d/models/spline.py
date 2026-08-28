@@ -206,6 +206,35 @@ class SplineCavity(Cavity):
             return [mid]
         return [left] + [mid] * (n - 2) + [right]
 
+    def control_polygons(self):
+        """The per-cell control polygons in **metres** ``[z, r]`` — exactly the
+        poles :meth:`profile` splines through, each placed after the previous along
+        z, in the same frame as the wall.
+
+        Returns a list of ``(N, 2)`` arrays (one per cell), or ``None`` when the
+        geometry is not a valid control-point set. ``cav.plot('geometry')`` uses
+        this to overlay the control points and the polygon connecting them.
+        """
+        cells = self._cell_polys()
+        if cells is None:
+            return None
+        try:
+            cells = [np.asarray(c, dtype=float) * 1e-3 for c in cells]
+        except (TypeError, ValueError):
+            return None
+        if any(c.ndim != 2 or c.shape[0] < 3 or c.shape[1] != 2 for c in cells):
+            return None
+        # Place each cell after the previous: shift so its first pole sits at the
+        # running z cursor. Cells connect because the spline interpolates its
+        # endpoints and adjacent apertures share the iris radius.
+        placed, z_cursor = [], 0.0
+        for c in cells:
+            s = c.copy()
+            s[:, 0] += z_cursor - c[0][0]
+            placed.append(s)
+            z_cursor += c[-1][0] - c[0][0]         # this cell's z width
+        return placed
+
     def profile(self):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native
         netgen.occ path, with the cavity wall as an exact spline.
@@ -219,25 +248,9 @@ class SplineCavity(Cavity):
         kind = self.spline_kind()
         if kind is None:
             return None
-        cells = self._cell_polys()
-        if cells is None:
+        placed = self.control_polygons()
+        if placed is None:
             return None
-        try:
-            cells = [np.asarray(c, dtype=float) * 1e-3 for c in cells]
-        except (TypeError, ValueError):
-            return None
-        if any(c.ndim != 2 or c.shape[0] < 3 or c.shape[1] != 2 for c in cells):
-            return None
-
-        # Place each cell after the previous: shift so its first pole sits at the
-        # running z cursor. Cells connect because the spline interpolates its
-        # endpoints and adjacent apertures share the iris radius.
-        placed, z_cursor = [], 0.0
-        for c in cells:
-            s = c.copy()
-            s[:, 0] += z_cursor - c[0][0]
-            placed.append(s)
-            z_cursor += c[-1][0] - c[0][0]         # this cell's z width
 
         bp = (self.beampipe or 'none').lower()
         r_ap_l = float(placed[0][0][1])            # left aperture radius (p0)

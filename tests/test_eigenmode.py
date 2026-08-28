@@ -815,3 +815,38 @@ def test_plot_convergence_present_only_for_adaptive(project_dir):
                                                      'max_ndof': 40000}}})
     fig, axes = cav2.eigenmode.plot_convergence(show=False)
     assert fig is not None and len(axes) == 2
+
+
+def test_sample_cfg_and_config_sample_return_authoritative_defaults(capsys):
+    """cav.<solver>.sample_cfg returns a fresh deepcopy of that solver's default
+    config (no run needed); cav.config_sample(kind) prints and returns the SAME
+    authoritative default (sourced from the solvers, not the stale legacy
+    constants)."""
+    from cavsim2d.solvers.solver_objects import (
+        DEFAULT_EIGENMODE_CONFIG, DEFAULT_WAKEFIELD_CONFIG,
+        DEFAULT_TUNE_CONFIG, DEFAULT_MULTIPACTING_CONFIG)
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+
+    pairs = [(cav.eigenmode.sample_cfg, DEFAULT_EIGENMODE_CONFIG),
+             (cav.wakefield.sample_cfg, DEFAULT_WAKEFIELD_CONFIG),
+             (cav.tune.sample_cfg, DEFAULT_TUNE_CONFIG),
+             (cav.multipacting.sample_cfg, DEFAULT_MULTIPACTING_CONFIG)]
+    for got, default in pairs:
+        assert got == default and got is not default        # equal, but a copy
+
+    # deepcopy: mutating a nested value must not poison the module default
+    s = cav.eigenmode.sample_cfg
+    s['mesh_config']['h'] = -1
+    assert DEFAULT_EIGENMODE_CONFIG['mesh_config']['h'] == 20
+    assert cav.eigenmode.sample_cfg['mesh_config']['h'] == 20
+
+    # config_sample delegates to sample_cfg: same default, and it prints
+    assert cav.config_sample('eigenmode') == DEFAULT_EIGENMODE_CONFIG
+    printed = capsys.readouterr().out
+    assert 'polarisation' in printed and 'mesh_config' in printed
+    for kind, default in [('wakefield', DEFAULT_WAKEFIELD_CONFIG),
+                          ('tune', DEFAULT_TUNE_CONFIG),
+                          ('multipacting', DEFAULT_MULTIPACTING_CONFIG)]:
+        assert cav.config_sample(kind, show=False) == default
+    # unknown kind -> None, no raise
+    assert cav.config_sample('nope', show=False) is None
