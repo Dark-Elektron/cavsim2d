@@ -875,6 +875,16 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#archive-size-and-convergence" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="optimisation:archive size and convergence (reference label)"><span>Archive size and convergence</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#accessing-results" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -1459,6 +1469,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/unreachable_target.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>When a tune has no solution:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/two_cell_design_family.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1933,6 +1991,54 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/optimisation/whole_cavity_rq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising the whole cavity:<wbr> R/Q to a target</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/optimisation/whole_cavity_field_flatness.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Why whole-<wbr>cavity tuning needs field flatness</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2001,6 +2107,30 @@
   
   <span class="md-ellipsis">
     <span>Parameter sweeps and persistence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/studies/module_chain.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Chaining a cavity into a module <wbr>(eigenmode + wakefield)</span>
     
   </span>
   
@@ -2470,6 +2600,16 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#archive-size-and-convergence" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="optimisation:archive size and convergence (reference label)"><span>Archive size and convergence</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#accessing-results" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2549,8 +2689,12 @@
 </code></pre></div>
 </div>
 <p>Settings description:</p>
-<dl class="simple">
+<dl>
 <dt><code class="docutils literal notranslate"><span class="pre">tune_config</span></code></dt><dd><p><em>(dict)</em> The tuning setup applied to every generated candidate geometry. This ensures each design is tuned to the exact target frequency before its RF objectives are evaluated. See <a class="reference internal" href="tuning.html"><span class="doc">Cavity Tuning</span></a> for details.</p>
+<div class="note admonition">
+<p class="admonition-title">Note</p>
+<p>A <strong>2-cell</strong> candidate tunes to a <em>family</em> of designs (see <a class="reference internal" href="examples/tuning/two_cell_design_family.html"><span class="doc">Two-cell design family: is “each cell at the same frequency” special?</span></a>) rather than a single geometry, and each family member is evaluated and ranked on its own — so one candidate contributes several rows to the history. Set <code class="docutils literal notranslate"><span class="pre">tune_config['equal_cell_freq']</span> <span class="pre">=</span> <span class="pre">True</span></code> to instead evaluate only the single each-cell-at-frequency design, or <code class="docutils literal notranslate"><span class="pre">tune_config['n_family']</span></code> to change how many members are tried.</p>
+</div>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">bounds</span></code></dt><dd><p><em>(dict)</em> Defines the search bounds <code class="docutils literal notranslate"><span class="pre">[lower,</span> <span class="pre">upper]</span></code> for each geometric variable (in mm). Variables that should remain constant must be entered with identical upper and lower bounds (e.g. <code class="docutils literal notranslate"><span class="pre">'L':</span> <span class="pre">[93.5,</span> <span class="pre">93.5]</span></code>).</p>
 </dd>
@@ -2570,6 +2714,14 @@
 <dt><code class="docutils literal notranslate"><span class="pre">crossover_factor</span></code> / <code class="docutils literal notranslate"><span class="pre">mutation_factor</span></code> / <code class="docutils literal notranslate"><span class="pre">chaos_factor</span></code></dt><dd><p><em>(int)</em> Weights governing how many offspring are generated via crossover, random mutations, and random chaos injections in each generation.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">elites_for_crossover</span></code></dt><dd><p><em>(int)</em> Number of top-performing candidate designs retained in the parent pool for crossover.</p>
+</dd>
+</dl>
+<h2 id="archive-size-and-convergence">Archive size and convergence<a class="headerlink" href="#archive-size-and-convergence" title="Link to this heading">¶</a></h2>
+<p>The elite archive is bounded and the search stops on <strong>ε‑progress</strong> — the additive ε‑indicator between successive Pareto fronts, which is Pareto‑compliant, needs no reference set, and decays monotonically to zero as the front stops improving.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">archive_size</span></code></dt><dd><p><em>(int, default: 100)</em> Maximum size of the Pareto/elite archive. Each generation the surviving set is truncated to this many designs by non‑dominated sorting plus crowding distance (NSGA‑II environmental selection), so the front stops growing without bound. <code class="docutils literal notranslate"><span class="pre">None</span></code> restores the legacy unbounded archive.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">eps_tol</span></code> / <code class="docutils literal notranslate"><span class="pre">eps_consecutive</span></code></dt><dd><p><em>(float, default: 1e‑4) / (int, default: 3)</em> Stop when the ε‑progress stays below <code class="docutils literal notranslate"><span class="pre">eps_tol</span></code> (in normalised objective units) for <code class="docutils literal notranslate"><span class="pre">eps_consecutive</span></code> generations in a row. The hypervolume is still logged (<code class="docutils literal notranslate"><span class="pre">opt.hv_history</span></code>) as a quality metric, now against a reference point fixed once from the first front — but it no longer drives the stopping decision.</p>
 </dd>
 </dl>
 <h2 id="accessing-results">Accessing Results<a class="headerlink" href="#accessing-results" title="Link to this heading">¶</a></h2>

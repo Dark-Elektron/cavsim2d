@@ -10,3 +10,5 @@ variables.
    pareto
    visualising_results
    cavity_types
+   whole_cavity_rq
+   whole_cavity_field_flatness
