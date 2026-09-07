@@ -117,7 +117,7 @@ def write_cavity_geometry_cli(IC, OC, OC_R, BP, n_cell, scale=1, ax=None, bc=Non
     A_el, B_el, a_el, b_el, Ri_el, L_el, Req = np.array(OC)[:7] * scale * 1e-3
     A_er, B_er, a_er, b_er, Ri_er, L_er, Req = np.array(OC_R)[:7] * scale * 1e-3
 
-    L_bp = 4 * L_m
+    L_bp = 2 * L_m
     if dimension or contour:
         L_bp = 1 * L_m
 
@@ -839,7 +839,7 @@ def write_cavity_geometry_cli_multicell(n_cell, multicell, BP, scale=1, ax=None,
     Ri_er = multicell_m[4 + 8 * (2 * n_cell - 1)]
     L_er = multicell_m[5 + 8 * (2 * n_cell - 1)]
 
-    L_bp = 4 * L_el
+    L_bp = 2 * L_el
     if dimension or contour:
         L_bp = 1 * L_el
 
@@ -1211,7 +1211,7 @@ def write_cavity_geometry_cli_flattop(IC, OC, OC_R, BP, n_cell, scale=1, ax=None
 
     step = 0.005
 
-    L_bp = 4 * L_m
+    L_bp = 2 * L_m
     if dimension or contour:
         L_bp = 1 * L_m
 

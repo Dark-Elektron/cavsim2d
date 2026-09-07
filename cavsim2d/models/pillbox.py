@@ -115,7 +115,7 @@ class Pillbox(Cavity):
             p.line_to(z, Ri, 'PEC')              # right beampipe
         p.line_to(z, 0.0, 'PMC')                 # right aperture
         p.close('AXI')
-        return p
+        return self._chained(p)
 
     def write_geometry(self, parameters, n_cells, beampipe='none', write=None, plot=False, **kwargs):
         """

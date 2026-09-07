@@ -284,7 +284,7 @@ class SplineCavity(Cavity):
             prof.line_to(z_end, r_ap_r, 'PEC')     # right beam pipe
         prof.line_to(z_end, 0.0, 'PMC')            # right aperture
         prof.close('AXI')
-        return prof
+        return self._chained(prof)
 
     def write_geometry(self, parameters, n_cells=1, beampipe='none', write=None):
         """

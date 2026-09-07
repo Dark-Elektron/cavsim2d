@@ -52,12 +52,12 @@ class CircularWaveguide(Cavity):
             return None
 
         shift = L / 2.0
-        return (Profile('circular_waveguide')
-                .start(-shift, 0.0)
-                .line_to(-shift, R, 'PEC')      # left end plane
-                .line_to(shift, R, 'PEC')       # barrel
-                .line_to(shift, 0.0, 'PEC')     # right end plane
-                .close('AXI'))
+        return self._chained(Profile('circular_waveguide')
+                             .start(-shift, 0.0)
+                             .line_to(-shift, R, 'PEC')      # left end plane
+                             .line_to(shift, R, 'PEC')       # barrel
+                             .line_to(shift, 0.0, 'PEC')     # right end plane
+                             .close('AXI'))
 
     def write_geometry(self, parameters, n_cells=None, beampipe=None, write=None, **kwargs):
         """Write a Gmsh .geo file for the circular waveguide cavity."""

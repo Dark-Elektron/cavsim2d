@@ -691,3 +691,120 @@ def test_rfgun_cathode_beampipe_extends_past_barrel():
     assert z_pipe < z_bare                       # pipe entrance is upstream of barrel
     # and the extended geometry still meshes natively
     assert_meshes_natively(RFGun(gun, beampipe='both'), boundaries=('AXI', 'PEC', 'PMC'))
+
+
+def test_chain_repeats_cavity_into_a_connected_module():
+    """chain=N repeats the base cavity N times end-to-end into one MODULE: N times
+    the z-length, a single vacuum region, and apertures (PMC) only at the two module
+    ends (the internal beam pipes merge into inter-cavity drifts)."""
+    from cavsim2d import EllipticalCavity
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+
+    def zspan(cav):
+        z = np.array(cav.profile().contour_points(1e-3, skip=()))[:, 0]
+        return z.max() - z.min()
+
+    single = EllipticalCavity(1, mid, mid, mid, beampipe='both')
+    module = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=3)
+    assert module.chain == 3
+    assert zspan(module) == pytest.approx(3 * zspan(single), rel=1e-9)
+
+    p = module.profile()
+    assert set(p.boundary_names()) == {'AXI', 'PEC', 'PMC'}   # apertures only at the ends
+    mesh = NGSolveMEVP()._build_mesh(module, 8e-3, 1)
+    assert mesh.GetMaterials() == ('Domain',)                 # one connected region
+    assert sorted(set(mesh.GetBoundaries())) == ['AXI', 'PEC', 'PMC']
+
+    # chain=1 is a plain single cavity: chained(1) is a no-op that returns self
+    assert EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=1).chain == 1
+    base = single.profile()
+    assert base.chained(1) is base
+
+
+def test_chain_module_has_one_coupled_mode_per_cavity():
+    """A 3-cavity module resonates as three coupled copies of the single-cavity
+    fundamental (a tight passband), not a single mode."""
+    import os, tempfile
+    from cavsim2d import EllipticalCavity
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+    module = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=3)
+    module.set_workspace(os.path.join(tempfile.mkdtemp(), 'module3'))
+    module.eigenmode.run(mesh_config={'h': 12, 'p': 2}, n_modes=4)
+    f = sorted(module.eigenmode.qois_df.query('m == 0')['freq [MHz]'])
+    passband = [x for x in f if x < 1600]                     # the fundamental passband
+    assert len(passband) == 3                                # one mode per chained cavity
+    assert 1000 < passband[0] and (passband[-1] - passband[0]) < 50   # tight coupling
+
+
+def test_chain_spacing_controls_the_drift():
+    """spacing sets the inter-cavity drift directly (iris-to-iris), disregarding the
+    internal beam-pipe stubs. A single value sets every gap, a list sets each of the
+    chain-1 gaps, a wrong-length list is rejected, and the module stays one connected
+    region. spacing=None reproduces the plain 2*L_bp drift."""
+    from cavsim2d import EllipticalCavity
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+
+    def zspan(cav):
+        z = np.array(cav.profile().contour_points(1e-3, skip=()))[:, 0]
+        return z.max() - z.min()
+
+    L_bp = 4 * 57.7e-3                        # elliptical beam pipe = 4 * L_cell (m)
+    single = EllipticalCavity(1, mid, mid, mid, beampipe='both')
+    core = zspan(single) - 2 * L_bp          # single-cavity body length (m)
+    N = 3
+
+    # default keeps both stubs -> drift == 2*L_bp (identical to un-parameterised chain)
+    default = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=N)
+    assert zspan(default) == pytest.approx(2 * L_bp + N * core + (N - 1) * 2 * L_bp, rel=1e-9)
+
+    # scalar: every gap is exactly 30 mm
+    g = 30.0
+    scalar = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=N, spacing=g)
+    assert zspan(scalar) == pytest.approx(2 * L_bp + N * core + (N - 1) * g * 1e-3, rel=1e-9)
+
+    # list: independent gaps of 20 and 80 mm
+    per_gap = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=N,
+                               spacing=[20.0, 80.0])
+    assert zspan(per_gap) == pytest.approx(2 * L_bp + N * core + (20.0 + 80.0) * 1e-3, rel=1e-9)
+
+    # a multi-value list must have exactly chain-1 entries
+    with pytest.raises(AssertionError):
+        EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=N,
+                         spacing=[1.0, 2.0, 3.0]).profile()
+
+    # the parameterised module is still one connected region, apertures only at the ends
+    mesh = NGSolveMEVP()._build_mesh(scalar, 8e-3, 1)
+    assert mesh.GetMaterials() == ('Domain',)
+    assert set(scalar.profile().boundary_names()) == {'AXI', 'PEC', 'PMC'}
+
+
+def test_chain_dict_bundles_count_and_spacing():
+    """chain may be a dict {'count': N, 'spacing': gap}, equivalent to the two separate
+    kwargs; the dict value wins if both are given, and unknown keys raise."""
+    from cavsim2d import EllipticalCavity
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+
+    def zspan(cav):
+        z = np.array(cav.profile().contour_points(1e-3, skip=()))[:, 0]
+        return z.max() - z.min()
+
+    bundled = EllipticalCavity(1, mid, mid, mid, beampipe='both',
+                               chain={'count': 4, 'spacing': 60})
+    kwargs = EllipticalCavity(1, mid, mid, mid, beampipe='both',
+                              chain=4, spacing=60)
+    assert bundled.chain == kwargs.chain == 4
+    assert bundled.spacing == kwargs.spacing == 60
+    assert zspan(bundled) == pytest.approx(zspan(kwargs), rel=1e-12)
+
+    # a list gap survives the dict, count-only leaves the gap unset
+    assert EllipticalCavity(1, mid, mid, mid, chain={'count': 3,
+                            'spacing': [20, 80]}).spacing == [20, 80]
+    assert EllipticalCavity(1, mid, mid, mid, chain={'count': 5}).spacing is None
+
+    # the dict wins over a conflicting kwarg, and unknown keys are rejected
+    assert EllipticalCavity(1, mid, mid, mid, chain={'count': 4, 'spacing': 60},
+                            spacing=999).spacing == 60
+    with pytest.raises(ValueError):
+        EllipticalCavity(1, mid, mid, mid, chain={'count': 4, 'spacng': 60})

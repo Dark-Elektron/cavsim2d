@@ -170,6 +170,140 @@ class Profile:
                            'degree': int(degree)})
         return self
 
+    # -- chaining -----------------------------------------------------------
+
+    def _replay_segment(self, dst, seg, pts, dz):
+        """Re-emit *seg* (of this profile) onto *dst*, translated by ``dz`` in z."""
+        z1, r1 = pts[seg['i1']]
+        z1 += dz
+        k, name = seg['kind'], seg['name']
+        if k == 'line':
+            dst.line_to(z1, r1, name)
+        elif k == 'arc':
+            mz, mr = seg['mid']
+            dst.arc_to(z1, r1, through=(mz + dz, mr), boundary=name)
+        elif k == 'ellipse':
+            cz, cr = seg['center']
+            dst.ellipse_arc_to(z1, r1, center=(cz + dz, cr),
+                               semi_z=seg['semi_z'], semi_r=seg['semi_r'], boundary=name)
+        elif k == 'spline':
+            poles = [(pz + dz, pr) for pz, pr in seg['interior']] + [(z1, r1)]
+            dst.spline_to(poles, name, kind=seg['spline_kind'], degree=seg['degree'])
+        else:
+            raise ValueError(f'cannot chain segment kind {k!r}')
+
+    def chained(self, n, spacing=None):
+        """A new :class:`Profile` of *n* copies of this cavity chained end-to-end.
+
+        The internal end-apertures are dropped and adjacent beam pipes merge into
+        the inter-cavity drift, so a module is one connected vacuum region capped by
+        a single aperture at each end (a chain of cavities with ``beampipe='both'``
+        connects through a drift of length ``2 * L_bp``; with ``beampipe='none'`` the
+        cells butt directly). Requires the standard axis-to-axis meridian this
+        package builds — an aperture from the axis, the ``PEC`` wall, a closing
+        aperture back to the axis, then the ``AXI`` return. ``n <= 1`` returns self.
+
+        Parameters
+        ----------
+        n : int
+            Number of copies chained into the module.
+        spacing : float or sequence of float, optional
+            Inter-cavity straight-drift length(s), **iris-to-iris, in metres**. When
+            given, the internal beam-pipe stubs are *disregarded* — the right stub of
+            each left copy and the left stub of each right copy are dropped — and the
+            gap between adjacent cavity bodies is set to exactly ``spacing``, so
+            the drift can be controlled (and optimised) independently of the base
+            cavity's own beam-pipe length. A single value sets every gap; a sequence
+            sets each of the ``n - 1`` gaps individually and must then have length
+            ``n - 1``. ``None`` (default) keeps both stubs, i.e. the drift is the base
+            cavity's ``2 * L_bp`` — identical to the un-parameterised chaining. The two
+            module-end stubs are always kept.
+        """
+        n = int(n)
+        if n <= 1:
+            return self
+        pts, segs = self._pts, self._segs
+        if len(segs) < 3:
+            raise ValueError('profile too simple to chain (need aperture/wall/aperture).')
+        left_ap, right_ap, axi = segs[0], segs[-2], segs[-1]
+        wall = segs[1:-2]
+        if abs(pts[left_ap['i0']][1]) > 1e-9 or abs(pts[right_ap['i1']][1]) > 1e-9:
+            raise ValueError('chained() needs the standard axis-to-axis meridian.')
+        z_start = pts[left_ap['i1']][0]        # top of the left aperture (wall start)
+        z_end = pts[right_ap['i0']][0]         # top of the right aperture (wall end)
+        Ri = pts[left_ap['i1']][1]             # beam-pipe / iris radius (left)
+        Ri_r = pts[right_ap['i0']][1]          # beam-pipe / iris radius (right)
+
+        # Split the wall into  [left stub | core | right stub].  A "stub" is the
+        # leading / trailing run of horizontal ``line`` segments at the beam-pipe
+        # radius (the straight beam pipe); the core is the cavity body between the
+        # irises.  Only strip when the body actually rises above the beam pipe
+        # (``Ri < max wall radius``), so a bare tube — e.g. a circular waveguide,
+        # whose whole wall is a horizontal barrel — keeps its wall as the core.
+        wall_r = [pts[s['i0']][1] for s in wall] + [pts[s['i1']][1] for s in wall]
+        strip = wall and (max(wall_r) - max(Ri, Ri_r) > 1e-9)
+
+        def _hstub(seg, r):
+            return (seg['kind'] == 'line'
+                    and abs(pts[seg['i0']][1] - r) < 1e-9
+                    and abs(pts[seg['i1']][1] - r) < 1e-9)
+
+        lo, hi = 0, len(wall)
+        if strip:
+            while lo < hi and _hstub(wall[lo], Ri):
+                lo += 1
+            while hi > lo and _hstub(wall[hi - 1], Ri_r):
+                hi -= 1
+        core = wall[lo:hi] or wall              # never strip the body to nothing
+        if core is wall:
+            lo, hi = 0, len(wall)
+        z_core0 = pts[core[0]['i0']][0]         # left-iris z of the body
+        z_core1 = pts[core[-1]['i1']][0]        # right-iris z of the body
+        core_len = z_core1 - z_core0
+        left_stub = z_core0 - z_start
+        right_stub = z_end - z_core1
+
+        # Inter-cavity gap length(s).
+        if spacing is None:
+            gaps = [left_stub + right_stub] * (n - 1)   # keep both stubs (default)
+        else:
+            try:
+                gaps = [float(g) for g in spacing]
+            except TypeError:
+                gaps = [float(spacing)]
+            if len(gaps) == 1:
+                gaps = gaps * (n - 1)
+            assert len(gaps) == n - 1, (
+                'spacing list must have one entry per inter-cavity gap: '
+                'its length must equal chain - 1 == %d, but got %d.' % (n - 1, len(gaps)))
+            if any(g < 0 for g in gaps):
+                raise ValueError('spacing must be non-negative.')
+
+        stub_name = wall[0]['name'] if lo > 0 else core[0]['name']
+        p = Profile(self.name)
+        p.start(pts[left_ap['i0']][0], 0.0)
+        p.line_to(z_start, Ri, left_ap['name'])                 # left aperture
+        cursor = z_start
+        if left_stub > 1e-12:                                   # left module-end stub
+            cursor = z_core0
+            p.line_to(cursor, Ri, stub_name)
+        for c in range(n):
+            dz = cursor - z_core0
+            for s in core:
+                self._replay_segment(p, s, pts, dz)
+            cursor += core_len
+            if c < n - 1 and gaps[c] > 1e-12:                   # inter-cavity drift
+                cursor += gaps[c]
+                p.line_to(cursor, Ri, stub_name)
+            elif c < n - 1:
+                cursor += gaps[c]                               # zero-length: butt
+        if right_stub > 1e-12:                                  # right module-end stub
+            cursor += right_stub
+            p.line_to(cursor, Ri_r, wall[-1]['name'] if hi < len(wall) else stub_name)
+        p.line_to(cursor, 0.0, right_ap['name'])                # right aperture
+        p.close(axi['name'])
+        return p
+
     # -- spline helpers -----------------------------------------------------
 
     @classmethod

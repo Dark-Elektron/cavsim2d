@@ -660,6 +660,13 @@ class NGSolveMEVP:
         # Opt-in adaptive (error-driven) h-refinement — applied to EVERY
         # requested polarisation (the recovery-error estimator is m-agnostic).
         adaptive = self._parse_adaptive(mesh_config)
+        # Preconditioner for the eigen-solve. Default 'direct'; 'bddc' is ~1.4-1.9x faster
+        # on tune-sized monopole solves (same eigenvalue) but is an approximate
+        # preconditioner -- unsafe with adaptive refinement (goes stale as the mesh
+        # changes) and can stall when many modes share a mesh -- so fall back there.
+        self._pre_kind = (eigenmode_config or {}).get('preconditioner', 'direct')
+        if self._pre_kind == 'bddc' and adaptive:
+            self._pre_kind = 'direct'
 
         pols = parse_polarisations((eigenmode_config or {}).get('polarisation', 0))
 
@@ -711,6 +718,29 @@ class NGSolveMEVP:
                                                           materials=materials,
                                                           loss_model=loss_model)
         q_diel = self._last_dielectric_q
+
+        # Frequency-only fast path (tuning inner solves). A root-finder needs only
+        # the mode-of-interest frequency, which is the eigenvalue itself (freq_fes is
+        # already MHz). Skip the QOI field integrals (evaluate_qois runs once per mode
+        # of interest AND once per mode) and the mesh/field disk writes; emit a minimal
+        # qois.json so the frequency read (pyTuner -> monopole/qois.json['freq [MHz]'],
+        # qois_df) is unchanged. The primary mode is exactly the one the full path
+        # reports, so the tuned frequency is identical -- only the QOIs are deferred to
+        # the final full solve once tuning is complete.
+        if (eigenmode_config or {}).get('freq_only'):
+            moi = self.modes_of_interest(cav, m, eigenmode_config, len(freq_fes))
+            primary = min((moi[0] if moi else 0), len(freq_fes) - 1)
+            q = {'freq [MHz]': float(freq_fes[primary]), 'm': int(m),
+                 'polarisation': pol_name(m), 'mode_of_interest': str(primary + 1)}
+            with open(os.path.join(pol_dir, 'qois.json'), 'w') as f:
+                json.dump(q, f, indent=4, separators=(',', ': '))
+            with open(os.path.join(pol_dir, 'qois_moi.json'), 'w') as f:
+                json.dump({str(primary + 1): q}, f, indent=4, separators=(',', ': '))
+            # Minimal all-modes file (primary mode only) so ``qois_df`` stays valid.
+            with open(os.path.join(pol_dir, 'qois_all_modes.json'), 'w') as f:
+                json.dump({str(primary): q}, f, indent=4, separators=(',', ': '))
+            return True
+
         # Save after solving: adaptive refinement mutates *mesh* in place, so
         # this persists the finest mesh actually used for the QOIs.
         self.save_mesh(pol_dir, mesh)
@@ -1018,10 +1048,24 @@ class NGSolveMEVP:
             a = BilinearForm(stiff)
         b = BilinearForm(mass)
 
+        # Preconditioner choice for the eigen-solve's `pre` operator. 'direct' (default)
+        # factorises (stiff + mass); 'bddc' registers an iterative BDDC preconditioner
+        # (~1.4-1.9x faster on tune-sized monopole solves, same eigenvalue). BDDC must be
+        # registered on its form before assembly, so build (stiff + mass) here where the
+        # expression lives. BDDC is an APPROXIMATE preconditioner: safe for the tune's
+        # single monopole solves, but not for adaptive refinement or many shared-mesh
+        # modes, so it stays opt-in (`eigenmode_config['preconditioner'] = 'bddc'`).
+        pre_kind = getattr(self, '_pre_kind', 'direct')
+        ab_form = pre_reg = None
+        if pre_kind == 'bddc':
+            ab_form = BilinearForm(stiff + mass)
+            pre_reg = Preconditioner(ab_form, "bddc")
+
         return {'fes': fes, 'fes_rz': fes_rz, 'fes_phi': fes_phi,
                 'a': a, 'b': b, 'm': m_pol, 'eps_cf': eps_cf,
                 'f_shift': f_shift, 'direct_solver': direct_solver,
-                'complex_fes': bool(complex_fes)}
+                'complex_fes': bool(complex_fes),
+                'ab_form': ab_form, 'pre_reg': pre_reg, 'pre_kind': pre_kind}
 
     def _solve_system(self, system, n_modes, pinvit_maxit=20):
         """Update, assemble and solve the reusable *system* on its (possibly
@@ -1040,7 +1084,11 @@ class NGSolveMEVP:
             a.Assemble()
             b.Assemble()
 
-            pre = (a.mat + b.mat).CreateSparseMatrix().Inverse(fes.FreeDofs())
+            if system.get('pre_kind') == 'bddc':
+                system['ab_form'].Assemble()          # builds the BDDC preconditioner
+                pre = system['pre_reg']
+            else:
+                pre = (a.mat + b.mat).CreateSparseMatrix().Inverse(fes.FreeDofs())
 
             # Remove the gradient kernel (u, u_phi) = (grad psi, m psi). The
             # potential space comes from CreateGradient (PEC-only dirichlet);

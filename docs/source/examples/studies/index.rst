@@ -1,10 +1,11 @@
 Studies: sweeps and persistence
 ===============================
 
-``Study``-level workflows: sweeping a family of designs, and reloading saved
-projects to compare results across sessions.
+``Study``-level and module workflows: sweeping a family of designs, reloading
+saved projects, and chaining a cavity into a multi-cavity module.
 
 .. toctree::
    :maxdepth: 1
 
    parameter_sweep
+   module_chain

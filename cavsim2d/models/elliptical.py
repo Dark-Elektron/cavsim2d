@@ -25,7 +25,8 @@ class EllipticalCavity(Cavity):
     uses_cell_suffixes = True
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
-                 cell_parameterisation='simplecell', color='k', plot_label=None):
+                 cell_parameterisation='simplecell', color='k', plot_label=None,
+                 chain=1, spacing=None):
         r"""A multi-cell elliptical cavity.
 
         Geometry / parameterisation
@@ -86,8 +87,9 @@ class EllipticalCavity(Cavity):
         --------
         >>> tesla = [42, 42, 12, 19, 35, 57.7, 103.353]
         >>> EllipticalCavity(9, tesla, tesla, tesla, beampipe='both')
+        >>> EllipticalCavity(1, tesla, tesla, tesla, beampipe='both', chain=8)  # 8-cavity module
         """
-        super().__init__()
+        super().__init__(chain=chain, spacing=spacing)
 
         self.projectDir = None
 
@@ -322,7 +324,7 @@ class EllipticalCavity(Cavity):
 
         Req = Req_m  # CHANGE THIS, Req should be same
 
-        L_bp = 4 * L_m
+        L_bp = 2 * L_m
         if dimension or contour:
             L_bp = 1 * L_m
 
@@ -1464,14 +1466,15 @@ class EllipticalCavity(Cavity):
         """
         try:
             halves = self.half_cells() * 1e-3
-            L_bp = 4 * float(self.parameters['L_m']) * 1e-3
+            L_bp = 2 * float(self.parameters['L_m']) * 1e-3
         except (KeyError, TypeError, ValueError):
             return None
         try:
-            return elliptical_profile_from_half_cells(halves, self.beampipe, L_bp,
+            prof = elliptical_profile_from_half_cells(halves, self.beampipe, L_bp,
                                                       name='elliptical')
         except (DegenerateGeometry, ValueError):
             return None
+        return self._chained(prof)
 
     def export_multipac(self, file_path, plot=False, multicell=False):
         """Write this cavity's contour in the Multipac input format.

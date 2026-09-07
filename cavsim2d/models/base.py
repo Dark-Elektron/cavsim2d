@@ -48,7 +48,8 @@ class Cavity(ABC):
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  cell_parameterisation='simplecell', color='k',
-                 plot_label=None, geo_filepath=None):
+                 plot_label=None, geo_filepath=None, chain=1,
+                 spacing=None):
         """
         Initialise cavity object. You can either specify geometry by dimensions
         (n_cells, mid_cell, end_cell_left, end_cell_right, etc.) *or* by providing
@@ -77,6 +78,24 @@ class Cavity(ABC):
             Label for plotting; defaults to `name` if None
         geo_filepath: str or None
             If given, load geometry from this file instead of using dimensions.
+        chain: int or dict
+            Number of copies of this base cavity chained end-to-end into a
+            **module** (default 1 = a single cavity). ``profile()`` repeats the
+            wall this many times; adjacent beam pipes merge into the inter-cavity
+            drift, so the module is one connected structure. Works for every model
+            that builds a native ``profile()``. May also be a dict that bundles the
+            count with the drift, ``chain={'count': 4, 'spacing': 60}`` — equivalent
+            to ``chain=4, spacing=60``.
+        spacing: float or sequence of float or None
+            Inter-cavity straight-drift length(s) **in mm**, used only when
+            ``chain > 1`` (may instead be given inside the ``chain`` dict). Controls
+            the gap between adjacent cavities directly (iris-to-iris): the internal
+            beam-pipe stubs are disregarded and the gap is set to this value, so the
+            drift can be tuned/optimised independently of the base cavity's own
+            beam-pipe length. A single value sets every gap; a list sets each of the
+            ``chain - 1`` gaps (its length must then equal ``chain - 1``). ``None``
+            (default) keeps the base cavity's beam pipes, so the drift is their
+            natural ``2 * L_bp``.
         """
 
         # ───────────────────────────────────────────────────────────────────────────────────────────
@@ -86,6 +105,26 @@ class Cavity(ABC):
         self.self_dir = None
         self.geo_filepath = None
         self.uq_dir = None
+        # `chain` is either a copy count (int) or a dict bundling the count with the
+        # inter-cavity drift, e.g. chain={'count': 4, 'spacing': 60}. The dict form is
+        # unpacked here; `spacing` may still be given as its own kwarg (the dict wins
+        # when it sets the gap).
+        if isinstance(chain, dict):
+            spec = dict(chain)
+            count = spec.pop('count', 1)
+            gap = spec.pop('spacing', None)
+            if spec:
+                raise ValueError(
+                    "chain dict accepts only 'count' and 'spacing'; "
+                    "unknown key(s): %s" % list(spec))
+            if gap is not None:
+                spacing = gap
+            chain = count
+        # Number of copies of this base cavity chained into a module (1 = single
+        # cavity). profile() repeats the wall this many times; see Profile.chained.
+        self.chain = max(1, int(chain or 1))
+        # Inter-cavity drift length(s) in mm for chaining (None = keep beam pipes).
+        self.spacing = spacing
 
         # Solver-as-object: lazy properties (see bottom of class)
         self._tune_solver = None
@@ -158,6 +197,32 @@ class Cavity(ABC):
         #  2) Choose initialisation path: “from file” or “from dimensions”
         # ───────────────────────────────────────────────────────────────────────────────────────────
         self.parameters = {}
+
+    # ─── Chaining helpers ─────────────────────────────────────────────────
+
+    def _spacing_m(self):
+        """Inter-cavity drift length(s) in **metres** for chaining, or ``None``.
+
+        Reads ``self.spacing`` (mm) and converts to metres so it can be handed
+        straight to :meth:`Profile.chained`. Returns ``None`` when unset, so chaining
+        keeps the base cavity's own beam pipes.
+        """
+        g = getattr(self, 'spacing', None)
+        if g is None:
+            return None
+        if isinstance(g, (list, tuple, np.ndarray)):
+            return [float(x) * 1e-3 for x in g]
+        return float(g) * 1e-3
+
+    def _chained(self, prof):
+        """Apply this cavity's ``chain`` / ``spacing`` to a base *prof*.
+
+        Every model's ``profile()`` returns ``self._chained(base_profile)`` so the
+        module-building logic (and its unit handling) lives in one place.
+        """
+        if prof is None:
+            return None
+        return prof.chained(getattr(self, 'chain', 1), spacing=self._spacing_m())
 
     # ─── Solver-as-object properties ──────────────────────────────────────
 
@@ -2059,15 +2124,19 @@ class Cavity(ABC):
         gfu_E, gfu_H = ngsolve_mevp.load_fields(self._eigenmode_pol_dir(pol), mode)
         return gfu_E, gfu_H
 
-    def _plot_profile(self, profile, ax=None, mirror=False, fill=True,
-                      control_points=None, **kwargs):
+    def _plot_profile(self, profile, ax=None, mirror=False, fill=False,
+                      center=True, control_points=None, **kwargs):
         """Draw a cavity's meridian outline straight from its :class:`Profile`.
 
         Geometry-independent: works for every model, since each builds a Profile.
         The wall is drawn in mm. Only the upper half (``r >= 0``) is the analysed,
         axisymmetric domain, so that is what is drawn by default; pass
         ``mirror=True`` to reflect it about the axis for the full cross-section.
-        ``fill`` shades the interior.
+
+        ``center`` (default ``True``) centres each cavity on ``z = 0`` so cavities of
+        different lengths line up about their middle when overlaid for comparison;
+        ``center=False`` instead starts every cavity at ``z = 0`` (left-aligned).
+        ``fill`` shades the interior (default ``False``).
 
         ``control_points`` overlays a spline cavity's control points and the
         polygon connecting them: ``None`` (default) shows them automatically for
@@ -2079,8 +2148,10 @@ class Cavity(ABC):
                 _, ax = plt.subplots(figsize=(8, 3))
             pts = np.asarray(profile.contour_points(3e-4, skip=('AXI',)), dtype=float)
             z, r = pts[:, 0] * 1e3, pts[:, 1] * 1e3          # metres -> mm
-            z_shift = z.min()                                # start every cavity at z = 0,
-            z = z - z_shift                                  # so different types align when compared
+            # centre on z = 0 (overlaid cavities align at their middle) or, with
+            # center=False, start every cavity at z = 0 (left-aligned).
+            z_shift = 0.5 * (z.min() + z.max()) if center else z.min()
+            z = z - z_shift
             color = kwargs.pop('color', None) or getattr(self, 'color', None) or WARM[1]
             lw = kwargs.pop('lw', kwargs.pop('linewidth', 1.8))
             label = kwargs.pop('label', self.name)
@@ -2781,8 +2852,6 @@ class Cavity(ABC):
 
         if 'wake_config' in wakefield_config.keys():
             wake_config = wakefield_config['wake_config']
-            if 'MT' in wake_config.keys():
-                MT = wake_config['MT']
             if 'counter_rotating'in wakefield_config['wake_config'].keys():
                 LCRBW = 'T'
                 if 'separation' in wakefield_config['wake_config']['counter_rotating'].keys():
@@ -2795,6 +2864,45 @@ class Cavity(ABC):
                 NBUNCH = wakefield_config['beam_config']['nbunch']
             if 'separation' in wakefield_config['beam_config'].keys():
                 BSEP = wakefield_config['beam_config']['separation']
+
+        # Bunch length (SIG) and wake length (UBT). Both are accepted either
+        # nested under beam_config/wake_config — the form Study.run_wakefield
+        # populates — or at the top level, the form DEFAULT_WAKEFIELD_CONFIG
+        # declares. Without this the hardcoded defaults above were the only
+        # values that ever reached the deck, so every loss factor came back at
+        # 25 mm whatever the caller asked for.
+        bunch_length = (wakefield_config.get('beam_config') or {}).get(
+            'bunch_length', wakefield_config.get('bunch_length'))
+        if bunch_length is not None:
+            SIG = float(bunch_length) * 1e-3          # [mm] -> [m]
+
+        wakelength = (wakefield_config.get('wake_config') or {}).get(
+            'wakelength', wakefield_config.get('wakelength'))
+        if wakelength is not None:
+            UBT = float(wakelength)                   # [m]
+
+        # MT (time steps to cross a mesh cell -> time-integration resolution). Accept it
+        # nested OR top-level, like SIG/UBT above. It used to be read only from
+        # wake_config['MT'], so a top-level MT -- the form run_wakefield and
+        # DEFAULT_WAKEFIELD_CONFIG use -- was silently dropped and the run fell back to the
+        # MT=4 default. That coarse integration degrades the TRANSVERSE (dipole) wake far
+        # more than the on-axis longitudinal monopole (noisy/smeared transverse spectrum).
+        mt_cfg = (wakefield_config.get('wake_config') or {}).get('MT', wakefield_config.get('MT'))
+        if mt_cfg is not None:
+            MT = int(mt_cfg)
+        # ABCI caps its time mesh at NPT=40, i.e. 2*(MT+1) <= 40 -> MT <= 19. A larger MT
+        # aborts the run ("2*(MT+1) EXCEEDS MAXIMUM NPT"), so clamp instead. (Empirically
+        # MT barely moves the impedance spectrum anyway -- MT=4 and MT=15 are identical.)
+        if MT > 19:
+            warning(f'MT={MT} exceeds the ABCI time-mesh limit (2*(MT+1) <= NPT=40); '
+                    f'clamping to MT=19.')
+            MT = 19
+
+        # Upper frequency of the FFT/spectrum output [GHz]. Without it ABCI
+        # runs the spectrum out to its own limit — tens of GHz for a short
+        # bunch — which is mostly noise and makes the output files large.
+        CUTOFF = (wakefield_config.get('wake_config') or {}).get(
+            'cutoff', wakefield_config.get('cutoff'))
 
         with open(os.path.join(folder, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
             # Header
@@ -2832,12 +2940,16 @@ class Cavity(ABC):
             out.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP} &END \n')
             # out.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, 0.005))
             out.write(f' &TIME  MT = {int(MT)} &END \n')
+            # UBT must not be truncated to an integer: a loss-factor run uses a
+            # wake only a few bunch lengths long (5 x 2.4 mm = 0.012 m), and
+            # int() turned that into 0.
             out.write(
-                f' &WAKE  UBT = {int(UBT)}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                f' &WAKE  UBT = {UBT:g}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
             # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
             # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
+            _cutoff = f'CUTOFF = {CUTOFF:g}, ' if CUTOFF is not None else ''
             out.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                    f'LINTZ = .F., LPATH = .T., LPLE = {LPLE}, LPLC= .F. &END \n')
+                    f'{_cutoff}LINTZ = .F., LPATH = .T., LPLE = {LPLE}, LPLC= .F. &END \n')
             out.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
                     f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
             out.write('\nSTOP\n')

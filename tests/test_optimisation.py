@@ -100,6 +100,74 @@ def test_optimisation_generalises_to_spline(project_dir):
     assert 'p3_r' in hist.columns          # the tuned control-point coordinate was recorded
 
 
+def test_end_cell_alias_ties_both_ends(tmp_path):
+    """The '_e' end-cell alias drives BOTH end cells from a single variable, kept
+    tied. As a bounds variable 'A_e' fans out to A_el AND A_er (same value); as a
+    tune variable 'L_e' resolves to L_el (the tuner mirrors it into L_er). Fast:
+    resolution + spawn only, no solve."""
+    import numpy as np
+    import pandas as pd
+    from cavsim2d import EllipticalCavity
+    from cavsim2d.processes.tune import _resolve_suffixed_var
+    from cavsim2d.analysis.optimisation import _resolve_opt_columns
+
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+    cav = EllipticalCavity(3, mid, mid, mid, beampipe='both')
+
+    # bounds resolution: alias fans out to both ends; bare/suffixed unchanged
+    assert _resolve_opt_columns('A_e', 'end-cell', cav) == ['A_el', 'A_er']
+    assert _resolve_opt_columns('A', 'mid-cell', cav) == ['A_m']
+    assert _resolve_opt_columns('A_el', 'end-cell', cav) == ['A_el']
+    # tune-variable resolution: L_e -> L_el (right end tied by the post-stage mirror)
+    assert _resolve_suffixed_var('L_e', 'end-cell', cav) == 'L_el'
+    # an unknown bare name is still rejected
+    with pytest.raises(ValueError):
+        _resolve_opt_columns('Z_e', 'end-cell', cav)
+
+    # a spawned candidate driven by 'A_e' has both ends equal, mid untouched
+    df = pd.DataFrame({'A_e': [45.0]}, index=['C0'])
+    df_spawn = df.copy()
+    for t in _resolve_opt_columns('A_e', 'end-cell', cav):
+        df_spawn[t] = df['A_e']
+    df_spawn.drop(columns=['A_e'], inplace=True)
+    scav = cav.spawn(df_spawn, str(tmp_path)).cavities_dict['C0']
+    assert np.isclose(scav.parameters['A_el'], scav.parameters['A_er'])
+    assert np.isclose(scav.parameters['A_el'], 45.0)
+    assert np.isclose(scav.parameters['A_m'], 42.0)      # mid cell left alone
+
+
+def test_whole_cavity_two_stage_tune(project_dir):
+    """A whole-cavity optimisation varies mid AND end shape and, with no cell_type
+    given, tunes the mid cell (Req) and the end cells (L) to the frequency per
+    candidate — the standard field-flat recipe. Guards the lifted single-pair
+    restriction: both a mid-cell and an end-cell tune stage must run."""
+    import json
+    from pathlib import Path
+    from cavsim2d import EllipticalCavity
+    cavs = Study(project_dir)
+    mid = [42, 42, 12, 19, 35, 57.7, 103.3]
+    cavs.add_cavity([EllipticalCavity(3, mid, mid, mid, beampipe='both')], ['C'])
+    config = {
+        'initial_points': 2, 'no_of_generation': 1, 'method': {'LHS': {'seed': 5}},
+        'bounds': {'A_m': [40, 44], 'A_e': [40, 44]},   # mid AND end shape, both ends tied
+        'objectives': [['equal', 'monopole:R/Q [Ohm]', 330.0]],
+        # NOTE: no 'cell_type' -> defaults to {'mid-cell':'Req','end-cell':'L'}
+        'tune_config': {'freqs': 1300.0, 'processes': 1, 'tol': 2e-2,
+                        'eigenmode_config': {'n_cells': 3, 'processes': 1,
+                                             'boundary_conditions': 'mm'}},
+        'mutation_factor': 2, 'crossover_factor': 2, 'elites_for_crossover': 2,
+        'chaos_factor': 2, 'weights': [1],
+    }
+    cavs.run_optimisation(config)
+    assert not cavs.optimisation.history.empty
+
+    # a candidate was tuned in BOTH a mid-cell and an end-cell stage
+    res = list(Path(cavs.optimisation.candidates_folder).glob('*/tuned/tune_info/tune_res.json'))
+    assert res, 'no tuned candidate produced'
+    stages = json.load(open(res[0]))
+    assert 'mid-cell' in stages and 'end-cell' in stages
+
+
 def test_robust_optimisation_ranks_by_uq_objective(project_dir):
     """Robust optimisation: a uq_config nested in the eigenmode_config makes every
     candidate a UQ sweep, and the history carries the mean/std/robust columns it

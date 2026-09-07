@@ -36,6 +36,23 @@ CONSTRAINT_OPS = {
 }
 
 
+def _resolve_opt_columns(var, cell_type, cav):
+    """Model parameter slot(s) that an optimisation *bounds* variable drives.
+
+    Usually one slot, resolved by the tuner's own :func:`_resolve_suffixed_var`
+    (``A`` -> ``A_m`` via the tune ``cell_type``; an already-suffixed ``A_el``
+    passes through). The end-cell alias ``X_e`` on a per-cell (elliptical-family)
+    model fans out to **both** end cells tied to one value —
+    ``A_e`` -> ``['A_el', 'A_er']`` — so a single optimisation variable keeps the
+    two ends symmetric.
+    """
+    if getattr(cav, 'uses_cell_suffixes', False) and var.endswith('_e'):
+        bare = var[:-2]
+        _resolve_suffixed_var(f'{bare}_el', cell_type, cav)   # validates the bare name
+        return [f'{bare}_el', f'{bare}_er']
+    return [_resolve_suffixed_var(var, cell_type, cav)]
+
+
 def _uq_col_name(obj):
     """Return the UQ-adjusted column name for a given objective tuple (sense, name, [target])."""
     sense, name = obj[0], obj[1]
@@ -233,6 +250,19 @@ class Optimisation:
         self.ng_max = config.get('no_of_generation', 100)
         self.hv_tol = config.get('hv_tol', 1e-9)
         self.hv_consecutive = config.get('hv_consecutive', 3)
+        # Bounded Pareto archive + eps-progress stopping (replaces the unbounded archive
+        # + moving-reference hypervolume that could never converge). ``archive_size`` caps
+        # the elite set each generation via non-dominated sort + crowding distance
+        # (NSGA-II style, None = unbounded/legacy); convergence is judged on the additive
+        # eps-indicator between successive fronts (Pareto-compliant, reference-free, decays
+        # monotonically to 0), with the hypervolume kept only as a logged quality metric
+        # against a reference point fixed once from the first front.
+        self.archive_size = config.get('archive_size', 100)
+        self.eps_tol = config.get('eps_tol', 1e-4)
+        self.eps_consecutive = config.get('eps_consecutive', self.hv_consecutive)
+        self.eps_history = []
+        self._prev_front_norm = None
+        self._obj_norm = None            # fixed (lo, span) per objective, set on 1st front
         self.objectives_unprocessed = config['objectives']
         self.objectives, weights = process_objectives(config['objectives'])
         # Canonicalise eigenmode objective names ('1:freq [MHz]' -> 'dipole:freq [MHz]')
@@ -268,23 +298,46 @@ class Optimisation:
         # SBX distribution index: higher = offspring closer to parents (default 2)
         self.eta_sbx = config.get('eta_sbx', 2.0)
 
-        self.tune_config = config['tune_config']
+        self.tune_config = dict(config['tune_config'])
         tune_config_keys = self.tune_config.keys()
         require('freqs' in tune_config_keys, 'Please enter the target tune frequency.')
-        require('cell_type' in tune_config_keys or ('parameters' in tune_config_keys and 'cell_types' in tune_config_keys),
-                "Please enter 'cell_type' (dict) in tune_config, e.g. {'mid-cell': 'Req'}.")
 
-        # Normalise to the keyed form — optimisation only supports a single
-        # (cell_type, tune_variable) pair per candidate run.
-        _ct_map = normalize_cell_type_config(self.tune_config)
-        if len(_ct_map) != 1 or len(next(iter(_ct_map.values()))) != 1:
-            error("Optimisation only supports a single cell_type/tune_variable pair; "
-                  "using the first one only.")
+        # The tune stage(s) that hold each candidate at the target frequency. A
+        # multi-cell elliptical-family cavity may omit 'cell_type' entirely: it then
+        # defaults to the standard field-flat recipe — tune the mid cell's Req and
+        # the end cells' L to the frequency, each cell independently (so flatness is
+        # automatic even when both mid and end are optimised). Any cell_type the user
+        # *does* give is used verbatim — single-stage, or multi-stage to override the
+        # tuned variables, e.g. {'mid-cell': 'A', 'end-cell': 'L'}.
+        has_ct = ('cell_type' in tune_config_keys
+                  or ('parameters' in tune_config_keys and 'cell_types' in tune_config_keys))
+        if has_ct:
+            _ct_map = normalize_cell_type_config(self.tune_config)
+        elif getattr(self.cav, 'uses_cell_suffixes', False) and (self.cav.n_cells or 1) >= 2:
+            _ct_map = {'mid-cell': ['Req'], 'end-cell': ['L']}
+        else:
+            require(False, "Please enter 'cell_type' (dict) in tune_config, e.g. "
+                           "{'mid-cell': 'Req'}.")
+
+        # Order the stages mid-cell first: Req is shared across cells, so the mid
+        # stage must set it before an end stage tunes L in that context.
+        def _stage_rank(ct):
+            n = ct.lower().replace('-', ' ').replace('_', ' ')
+            return 0 if 'mid' in n else (1 if 'end' in n else 2)
+        _ct_map = dict(sorted(_ct_map.items(), key=lambda kv: _stage_rank(kv[0])))
+        self.tune_config['cell_type'] = _ct_map            # hand the ordered stages to the tuner
+        self.tune_config.pop('parameters', None)
+        self.tune_config.pop('cell_types', None)
+
+        # The first cell type resolves bare bounds names (A -> A_m for 'mid-cell');
+        # the last stage's variable labels the recorded tune column.
         self.cell_type = next(iter(_ct_map.keys()))
-        self.tune_parameter = next(iter(_ct_map.values()))[0]
+        self.tune_parameter = [v for vs in _ct_map.values() for v in vs][-1]
 
-        ct_norm = self.cell_type.lower().replace('-', ' ').replace('_', ' ')
-        if ct_norm == 'end cell':
+        # A pure end-cell tune keeps the mid cell fixed, so its dimensions must be
+        # supplied; when the mid is *also* tuned (the two-stage recipe) it isn't.
+        cts_norm = [c.lower().replace('-', ' ').replace('_', ' ') for c in _ct_map]
+        if any('end' in c for c in cts_norm) and not any('mid' in c for c in cts_norm):
             require('mid-cell' in config, 'end-cell optimisation requires mid-cell dimensions via "mid-cell" key.')
             require(len(config['mid-cell']) >= 7, 'Incomplete mid cell dimension.')
             self.mid_cell = config['mid-cell']
@@ -333,10 +386,16 @@ class Optimisation:
         # noise during the EA: random mutation/crossover/chaos generate
         # candidates that cannot tune to the target frequency, and those are
         # simply discarded (they never enter the ranked population). Silence
-        # both for the whole loop so the progress bar stays readable — a real
-        # failure surfaces as an empty generation, not a wall of red text.
+        # them for the whole loop so the progress bar stays readable — a real
+        # failure surfaces as an empty generation ("none survived", not in this
+        # list), not a wall of red text.
         with suppress_errors('Parameter set leads to degenerate geometry',
-                             'could not be reached'):
+                             'could not be reached',
+                             'Tune aborted',
+                             'Tune did not reach target',
+                             'Tune stage produced no result',
+                             'Tuning failed for',
+                             'Done Tuning Cavity'):   # the error() 'Failed' report
             self._run_ea(bar)
 
     def _load_resume_state(self):
@@ -368,16 +427,33 @@ class Optimisation:
             error(f'Could not read {last_path} for resume: {e}')
             return None
 
-        hv_history = []
-        hv_path = folder / 'hv_history.json'
-        if hv_path.exists():
+        # Convergence state (hv/eps histories + the fixed normalisation and last front the
+        # eps-progress criterion needs) for a fully stateful resume; fall back to the
+        # end-of-run hv_history.json for runs saved before this was persisted per-gen.
+        hv_history, eps_history = [], []
+        obj_norm = prev_front_norm = None
+        cs_path = folder / 'convergence_state.json'
+        if cs_path.exists():
             try:
-                with open(hv_path) as f:
-                    hv_history = json.load(f).get('hv_history', [])
+                with open(cs_path) as f:
+                    cs = json.load(f)
+                hv_history = cs.get('hv_history') or []
+                eps_history = [np.inf if e is None else e for e in (cs.get('eps_history') or [])]
+                obj_norm = cs.get('obj_norm')
+                prev_front_norm = cs.get('prev_front_norm')
             except Exception:
-                hv_history = []
-        # Truncate to the completed generations only.
+                pass
+        if not hv_history:
+            hv_path = folder / 'hv_history.json'
+            if hv_path.exists():
+                try:
+                    with open(hv_path) as f:
+                        hv_history = json.load(f).get('hv_history', [])
+                except Exception:
+                    hv_history = []
+        # Truncate histories to the completed generations only.
         hv_history = hv_history[:last_n + 1]
+        eps_history = eps_history[:last_n + 1]
 
         pareto_history = []
         ph_path = folder / 'pareto_history.csv'
@@ -394,6 +470,9 @@ class Optimisation:
         return {
             'df_global': df_global,
             'hv_history': hv_history,
+            'eps_history': eps_history,
+            'obj_norm': obj_norm,
+            'prev_front_norm': prev_front_norm,
             'pareto_history': pareto_history,
             'last_n': last_n,
         }
@@ -412,6 +491,11 @@ class Optimisation:
         if resume_state is not None:
             self.df_global = resume_state['df_global']
             self.hv_history = resume_state['hv_history']
+            self.eps_history = resume_state['eps_history']
+            on = resume_state.get('obj_norm')
+            self._obj_norm = (np.array(on[0]), np.array(on[1])) if on else None
+            pf = resume_state.get('prev_front_norm')
+            self._prev_front_norm = np.array(pf) if pf else None
             self.pareto_history = resume_state['pareto_history']
             start_n = resume_state['last_n'] + 1
 
@@ -454,23 +538,19 @@ class Optimisation:
             if df is None:
                 return
 
-            # Check convergence: relative HV change below tolerance
-            # for hv_consecutive generations in a row
-            if len(self.hv_history) >= 2:
-                hv_cur = self.hv_history[-1]
-                hv_prev = self.hv_history[-2]
-                rel_change = abs(hv_cur - hv_prev) / max(abs(hv_cur), 1e-30)
-
-                k = self.hv_consecutive
-                if len(self.hv_history) >= k + 1:
-                    hv_arr = np.array(self.hv_history[-(k + 1):])
-                    recent_changes = np.abs(np.diff(hv_arr)) / np.maximum(np.abs(hv_arr[1:]), 1e-30)
-                    if np.all(recent_changes < self.hv_tol):
-                        info(f"Converged at generation {n}: relative HV change < {self.hv_tol} "
-                             f"for {k} consecutive generations.")
-                        converged = True
-                        bar.update(self.ng_max - n)
-                        break
+            # Convergence: eps-progress (additive eps-indicator between successive fronts)
+            # below tolerance for eps_consecutive generations. Reference-free and
+            # monotonically decaying to 0 as the front stabilises -- unlike the
+            # moving-reference hypervolume, which could never drop below its tolerance.
+            k = self.eps_consecutive
+            if len(self.eps_history) >= k:
+                recent = np.array(self.eps_history[-k:])
+                if np.all(np.isfinite(recent)) and np.all(recent < self.eps_tol):
+                    info(f"Converged at generation {n}: eps-progress < {self.eps_tol} for "
+                         f"{k} consecutive generations (Pareto front no longer improving).")
+                    converged = True
+                    bar.update(self.ng_max - n)
+                    break
 
             # Birth next generation from current population
             # Use n+1 so offspring keys match the generation they'll be evaluated in
@@ -542,18 +622,39 @@ class Optimisation:
         else:
             spawn_folder = str(Path(self.cav.self_dir) / 'optimisation')
 
-        # Map each bounds name to *this model's* parameter key, via the same
+        # Map each bounds name to *this model's* parameter key(s), via the same
         # resolver the tuner uses: A -> A_m (elliptical mid-cell), A -> A_el
         # (end cell), Ri -> Ri (pillbox), R6 -> R6 (gun). So optimisation is
         # driven by the model's own tune variables, not a hardcoded A..Req list.
-        param_map = {v: _resolve_suffixed_var(v, self.cell_type, self.cav)
-                     for v in self.bounds.keys()}
-        df_spawn = df.rename(columns={k: v for k, v in param_map.items() if k in df.columns})
+        # The end-cell alias fans a single variable out to BOTH ends, tied:
+        # A_e -> A_el AND A_er (same value), keeping the cavity symmetric.
+        df_spawn = df.copy()
+        for v in self.bounds.keys():
+            if v not in df_spawn.columns:
+                continue
+            targets = _resolve_opt_columns(v, self.cell_type, self.cav)
+            for t in targets:
+                df_spawn[t] = df[v]
+            if v not in targets:                  # consumed alias / renamed column
+                df_spawn.drop(columns=[v], inplace=True)
         cavs_object = self.cav.spawn(df_spawn, spawn_folder)
         cavs_dict = cavs_object.cavities_dict
 
-        # Run tuning (which internally runs eigenmode after adjusting the tune parameter)
-        self.run_tune_opt(cavs_dict, self.tune_config)
+        # Run tuning (which internally runs eigenmode). A 2-cell tune returns a
+        # FAMILY, fanned out here into one pre-tuned pseudo-candidate per member;
+        # each becomes its own objective row. Members of a candidate share the shape
+        # (bounds) variables, so a ``_family_split`` column keeps them distinct through
+        # the duplicate-drop and ranking below (full fan-out: N rows per candidate).
+        eval_cavs, parent_map = self.run_tune_opt(cavs_dict, self.tune_config)
+        if parent_map and set(parent_map) != set(cavs_dict):
+            fam_rows = []
+            for mkey, pkey in parent_map.items():
+                row = df.loc[pkey].copy()
+                row.name = mkey
+                row['_family_split'] = int(mkey.split('::m')[1]) if '::m' in str(mkey) else 0
+                fam_rows.append(row)
+            df = pd.DataFrame(fam_rows)
+        cavs_dict = eval_cavs
 
         # Get successfully tuned geometries. Post-refactor, tune artefacts
         # live at <self_dir>/tuned/tune_info/tune_res.json keyed by cell
@@ -720,8 +821,13 @@ class Optimisation:
         # Merge with global (elite archive) dataframe
         if not self.df_global.empty:
             df = pd.concat([self.df_global, df], ignore_index=True)
-            # Drop exact duplicates that may arise from elitism
-            df = df.drop_duplicates(subset=list(self.bounds.keys()), keep='first').reset_index(drop=True)
+            # Drop exact duplicates that may arise from elitism. Family members of the
+            # same candidate share the bounds variables, so keep ``_family_split`` in
+            # the identity (when fanned out) or they would collapse to one design.
+            dedup_subset = list(self.bounds.keys())
+            if '_family_split' in df.columns:
+                dedup_subset = dedup_subset + ['_family_split']
+            df = df.drop_duplicates(subset=dedup_subset, keep='first').reset_index(drop=True)
 
         # Rank shapes by objectives
         df['total_rank'] = 0.0
@@ -748,47 +854,35 @@ class Optimisation:
 
         df = df.sort_values(by=['total_rank']).reset_index(drop=True)
 
-        # Pareto front
+        # Pareto front (sets self.poc; reorder puts the non-dominated rows first)
         reorder_indx, pareto_indx_list = self.pareto_front(df)
+        df = df.loc[reorder_indx, :].dropna().reset_index(drop=True)
 
-        # Estimate convergence via hypervolume indicator
-        if self.uq_config:
-            obj_cols = [_uq_col_name(o) for o in self.objectives]
-        else:
-            obj_cols = self.objective_vars
+        # Objectives as a minimised array for the surviving set and its Pareto front,
+        # normalised on a scale fixed at the FIRST front so hypervolume and eps stay
+        # comparable across generations.
+        min_all = self._min_transform(df)
+        front_min = min_all[self._nondominated_mask(min_all)]
+        if len(front_min) > 0:
+            front_norm = self._normalise(front_min, set_scale=(self._obj_norm is None))
 
-        pareto_vals = df.loc[pareto_indx_list, obj_cols].values.copy()
-        if len(pareto_vals) > 0:
-            # Transform all objectives to minimisation so hypervolume is well-defined:
-            #   min  → keep as-is
-            #   max  → negate (minimise the negative)
-            #   equal → use |value - target| (minimise distance)
-            for i, obj in enumerate(self.objectives):
-                if obj[0] == 'max':
-                    pareto_vals[:, i] = -pareto_vals[:, i]
-                elif obj[0] == 'equal':
-                    pareto_vals[:, i] = np.abs(pareto_vals[:, i] - obj[2])
-
-            # Set reference point on first generation; expand if later fronts exceed it
-            obj_max = np.max(pareto_vals, axis=0)
+            # Hypervolume: a LOGGED quality metric only, against a reference fixed ONCE
+            # (never expanded, so HV stays comparable). Points beyond it contribute nothing.
             if self.hv_ref is None:
-                obj_min = np.min(pareto_vals, axis=0)
-                span = obj_max - obj_min
-                margin = np.where(span > 0, 0.1 * span, 0.1 * np.abs(obj_max) + 1.0)
-                self.hv_ref = obj_max + margin
-            elif np.any(obj_max > self.hv_ref):
-                # A Pareto point exceeds the reference — expand it so no point is lost
-                new_ref = np.maximum(self.hv_ref, obj_max * 1.1 + 1.0)
-                info(f"Expanding HV reference point: {self.hv_ref} -> {new_ref}")
-                self.hv_ref = new_ref
+                self.hv_ref = np.full(front_norm.shape[1], 1.1)
+            self.hv_history.append(compute_hypervolume(front_norm, self.hv_ref))
 
-            hv = compute_hypervolume(pareto_vals, self.hv_ref)
-            self.hv_history.append(hv)
+            # eps-progress: the CONVERGENCE signal -- how far the previous front must shift
+            # to cover the current one (additive eps-indicator, normalised). Decays to 0.
+            self.eps_history.append(self._additive_epsilon(self._prev_front_norm, front_norm))
+            self._prev_front_norm = front_norm
 
-        df = df.loc[reorder_indx, :]
-        df = df.dropna().reset_index(drop=True)
-
+        # Bounded elite archive: NSGA-II environmental selection to <= archive_size.
+        # Keeps the non-dominated front (F1) first, so the first self.poc rows stay the
+        # Pareto front for saving/plotting.
+        df, min_all = self._truncate_archive(df, min_all)
         self.df_global = df
+        self.poc = int(self._nondominated_mask(min_all).sum())
 
         if self.df_global.shape[0] == 0:
             error("Unfortunately, none survived the constraints and the program has to end.")
@@ -828,6 +922,20 @@ class Optimisation:
                 }
                 with open(save_folder / 'objective_meta.json', 'w') as f:
                     json.dump(obj_meta, f, indent=2)
+
+                # Persist convergence state EVERY generation so an interrupted run can
+                # resume fully stateful (hv/eps histories + the fixed normalisation and
+                # last front the eps-progress criterion needs). inf (first eps) -> None.
+                conv_state = {
+                    'hv_history': self.hv_history,
+                    'eps_history': [None if not np.isfinite(e) else e for e in self.eps_history],
+                    'obj_norm': ([self._obj_norm[0].tolist(), self._obj_norm[1].tolist()]
+                                 if self._obj_norm is not None else None),
+                    'prev_front_norm': (self._prev_front_norm.tolist()
+                                        if self._prev_front_norm is not None else None),
+                }
+                with open(save_folder / 'convergence_state.json', 'w') as f:
+                    json.dump(conv_state, f)
             except Exception:
                 pass
 
@@ -855,25 +963,53 @@ class Optimisation:
         if to_tune:
             run_tune_parallel(to_tune, tune_config)
 
-        # After tuning, each candidate has a <self_dir>/tuned/ folder.
-        # Force-refresh the lazy `.tuned` accessor (the parent process's
-        # cavity objects were not mutated by the mp children) and then
-        # run eigenmode on the *tuned* cavities so qois.json lands in
-        # <self_dir>/tuned/eigenmode/.
-        tuned_cavs_dict = {}
+        # Build the evaluation set. A 2-cell tune leaves a *family* (family.json);
+        # fan it out into one pre-tuned pseudo-candidate per member -- each with its
+        # own workspace and tuned/ folder -- so the existing objective collection
+        # evaluates every member (full fan-out: N objective rows per candidate).
+        # A single-design tune (equal_cell_freq=True or non-2-cell) yields one entry.
+        # Returns ``(eval_cavs, parent_map)``: eval_cavs is keyed by the (possibly
+        # fanned) evaluation key, parent_map maps each back to its spawn candidate.
+        eval_cavs = {}
+        parent_map = {}
         for key, cav in cav_dict.items():
             cav._tuned_cavity = None  # force lazy reload from disk
-            tuned = cav.tuned
-            if tuned is not None:
-                tuned_cavs_dict[key] = tuned
+            fam_path = Path(cav.self_dir) / 'tuned' / 'tune_info' / 'family.json'
+            if fam_path.exists():
+                with open(fam_path) as f:
+                    manifest = json.load(f)
+                for i, (mcav, meta) in enumerate(zip(cav.tune.family, manifest['members'])):
+                    mkey = f'{key}::m{i}'
+                    mdir = Path(cav.self_dir) / 'family' / f'm{i}'
+                    mcav.set_workspace(str(mdir))
+                    tinfo = mdir / 'tuned' / 'tune_info'
+                    tinfo.mkdir(parents=True, exist_ok=True)
+                    with open(tinfo / 'tune_res.json', 'w') as f:
+                        json.dump({'family': {'parameters': meta['parameters'],
+                                              'TUNED VARIABLES': ['Req_m', 'L_el'],
+                                              'FREQ': meta['FREQ']}}, f, indent=4, default=str)
+                    with open(tinfo / 'tuned_parameters.json', 'w') as f:
+                        json.dump(meta['parameters'], f, indent=4, default=str)
+                    with open(tinfo / 'tune_status.json', 'w') as f:
+                        json.dump({'status': 'converged', 'reason': 'family member',
+                                   'target_freq': manifest['target_freq']}, f, indent=4, default=str)
+                    mcav._tuned_cavity = None
+                    if mcav.tuned is not None:
+                        eval_cavs[mkey] = mcav
+                        parent_map[mkey] = key
+            elif cav.tuned is not None:
+                eval_cavs[key] = cav
+                parent_map[key] = key
 
-        if tuned_cavs_dict and self.eigenmode_config:
+        if eval_cavs and self.eigenmode_config:
             eig_cfg = dict(self.eigenmode_config)
             eig_cfg['target'] = run_eigenmode_s
             # On resume, let eigenmode reuse any pre-existing qois.json.
             if self.resume:
                 eig_cfg.setdefault('rerun', False)
+            tuned_cavs_dict = {k: c.tuned for k, c in eval_cavs.items() if c.tuned is not None}
             run_eigenmode_parallel(tuned_cavs_dict, eig_cfg, self.projectDir)
+        return eval_cavs, parent_map
 
     @staticmethod
     def _candidate_tune_complete(cav):
@@ -1146,6 +1282,83 @@ class Optimisation:
             filename = Path(filename)
             filename = filename.with_name(f'{filename.stem}_1.xlsx')
             self.recursive_save(df, filename, pareto_index)
+
+    # ---- bounded-archive + eps-progress helpers (NSGA-II-style selection) ----
+
+    def _min_transform(self, df):
+        """Objective columns of *df* as a minimisation array: 'max' negated, 'equal'
+        -> |value - target|, 'min' unchanged. One column per objective."""
+        cols = ([_uq_col_name(o) for o in self.objectives] if self.uq_config
+                else self.objective_vars)
+        vals = df.loc[:, cols].to_numpy(dtype=float).copy()
+        for i, obj in enumerate(self.objectives):
+            if obj[0] == 'max':
+                vals[:, i] = -vals[:, i]
+            elif obj[0] == 'equal':
+                vals[:, i] = np.abs(vals[:, i] - obj[2])
+        return vals
+
+    def _normalise(self, min_vals, set_scale=False):
+        """Normalise minimised objectives to ~[0, 1] using a range fixed on the first
+        front (``set_scale``), so hypervolume and eps are comparable across generations."""
+        if set_scale or self._obj_norm is None:
+            lo, hi = np.min(min_vals, axis=0), np.max(min_vals, axis=0)
+            span = np.where(hi - lo > 1e-30, hi - lo, 1.0)
+            self._obj_norm = (lo, span)
+        lo, span = self._obj_norm
+        return (min_vals - lo) / span
+
+    @staticmethod
+    def _nondominated_mask(pts):
+        """Boolean mask of the non-dominated rows of *pts* (all objectives minimised)."""
+        if len(pts) == 0:
+            return np.zeros(0, dtype=bool)
+        return np.asarray(paretoset(pts, sense=['min'] * pts.shape[1]), dtype=bool)
+
+    @staticmethod
+    def _crowding_distance(pts):
+        """NSGA-II crowding distance for a set of (minimised) objective vectors."""
+        n = len(pts)
+        if n <= 2:
+            return np.full(n, np.inf)
+        cd = np.zeros(n)
+        for j in range(pts.shape[1]):
+            order = np.argsort(pts[:, j])
+            cd[order[0]] = cd[order[-1]] = np.inf
+            span = pts[order[-1], j] - pts[order[0], j]
+            if span > 0:
+                cd[order[1:-1]] += (pts[order[2:], j] - pts[order[:-2], j]) / span
+        return cd
+
+    def _truncate_archive(self, df, min_vals):
+        """Environmental selection: keep at most ``archive_size`` rows via non-dominated
+        sort + crowding distance (NSGA-II). Returns the truncated (df, min_vals)."""
+        if self.archive_size is None or len(df) <= self.archive_size:
+            return df, min_vals
+        remaining = np.arange(len(df))
+        kept = []
+        while len(kept) < self.archive_size and len(remaining):
+            nd = self._nondominated_mask(min_vals[remaining])
+            front = remaining[nd]
+            if len(kept) + len(front) <= self.archive_size:
+                kept.extend(front.tolist())
+                remaining = remaining[~nd]
+            else:
+                need = self.archive_size - len(kept)
+                cd = self._crowding_distance(min_vals[front])
+                kept.extend(front[np.argsort(-cd)[:need]].tolist())
+                break
+        kept = np.array(kept, dtype=int)
+        return df.iloc[kept].reset_index(drop=True), min_vals[kept]
+
+    @staticmethod
+    def _additive_epsilon(prev, cur):
+        """Additive eps-indicator I_eps+(prev, cur): the smallest shift the PREVIOUS front
+        must take to weakly dominate the CURRENT one (objectives minimised + normalised).
+        > 0 while the front keeps improving; -> 0 at convergence. Reference-free."""
+        if prev is None or len(prev) == 0 or len(cur) == 0:
+            return np.inf
+        return float(max(np.min(np.max(prev - c, axis=1)) for c in cur))
 
     def pareto_front(self, df):
         if self.uq_config:

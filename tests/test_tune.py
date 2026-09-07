@@ -1,5 +1,6 @@
 """Tuning regression: an elliptical mid-cell tunes its equator radius to hit a
 target frequency, and the tuned cavity is reachable via ``cav.tuned``."""
+import json
 import os
 
 import numpy as np
@@ -446,3 +447,77 @@ def test_flattop_create_accepts_the_tuner_mode_keyword(project_dir):
     from cavsim2d import EllipticalCavityFlatTop
     sig = inspect.signature(EllipticalCavityFlatTop.create)
     assert 'mode' in sig.parameters and 'tune' not in sig.parameters
+
+
+def test_qoi_tune_over_constrained_raises(project_dir):
+    """A qoi_targets tune with more targets than variables is over-determined and is
+    refused (before any eigensolve)."""
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'oc'))
+    with pytest.raises(ValueError, match='[Oo]ver-constrained'):
+        cav.tune.run({'freqs': 801.58, 'cell_type': {'end-cell': ['Req']},
+                      'qoi_targets': {'R/Q [Ohm]': 157.0}, 'rerun': True})
+
+
+def test_qoi_tune_two_cell_hits_freq_and_rq(project_dir):
+    """Equality QoI target in the tune config: the 2-cell (Req, L) tune lands on both
+    freq and R/Q, driven purely through the ordinary config API."""
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'sq'))
+    cav.tune.run({'freqs': 801.58,
+                  'cell_type': {'end-cell': ['Req', 'L']},
+                  'qoi_targets': {'R/Q [Ohm]': 157.0},
+                  'eigenmode_config': {'mesh_config': {'h': 18, 'p': 2}},
+                  'rerun': True})
+    assert cav.tuned is not None
+    res = cav.tune_results['qoi']
+    assert abs(res['FREQ'] - 801.58) < 0.2
+    assert abs(res['QOIS']['R/Q [Ohm]'] - 157.0) < 1.0
+    assert 'Req_el' in res['parameters'] and res['parameters']['Req_el'] != MIDCELL[6]
+
+
+def test_qoi_tune_records_suffixed_variables_for_optimiser(project_dir):
+    """The optimiser reads the tuned value via get_tune_value(TUNED VARIABLES[-1]); the
+    QoI stage must record the model's SUFFIXED names (Req_el, L_el) like the frequency
+    stage, or that read KeyErrors and aborts the whole generation (regression)."""
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'sv'))
+    cav.tune.run({'freqs': 801.58, 'cell_type': {'end-cell': ['Req', 'L']},
+                  'qoi_targets': {'R/Q [Ohm]': 157.0},
+                  'eigenmode_config': {'mesh_config': {'h': 18, 'p': 2}}})
+    tv = cav.tune_results['qoi']['TUNED VARIABLES']
+    assert tv and all(v.endswith(('_m', '_el', '_er')) for v in tv), tv
+    # the exact optimiser read path (optimisation.py get_tune_value(tuned_vars[-1]))
+    assert cav.tuned.get_tune_value(tv[-1]) == cav.tuned.parameters[tv[-1]]
+
+
+# Ri=72 makes the end cup reachable at the shared Req (the staged tune needs a feasible geometry).
+_CELL_72 = [62.22, 66.13, 30.22, 23.11, 72, 93.5, 171.20]
+
+
+def test_staged_qoi_tune_reports_no_solution(project_dir):
+    """A 5-cell whose mid cups already exceed the requested total R/Q has no solution;
+    the staged tune stops cleanly (no tuned cavity, status 'failed') not a bad geometry."""
+    cav = EllipticalCavity(5, _CELL_72, _CELL_72, _CELL_72, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'ns'))
+    cav.tune.run({'freqs': 801.58, 'qoi_targets': {'R/Q [Ohm]': 300},
+                  'cell_type': {'mid-cell': 'Req', 'end-cell': ['L', 'A']},
+                  'eigenmode_config': {'mesh_config': {'h': 18, 'p': 2}}})
+    assert cav.tuned is None
+    status = json.load(open(os.path.join(cav.self_dir, 'tuned', 'tune_info', 'tune_status.json')))
+    assert status['status'] == 'failed'
+
+
+def test_staged_qoi_tune_hits_total(project_dir):
+    """Staged n>2 tune lands the assembled total R/Q within a few % of target (cup
+    additivity) and records both per-cup stages on the convergence."""
+    cav = EllipticalCavity(5, _CELL_72, _CELL_72, _CELL_72, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'st5'))
+    cav.tune.run({'freqs': 801.58, 'qoi_targets': {'R/Q [Ohm]': 450},
+                  'cell_type': {'mid-cell': 'Req', 'end-cell': ['L', 'A']},
+                  'eigenmode_config': {'mesh_config': {'h': 18, 'p': 2}}})
+    assert cav.tuned is not None
+    st = cav.tune_results['staged']
+    assert abs(st['QOIS']['R/Q [Ohm]'] - 450) / 450 < 0.03
+    stages = set(cav.tune.convergence['stage'].str.split(':').str[0])
+    assert {'mid freq', 'end R/Q'} <= stages

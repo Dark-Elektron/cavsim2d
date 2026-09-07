@@ -13,11 +13,11 @@ import warnings
 # keys the run functions inject internally, so validation flags typos without
 # false positives.
 EIGENMODE_KEYS = {
-    'processes', 'rerun', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
+    'processes', 'rerun', 'force', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
     'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
     'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
-    'opt', 'target', 'solver_save_directory',
+    'opt', 'target', 'solver_save_directory', 'preconditioner', 'freq_only',
 }
 UQ_KEYS = {
     'variables', 'objectives', 'delta', 'epsilon', 'processes', 'distribution',
@@ -26,21 +26,25 @@ UQ_KEYS = {
     'independent_half_cells',
 }
 WAKEFIELD_KEYS = {
-    'processes', 'rerun', 'MROT', 'polarisation', 'wakelength', 'bunch_length',
+    'processes', 'rerun', 'force', 'MROT', 'polarisation', 'wakelength', 'bunch_length',
     'MT', 'NFS', 'DDR_SIG', 'DDZ_SIG', 'operating_points', 'uq_config',
     'beam_config', 'wake_config', 'mesh_config', 'target', 'LCPUTM',
     'save_fields', 'objectives', 'opt', 'solver_save_directory',
-    'contour_ds', 'beampipe_length', 'solver',
+    'contour_ds', 'beampipe_length', 'solver', 'cutoff',
 }
 TUNE_KEYS = {
     'freqs', 'freq', 'cell_type', 'cell_types', 'parameters', 'processes',
-    'rerun', 'eigenmode_config', 'tolerance', 'tol', 'maxiter', 'uq_config',
+    'rerun', 'force', 'eigenmode_config', 'tolerance', 'tol', 'maxiter', 'uq_config',
+    'equal_cell_freq', 'n_family', 'family_fraction', 'qoi_targets', 'qoi_split',
+    'qoi_tol', 'qoi_stage2', 'qoi_maxit',
 }
 OPTIMISATION_KEYS = {
     'initial_points', 'no_of_generation', 'no_of_generations', 'method',
     'bounds', 'objectives', 'tune_config', 'mutation_factor', 'crossover_factor',
     'elites_for_crossover', 'chaos_factor', 'weights', 'seed', 'mutation_sigma',
-    'eta_sbx', 'resume', 'mid-cell',
+    'eta_sbx', 'resume', 'mid-cell', 'eigenmode_config', 'wakefield_config',
+    'hv_tol', 'hv_consecutive', 'archive_size', 'eps_tol', 'eps_consecutive',
+ 'beampipe',
 }
 
 # Keys people commonly mistype -> the key the code actually reads.

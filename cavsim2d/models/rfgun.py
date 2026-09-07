@@ -178,7 +178,7 @@ class RFGun(Cavity):
             z, r = z, r - x
             prof.line_to(z, r, 'PMC')                                 # exit aperture
             prof.close('AXI')
-            return prof
+            return self._chained(prof)
 
         if str(self.beampipe).lower() in ('left', 'both'):
             # Cathode-side beam pipe (mirrors the built-in exit drift, so a

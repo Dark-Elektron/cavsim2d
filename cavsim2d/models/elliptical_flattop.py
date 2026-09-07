@@ -189,7 +189,7 @@ class EllipticalCavityFlatTop(Cavity):
 
         step = 0.005
 
-        L_bp = 4 * L_m
+        L_bp = 2 * L_m
         if dimension or contour:
             L_bp = 1 * L_m
 
@@ -724,9 +724,10 @@ class EllipticalCavityFlatTop(Cavity):
         except (KeyError, TypeError, ValueError):
             return None
         try:
-            return elliptical_profile(cells['m'], cells['el'], cells['er'],
+            prof = elliptical_profile(cells['m'], cells['el'], cells['er'],
                                       self.n_cells, self.beampipe,
                                       flattop=True, name='elliptical_flattop')
+            return self._chained(prof)
         except (DegenerateGeometry, ValueError):
             return None
 

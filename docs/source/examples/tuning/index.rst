@@ -9,3 +9,5 @@ Tuning a cavity's geometry so its fundamental mode lands on a target frequency.
    tune_to_frequency
    multicell
    cavity_types
+   unreachable_target
+   two_cell_design_family

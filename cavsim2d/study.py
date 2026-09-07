@@ -752,8 +752,19 @@ class Study:
         if ('cell_type' not in tune_config.keys()
                 and 'parameters' not in tune_config.keys()
                 and 'cell_types' not in tune_config.keys()):
-            tune_config['cell_type'] = {'mid-cell': 'Req'}
-            info('"cell_type" not entered, defaulting to {"mid-cell": "Req"}')
+            # Match the default the optimiser applies (Optimisation.__init__):
+            # a multi-cell cavity with per-cell suffixes gets the field-flat
+            # recipe -- mid-cell Req, end-cell L -- so run_tune and
+            # run_optimisation do the same thing when cell_type is omitted.
+            # A single cell has no end cells, so it keeps the mid-cell stage.
+            multicell = any(getattr(cav, 'uses_cell_suffixes', False)
+                            and (cav.n_cells or 1) >= 2
+                            for cav in self.cavities_list)
+            if multicell:
+                tune_config['cell_type'] = {'mid-cell': 'Req', 'end-cell': 'L'}
+            else:
+                tune_config['cell_type'] = {'mid-cell': 'Req'}
+            info(f'"cell_type" not entered, defaulting to {tune_config["cell_type"]}')
 
         # Validate by normalising (raises if the dict shape is wrong).
         normalize_cell_type_config(tune_config)

@@ -19,6 +19,11 @@ from cavsim2d.utils.config_validation import require
 ngsolve_mevp = NGSolveMEVP()
 file_color = 'cyan'
 
+
+class _TargetFreqReached(Exception):
+    """Raised inside the secant to stop as soon as the FREQUENCY is within
+    tolerance — decoupling frequency convergence from the tune-variable step."""
+
 DEBUG = True
 
 
@@ -89,8 +94,15 @@ class PyTuneNGSolve:
         self.target_freq = self.cav.shape['FREQ']
         self.tune_var = self.tune_config['parameters']
 
+        # `tol` is the FREQUENCY tolerance [MHz] — tuning stops when the frequency is
+        # within it. `var_tol` is the SEPARATE tune-variable step tolerance the secant
+        # uses; make it tight so the secant keeps refining until the frequency (not the
+        # variable step) is met. (Previously the single `tol` bounded both, so the
+        # secant could stop with the frequency still off-target.)
         tol = tune_config.get('tol', 1e-4)
+        var_tol = tune_config.get('var_tol', 1e-8)
         maxiter = tune_config.get('maxiter', 10)
+        self.tol = tol
 
         # Whether this cavity's parameters carry per-cell suffixes (`Req_m`, `Req_el`,
         # `Req_er`). Ask the model, don't compare `kind` strings: `kind` is
@@ -142,14 +154,18 @@ class PyTuneNGSolve:
                     method='secant',
                     x0=x0,
                     x1=x1,
-                    xtol=tol,
-                    rtol=tol,
+                    xtol=var_tol,
+                    rtol=var_tol,
                     maxiter=maxiter
                 )
                 # Final evaluation at converged root
                 self.tune_function(res.root)
             converged = bool(res.converged) if hasattr(res, 'converged') else True
             root_val = res.root
+        except _TargetFreqReached:
+            # Frequency reached within tol before the variable step converged — success.
+            converged = True
+            root_val = self._converged_x
         except ValueError as e:
             # Tuning aborted mid-iteration (e.g., repeated degeneracy).
             error(f'Tune aborted: {e}')
@@ -256,14 +272,47 @@ class PyTuneNGSolve:
             # the duration of the solve.
             if orig_beampipe is not None:
                 self.cav.beampipe = bp
+
+            # ...and pin the OPPOSITE end cell to the mid cell for the same
+            # reason. profile() reads self.parameters live, and for n_cells=1
+            # half_cells() returns [end_l, end_r] -- so without this the end-cell
+            # stage solves end+end (the end cell mirrored onto itself) and never
+            # sees the mid cup it actually adjoins. That is the model
+            # write_endcell_tune_geometry was written to avoid, and its
+            # substitution was being discarded because the solver meshes
+            # profile() rather than the .geo create() just wrote.
+            #
+            # The result is cell 1 of the real cavity in isolation:
+            #   beampipe | end-cup | equator | mid-cup | iris
+            # with PMC at the outer iris plane -- both cut planes are genuine
+            # pi-mode symmetry planes.
+            orig_end_params = None
+            if endcell_tune:
+                other = '_er' if bp == 'left' else '_el'
+                keys = [f'{n}{other}' for n in
+                        ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')]
+                orig_end_params = {k: self.cav.parameters[k]
+                                   for k in keys if k in self.cav.parameters}
+                for k in orig_end_params:
+                    self.cav.parameters[k] = self.cav.parameters[
+                        f'{k[:-len(other)]}_m']
             try:
-                res = ngsolve_mevp.solve(self.cav)
+                # Frequency-only inner solve with the faster BDDC preconditioner: the
+                # secant needs only the frequency, so defer the QOIs/field output to the
+                # final full solve once tuning is complete, and BDDC (~1.4-1.9x faster,
+                # same eigenvalue) is safe for these single monopole solves. (UQ tuning
+                # reads its own uq.json, so keep the full direct solve there.)
+                _eig_cfg = (None if self.tune_config.get('uq_config')
+                            else {'freq_only': True, 'preconditioner': 'bddc'})
+                res = ngsolve_mevp.solve(self.cav, eigenmode_config=_eig_cfg)
             except Exception:
                 res = False
             finally:
                 self.cav.n_cells = orig_n_cells
                 if orig_beampipe is not None:
                     self.cav.beampipe = orig_beampipe
+                if orig_end_params:
+                    self.cav.parameters.update(orig_end_params)
             if not res:
                 degenerate = True
 
@@ -288,6 +337,12 @@ class PyTuneNGSolve:
 
         diff = freq - self.target_freq
         self.abs_err_list.append(abs(diff))
+
+        # Converge on FREQUENCY: stop the secant the moment the frequency is within
+        # tolerance, regardless of how small the tune-variable step is.
+        if abs(diff) <= self.tol:
+            self._converged_x = x_val
+            raise _TargetFreqReached()
 
         return diff
 
