@@ -18,16 +18,17 @@ EIGENMODE_KEYS = {
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
     'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
     'opt', 'target', 'solver_save_directory', 'preconditioner', 'freq_only',
+    'pml_length', 'pml_alpha', 'beampipe_length',
 }
 UQ_KEYS = {
     'variables', 'objectives', 'delta', 'epsilon', 'processes', 'distribution',
     'method', 'cell_type', 'cell_complexity', 'perturbation_mode', 'tune_config',
-    'cell', 'operating_points', 'integration', 'objectives_unprocessed',
+    'cell', 'operating_points', 'objectives_unprocessed',
     'independent_half_cells',
 }
 WAKEFIELD_KEYS = {
     'processes', 'rerun', 'force', 'MROT', 'polarisation', 'wakelength', 'bunch_length',
-    'MT', 'NFS', 'DDR_SIG', 'DDZ_SIG', 'operating_points', 'uq_config',
+    'MT', 'DDR_SIG', 'DDZ_SIG', 'operating_points', 'uq_config',
     'beam_config', 'wake_config', 'mesh_config', 'target', 'LCPUTM',
     'save_fields', 'objectives', 'opt', 'solver_save_directory',
     'contour_ds', 'beampipe_length', 'solver', 'cutoff',
@@ -200,7 +201,7 @@ def validate_wakefield_config(cfg):
     validate_config(cfg, WAKEFIELD_KEYS, 'wakefield_config')
     if isinstance(cfg, dict):
         _check_processes(cfg, 'wakefield_config')
-        for k in ('MT', 'NFS'):
+        for k in ('MT',):
             if k in cfg:
                 require(isinstance(cfg[k], int) and not isinstance(cfg[k], bool),
                         f"wakefield_config: '{k}' must be an integer.")

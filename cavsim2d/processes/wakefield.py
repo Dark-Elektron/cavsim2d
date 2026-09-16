@@ -317,12 +317,17 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir,
         elif obj[1] == "k_kick":
             pass
 
-    df_ZL.loc[:, :] = np.array(ZL).T
-    df_ZT.loc[:, :] = np.array(ZT).T
+    # Build the value frames outright instead of enlarging an empty one via
+    # .loc[:, :]: that assignment only grows a 0-row frame when it has 2+
+    # columns, so a ZL/ZT objective with a SINGLE frequency interval raised
+    # "setting an array element with a sequence" here. Columns were named in
+    # the loop above; reuse them so the order still matches the ZL/ZT rows.
+    if len(ZL) != 0:
+        df_ZL = pd.DataFrame(np.array(ZL).T, columns=list(df_ZL.columns))
+    if len(ZT) != 0:
+        df_ZT = pd.DataFrame(np.array(ZT).T, columns=list(df_ZT.columns))
     df_ZL['key'] = processed_keys_mon
     df_ZT['key'] = processed_keys_dip
-
-    processed_keys = list(set(processed_keys_mon) & set(processed_keys_dip))
 
     if len(ZL) != 0 and len(ZT) != 0:
         df_wake = df_ZL.merge(df_ZT, on='key', how='inner')
@@ -330,6 +335,13 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir,
         df_wake = df_ZL
     else:
         df_wake = df_ZT
+
+    # Read the keys back off df_wake rather than intersecting the two per-
+    # polarisation lists: only the ZL+ZT branch is an intersection, so a
+    # ZL-only (or ZT-only) call used to return an empty list even though
+    # df_wake had rows. Taking the column keeps the two returns consistent
+    # by construction, and in file order rather than set order.
+    processed_keys = df_wake['key'].tolist() if 'key' in df_wake.columns else []
 
     return df_wake, processed_keys
 

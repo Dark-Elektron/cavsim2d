@@ -71,8 +71,17 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         eigenmode_config['processes'] = processes
 
     if 'boundary_conditions' in eigenmode_config:
-        if isinstance(eigenmode_config['boundary_conditions'], str):
-            eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[eigenmode_config['boundary_conditions']]
+        bc = eigenmode_config['boundary_conditions']
+        if isinstance(bc, str):
+            # Name the valid codes rather than raising a bare KeyError: a typo
+            # like 'op' would otherwise either crash uninformatively or, further
+            # down, fall back to a CLOSED cavity and quietly answer the wrong
+            # question.
+            key = bc.strip().lower()
+            require(key in BOUNDARY_CONDITIONS_DICT,
+                    f"unknown boundary_conditions {bc!r}. Use one of "
+                    f"{sorted(BOUNDARY_CONDITIONS_DICT)} (e = PEC, m = PMC, o = open/PML).")
+            eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[key]
     else:
         eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT['mm']
 

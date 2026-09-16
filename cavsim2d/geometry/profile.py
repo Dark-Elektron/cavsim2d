@@ -27,31 +27,68 @@ from scipy.special import comb
 class MaterialRegion:
     """An axisymmetric sub-domain of a :class:`Profile` carrying its own material.
 
-    A region is a rectangular ring in the (z, r) meridian plane — i.e. an annular
-    cylinder in 3D — which covers the shapes dielectric loading actually takes:
-    ceramic windows, dielectric-loaded accelerating liners, absorber rings.
+    Two shapes are expressible. ``z=(z0, z1), r=(r0, r1)`` gives a rectangular
+    ring — an annular cylinder in 3D — covering ceramic windows, dielectric liners
+    and absorber rings. ``points=[(z, r), ...]`` gives an arbitrary closed polygon,
+    which revolves into a solid of revolution: a triangle becomes a **cone**, the
+    shape a beam-tube HOM absorber actually takes (Marhauser, SRF2015 THPB003 — a
+    conical absorber reflects far less than a flat ring above waveguide cutoff).
     Coordinates are in metres, like the rest of the profile.
 
     The region is *clipped* to the profile it is added to, so it may be specified
     generously (e.g. ``r=(0.09, 1.0)`` for "everything outside r = 90 mm"); only
     the part inside the cavity becomes a sub-domain.
 
-    Arbitrary region outlines are the natural extension: give this class a
-    segment chain instead of a rectangle and implement :meth:`to_occ_face` /
-    :meth:`boundary_distance` from it. Nothing outside this class assumes the
-    rectangle.
+    ``z`` and ``r`` are always the region's bounding box, whichever way it was
+    built, so consumers that only need an extent keep working.
     """
 
-    def __init__(self, material, z, r, color=(1.0, 1.0, 0.0)):
+    def __init__(self, material, z=None, r=None, color=(1.0, 1.0, 0.0), points=None):
         self.material = str(material)
         # OCC face colour (r, g, b), default yellow — carried onto the meshed
         # face so the region shows up when the geometry/mesh is drawn.
         self.color = tuple(float(c) for c in color)
+        if points is not None:
+            if z is not None or r is not None:
+                raise ValueError(
+                    f"region {self.material!r}: give either 'points' or 'z'/'r', "
+                    "not both.")
+            pts = [(float(a), float(b)) for a, b in points]
+            if len(pts) > 1 and pts[0] == pts[-1]:
+                pts = pts[:-1]                      # an explicit closing vertex
+            if len(pts) < 3:
+                raise ValueError(
+                    f"region {self.material!r}: 'points' needs at least 3 distinct "
+                    f"(z, r) vertices, got {len(pts)}.")
+            if any(b < 0 for _, b in pts):
+                raise ValueError(
+                    f"region {self.material!r} has a vertex at r < 0; the meridian "
+                    "plane is r >= 0.")
+            # Twice the signed area. Counter-clockwise is forced so the OCC face
+            # matches the rectangle path: a clockwise wire is the classic way to
+            # make netgen's Glue fail silently.
+            n = len(pts)
+            area2 = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
+                        for i in range(n))
+            if abs(area2) < 1e-30:
+                raise ValueError(
+                    f"region {self.material!r}: 'points' encloses zero area.")
+            self.points = pts if area2 > 0 else pts[::-1]
+            self._is_rect = False
+            self.z = (min(a for a, _ in pts), max(a for a, _ in pts))
+            self.r = (min(b for _, b in pts), max(b for _, b in pts))
+            return
+        if z is None or r is None:
+            raise ValueError(
+                f"region {self.material!r}: give 'z' and 'r', or 'points'.")
         if len(z) != 2 or len(r) != 2:
             raise ValueError("region 'z' and 'r' must each be a (lo, hi) pair, "
                              f"got z={z!r}, r={r!r}.")
         self.z = (float(min(z)), float(max(z)))
         self.r = (float(min(r)), float(max(r)))
+        self._is_rect = True
+        self.points = [(self.z[0], self.r[0]), (self.z[1], self.r[0]),
+                       (self.z[1], self.r[1]), (self.z[0], self.r[1])]
         if self.z[0] == self.z[1] or self.r[0] == self.r[1]:
             raise ValueError(
                 f"region {self.material!r} has zero extent (z={self.z}, r={self.r}); "
@@ -61,13 +98,29 @@ class MaterialRegion:
                              "meridian plane is r >= 0.")
 
     def __repr__(self):
-        return f"MaterialRegion({self.material!r}, z={self.z}, r={self.r})"
+        if self._is_rect:
+            return f"MaterialRegion({self.material!r}, z={self.z}, r={self.r})"
+        return f"MaterialRegion({self.material!r}, points={self.points})"
 
     def edges(self):
         """The region outline as a list of ``((z0, r0), (z1, r1))`` line segments."""
-        (z0, z1), (r0, r1) = self.z, self.r
-        c = [(z0, r0), (z1, r0), (z1, r1), (z0, r1)]
-        return [(c[i], c[(i + 1) % 4]) for i in range(4)]
+        c = self.points
+        n = len(c)
+        return [(c[i], c[(i + 1) % n]) for i in range(n)]
+
+    def contains(self, z, r):
+        """Is *(z, r)* inside the region? Even-odd ray casting on the outline."""
+        if not (self.z[0] <= z <= self.z[1] and self.r[0] <= r <= self.r[1]):
+            return False
+        if self._is_rect:
+            return True
+        inside = False
+        for (z0, r0), (z1, r1) in self.edges():
+            if (r0 > r) != (r1 > r):
+                zc = z0 + (r - r0) * (z1 - z0) / (r1 - r0)
+                if z < zc:
+                    inside = not inside
+        return inside
 
     def boundary_distance(self, q):
         """Distance from point *q* to the region's outline."""
@@ -77,8 +130,13 @@ class MaterialRegion:
         """A netgen.occ Face covering the region (before clipping to the profile)."""
         # Deferred: netgen is an optional heavy dependency.
         from netgen.occ import WorkPlane
-        return (WorkPlane().MoveTo(self.z[0], self.r[0])
-                .Rectangle(self.z[1] - self.z[0], self.r[1] - self.r[0]).Face())
+        if self._is_rect:
+            return (WorkPlane().MoveTo(self.z[0], self.r[0])
+                    .Rectangle(self.z[1] - self.z[0], self.r[1] - self.r[0]).Face())
+        wp = WorkPlane().MoveTo(*self.points[0])
+        for zv, rv in self.points[1:]:
+            wp = wp.LineTo(zv, rv)
+        return wp.Close().Face()
 
 
 class Profile:
@@ -429,6 +487,54 @@ class Profile:
         self._segs.append({'kind': 'line', 'i0': i0, 'i1': 0, 'name': boundary})
         return self
 
+    def end_aperture_segments(self, axis_tol=1e-9):
+        """Indices ``(left, right)`` of the two beam-aperture segments.
+
+        An aperture is a ``'PMC'`` segment with an endpoint on the axis: every
+        model draws its end faces that way (up from ``(z_min, 0)`` at the start
+        of the contour, back down to ``(z_max, 0)`` before ``close('AXI')``), so
+        this identifies them without relying on segment order. Either element is
+        ``None`` when that end has no magnetic aperture — a geometry whose end
+        plate is already solid metal, like a closed pillbox.
+        """
+        found = []
+        for idx, s in enumerate(self._segs):
+            if s['name'] != 'PMC':
+                continue
+            r0 = self._pts[s['i0']][1]
+            r1 = self._pts[s['i1']][1]
+            if min(abs(r0), abs(r1)) <= axis_tol:
+                z_mid = 0.5 * (self._pts[s['i0']][0] + self._pts[s['i1']][0])
+                found.append((z_mid, idx))
+        if not found:
+            return None, None
+        found.sort()
+        left = found[0][1]
+        right = found[-1][1]
+        if left == right:                       # a single aperture (one open end)
+            return (left, None) if len(found) == 1 else (left, right)
+        return left, right
+
+    def set_end_conditions(self, left, right):
+        """Retag the end apertures so a requested electric wall reaches the mesh.
+
+        Apertures are built as ``'PMC'``, which is the *natural* (magnetic-wall)
+        condition — nothing has to be done to honour ``'pmc'``. ``'pec'`` is a
+        Dirichlet condition, and the solver selects Dirichlet boundaries by name,
+        so that end must be retagged ``'PEC'`` or the request is silently
+        dropped. Retagging only ever adds to the Dirichlet set, so a default
+        all-``'pmc'`` run meshes exactly as before.
+
+        *left* and *right* are ``'pec'`` or ``'pmc'``. Ends that are already
+        solid metal have no ``'PMC'`` aperture to retag and are left alone: they
+        satisfy ``'pec'`` as built.
+        """
+        i_left, i_right = self.end_aperture_segments()
+        for idx, want in ((i_left, left), (i_right, right)):
+            if idx is not None and str(want).lower() == 'pec':
+                self._segs[idx]['name'] = 'PEC'
+        return self
+
     # -- contour sampling ---------------------------------------------------
 
     def _arc_points(self, seg, n):
@@ -547,8 +653,9 @@ class Profile:
 
     # -- material regions ---------------------------------------------------
 
-    def add_region(self, material, *, z, r, color=(1.0, 1.0, 0.0)):
-        """Add a material sub-domain, an axisymmetric rectangular ring.
+    def add_region(self, material, *, z=None, r=None, points=None,
+                   color=(1.0, 1.0, 0.0)):
+        """Add a material sub-domain: a rectangular ring, or an arbitrary polygon.
 
         ``material`` names the sub-domain — it becomes the mesh material name the
         solver looks up the permittivity by. ``z=(z0, z1)`` and ``r=(r0, r1)`` are
@@ -556,6 +663,12 @@ class Profile:
         fine::
 
             p.add_region('ceramic', z=(0.10, 0.15), r=(0.0, 0.10))
+
+        ``points=[(z, r), ...]`` is an arbitrary closed polygon instead, revolved
+        into a solid of revolution — a triangle becomes a cone::
+
+            p.add_region('absorber',
+                         points=[(0.30, 0.0), (0.42, 0.039), (0.30, 0.039)])
 
         ``color`` is the region's ``(r, g, b)`` face colour (default yellow),
         carried onto the meshed face so the region is visible when the geometry or
@@ -573,7 +686,8 @@ class Profile:
         if any(reg.material == material for reg in self._regions):
             raise ValueError(f"a region named {material!r} was already added to "
                              f"profile {self.name!r}.")
-        self._regions.append(MaterialRegion(material, z, r, color=color))
+        self._regions.append(MaterialRegion(material, z, r, color=color,
+                                            points=points))
         return self
 
     def regions(self):
@@ -713,10 +827,17 @@ class Profile:
             rface = reg.to_occ_face()
             piece = rest * rface                       # clip to what is still free
             if not len(piece.faces):
+                zs = [p[0] for p in self.points]
+                rs = [p[1] for p in self.points]
                 raise ValueError(
                     f"material region {reg.material!r} (z={reg.z}, r={reg.r}) does not "
-                    f"overlap profile {self.name!r} — check the units (metres) and that "
-                    "the region is not already fully covered by an earlier region.")
+                    f"overlap profile {self.name!r}, which spans "
+                    f"z={min(zs):.6g}..{max(zs):.6g}, r={min(rs):.6g}..{max(rs):.6g} "
+                    f"(metres). Check the units, and that the region is not already "
+                    f"fully covered by an earlier one. If it was positioned for a "
+                    f"LONGER beam pipe, this profile was built without one: pass the "
+                    f"same beampipe_length to profile()/show_geometry() that "
+                    f"eigenmode_config['beampipe_length'] sets.")
             piece.name = reg.material
             # Colour the region's faces (default yellow) so a dielectric is visible
             # when the geometry/mesh is drawn (e.g. ngsolve Draw). Cosmetic only —
@@ -879,7 +1000,10 @@ class Profile:
             nr = max(2, int(np.ceil((reg.r[1] - reg.r[0]) / h)) + 1)
             for zv in np.linspace(reg.z[0], reg.z[1], nz):
                 for rv in np.linspace(reg.r[0], reg.r[1], nr):
-                    mp.RestrictH(x=float(zv), y=float(rv), z=0, h=h)
+                    # The grid spans the bounding box, so a polygon has to reject
+                    # its outside or the sizing leaks into the surrounding vacuum.
+                    if reg.contains(float(zv), float(rv)):
+                        mp.RestrictH(x=float(zv), y=float(rv), z=0, h=h)
 
     def mesh(self, maxh, order=1, edge_maxh=None, region_maxh=None):
         """Return a boundary-tagged NGSolve mesh of the profile.

@@ -1,3 +1,4 @@
+import inspect
 import json
 import functools
 import gc
@@ -19,6 +20,8 @@ from ngsolve.webgui import Draw
 from ngsolve.comp import VorB # type: ignore
 from netgen.occ import *
 from netgen.occ import OCCGeometry
+from ngsolve import pml as ngpml
+from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT, BC_DIGIT
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,6 +64,25 @@ ARNOLDI_MAX_PASSES = 3
 # so the weight is clamped rather than evaluated (the axis is measure-zero in
 # every integral that uses it).
 AXIS_EPS = 1e-9
+
+# numpy renamed trapz -> trapezoid; resolve once, at import.
+_TRAPZ = getattr(np, 'trapezoid', None) or np.trapz
+
+# Dirichlet sets. A PML block's outer wall is terminated (the field is already damped
+# to nothing there) and its axis carries the same u_phi = r*E_phi = 0 condition as the
+# physical axis. Naming boundaries that a closed mesh does not have is a no-op, so one
+# pair of patterns serves both mesh kinds.
+DIRICHLET_E = "PEC|PML_WALL"
+DIRICHLET_PHI = "PEC|AXI|PML_WALL|PML_AXIS"
+
+
+def parse_boundary_conditions(bc):
+    """Parse 2-digit integer or string BC into (left_bc, right_bc) where each is 'open', 'pec', or 'pmc'."""
+    if isinstance(bc, str):
+        bc = BOUNDARY_CONDITIONS_DICT.get(bc.lower(), 33)
+    bc_str = f"{int(bc):02d}"
+    left_digit, right_digit = int(bc_str[0]), int(bc_str[1])
+    return BC_DIGIT.get(left_digit, 'pmc'), BC_DIGIT.get(right_digit, 'pmc')
 
 
 def mesh_h_metres(mesh_config, default=20):
@@ -566,29 +588,262 @@ class NGSolveMEVP:
 
         return self.step_geo, self.ngmesh, self.bcs
 
-    def _build_mesh(self, cav, maxh, order):
+    def set_pml(self, cav, maxh, order, bc_left, bc_right, Lpml=None, alpha=1j):
+        """Mesh *cav* with PML (perfectly matched layer) blocks on the OPEN pipe ends.
+
+        Built with **netgen.occ**: the physical domain is the profile's own exact OCC
+        face (arcs and splines preserved, same geometry the closed solve uses) and each
+        open end gets a rectangular PML block ``Glue``-d onto the pipe mouth, so netgen
+        meshes the interface conformally.
+
+        The complex stretch is applied with a SINGLE ``pml.Cartesian`` whose box is the
+        PHYSICAL z-extent. ``Cartesian`` stretches everything OUTSIDE its box, so one
+        box covers both blocks (z < zL and z > zR) and never stretches r. Handing it a
+        box equal to the PML block instead — the natural-looking mistake — leaves the
+        block entirely unstretched: an absorbing layer that absorbs nothing, i.e. a
+        longer CLOSED cavity whose extra box resonances masquerade as cavity modes.
+
+        PML boundaries are named ``PML_WALL`` / ``PML_AXIS``, deliberately NOT
+        ``PEC``/``AXI``, so the wall-loss and accelerating-voltage integrals — which
+        select boundaries by those names — keep seeing the physical cavity only.
+        """
+        maker = getattr(cav, 'profile', None)
+        profile = maker() if callable(maker) else None
+        if profile is None:
+            raise RuntimeError(
+                f"{type(cav).__name__} {cav.name!r} has no profile(), which the open "
+                "(PML) boundary condition needs in order to build the absorbing blocks.")
+        if profile.regions():
+            raise RuntimeError(
+                "open (PML) boundaries are not supported together with dielectric "
+                "regions: solve with closed boundaries, or drop the dielectric.")
+
+        # Wall only — skipping the axis AND the two PMC end caps means the contour now
+        # starts/ends at the pipe MOUTHS, which is exactly where a PML block attaches.
+        pts = profile.contour_points(maxh, skip=('AXI', 'PMC'))
+        if not pts:
+            raise RuntimeError(
+                f"profile {profile.name!r} has no wall contour once the axis and pipe "
+                "end caps are removed, so there is no pipe mouth to terminate.")
+        zL = min(p[0] for p in pts)
+        zR = max(p[0] for p in pts)
+        ztol = 1e-9 * max(1.0, abs(zL) + abs(zR))
+        rL = max(p[1] for p in pts if abs(p[0] - zL) <= ztol)
+        rR = max(p[1] for p in pts if abs(p[0] - zR) <= ztol)
+        if min(rL, rR) <= 0:
+            raise RuntimeError(
+                "an open boundary needs a beam pipe to radiate into, but this cavity "
+                f"closes on the axis at its ends (r={rL:g}, {rR:g}). Build it with "
+                "beampipe='both' (or 'left'/'right' matching the open end).")
+
+        if Lpml is None:
+            # A layer a few pipe radii long absorbs the evanescent + propagating content
+            # of the pipe modes; override with eigenmode_config['pml_length'] (metres).
+            Lpml = 3.0 * max(rL, rR)
+        Lpml = float(Lpml)
+
+        # Physical face, straight from the profile: exact edges, no polyline rebuild.
+        face = profile.to_occ_face()
+        if profile._signed_area() < 0:
+            # Glue cannot identify the shared pipe-mouth edge across a clockwise face
+            # (see Profile.to_occ_shape) — it would leave two coincident nodes and
+            # electrically disconnect the PML from the cavity.
+            face = face.Reversed()
+        face.name = 'phys'
+        pieces = [face]
+
+        if bc_left == 'open':
+            blk = WorkPlane().MoveTo(zL - Lpml, 0.0).Rectangle(Lpml, rL).Face()
+            blk.name = 'pml'
+            pieces.append(blk)
+        if bc_right == 'open':
+            blk = WorkPlane().MoveTo(zR, 0.0).Rectangle(Lpml, rR).Face()
+            blk.name = 'pml'
+            pieces.append(blk)
+
+        shape = Glue(pieces) if len(pieces) > 1 else face
+        mesh = Mesh(OCCGeometry(shape, dim=2).GenerateMesh(maxh=maxh))
+        self._name_pml_boundaries(mesh, profile, zL, zR,
+                                 bc_left == 'open', bc_right == 'open')
+        if order and order > 1:
+            mesh.Curve(order)
+
+        # ONE stretch for both blocks: box = physical span, so z outside it is damped
+        # and r (huge bounds) never is.
+        r_big = 1e3 * max(1.0, rL, rR)
+        mesh.SetPML(ngpml.Cartesian(mins=(zL, -r_big), maxs=(zR, r_big),
+                                    alpha=complex(alpha)), 'pml')
+
+        self._pml_active = True
+        self._pml_bounds = (zL, zR)
+        return mesh
+
+    @staticmethod
+    def _radiated_power(mesh, u_gf, uphi_gf, Hin_gf, Hphi_gf, az):
+        """Power leaving the cavity through the open pipe mouths, by integration.
+
+        The time-averaged Poynting flux through each mouth, taken on the interface
+        itself (z = zL / zR) where the field is still the physical, unstretched one::
+
+            P_rad = az * ( int_R S_z r dr  -  int_L S_z r dr )
+
+        with the outward normal +z on the right mouth and -z on the left, which is why
+        the two mouths are named apart and enter with opposite sign.
+
+        **Phase convention.** The solver stores H with the ``i`` dropped (see
+        :meth:`_solve_system`): ``H_code = curl(E)/(mu0 w)`` while Maxwell gives
+        ``H = i curl(E)/(mu0 w)``, i.e. ``H_true = i H_code``. The time-averaged flux
+        is ``S = 1/2 Re(E x H_true*) = 1/2 Im(E x H_code*)`` — so this takes the
+        IMAGINARY part. Using Re here silently returns the reactive power instead, which
+        is near zero for a travelling wave and would make every mode look trapped.
+
+        *Hin_gf* / *Hphi_gf* are the H1-projected H fields the wall-loss integral
+        already builds: a GridFunction ``curl`` cannot be SIMD-evaluated on a boundary,
+        so the raw coefficient functions cannot be integrated over an edge.
+
+        Returns 0.0 when the mesh has no open mouth, so a closed run costs nothing.
+        """
+        names = set(mesh.GetBoundaries())
+        if not ({'PML_IF_L', 'PML_IF_R'} & names):
+            return 0.0
+
+        inv_r = IfPos(y - AXIS_EPS, 1 / y, 0)
+        e_r, e_phi = u_gf[1], uphi_gf * inv_r
+        # (E x conj(H))_z = E_r conj(H_phi) - E_phi conj(H_r); H_r is the y-component
+        # of the in-plane H. The r-weight makes this the cross-section integrand.
+        s_z = 0.5 * ((e_r * Conj(Hphi_gf) - e_phi * Conj(Hin_gf[1])) * y).imag
+
+        total = 0.0
+        for name, sign in (('PML_IF_R', 1.0), ('PML_IF_L', -1.0)):
+            if name in names:
+                total += sign * Integrate(s_z, mesh, definedon=mesh.Boundaries(name))
+        # Magnitude, not the signed value. The eigensolver may return either member of
+        # a complex-conjugate pair, and the two differ by exactly the sign of this flux;
+        # power only ever leaves an open cavity, so the modulus is the physical answer
+        # on either branch. (The same reasoning is why Q off the eigenvalue takes |Re|
+        # and |Im|.) For a trapped mode E and H are in quadrature, the true flux is
+        # zero, and what survives here is the discretisation floor -- large in relative
+        # terms, negligible in absolute, and flagged by 'Q balance []'.
+        return abs(az * float(total))
+
+    @staticmethod
+    def _name_pml_boundaries(mesh, profile, zL, zR, open_left, open_right):
+        """Tag boundaries on a PML mesh, PML-aware.
+
+        ``Profile._name_boundaries`` names every boundary by the nearest *profile*
+        segment, which on a PML mesh would call the block's outer wall ``PEC`` and its
+        axis ``AXI`` — silently feeding the fictitious layer into the wall-loss and
+        R/Q integrals. Classify by position instead: anything beyond the physical span
+        is the layer and gets its own names.
+
+        The pipe **mouths** — the edges at z = zL / zR where a block is glued on — get
+        ``PML_IF_L`` / ``PML_IF_R``. They are interior edges after the glue, so the name
+        constrains nothing; it exists so the radiated power can be integrated across
+        them (:meth:`_radiated_power`). Each is named separately because the outward
+        normal is -z on the left and +z on the right, and that sign is what makes the
+        two fluxes add instead of cancel.
+        """
+        ztol = 1e-9 * max(1.0, abs(zL) + abs(zR))
+        index_name = {}
+        for el in mesh.Elements(BND):
+            idx = el.index
+            if idx in index_name:
+                continue
+            vs = [mesh[v].point for v in el.vertices]
+            zs = [q[0] for q in vs]
+            z = sum(zs) / len(zs)
+            r = sum(q[1] for q in vs) / len(vs)
+            in_pml = (z < zL - ztol) or (z > zR + ztol)
+            if r <= AXIS_EPS:
+                index_name[idx] = 'PML_AXIS' if in_pml else 'AXI'
+            elif in_pml:
+                index_name[idx] = 'PML_WALL'
+            elif open_left and all(abs(q - zL) <= ztol for q in zs):
+                index_name[idx] = 'PML_IF_L'
+            elif open_right and all(abs(q - zR) <= ztol for q in zs):
+                index_name[idx] = 'PML_IF_R'
+            else:
+                # Physical contour (and, on a closed end, the pipe cap, which the
+                # profile calls PMC — a natural condition, i.e. no constraint).
+                index_name[idx] = profile._boundary_name_at((z, r))
+        for idx, name in index_name.items():
+            mesh.ngmesh.SetBCName(idx, name)
+
+    def _build_mesh(self, cav, maxh, order, boundary_conditions=33,
+                    eigenmode_config=None):
         """Return a boundary-tagged, curved NGSolve mesh for *cav*.
 
-        Two backends behind one call:
+        Three backends behind one call:
+        - Open (PML): if *boundary_conditions* marks an end open, the profile's OCC
+          face gets absorbing blocks glued on — see :meth:`set_pml`.
         - Native: if the cavity exposes a unified ``profile()`` (a geometry
           :class:`~cavsim2d.geometry.Profile`), mesh it directly with
           netgen.occ — exact edges, no gmsh, no ``.geo`` round-trip.
         - Import: otherwise mesh the cavity's ``.geo`` file via gmsh
           (elliptical, spline, imported CAD).
         """
+        bc_left, bc_right = parse_boundary_conditions(boundary_conditions)
+        if bc_left == 'open' or bc_right == 'open':
+            # The run's own config, not an attribute on the cavity: cavities never
+            # carry an 'eigenmode_config', so reading it there made 'pml_length' and
+            # 'pml_alpha' silently unreachable and pinned every open run to the
+            # defaults below.
+            cfg = eigenmode_config or getattr(cav, 'eigenmode_config', None) or {}
+            return self.set_pml(cav, maxh, order, bc_left, bc_right,
+                                Lpml=cfg.get('pml_length'),
+                                alpha=cfg.get('pml_alpha', 1j))
+
+        self._pml_active = False
+        self._pml_bounds = None
         dielectrics = list(getattr(cav, 'dielectrics', ()) or ())
 
+        # eigenmode_config['beampipe_length'] (metres); None -> the model's own
+        # default. Refused rather than ignored on a model whose profile() cannot
+        # honour it -- a silently dropped geometry key is how 'pml_length' and
+        # ABCI's 'NFS' both came to look live while doing nothing.
+        bp_len = (eigenmode_config or {}).get('beampipe_length')
+        if bp_len is None:
+            bp_len = getattr(cav, 'beampipe_length', None)
+        elif getattr(cav, 'beampipe_length', None) != bp_len:
+            # Record it, so show_geometry()/plot() afterwards draw what was solved
+            # rather than the model default.
+            try:
+                cav.beampipe_length = float(bp_len)
+            except AttributeError:
+                pass
         maker = getattr(cav, 'profile', None)
-        profile = maker() if callable(maker) else None
+        if not callable(maker):
+            profile = None
+        elif bp_len is None:
+            profile = maker()
+        elif 'beampipe_length' in inspect.signature(maker).parameters:
+            profile = maker(beampipe_length=float(bp_len))
+        else:
+            raise ValueError(
+                f"eigenmode_config['beampipe_length'] is set, but "
+                f"{type(cav).__name__} {cav.name!r} does not support it: its "
+                f"profile() takes no such argument. Drop the key, or build the "
+                f"cavity with the pipe length you want.")
         if profile is not None:
+            # Honour the closed-end BC digits. Apertures are built 'PMC' (the
+            # natural condition), so 'pmc' needs nothing; 'pec' must retag the
+            # face or it never reaches DIRICHLET_E and every BC solves the same
+            # cavity. Done on the freshly built profile, so nothing leaks.
+            profile.set_end_conditions(bc_left, bc_right)
             region_maxh = {}
             for d in dielectrics:
                 # Model API is in mm (like every other cavity dimension); Profile
                 # works in metres.
-                profile.add_region(d['material'],
-                                   z=tuple(v * 1e-3 for v in d['z']),
-                                   r=tuple(v * 1e-3 for v in d['r']),
-                                   color=d.get('color', (1.0, 1.0, 0.0)))
+                if d.get('points'):
+                    profile.add_region(
+                        d['material'],
+                        points=[(a * 1e-3, b * 1e-3) for a, b in d['points']],
+                        color=d.get('color', (1.0, 1.0, 0.0)))
+                else:
+                    profile.add_region(d['material'],
+                                       z=tuple(v * 1e-3 for v in d['z']),
+                                       r=tuple(v * 1e-3 for v in d['r']),
+                                       color=d.get('color', (1.0, 1.0, 0.0)))
                 if d.get('maxh'):
                     region_maxh[d['material']] = float(d['maxh']) * 1e-3
             return profile.mesh(maxh=maxh, order=order,
@@ -613,7 +868,20 @@ class NGSolveMEVP:
                 "silently solve a different cavity.")
 
         step_geo, ngmesh, bcs = self.load_geo(cav.geo_filepath, maxh=maxh)
+        # A .geo writes both apertures into ONE Physical Line("PMC"), so the two
+        # ends are indistinguishable here: a symmetric request can be honoured by
+        # retagging the whole group, an asymmetric one cannot. Refuse it rather
+        # than solve a cavity the caller did not ask for.
+        if bc_left != bc_right:
+            raise ValueError(
+                f"boundary_conditions asks for {bc_left!r} on the left and "
+                f"{bc_right!r} on the right, but {type(cav).__name__} "
+                f"{cav.name!r} is meshed from its .geo file, where both end "
+                f"apertures share a single 'PMC' group and cannot be told "
+                f"apart. Use a symmetric BC ('mm' or 'ee') for this cavity.")
         for key, bc in bcs.items():
+            if bc == 'PMC' and bc_left == 'pec':
+                bc = 'PEC'
             ngmesh.SetBCName(key - 1, bc)
         mesh = Mesh(ngmesh)
         mesh.Curve(order)
@@ -712,11 +980,15 @@ class NGSolveMEVP:
 
         # Solve on this polarisation's own mesh; adaptive refines it in place to
         # resolve *this* polarisation's modes (adaptive=None -> single solve).
-        mesh = self._build_mesh(cav, mesh_h, mesh_p)
+        bc = (eigenmode_config or {}).get('boundary_conditions', 33)
+        mesh = self._build_mesh(cav, mesh_h, mesh_p, boundary_conditions=bc,
+                                eigenmode_config=eigenmode_config)
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, pol_dir, mesh, mesh_p,
                                                           n_modes, m=m, adaptive=adaptive,
                                                           materials=materials,
-                                                          loss_model=loss_model)
+                                                          loss_model=loss_model,
+                                                          boundary_conditions=bc,
+                                                          eigenmode_config=eigenmode_config)
         q_diel = self._last_dielectric_q
 
         # Frequency-only fast path (tuning inner solves). A root-finder needs only
@@ -750,9 +1022,9 @@ class NGSolveMEVP:
         # :meth:`modes_of_interest`. The first listed is primary (-> qois.json).
         moi = self.modes_of_interest(cav, m, eigenmode_config, len(freq_fes))
         if m == 0:
-            n_dofs = HCurl(mesh, order=mesh_p, dirichlet="PEC").ndof
+            n_dofs = HCurl(mesh, order=mesh_p, dirichlet=DIRICHLET_E).ndof
         else:
-            fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC")
+            fes_rz = HCurl(mesh, order=mesh_p, dirichlet=DIRICHLET_E)
             _, fes_phi = fes_rz.CreateGradient()
             n_dofs = fes_rz.ndof + fes_phi.ndof
 
@@ -1006,8 +1278,8 @@ class NGSolveMEVP:
                 "eigensolve returns NaN. Use p>=2 (set via mesh_config['p'], "
                 "default 3).")
         r = y
-        fes_rz = HCurl(mesh, order=mesh_p, dirichlet="PEC", complex=complex_fes)
-        fes_phi = H1(mesh, order=mesh_p + 1, dirichlet="PEC|AXI", complex=complex_fes)
+        fes_rz = HCurl(mesh, order=mesh_p, dirichlet=DIRICHLET_E, complex=complex_fes)
+        fes_phi = H1(mesh, order=mesh_p + 1, dirichlet=DIRICHLET_PHI, complex=complex_fes)
         fes = fes_rz * fes_phi
         (u, u_phi), (v, v_phi) = fes.TnT()
 
@@ -1276,8 +1548,18 @@ class NGSolveMEVP:
             free_mask = np.fromiter((bool(d) for d in fes.FreeDofs()),
                                     dtype=bool, count=fes.ndof)
 
+            n_arnoldi = int(n_arnoldi if n_arnoldi is not None else max(6, n_modes + 4))
+
             def arnoldi_at(sigma):
-                """Best (lowest-residual) physical eigenpair near complex *sigma*."""
+                """Every physical eigenpair near complex *sigma*, best residual first.
+
+                One Arnoldi run produces ``n_arnoldi`` Ritz pairs, not one, and the
+                caller keeps every converged one: which shift found a mode does not
+                matter, only that the pooled set covers the requested spectrum. Sorted
+                by residual here so the convergence gate and the retry decision can
+                read the best pair off the front; the *assignment* of pairs to shifts
+                is by proximity, not by this order.
+                """
                 vecs = [GridFunction(fes).vec.CreateVector() for _ in range(n_arnoldi)]
                 lam = ArnoldiSolver(a.mat, b.mat, fes.FreeDofs(), vecs, complex(sigma),
                                     inverse=direct_solver)
@@ -1293,7 +1575,8 @@ class NGSolveMEVP:
                     return None
                 scored = [(self._eigen_residual(a.mat, b.mat, l, v, free_mask), l, v)
                           for l, v in pairs]
-                return min(scored, key=lambda t: t[0])
+                scored.sort(key=lambda t: t[0])
+                return scored
 
             # One mode per shift, refined until it converges. Arnoldi returns
             # len(vecs) Ritz pairs whether or not they converged, and an unconverged
@@ -1306,14 +1589,24 @@ class NGSolveMEVP:
             # found fixes that in one more pass, and costs a factorisation only for
             # the modes that actually needed it.
             targets = [complex(sig * (1 - 1e-3)) for sig in shifts]
-            accepted, poor = [], []
+            accepted, poor, spares = [], [], []
             for _pass in range(ARNOLDI_MAX_PASSES):
                 retry = []
                 for sigma in targets:
-                    best = arnoldi_at(sigma)
-                    if best is None:
+                    found = arnoldi_at(sigma)
+                    if not found:
                         continue
-                    res, lam, vec = best
+                    # Every converged pair this run produced, pooled for the
+                    # proximity assignment below. Only converged pairs qualify.
+                    spares.extend(t for t in found if t[0] < ARNOLDI_RESIDUAL_TOL)
+                    # THIS shift's mode is the pair nearest the shift, not the pair
+                    # with the smallest residual. Those are different pairs whenever a
+                    # neighbouring mode converges better than the targeted one -- which
+                    # is routine inside a passband -- and taking the best-residual pair
+                    # made two adjacent shifts return the SAME mode and silently lose
+                    # the other. (That is how the 1300 MHz pi-mode, the largest R/Q in
+                    # the cavity, went missing from an otherwise healthy 49-mode run.)
+                    res, lam, vec = min(found, key=lambda t: abs(t[1] - sigma))
                     if res < ARNOLDI_RESIDUAL_TOL:
                         accepted.append((lam, vec))
                     else:
@@ -1351,23 +1644,46 @@ class NGSolveMEVP:
                         UserWarning, stacklevel=2)
 
             accepted.sort(key=lambda t: t[0].real)
-            modes = []
-            for lam, vec in accepted:
+
+            def _is_new(lam, kept):
                 # Distinct shifts can converge onto the same mode once the loss is
                 # large enough to move the modes appreciably. The tolerance is loose
                 # because two Arnoldi runs converge the same mode to slightly
                 # different residuals, not to the same digits.
-                if modes and abs(lam - modes[-1][0]) <= 1e-6 * abs(lam):
-                    continue
-                modes.append((lam, vec))
+                return all(abs(lam - l) > 1e-6 * abs(lam) for l, _ in kept)
+
+            # Every converged pair any shift produced -- the one it targeted and the
+            # ones it merely happened to see -- pooled and deduplicated, then sorted
+            # by frequency. Pooling first and selecting second is what makes the
+            # result independent of which shift found what.
+            pool = []
+            for lam, vec in accepted:
+                if _is_new(lam, pool):
+                    pool.append((lam, vec))
+            for _res, lam, vec in sorted(spares, key=lambda t: t[0]):
+                if _is_new(lam, pool):
+                    pool.append((lam, vec))
+            pool.sort(key=lambda t: t[0].real)
+
+            # The lowest n_modes distinct eigenvalues -- which is what n_modes asks
+            # for, and is the same rule the lossless path follows. The previous rule
+            # was one mode per surviving shift, topped up by SMALLEST RESIDUAL when
+            # two shifts collided; that returned the right COUNT with the wrong SET,
+            # patching a gap inside the fundamental passband with whatever unrelated
+            # high-frequency mode happened to converge best. Selecting by frequency
+            # cannot lose a low mode: the 1300 MHz pi-mode carrying the largest R/Q
+            # in the cavity went missing that way. It also keeps BOTH members of a
+            # near-degenerate pair, which _dedupe_shifts collapses to a single shift.
+            modes = pool[:max(int(n_modes), len(shifts))]
+
             if len(modes) < len(shifts):
                 warnings.warn(
                     f"lossy eigensolve: {len(modes)} distinct mode(s) for "
-                    f"{len(shifts)} requested — two shifts converged onto the same "
-                    f"mode. The modes are renumbered, so check 'mode_of_interest' "
-                    f"against the reported frequencies; raising "
-                    f"eigenmode_config['arnoldi_vectors'] (currently {n_arnoldi}) may "
-                    f"separate them.", UserWarning, stacklevel=2)
+                    f"{len(shifts)} requested — the pooled Arnoldi pairs did not "
+                    f"contain enough distinct eigenvalues. The modes are renumbered, "
+                    f"so check 'mode_of_interest' against the reported frequencies; "
+                    f"raising eigenmode_config['arnoldi_vectors'] (currently "
+                    f"{n_arnoldi}) may separate them.", UserWarning, stacklevel=2)
 
             inv_r = IfPos(y - AXIS_EPS, 1 / y, 0)
             eps_re_cf = material_cfs(mesh, materials)
@@ -1568,59 +1884,75 @@ class NGSolveMEVP:
         return freq_fes, gfu_E, gfu_H
 
     def _solve_eigenproblem(self, cav, save_dir, mesh, mesh_p, n_modes=None, m=0, adaptive=None,
-                            materials=None, loss_model='lossless'):
+                            materials=None, loss_model='lossless', boundary_conditions=33,
+                            eigenmode_config=None):
         """Assemble and solve the Maxwell eigenvalue problem for azimuthal order
         *m*. Returns (freqs, E_fields, H_fields).
-
-        When *adaptive* is a settings dict (see :meth:`_parse_adaptive`) the
-        mesh is refined in place to resolve the requested modes — the recovery
-        error estimator is polarisation-agnostic, so this drives refinement for
-        any *m* — and the returned fields are those of the finest refinement.
-
-        A ``'lossy'`` *loss_model* (complex permittivity, see
-        :func:`resolve_loss_model`) runs the real problem first and then re-solves
-        it complex, seeded by the lossless spectrum. Adaptive refinement therefore
-        stays on the cheap real problem and the complex solve is paid for exactly
-        once, on the finest mesh.
         """
-        n_modes = self.requested_n_modes(cav, n_modes=n_modes)
+        bc_left, bc_right = parse_boundary_conditions(boundary_conditions)
+        if bc_left == 'open' or bc_right == 'open' or getattr(self, '_pml_active', False):
+            loss_model = 'lossy'
+        n_modes = self.requested_n_modes(cav, eigenmode_config, n_modes=n_modes)
 
-        f_shift = 0
         direct_solver = default_direct_solver()
         pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
-        n_arnoldi = None
-        if hasattr(cav, 'eigenmode_config') and cav.eigenmode_config:
-            f_shift = cav.eigenmode_config.get('f_shift', 0)
-            direct_solver = cav.eigenmode_config.get('direct_solver', direct_solver)
-            pinvit_maxit = int(cav.eigenmode_config.get('pinvit_maxit', pinvit_maxit))
-            n_arnoldi = cav.eigenmode_config.get('arnoldi_vectors', None)
-        elif isinstance(cav, dict) and 'f_shift' in cav: # Fallback for some legacy calls
-             f_shift = cav['f_shift']
-
-        system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver, materials)
-        freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+        cfg = eigenmode_config or getattr(cav, 'eigenmode_config', None) or {}
+        f_shift = cfg.get('f_shift', 0)
+        direct_solver = cfg.get('direct_solver', direct_solver)
+        pinvit_maxit = int(cfg.get('pinvit_maxit', pinvit_maxit))
+        n_arnoldi = cfg.get('arnoldi_vectors', None)
 
         self._last_adaptive_history = None
-        if adaptive:
-            freq_fes, gfu_E, gfu_H = self._adaptive_refine_hcurl(
-                mesh, mesh_p, n_modes, pinvit_maxit, system,
-                adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
-
         self._last_dielectric_q = None
-        if loss_model == 'lossy':
-            # Free the real solution first: the complex space alone is twice the
-            # memory, and nothing below reads the lossless fields.
-            del gfu_E, gfu_H, system
-            gc.collect()
-            # direct_solver is deliberately re-resolved rather than carried over
-            # from the config: the shifted matrix here is complex symmetric and
-            # indefinite, which not every backend that handles the real problem can
-            # factorise.
-            freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
-                mesh, mesh_p, m, materials, freq_fes, n_modes,
-                direct_solver=None, n_arnoldi=n_arnoldi)
 
-        self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes, materials=materials)
+        if getattr(self, '_pml_active', False):
+            if adaptive:
+                # The estimator refines against the real closed problem; there is no
+                # meaningful error indicator inside a complex-stretched layer, and the
+                # seeded complex pass runs once on the mesh it is handed. Say so rather
+                # than accepting the setting and quietly doing nothing with it.
+                warning("adaptive refinement is not applied with open (PML) boundaries; "
+                        "solving on the mesh as built. Use mesh_config['h'] to control "
+                        "resolution here.")
+            was_pml = True
+            pml_bounds = getattr(self, '_pml_bounds', None)
+            # Shift seeds for the complex solve. The closed (PMC) spectrum is only a
+            # starting guess for Arnoldi -- trapped modes barely move, and the radiating
+            # ones are pulled off the real axis by the layer -- so it is solved on a mesh
+            # built from the SAME mesh_config, not a hard-coded size.
+            mesh_h = mesh_h_metres(cfg.get('mesh_config', {}))
+            mesh_seed = self._build_mesh(cav, mesh_h, mesh_p, boundary_conditions=33)
+            system_seed = self._build_system(mesh_seed, mesh_p, m, f_shift, direct_solver, materials)
+            freq_seed, _, _ = self._solve_system(system_seed, n_modes, pinvit_maxit)
+            del system_seed, mesh_seed
+            gc.collect()
+
+            # Restore PML active state on solver instance
+            self._pml_active = was_pml
+            self._pml_bounds = pml_bounds
+
+            n_arn_pml = int(n_arnoldi if n_arnoldi is not None else max(20, n_modes + 6))
+            freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
+                mesh, mesh_p, m, materials, freq_seed, n_modes,
+                direct_solver=None, n_arnoldi=n_arn_pml)
+        else:
+            system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver, materials)
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+
+            if adaptive:
+                freq_fes, gfu_E, gfu_H = self._adaptive_refine_hcurl(
+                    mesh, mesh_p, n_modes, pinvit_maxit, system,
+                    adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
+
+            if loss_model == 'lossy':
+                del gfu_E, gfu_H, system
+                gc.collect()
+                freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
+                    mesh, mesh_p, m, materials, freq_fes, n_modes,
+                    direct_solver=None, n_arnoldi=n_arnoldi)
+
+        if save_dir:
+            self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes, materials=materials)
         return freq_fes, gfu_E, gfu_H
 
     def solve_convergence(self, cav, eigenmode_config=None):
@@ -1844,7 +2176,27 @@ class NGSolveMEVP:
         e2_density = (y * InnerProduct(u_gf, u_gf)
                       + 1 / y * uphi_gf * Conj(uphi_gf))
         energy_density = e2_density if eps_cf is None else eps_cf * e2_density
-        U = az * 0.5 * eps0 * Integrate(energy_density, mesh).real
+        integ_domain = mesh.Materials('phys') if 'phys' in mesh.GetMaterials() else mesh
+        U = az * 0.5 * eps0 * Integrate(energy_density, integ_domain).real
+
+        # UNCONJUGATED companion norm, for the quasi-normal-mode (QNM) residue.
+        # U above is the physical stored energy and is the right thing for Q, G and
+        # the real R/Q. It is the WRONG normalisation for the residue of a radiating
+        # pole: |E|^2 discards the phase of E, so the complex R/Q built from it is no
+        # longer invariant under E -> c E and the residue's argument is lost. The QNM
+        # norm int eps E.E dV (no conjugation) keeps that invariance, because it and
+        # V^2 both scale as c^2. For a real (trapped) mode the two coincide.
+        # Integrated over the WHOLE mesh, PML included, not over 'phys'. U above stops
+        # at the physical boundary because stored energy in an absorbing layer is not
+        # the cavity's. The QNM norm is the opposite case: a radiating mode grows
+        # towards the layer, and it is the complex-stretched PML integral that makes
+        # the norm converge -- NGSolve applies that stretch to the element mapping, so
+        # integrating over 'pml' here contributes the analytic continuation the norm
+        # needs. Truncating at the interface instead leaves the residues too large.
+        e2_unconj = (y * (u_gf[0] * u_gf[0] + u_gf[1] * u_gf[1])
+                     + 1 / y * uphi_gf * uphi_gf)
+        U_qnm = az * 0.5 * eps0 * complex(Integrate(
+            e2_unconj if eps_cf is None else eps_cf * e2_unconj, mesh))
 
         # Dielectric loss, perturbatively: P_diel = 0.5 w eps0 int eps'' |E|^2 dV is
         # the SAME volume integral as U with eps' -> eps'', so it inherits the
@@ -1853,7 +2205,8 @@ class NGSolveMEVP:
         # untouched.
         eps_im_cf = material_loss_cfs(mesh, materials)
         Pdiel_pert = (0.0 if eps_im_cf is None else
-                      az * 0.5 * w * eps0 * Integrate(eps_im_cf * e2_density, mesh).real)
+                      az * 0.5 * w * eps0 * Integrate(eps_im_cf * e2_density,
+                                                      integ_domain).real)
 
         norm_u = Norm(u_gf)
         xpnts_surf = np.array(list(get_boundary_nodes(mesh, 'PEC')))
@@ -1871,15 +2224,35 @@ class NGSolveMEVP:
         # circuit-convention table.
         if m == 0:
             # On-axis E_z; a TE mode has no E_z, so its Vacc is zero.
-            Vout = abs(Integrate(u_gf[0] * exp(1j * k_wave * x), mesh,
-                                 definedon=mesh.Boundaries('AXI')))
+            # The COMPLEX value is kept as well: abs() is right for R/Q, but the
+            # argument of V is what a QNM residue needs (see U_qnm above).
+            Vc = complex(Integrate(u_gf[0] * exp(1j * k_wave * x), mesh,
+                                   definedon=mesh.Boundaries('AXI')))
+            Vout = abs(Vc)
             RoQ_norm = RoQ = Vout ** 2 / (w * U)
+
+            # NOTE on the pipe section. This integral runs the whole axis, beam
+            # pipes included ('AXI' already stops at the PML interface, since the
+            # layer's axis nodes are PML_AXIS). Below cutoff E_z is evanescent and
+            # the pipe contributes almost nothing. ABOVE cutoff E_z is a
+            # propagating TM01 wave that never decays, so V picks up an oscillatory
+            # contribution from however much pipe is modelled: lengthening the pipe
+            # by one half-cell moved V by up to 120% -- and R/Q ~ V^2 with it, by up
+            # to a factor of 18 -- while f, Q and U all moved by less than 1e-5.
+            # Restricting V to the cavity proper was tried and REJECTED: it cuts the
+            # scatter roughly threefold (median 75% -> 25%) but does not remove it,
+            # and it shifts the fundamental's R/Q by 8%, which is a number that
+            # currently agrees with the TESLA tables and with ABCI's k_FM. So
+            # above-cutoff R/Q carries an irreducible ambiguity of tens of percent;
+            # it is not a property of the cavity the way the trapped-mode R/Q is.
             Ez_axis = np.array([norm_u(mesh(xi, 0.0)) for xi in xpnts_ax])   # |E| on axis
         else:
             # Off-axis line r0 + Panofsky-Wenzel kick (E_z ~ r^m vanishes on axis).
             Ez_r0 = np.array([u_gf(mesh(xi, r0))[0] for xi in xpnts_ax])
-            trapz = getattr(np, 'trapezoid', np.trapz)
-            Vz = abs(trapz(Ez_r0 * np.exp(1j * k_wave * xpnts_ax), xpnts_ax))
+            trapz = _TRAPZ
+            Vz_c = complex(trapz(Ez_r0 * np.exp(1j * k_wave * xpnts_ax), xpnts_ax))
+            Vz = abs(Vz_c)
+            Vc = m * Vz_c / (k_wave * r0)
             Vout = m * Vz / (k_wave * r0)
             RoQ = Vout ** 2 / (w * U)
             RoQ_norm = RoQ / r0 ** (2 * (m - 1))
@@ -1904,10 +2277,20 @@ class NGSolveMEVP:
         # at the element endpoints. 0.5 = time averaging, az = azimuth.
         Rs = surface_resistance(w, conductivity, surface_resistance_ohm)
         order_ = u_gf.space.globalorder
+        # Project on the PHYSICAL region only. H1 is continuous, so a projection taken
+        # over the whole mesh averages the two sides of every shared vertex -- and on a
+        # PML mesh the other side is the complex-stretched layer, whose H is a different
+        # (decaying, coordinate-stretched) field. That contamination lands exactly on the
+        # pipe mouth and the pipe wall next to it, which is where both the radiated flux
+        # and the wall loss are integrated.
+        # On a closed mesh there is no second region, so the restriction is skipped
+        # entirely and the projection is bit-for-bit what it always was.
+        proj_kw = ({'definedon': mesh.Materials('phys')}
+                   if 'pml' in mesh.GetMaterials() else {})
         Hphi_gf = GridFunction(H1(mesh, order=order_, complex=True))
-        Hphi_gf.Set(H_phi)
+        Hphi_gf.Set(H_phi, **proj_kw)
         Hin_gf = GridFunction(VectorH1(mesh, order=order_, complex=True))
-        Hin_gf.Set(H_inplane)
+        Hin_gf.Set(H_inplane, **proj_kw)
         Ploss = az * 0.5 * Rs * Integrate(
             y * (Hphi_gf * Conj(Hphi_gf) + InnerProduct(Hin_gf, Hin_gf)), mesh,
             definedon=mesh.Boundaries('PEC')).real
@@ -1919,28 +2302,50 @@ class NGSolveMEVP:
             kcc = 0
 
         # Wall Q and the geometry factor: both are wall-only by definition, so
-        # they are computed before any dielectric loss is folded in.
-        Q_wall = w * U / Ploss
+        # they are computed before any dielectric or radiation loss is folded in.
+        Q_wall = (w * U / Ploss) if Ploss > 0 else np.inf
         G = Q_wall * Rs
 
-        # Total Q. Q_diel comes from the complex eigenvalue on the lossy path and
-        # from the perturbation integral otherwise; either way the wall loss is the
-        # perturbative contribution added here (a Leontovich impedance BC would make
-        # the eigenproblem nonlinear in w, which is not worth it for a wall).
+        # Total Q breakdown into Q_wall, Q_diel and Q_rad.
+        # Q_wall comes from the PEC surface resistance boundary integral.
+        # Q_diel comes from dielectric loss (perturbation or lossy model).
+        # Q_rad comes from radiation through open PML boundaries.
+        # Each channel is measured on its own power integral, never by subtracting
+        # one Q from another: with both channels active a subtraction is a difference
+        # of two nearly equal reciprocals, so whichever channel is weaker comes out as
+        # rounding noise (and goes negative as often as not). The complex eigenvalue is
+        # then an INDEPENDENT check on the pair rather than the source of either.
         Q_diel = None
-        if loss_model == 'lossy' and q_diel is not None and mode_idx < len(q_diel):
-            # A non-finite Q_diel means the eigenvalue came back purely real, i.e.
-            # this mode sees no loss at all. Report no dielectric loss rather than an
-            # infinity, which JSON cannot round-trip.
-            qd = float(q_diel[mode_idx])
-            Q_diel = qd if np.isfinite(qd) and qd > 0 else None
-            Pdiel = w * U / Q_diel if Q_diel else 0.0
-        elif Pdiel_pert > 0:
+        Pdiel = 0.0
+        if Pdiel_pert > 0:
             Pdiel = Pdiel_pert
             Q_diel = w * U / Pdiel
+
+        # Q off the complex eigenvalue: |E| ~ exp(-Im(w) t) so energy ~ exp(-Re(w) t/Q).
+        Q_eig = None
+        if q_diel is not None and mode_idx < len(q_diel):
+            qc = float(q_diel[mode_idx])
+            if np.isfinite(qc) and qc > 0:
+                Q_eig = qc
+
+        # Q_rad from the Poynting flux across the open mouths.
+        Q_rad = None
+        Prad = NGSolveMEVP._radiated_power(mesh, u_gf, uphi_gf, Hin_gf, Hphi_gf, az)
+        if Prad > 0:
+            Q_rad = w * U / Prad
         else:
-            Pdiel = 0.0
-        Q = w * U / (Ploss + Pdiel)
+            Prad = 0.0
+
+        # Total Q. Wall loss is perturbative (the lossless eigenvalue never saw the
+        # surface resistance) so it always adds here. The OTHER channels come off the
+        # complex eigenvalue when there is one: that is a direct measurement of how fast
+        # this mode actually decays, and it stays accurate for a trapped mode, where the
+        # Poynting integral is down at its numerical floor and Pdiel/Prad are differences
+        # of near-cancelling terms. Q_rad/Q_diel above still report the integrated
+        # attribution, and 'Q balance []' says whether the two routes agree.
+        Ploss_other = (w * U / Q_eig) if Q_eig else (Pdiel + Prad)
+        Ptotal = Ploss + Ploss_other
+        Q = (w * U / Ptotal) if Ptotal > 0 else np.inf
 
         # Axis field flatness (min/max of the on-axis |E| peaks). ``distance``
         # must stay >= 1: an axis shorter than 20 mm gives n_ax_pts < 100, and
@@ -1975,6 +2380,52 @@ class NGSolveMEVP:
             "Ploss [W]": Ploss,
             "No of Mesh Elements": mesh.GetNE(VorB.VOL),
         }
+
+        if Q_diel is not None or Q_rad is not None:
+            qois["Q_wall []"] = Q_wall
+
+        if Q_diel is not None:
+            qois["Q_diel []"] = Q_diel
+            qois["Pdiel [W]"] = Pdiel
+
+        if Q_rad is not None:
+            qois["Q_rad []"] = Q_rad
+            qois["Prad [W]"] = Prad
+
+        # Consistency of the loss budget. The lossy channels were each measured on
+        # their own power integral; the complex eigenvalue knows the same total by a
+        # completely different route (how fast the mode decays), so
+        #
+        #     1/Q_diel + 1/Q_rad  ==  1/Q_eig
+        #
+        # is a real check on both, not a restatement. ``Q balance []`` is the ratio of
+        # those two sides: 1 means they agree. It drifts when the layer is too short or
+        # too coarse to absorb cleanly, which is exactly when Q_rad should be distrusted,
+        # so it is reported rather than silently folded away. Q_wall is excluded: it is a
+        # perturbative surface-resistance figure that the lossless eigenvalue never saw.
+        if Q_eig is not None:
+            qois["Q_eig []"] = Q_eig
+            inv_measured = ((1.0 / Q_diel) if Q_diel else 0.0) + ((1.0 / Q_rad) if Q_rad else 0.0)
+            if inv_measured > 0:
+                qois["Q balance []"] = inv_measured * Q_eig
+
+        # --- Complex QNM residue, for the pole-expansion impedance ---------------
+        # The real 'R/Q [Ohm]' above is |V|^2/(w U): correct for an isolated mode, and
+        # what every accelerator table quotes. It cannot describe OVERLAPPING radiating
+        # poles, because it forces each residue positive-real at its own resonance, so
+        # neighbouring modes add in phase when physically they interfere. The complex
+        #
+        #     (R/Q)~ = V~^2 / (w~ U~)
+        #
+        # keeps that phase. It is reported as a real/imag pair (JSON has no complex
+        # type) and reduces to 'R/Q [Ohm]' for a real, trapped mode. Only meaningful
+        # with a complex eigenvalue, i.e. an open (PML) or lossy run.
+        if Q_eig is not None and abs(U_qnm) > 0:
+            w_c = w * (1 - 0.5j / Q_eig)     # complex eigenfrequency, decaying branch
+            roq_c = (Vc * Vc) / (w_c * U_qnm)
+            qois["Re(R/Q) [Ohm]"] = roq_c.real
+            qois["Im(R/Q) [Ohm]"] = roq_c.imag
+
         if materials:
             # How this Q was obtained. A dielectric-loaded result without this tag
             # is ambiguous — the same cavity has three defensible Q values — so the
@@ -1982,9 +2433,6 @@ class NGSolveMEVP:
             qois["Q model"] = (loss_model if loss_model in ('lossless', 'perturbation', 'lossy')
                                else ('perturbation' if Q_diel is not None else 'lossless'))
             if Q_diel is not None:
-                qois["Q_wall []"] = Q_wall
-                qois["Q_diel []"] = Q_diel
-                qois["Pdiel [W]"] = Pdiel
                 qois["tan_delta []"] = max_tan_delta(materials)
             # Peak |E| inside each material. E is DISCONTINUOUS across a dielectric
             # interface (normal D is what is continuous), so the PEC-wall sample
@@ -2062,7 +2510,10 @@ class NGSolveMEVP:
             self.save_mesh(project_folder, src_mesh)
             flat = self.load_mesh(project_folder)
             if geom_order > 1:
-                flat.Curve(geom_order)
+                try:
+                    flat.Curve(geom_order)
+                except Exception:
+                    pass
             fes = self._build_system(flat, mesh_p, m, materials=materials,
                                      complex_fes=is_complex)['fes']
             fes.Update()
@@ -2115,7 +2566,10 @@ class NGSolveMEVP:
         # i.e. no curving — for multipacting's deliberately straight own-field mesh).
         geom_order = int(meta.get('geom_order', meta['mesh_p']))
         if geom_order > 1:
-            mesh.Curve(geom_order)
+            try:
+                mesh.Curve(geom_order)
+            except Exception:
+                pass
         # Absent in caches written before the lossy path existed -> real, which is
         # what those caches are.
         fes = self._build_system(mesh, meta['mesh_p'], meta['m'],
@@ -2191,7 +2645,10 @@ class NGSolveMEVP:
 
     def show_geometry(self, cav, maxh=20e-3, order=1, plotter='ngsolve'):
         """Draw the cavity's meshed geometry *without* needing a prior run — a
-        coarse mesh is built on the fly just to preview the analysed domain."""
+        coarse mesh is built on the fly just to preview the analysed domain.
+
+        The cavity's own ``beampipe_length`` is used, so this is the geometry a
+        solve would mesh."""
         mesh = self._build_mesh(cav, maxh, order)
         if plotter == 'matplotlib':
             self._plot_mesh_matplotlib(mesh)
@@ -2324,8 +2781,9 @@ class NGSolveMEVP:
 def get_boundary_nodes(mesh, boundary_name):
     """Extract unique boundary node coordinates for a named boundary."""
     boundary_nodes = set()
+    target = boundary_name.upper()
     for e in mesh.Elements(BND):
-        if e.mat == boundary_name:
+        if e.mat.upper() == target:
             for v in e.vertices:
                 boundary_nodes.add(mesh[v].point)
     return boundary_nodes

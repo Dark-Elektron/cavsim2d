@@ -321,6 +321,11 @@ def test_lossy_q_of_a_uniform_fill_matches_the_exact_complex_eigenvalue():
 
     for every mode. This pins the complex solver against closed form — not
     against the perturbative answer, which it is allowed to disagree with.
+
+    The eigenvalue-derived Q is reported as ``'Q_eig []'``. ``'Q_diel []'`` is the
+    perturbative volume integral on both paths — each loss channel is measured on
+    its own integral, and the complex eigenvalue is kept as an independent
+    cross-check rather than as the source of one of them.
     """
     t = 0.2
     mesh = _split_pillbox(0.075)
@@ -328,9 +333,11 @@ def test_lossy_q_of_a_uniform_fill_matches_the_exact_complex_eigenvalue():
     qs = _qois(mesh, _uniform(4.0, t), 'lossy')
     for q in qs:
         assert q['Q model'] == 'lossy'
-        assert q['Q_diel []'] == pytest.approx(exact, rel=1e-6), q['Q_diel []']
-    # ... and it is NOT 1/t: that difference is exactly what the lossy path buys.
-    assert abs(qs[0]['Q_diel []'] - 1 / t) > 1e-3 * exact
+        assert q['Q_eig []'] == pytest.approx(exact, rel=1e-6), q['Q_eig []']
+        # the perturbative channel is the one that reports 1/t
+        assert q['Q_diel []'] == pytest.approx(1 / t, rel=1e-6), q['Q_diel []']
+    # ... and the two are NOT equal: that difference is what the lossy path buys.
+    assert abs(qs[0]['Q_eig []'] - 1 / t) > 1e-3 * exact
 
 
 def test_lossy_frequency_of_a_uniform_fill_matches_closed_form():
@@ -348,11 +355,14 @@ def test_paths_agree_at_small_tan_delta_and_separate_at_large():
     answer where perturbation theory holds, and different where it does not."""
     mesh = _split_pillbox(0.075)
 
+    # The quantity that distinguishes the paths is the TOTAL Q: 'Q_diel []' is
+    # the perturbative integral either way, so it agrees by construction and can
+    # not witness the difference.
     small = _uniform(4.0, 1e-4)
     qp = _qois(mesh, small, 'perturbation', n=2)
     ql = _qois(mesh, small, 'lossy', n=2)
     for a, b in zip(qp, ql):
-        assert b['Q_diel []'] == pytest.approx(a['Q_diel []'], rel=1e-6)
+        assert b['Q []'] == pytest.approx(a['Q []'], rel=1e-4)
         assert b['freq [MHz]'] == pytest.approx(a['freq [MHz]'], rel=1e-8)
 
     big = _uniform(4.0, 0.3)
@@ -360,7 +370,7 @@ def test_paths_agree_at_small_tan_delta_and_separate_at_large():
     ql = _qois(mesh, big, 'lossy', n=2)
     for a, b in zip(qp, ql):
         # perturbation misses both the Q correction and the frequency pull
-        assert abs(b['Q_diel []'] - a['Q_diel []']) > 0.01 * a['Q_diel []']
+        assert abs(b['Q []'] - a['Q []']) > 0.01 * a['Q []']
         assert abs(b['freq [MHz]'] - a['freq [MHz]']) > 1e-4 * a['freq [MHz]']
 
 

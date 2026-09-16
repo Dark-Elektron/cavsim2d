@@ -16,6 +16,8 @@ from cavsim2d.solvers.NGSolve.eigen_ngsolve import parse_polarisations
 from cavsim2d.solvers.eigenmode_result import pol_number
 from cavsim2d.utils.shapes import (perturb_half_cells, half_cells_to_dataframe,
                                     perturb_half_cells_independent)
+from cavsim2d.utils.quadrature import (bootstrap_moment_errors, is_sampling_rule,
+                                       sigma_relative_standard_error)
 from cavsim2d.constants import *
 from cavsim2d.utils.shared_functions import *
 
@@ -426,12 +428,28 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         Ttab_val_f = uq_df.to_numpy()
         mean_obj, std_obj, skew_obj, kurtosis_obj = weighted_mean_obj(Ttab_val_f, weights_)
 
+        # Convergence diagnostic. For an iid sampling design the moments' own
+        # standard errors come from a bootstrap of the solves ALREADY done, so a
+        # run reports whether its numbers are settled at no extra solver cost.
+        # A cubature rule (Stroud3/5, Gauss-Legendre) places its nodes
+        # deterministically, so resampling them estimates nothing and the fields
+        # stay null — cross-check those against a second rule instead.
+        if is_sampling_rule(uq_cfg.get('method')):
+            se_mean, se_std = bootstrap_moment_errors(Ttab_val_f, weights_)
+            sigma_rse = sigma_relative_standard_error(len(Ttab_val_f))
+        else:
+            se_mean = se_std = [None] * Ttab_val_f.shape[1]
+            sigma_rse = None
+
         for i, o in enumerate(uq_df.columns):
             result_dict_eigen[o] = {'expe': [], 'stdDev': [], 'skew': [], 'kurtosis': []}
             result_dict_eigen[o]['expe'].append(mean_obj[i])
             result_dict_eigen[o]['stdDev'].append(std_obj[i])
             result_dict_eigen[o]['skew'].append(skew_obj[i])
             result_dict_eigen[o]['kurtosis'].append(kurtosis_obj[i])
+            result_dict_eigen[o]['se_expe'] = [se_mean[i]]
+            result_dict_eigen[o]['se_stdDev'] = [se_std[i]]
+            result_dict_eigen[o]['sigma_rel_std_err'] = [sigma_rse]
         with open(os.path.join(cav.uq_dir, fr'uq.json'), 'w') as file:
             file.write(json.dumps(result_dict_eigen, indent=4, separators=(',', ': ')))
 
@@ -589,6 +607,20 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                 f"above the solver's resolution — increase it (e.g. a realistic "
                 f"tolerance of 0.1-0.5 mm).")
 
+
+        # Convergence diagnostic. For an iid sampling design the moments' own
+        # standard errors come from a bootstrap of the solves ALREADY done, so a
+        # run reports whether its numbers are settled at no extra solver cost.
+        # A cubature rule (Stroud3/5, Gauss-Legendre) places its nodes
+        # deterministically, so resampling them estimates nothing and the fields
+        # stay null — cross-check those against a second rule instead.
+        if is_sampling_rule(uq_cfg.get('method')):
+            se_mean, se_std = bootstrap_moment_errors(Ttab_val_f, weights_)
+            sigma_rse = sigma_relative_standard_error(len(Ttab_val_f))
+        else:
+            se_mean = se_std = [None] * Ttab_val_f.shape[1]
+            sigma_rse = None
+
         result_dict_wake = {}
         for i, o in enumerate(df_wake.columns):
             result_dict_wake[o] = {
@@ -596,6 +628,9 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                 'stdDev': [std_obj[i]],
                 'skew': [skew_obj[i]],
                 'kurtosis': [kurtosis_obj[i]],
+                'se_expe': [se_mean[i]],
+                'se_stdDev': [se_std[i]],
+                'sigma_rel_std_err': [sigma_rse],
             }
 
         # Write to ``<cav>/uq/uq.json`` — the same file the eigenmode branch
@@ -619,46 +654,6 @@ def sa_parallel():
 def sa():
     pass
 
-
-
-def _get_nodes_and_weights(uq_config, rdim, degree):
-    method = uq_config['method']
-    uq_vars = uq_config['variables']
-
-    if method[1].lower() == 'stroud3':
-        nodes, weights, bpoly = quad_stroud3(rdim, degree)
-        nodes = 2. * nodes - 1.
-        # nodes, weights = cn_leg_03_1(rdim)
-    elif method[1].lower() == 'stroud5':
-        nodes, weights = cn_leg_05_2(rdim)
-    elif method[1].lower() == 'gaussian':
-        nodes, weights = cn_gauss(rdim, 2)
-    elif method[1].lower() == 'lhs':
-        sampler = qmc.LatinHypercube(d=rdim)
-        _ = sampler.reset()
-        nsamp = uq_config['integration'][2]
-        sample = sampler.random(n=nsamp)
-
-        l_bounds = [-1 for _ in range(len(uq_vars))]
-        u_bounds = [1 for _ in range(len(uq_vars))]
-        sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
-
-        nodes, weights = sample_scaled.T, np.ones((nsamp, 1))
-    elif method[0].lower() == 'from file':
-        if len(method) == 2:
-            nodes = pd.read_csv(method[1], sep='\\s+').iloc[:, method[1]]
-        else:
-            nodes = pd.read_csv(method[1], sep='\\s+')
-
-        nodes = nodes.to_numpy().T
-        weights = np.ones((nodes.shape[1], 1))
-    else:
-        # issue warning
-        warning('Integration method not recognised. Defaulting to Stroud3 quadrature rule!')
-        nodes, weights, bpoly = quad_stroud3(rdim, degree)
-        nodes = 2. * nodes - 1.
-
-    return nodes, weights
 
 
 def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoords='data',

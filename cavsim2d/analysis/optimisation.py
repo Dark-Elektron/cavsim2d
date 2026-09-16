@@ -654,6 +654,9 @@ class Optimisation:
                 row['_family_split'] = int(mkey.split('::m')[1]) if '::m' in str(mkey) else 0
                 fam_rows.append(row)
             df = pd.DataFrame(fam_rows)
+            # Rebuilding from Series keeps the keys but drops the index NAME;
+            # 'key' is the frame's invariant identity here, so restore it.
+            df.index.name = 'key'
         cavs_dict = eval_cavs
 
         # Get successfully tuned geometries. Post-refactor, tune artefacts
@@ -748,7 +751,15 @@ class Optimisation:
                                                                          self.objectives_unprocessed,
                                                                          Path(cavs_object.projectDir),
                                                                          key_subdir='tuned')
-                df = df.merge(df_wake, on='key', how='inner')
+                # 'key' is df's INDEX here (set at line ~696) but a COLUMN in
+                # df_wake, so a plain merge(on='key') raises KeyError. Lift the
+                # index to a column for the merge, then restore it: everything
+                # downstream (the UQ join, df.index iteration) keys off the index.
+                # reset_index(names=...) rather than reset_index() because the
+                # family fan-out above rebuilds df from Series and drops the name.
+                df = (df.reset_index(names='key')
+                        .merge(df_wake, on='key', how='inner')
+                        .set_index('key'))
                 break
 
         # Apply UQ
@@ -1034,7 +1045,6 @@ class Optimisation:
         wakefield_config_keys = wakefield_config.keys()
         MROT = 2
         MT = 10
-        NFS = 10000
         wakelength = 50
         bunch_length = 25
         DDR_SIG = 0.1
@@ -1068,8 +1078,6 @@ class Optimisation:
 
         if 'MT' not in wakefield_config_keys:
             wakefield_config['MT'] = MT
-        if 'NFS' not in wakefield_config_keys:
-            wakefield_config['NFS'] = NFS
         if 'DDR_SIG' not in wakefield_config['mesh_config']:
             wakefield_config['mesh_config']['DDR_SIG'] = DDR_SIG
         if 'DDZ_SIG' not in wakefield_config['mesh_config']:

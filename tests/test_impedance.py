@@ -2,7 +2,8 @@
 import numpy as np
 import pytest
 
-from cavsim2d.analysis.impedance import reconstruct_impedance, C0
+from cavsim2d.analysis.impedance import (reconstruct_impedance,
+                                         reconstruct_impedance_qnm, C0)
 
 
 def test_peak_is_the_shunt_impedance():
@@ -81,16 +82,31 @@ def _solved(project_dir):
     return cav
 
 
+def _own_Q(cav):
+    """The solve's own Q values, in the frequency order impedance() sorts into.
+
+    These tests exercise the reconstruction ARITHMETIC — schema, peak heights, unit
+    prefixes, spans — on a cheap closed solve. Reconstruction from a closed solve is
+    refused (the Q above cutoff is the wall's, not the mode's), and the documented way
+    to say "I know what Q I want" is to pass it. Handing back the solve's own Q makes
+    these tests exactly what they were before the refusal existed, without turning them
+    into slow PML runs. The refusal itself is tested in
+    test_closed_boundary_reconstruction_is_refused.
+    """
+    return cav.eigenmode.qois_df.sort_values('freq [MHz]')['Q []'].to_numpy()
+
+
 def test_impedance_matches_the_wakefield_schema(project_dir):
     """The frame uses the same columns as cav.wakefield.wake_z, so the two
     overlay without renaming; the transverse one is per metre."""
     cav = _solved(project_dir)
+    Q = _own_Q(cav)
 
     # both solvers default to kOhm, so the two spectra land on the same scale
-    z = cav.eigenmode.impedance()
+    z = cav.eigenmode.impedance(Q=Q)
     assert list(z.columns) == ['f [MHz]', '|Z| [kOhm]', 'Re(Z) [kOhm]', 'Im(Z) [kOhm]']
 
-    zt = cav.eigenmode.impedance('transverse')
+    zt = cav.eigenmode.impedance('transverse', Q=Q)
     assert list(zt.columns) == ['f [MHz]', '|Z| [kOhm/m]',
                                 'Re(Z) [kOhm/m]', 'Im(Z) [kOhm/m]']
     assert not z.isna().any().any() and not zt.isna().any().any()
@@ -100,7 +116,7 @@ def test_impedance_peaks_hit_the_shunt_impedance(project_dir):
     """A uniform grid steps over a high-Q resonance and understates it; the mode
     linewidths are sampled explicitly, so every peak reaches R = 1/2 Q (R/Q)."""
     cav = _solved(project_dir)
-    z = cav.eigenmode.impedance(unit='')          # R = 1/2 Q (R/Q) is in Ohm
+    z = cav.eigenmode.impedance(unit='', Q=_own_Q(cav))   # R = 1/2 Q (R/Q) is in Ohm
     modes = cav.eigenmode.qois_df.query('m == 0')
 
     for _, mode in modes.iterrows():
@@ -114,14 +130,15 @@ def test_impedance_peaks_hit_the_shunt_impedance(project_dir):
 def test_impedance_span_and_Q_override(project_dir):
     cav = _solved(project_dir)
     modes = cav.eigenmode.qois_df.query('m == 0')
+    Q = _own_Q(cav)
 
     # default span is 0 .. the highest computed mode
-    z = cav.eigenmode.impedance()
+    z = cav.eigenmode.impedance(Q=Q)
     assert z['f [MHz]'].min() == pytest.approx(0.0)
     assert z['f [MHz]'].max() == pytest.approx(modes['freq [MHz]'].max())
 
     # an explicit span is honoured
-    zs = cav.eigenmode.impedance(span=(500, 900))
+    zs = cav.eigenmode.impedance(span=(500, 900), Q=Q)
     assert zs['f [MHz]'].min() == pytest.approx(500)
     assert zs['f [MHz]'].max() == pytest.approx(900)
 
@@ -142,10 +159,11 @@ def test_impedance_unit_prefix(project_dir):
     simulated one plotted beside it.
     """
     cav = _solved(project_dir)
+    Q = _own_Q(cav)
 
-    ohm = cav.eigenmode.impedance(unit='')
-    kohm = cav.eigenmode.impedance(unit='k')
-    mohm = cav.eigenmode.impedance(unit='M')
+    ohm = cav.eigenmode.impedance(unit='', Q=Q)
+    kohm = cav.eigenmode.impedance(unit='k', Q=Q)
+    mohm = cav.eigenmode.impedance(unit='M', Q=Q)
 
     assert '|Z| [Ohm]' in ohm and '|Z| [kOhm]' in kohm and '|Z| [MOhm]' in mohm
     # the values really are rescaled, not just relabelled
@@ -156,10 +174,10 @@ def test_impedance_unit_prefix(project_dir):
         1e3 * kohm['Re(Z) [kOhm]'].abs().max())
 
     # transverse carries the /m
-    assert '|Z| [MOhm/m]' in cav.eigenmode.impedance('transverse', unit='M')
+    assert '|Z| [MOhm/m]' in cav.eigenmode.impedance('transverse', unit='M', Q=Q)
 
     with pytest.raises(ValueError, match='unit prefix'):
-        cav.eigenmode.impedance(unit='x')
+        cav.eigenmode.impedance(unit='x', Q=Q)
 
 
 def test_study_eigenmode_plot_impedance_overlays_every_cavity(project_dir):
@@ -176,7 +194,7 @@ def test_study_eigenmode_plot_impedance_overlays_every_cavity(project_dir):
                         'polarisation': ['monopole', 'dipole'], 'n_modes': 5,
                         'mesh_config': {'h': 25, 'p': 3}})
 
-    ax = cavs.eigenmode.plot_impedance()
+    ax = cavs.eigenmode.plot_impedance(Q=1e4)
     lines = ax.get_lines()
     assert [ln.get_label() for ln in lines] == ['A', 'B']
     assert len({ln.get_color() for ln in lines}) == 2      # distinct colours
@@ -186,7 +204,7 @@ def test_study_eigenmode_plot_impedance_overlays_every_cavity(project_dir):
     spans = [(ln.get_xdata().min(), ln.get_xdata().max()) for ln in lines]
     assert spans[0] == pytest.approx(spans[1])
 
-    axt = cavs.eigenmode.plot_impedance('transverse')
+    axt = cavs.eigenmode.plot_impedance('transverse', Q=1e4)
     assert r'\Omega' in axt.get_ylabel()
     assert len(axt.get_lines()) == 2
 
@@ -233,8 +251,40 @@ def test_impedance_without_that_polarisation_is_reported(project_dir):
     cavs.add_cavity([cav], ['NoDip'])
     cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'mm',
                         'polarisation': 'monopole', 'n_modes': 3})
+    assert cav.eigenmode.impedance('transverse', Q=1e4).empty
+    assert not cav.eigenmode.impedance(Q=1e4).empty
+
+
+def test_closed_boundary_reconstruction_is_refused(project_dir):
+    """A closed (PMC) solve cannot produce an impedance: above the beam-pipe cutoff the
+    ends reflect, so each mode keeps the wall's ohmic Q0 instead of its radiation Q and
+    |Z| lands orders of magnitude high. That is refused outright rather than warned
+    about -- but an explicit Q= is the caller taking responsibility, and still works."""
+    cav = _solved(project_dir)
+
+    assert cav.eigenmode.impedance().empty
     assert cav.eigenmode.impedance('transverse').empty
-    assert not cav.eigenmode.impedance().empty
+    assert not cav.eigenmode.impedance(Q=1e4).empty          # explicit override
+
+    import matplotlib
+    matplotlib.use('Agg')
+    assert cav.eigenmode.plot_impedance(show=False) is None  # nothing to draw
+
+
+def test_open_boundary_reconstruction_is_allowed(project_dir):
+    """With an open (PML) end the Q already contains the radiation, so the same call
+    goes through untouched and uses each mode's own Q."""
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cavs = Study(project_dir)
+    cavs.add_cavity([cav], ['Open'])
+    cavs.run_eigenmode({'processes': 1, 'rerun': True, 'boundary_conditions': 'oo',
+                        'polarisation': 'monopole', 'n_modes': 4,
+                        'mesh_config': {'h': 25, 'p': 3}})
+
+    z = cav.eigenmode.impedance()
+    assert not z.empty
+    assert list(z.columns) == ['f [MHz]', '|Z| [kOhm]', 'Re(Z) [kOhm]', 'Im(Z) [kOhm]']
+    assert not z.isna().any().any()
 
 
 def test_reconstruct_impedance_dc_limit():
@@ -271,3 +321,67 @@ def test_reconstruct_impedance_sums_modes():
     z = reconstruct_impedance(f0, roq, q, f0)
     assert z[0].real == pytest.approx(0.5 * q[0] * roq[0], rel=1e-3)
     assert z[1].real == pytest.approx(0.5 * q[1] * roq[1], rel=1e-3)
+
+
+# --- QNM (complex-residue) reconstruction ---------------------------------
+
+def test_qnm_reduces_to_rlc_for_a_trapped_mode():
+    """A real (R/Q)~ at high Q is a trapped mode, and there the pole sum must
+    reproduce the RLC spectrum everywhere — that is what makes 'qnm' safe to use
+    on a mode set that spans the cutoff."""
+    f0 = 1.3e9
+    f = np.unique(np.concatenate([[f0], np.linspace(0.05e9, 3e9, 20001)]))
+    a = reconstruct_impedance([f0], [300.0], [1e4], f)
+    b = reconstruct_impedance_qnm([f0], [300.0 + 0j], [1e4], f)
+    big = np.abs(a) > 1e-3 * np.abs(a).max()
+    assert np.allclose(np.abs(b[big]), np.abs(a[big]), rtol=1e-3)
+
+
+def test_qnm_peak_is_the_shunt_impedance_at_any_q():
+    """Off resonance the two forms differ by O(1/Q^2) — the RLC form is the
+    approximation — but the peak stays 1/2 Q (R/Q) however broad the mode."""
+    f0 = 1.3e9
+    for q in (1e4, 100.0, 10.0, 3.0):
+        # a broad pole peaks a little BELOW f0, so scan rather than sample at f0
+        f = np.linspace(f0 * (1 - 3 / q), f0 * (1 + 3 / q), 20001)
+        z = reconstruct_impedance_qnm([f0], [300.0 + 0j], [q], f)
+        assert np.abs(z).max() == pytest.approx(0.5 * q * 300.0, rel=2e-3)
+
+
+def test_qnm_wake_is_real():
+    """Z(-w) = conj(Z(w)) — the conjugate-pole partner is what guarantees a real
+    wake, and it is the term an ad-hoc complex residue would leave out."""
+    f0 = np.array([1.3e9, 3.4e9])
+    roq = np.array([300 + 120j, -80 + 40j])
+    q = np.array([50.0, 4.0])
+    fp = np.array([0.4e9, 2.1e9, 5.0e9])
+    zp = reconstruct_impedance_qnm(f0, roq, q, fp)
+    zm = reconstruct_impedance_qnm(f0, roq, q, -fp)
+    assert np.allclose(zp, np.conj(zm))
+
+
+def test_qnm_lets_overlapping_modes_interfere():
+    """The point of the model. Two overlapping low-Q poles with opposite-sign
+    residues must partly cancel; the RLC sum, which forces both residues
+    positive-real, can only add them."""
+    f0 = np.array([3.2e9, 3.35e9])
+    q = np.array([5.0, 5.0])
+    f = np.array([3.275e9])                       # midway between the two
+    rlc = abs(reconstruct_impedance(f0, np.array([100.0, 100.0]), q, f)[0])
+    same = abs(reconstruct_impedance_qnm(f0, np.array([100 + 0j, 100 + 0j]), q, f)[0])
+    opp = abs(reconstruct_impedance_qnm(f0, np.array([100 + 0j, -100 + 0j]), q, f)[0])
+    assert same == pytest.approx(rlc, rel=0.05)   # in phase -> same as RLC
+    assert opp < 0.4 * rlc                        # out of phase -> cancels
+
+
+def test_qnm_model_is_rejected_without_complex_residues(project_dir):
+    """Asking for model='qnm' on a run that has no complex eigenvalue reports
+    rather than silently falling back to a different physical model."""
+    cav = _solved(project_dir)
+    assert cav.eigenmode.impedance('longitudinal', model='qnm').empty
+
+
+def test_impedance_rejects_unknown_model(project_dir):
+    cav = _solved(project_dir)
+    with pytest.raises(ValueError, match="model must be"):
+        cav.eigenmode.impedance('longitudinal', model='banana')

@@ -945,13 +945,19 @@ class Study:
         self.eigenmode_config = eigenmode_config
         self.get_eigenmode_qois(uq_config)
 
-        # Save eigenmode config for traceability
+        # Save the eigenmode config for traceability, under the name every reader
+        # expects: 'config.json' is what EigenmodeSolver.config (and the wakefield,
+        # tune and multipacting namespaces) look for. This used to be written as
+        # 'eigenmode_config.json', which nothing read -- so a study-driven run left
+        # cav.eigenmode.config empty and anything keying off it (e.g. the open-boundary
+        # check behind the impedance reconstruction) saw a run with no settings at all.
+        saved_cfg = {k: v for k, v in eigenmode_config.items() if k != 'target'}
         for cav in self.cavities_list:
-            ec_path = Path(cav.self_dir) / 'eigenmode' / 'eigenmode_config.json'
+            ec_path = Path(cav.self_dir) / 'eigenmode' / 'config.json'
             # Ensure folder exists (might be empty if analysis failed but we still want the log)
             os.makedirs(ec_path.parent, exist_ok=True)
             with open(ec_path, 'w') as f:
-                json.dump(eigenmode_config, f, indent=4, default=str)
+                json.dump(saved_cfg, f, indent=4, default=str)
 
     def get_eigenmode_qois(self, uq_config):
         # get results
@@ -1017,7 +1023,7 @@ class Study:
             Number of parallel worker processes (default 1).
         rerun : bool
             Recompute even if results exist (default True).
-        MT, NFS : int
+        MT : int
             Number of mesh lines / frequency samples for the solver.
         DDR_SIG, DDZ_SIG : float
             Radial / longitudinal mesh density (mesh lines per sigma).
@@ -1093,7 +1099,6 @@ class Study:
         if rerun:
             MROT = 2
             MT = 10
-            NFS = 10000
             wakelength = 50
             bunch_length = 25
             DDR_SIG = 0.1
@@ -1115,9 +1120,8 @@ class Study:
             wakefield_config['MROT'] = resolved_mrot
             wakefield_config['polarisation'] = resolved_mrot  # back-compat for downstream reads
 
-            # MT / NFS were already type-checked by validate_wakefield_config above.
+            # MT was already type-checked by validate_wakefield_config above.
             wakefield_config.setdefault('MT', MT)
-            wakefield_config.setdefault('NFS', NFS)
 
             # check input configs
 
@@ -2339,9 +2343,22 @@ class Study:
             def _bare(k):
                 return k.split(':')[-1].strip()
             available = list(df['metric'].unique())
-            metrics = [m for q in selected_qois for m in available if _bare(m) == q]
+            # Accept a polarisation-qualified request ('monopole:R/Q [Ohm]') as well
+            # as a bare one ('R/Q [Ohm]'): compare on the bare name from BOTH sides,
+            # preferring an exact match. Comparing a stripped available name against
+            # an unstripped requested one meant a qualified `qois=` never matched.
+            metrics = []
+            for q in selected_qois:
+                hits = ([m for m in available if m == q]
+                        or [m for m in available if _bare(m) == _bare(q)])
+                for m in hits:
+                    if m not in metrics:
+                        metrics.append(m)
             if not metrics:
-                raise ValueError("None of the specified qois are present in the UQ fundamental mode results.")
+                raise ValueError(
+                    f"None of the specified qois are present in the UQ fundamental "
+                    f"mode results. Asked for {list(selected_qois)}; available: "
+                    f"{available}.")
 
             layout = [[metric for metric in metrics]]
             fig, axd = plt.subplot_mosaic(layout, layout='constrained', figsize=(3 * len(metrics), 3))
@@ -2355,15 +2372,20 @@ class Study:
                     ax.errorbar(sub_df['cavity'], sub_df['mean'], yerr=sub_df['std'], capsize=10, lw=3,
                                 color=scatter_points.get_edgecolor()[0])
 
-                    # plot nominal
-                    ax.scatter(df_nominal.index, df_nominal[_bare(metric)], facecolor='none',
-                               label='Design Point', ec='k', lw=1, s=75,
-                               zorder=100)
+                    # Overlay the nominal design point when it is available. A cavity
+                    # reconstructed from a workspace has no `eigenmode_qois` until its
+                    # nominal solve is reloaded, and the UQ mean and spread are still
+                    # worth plotting without it -- so skip the overlay rather than
+                    # raising KeyError on the missing column.
+                    if not df_nominal.empty and _bare(metric) in df_nominal.columns:
+                        ax.scatter(df_nominal.index, df_nominal[_bare(metric)],
+                                   facecolor='none', label='Design Point', ec='k',
+                                   lw=1, s=75, zorder=100)
 
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.margins(0.3)
-                ax.set_xlabel(LABELS[_bare(metric)])
+                ax.set_xlabel(LABELS.get(_bare(metric), _bare(metric)))
 
             h, l = ax.get_legend_handles_labels()
 

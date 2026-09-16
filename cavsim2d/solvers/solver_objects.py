@@ -16,10 +16,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT
 from cavsim2d.analysis.impedance import (NATIVE_Z_UNIT, convert_impedance_frame,
                                          frame_unit, impedance_frame,
                                          impedance_unit, prefix_factor,
-                                         reconstruct_impedance)
+                                         pml_stable_modes, reconstruct_impedance,
+                                         reconstruct_impedance_qnm)
 from cavsim2d.analysis.multipacting.sey import SEY
 from cavsim2d.analysis.multipacting import metrics as mp_metrics
 from cavsim2d.solvers.eigenmode_result import (EigenmodeResult, MPOLE_NAMES, pol_name,
@@ -61,6 +63,9 @@ DEFAULT_EIGENMODE_CONFIG = {
     'loss_model': None,              # None/'auto' -> inspect tan_delta; 'lossless',
                                      # 'perturbation' or 'lossy' to force one
     'uq_config': None,
+    'beampipe_length': None,         # [m]; None -> the model's own default (2*L_m)
+    'pml_length': None,              # PML block length [m]; None -> 3x the pipe radius
+    'pml_alpha': 1j,                 # PML complex stretch (only with boundary_conditions='oo')
     'mesh_config': {'h': 20, 'p': 3, 'adaptive': None},
 }
 
@@ -86,7 +91,6 @@ DEFAULT_WAKEFIELD_CONFIG = {
     'solver': 'abci',
     'MROT': 2,                       # 0 longitudinal, 1 transverse, 2 both
     'MT': 10,
-    'NFS': 10000,
     'wakelength': 50,                # [m]
     'bunch_length': 25,              # [mm]
     'DDR_SIG': 0.1,
@@ -134,6 +138,33 @@ def merge_config(defaults, *overrides):
             else:
                 merged[k] = v
     return merged
+
+def _solved_with_open_boundary(cfg, modes=None):
+    """True if an eigenmode run used an OPEN (PML) end, so its Q is a real radiation Q.
+
+    Two sources of evidence, because neither alone is reliable:
+
+    - the saved ``boundary_conditions`` (digit 2 = open), and
+    - ``Q_rad []`` in the results, which ONLY an open solve produces.
+
+    The results are checked first and are the stronger evidence: they are what the solver
+    actually did, whereas ``config.json`` is written by ``EigenmodeSolver.run`` and not by
+    every path that can produce results (``Study.run_eigenmode`` does not write one), so a
+    perfectly good open solve can arrive with an empty config.
+    """
+    if modes is not None and 'Q_rad []' in getattr(modes, 'columns', ()):
+        if modes['Q_rad []'].notna().any():
+            return True
+    bc = (cfg or {}).get('boundary_conditions')
+    if bc is None:
+        return False
+    if isinstance(bc, str):
+        bc = BOUNDARY_CONDITIONS_DICT.get(bc.strip().lower(), 33)
+    try:
+        return '2' in f'{int(bc):02d}'
+    except (TypeError, ValueError):
+        return False
+
 
 def _z_axis_label(unit, transverse=False):
     """Mathtext y-label for an impedance axis, e.g. r'$|Z_\\parallel|$ [k$\\Omega$]'."""
@@ -401,10 +432,10 @@ class TuneSolver:
 
         merged_config = {**DEFAULT_TUNE_CONFIG, **tune_config, **kwargs}
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
+
         if not _confirm_overwrite(Path(self.cavity.self_dir) / 'tuned', 'Tune', merged_config):
             return
-
-        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         # Save config first so it's available even if tuning crashes
@@ -866,12 +897,15 @@ class EigenmodeSolver:
     @property
     def config(self):
         if self._config is None:
-            cfg_path = self.folder / 'config.json'
-            if cfg_path.exists():
-                with open(cfg_path, 'r') as f:
-                    self._config = json.load(f)
-            else:
-                self._config = {}
+            self._config = {}
+            # 'eigenmode_config.json' is what Study.run_eigenmode wrote before the
+            # names were unified; results produced by an older run still carry it.
+            for name in ('config.json', 'eigenmode_config.json'):
+                cfg_path = self.folder / name
+                if cfg_path.exists():
+                    with open(cfg_path, 'r') as f:
+                        self._config = json.load(f)
+                    break
         return self._config
 
     @property
@@ -1082,7 +1116,7 @@ class EigenmodeSolver:
     # -- Derived quantities --------------------------------------------------
 
     def impedance(self, kind='longitudinal', span=None, n_points=8001, Q=None,
-                  unit='k'):
+                  unit='k', model='rlc', modes=None):
         """Impedance spectrum reconstructed from the computed modes.
 
         Each mode is treated as a parallel RLC resonator with shunt impedance
@@ -1124,6 +1158,33 @@ class EigenmodeSolver:
             SI prefix for the impedance: ``'k'`` for kOhm (the default, which
             matches what the wakefield solver reports), ``''`` for Ohm, ``'M'``
             for MOhm.
+        modes : pandas.DataFrame, optional
+            Reconstruct from this mode table instead of the full ``qois_df`` —
+            typically a filtered one, e.g. the output of :meth:`stable_modes`.
+            Sampling still adapts to each mode's linewidth, which a hand-built
+            uniform grid cannot do: a Q of 3e4 at 1.3 GHz is only 44 kHz wide and
+            an evenly spaced grid steps straight over it.
+        model : {'rlc', 'qnm'}
+            How the modes are summed.
+
+            ``'rlc'`` (default) is the sum of parallel resonators above. It is
+            exact for **isolated** resonances and is what accelerator tables
+            assume, but it gives every mode a positive-real shunt impedance, so
+            modes that overlap add *in phase*. Below a beam-pipe cutoff, where
+            linewidths are far narrower than the mode spacing, that never
+            matters.
+
+            ``'qnm'`` sums the complex quasi-normal-mode residues instead
+            (``'Re(R/Q) [Ohm]'`` / ``'Im(R/Q) [Ohm]'``), so overlapping poles
+            interfere rather than pile up — the effect the RLC form cannot
+            represent. It is **experimental and warns**: the residue magnitudes
+            are exact but their phases are not yet physical, and the result can
+            violate passivity above the cutoff. For a trustworthy above-cutoff
+            impedance, filter the modes with :meth:`stable_modes` and keep
+            ``'rlc'``.
+
+            Neither model contains anything the mode set does not: no broadband
+            or resistive-wall term, and nothing above the highest computed mode.
 
         Returns
         -------
@@ -1134,10 +1195,11 @@ class EigenmodeSolver:
         >>> z = cav.eigenmode.impedance()                       # 0 .. highest mode
         >>> zt = cav.eigenmode.impedance('transverse', span=(400, 1200), Q=1e4)
         >>> z = cav.eigenmode.impedance(unit='')                # in Ohm instead
+        >>> z = cav.eigenmode.impedance(model='qnm')            # interfering poles
         """
         transverse = not str(kind).lower().startswith('long')
 
-        df = self.qois_df
+        df = self.qois_df if modes is None else modes
         modes = df.sort_values('freq [MHz]') if not df.empty else df
         if modes.empty:
             error(f"No eigenmode results to build a {kind} impedance from. "
@@ -1159,9 +1221,49 @@ class EigenmodeSolver:
                   f"Run cav.eigenmode.run(...) with that polarisation first.")
             return pd.DataFrame()
 
+        model = str(model).lower()
+        if model not in ('rlc', 'qnm'):
+            raise ValueError(f"model must be 'rlc' or 'qnm'; got {model!r}.")
+
         f0 = modes['freq [MHz]'].to_numpy(dtype=float) * 1e6        # -> Hz
         roq = np.where(applicable, modes['R/Q [Ohm]'].to_numpy(dtype=float), 0.0)
+
+        roq_c = None
+        if model == 'qnm':
+            if not {'Re(R/Q) [Ohm]', 'Im(R/Q) [Ohm]'} <= set(modes.columns):
+                error("model='qnm' needs the complex mode residues, which only a run "
+                      "with a complex eigenvalue produces (boundary_conditions='oo', "
+                      "or a lossy dielectric). Re-run, or use the default model='rlc'.")
+                return pd.DataFrame()
+            warning(
+                "model='qnm' is EXPERIMENTAL and not validated on radiating modes: "
+                "the residue phases can come out unphysical (the spectrum may show "
+                "Re(Z) < 0). For an above-cutoff impedance, filter the mode set with "
+                "cav.eigenmode.stable_modes() and use the default model='rlc'.")
+            roq_c = np.where(applicable,
+                             modes['Re(R/Q) [Ohm]'].to_numpy(dtype=float)
+                             + 1j * modes['Im(R/Q) [Ohm]'].to_numpy(dtype=float),
+                             0.0)
         if Q is None:
+            # BLOCKED on closed boundaries. With CLOSED (PEC/PMC) beam-pipe ends a mode
+            # ABOVE the pipe cutoff -- which physically radiates out of the pipe and so
+            # has a low, radiation-limited Q -- is instead REFLECTED and reported with
+            # its high ohmic Q0. The sum-of-resonators |Z| built from that Q0
+            # OVERESTIMATES every propagating mode, often by 100-1000x, and turns a
+            # smooth above-cutoff continuum into spurious sharp lines. That is not a
+            # result worth returning, so it is refused rather than warned about: solve
+            # with at least one open (PML) end, use the wakefield, or state the Q
+            # yourself with Q=.
+            if not _solved_with_open_boundary(self.config, modes):
+                error(
+                    "refusing to reconstruct impedance from a CLOSED-boundary eigenmode "
+                    "solve. The pipe ends reflect, so every mode above the beam-pipe "
+                    "cutoff keeps its ohmic Q0 instead of its radiation Q and |Z| comes "
+                    "out ~100-1000x too high. Re-run with boundary_conditions='oo' (an "
+                    "open/PML end -- see the open_boundary_impedance example), use "
+                    "cav.wakefield for the broadband answer, or pass an explicit Q= if "
+                    "you know the loaded Q and want the reconstruction anyway.")
+                return pd.DataFrame()
             q = modes['Q []'].to_numpy(dtype=float)
         else:
             q = np.broadcast_to(np.asarray(Q, dtype=float), f0.shape).copy()
@@ -1186,11 +1288,33 @@ class EigenmodeSolver:
                                      min(fi + 10 * half_width, f_hi), 101))
         f_span = np.unique(np.concatenate(grids))
 
-        z = reconstruct_impedance(f0, roq, q, f_span, transverse=transverse)
+        if model == 'qnm':
+            z = reconstruct_impedance_qnm(f0, roq_c, q, f_span, transverse=transverse)
+        else:
+            z = reconstruct_impedance(f0, roq, q, f_span, transverse=transverse)
         return impedance_frame(f_span * 1e-6, z, unit=unit, transverse=transverse)
 
+    def stable_modes(self, other, rtol_f=1e-3, rtol_q=0.15):
+        """Which of this solve's modes survive a change of PML settings.
+
+        Re-solve the same cavity with a different ``pml_length`` (or ``pml_alpha``,
+        or mesh) and pass the second namespace or its ``qois_df``. Returns the
+        subset of this solve's ``qois_df`` that *other* also found, at the same
+        frequency and Q — the modes that are properties of the cavity rather than
+        of the absorbing layer. See
+        :func:`~cavsim2d.analysis.impedance.pml_stable_modes`.
+
+            trusted = cav_a.eigenmode.stable_modes(cav_b.eigenmode)
+        """
+        df = self.qois_df
+        other_df = getattr(other, 'qois_df', other)
+        if df.empty or other_df is None or len(other_df) == 0:
+            return df
+        return df[pml_stable_modes(df, other_df, rtol_f=rtol_f, rtol_q=rtol_q)]
+
     def plot_impedance(self, kind='longitudinal', ax=None, span=None,
-                       n_points=8001, Q=None, unit='k', show=True, **kwargs):
+                       n_points=8001, Q=None, unit='k', model='rlc', modes=None,
+                       show=True, **kwargs):
         """Plot the reconstructed impedance (see :meth:`impedance`).
 
         Returns the axes, so a wakefield result can be overlaid on the same one —
@@ -1200,7 +1324,8 @@ class EigenmodeSolver:
             ax = cav.eigenmode.plot_impedance(show=False)
             cav.wakefield.plot_impedance(ax=ax)
         """
-        df = self.impedance(kind=kind, span=span, n_points=n_points, Q=Q, unit=unit)
+        df = self.impedance(kind=kind, span=span, n_points=n_points, Q=Q, unit=unit,
+                            model=model, modes=modes)
         if df.empty:
             return ax
         transverse = str(kind).lower().startswith('trans')
@@ -1229,10 +1354,10 @@ class EigenmodeSolver:
         """
         merged_config = merge_config(DEFAULT_EIGENMODE_CONFIG, eigenmode_config, kwargs)
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
+
         if not _confirm_overwrite(self.folder, 'Eigenmode', merged_config):
             return
-
-        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         # Save config first so it's available even if the solve crashes
@@ -1961,7 +2086,7 @@ class WakefieldSolver:
         saved config always records every setting the run used. Behaviour is
         unchanged: the defaults mirror the effective ones. (Known quirk, not
         changed here: the live ABCI deck writer reads ``MT`` from
-        ``wake_config['MT']`` — top-level ``MT``/``NFS`` are recorded but only
+        ``wake_config['MT']`` — a top-level ``MT`` is recorded but only
         the legacy writer consumed them.) Any config key can also be passed as
         a keyword argument (``run(wakelength=80)``); kwargs override the
         config dict.
@@ -1969,10 +2094,10 @@ class WakefieldSolver:
         _require_vacuum(self.cavity, 'wakefield')
         merged_config = merge_config(DEFAULT_WAKEFIELD_CONFIG, wakefield_config, kwargs)
 
+        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
+
         if not _confirm_overwrite(self.folder, 'Wakefield', merged_config):
             return
-
-        self.cavity._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.folder.mkdir(parents=True, exist_ok=True)
 
         with open(self.folder / 'config.json', 'w') as f:

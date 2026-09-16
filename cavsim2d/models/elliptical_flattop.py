@@ -708,10 +708,13 @@ class EllipticalCavityFlatTop(Cavity):
         ``2*L_m + l_m``."""
         return (2 * self.parameters['L_m'] + self.parameters['l_m']) * 1e-3
 
-    def profile(self):
+    def profile(self, beampipe_length=None):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native
         netgen.occ path, with exact ellipse arcs and the flat top as a straight
         segment across the equator.
+
+        *beampipe_length* (**metres**) overrides the pipe at each open end; see
+        :meth:`EllipticalCavity.profile`.
 
         Shares the contour builder with :class:`EllipticalCavity`; the only
         difference is the trailing flat-top length ``l`` on each cell. Returns
@@ -726,7 +729,8 @@ class EllipticalCavityFlatTop(Cavity):
         try:
             prof = elliptical_profile(cells['m'], cells['el'], cells['er'],
                                       self.n_cells, self.beampipe,
-                                      flattop=True, name='elliptical_flattop')
+                                      flattop=True, name='elliptical_flattop',
+                                      beampipe_length=beampipe_length)
             return self._chained(prof)
         except (DegenerateGeometry, ValueError):
             return None

@@ -147,7 +147,7 @@ def elliptical_profile_from_half_cells(half_cells, beampipe, L_bp, flats=None,
 
 
 def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
-                       flattop=False, name='elliptical'):
+                       flattop=False, name='elliptical', beampipe_length=None):
     """Build the meridian :class:`Profile` of an elliptical (or flat-top) cavity.
 
     ``mid`` / ``end_l`` / ``end_r`` are the per-cell parameter sequences in
@@ -158,6 +158,9 @@ def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
     A thin wrapper over :func:`elliptical_profile_from_half_cells`: it expands the
     three cell types into the ``2 * n_cells`` half-cells.
 
+    ``beampipe_length`` (**metres**) overrides the pipe carried at each open end;
+    ``None`` keeps the default ``4 * L_m``.
+
     Raises :class:`DegenerateGeometry` if any half-cell has no tangent solution.
     """
     halves = half_cell_sequence(mid, end_l, end_r, n_cells)
@@ -165,5 +168,6 @@ def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
         h[6] = mid[6]                                   # writers force Req = Req_m
     flat_map = _flat_lengths(mid, end_l, end_r, n_cells, flattop)
     flats = [flat_map[k] for k in range(1, n_cells + 1)]
-    return elliptical_profile_from_half_cells(halves, beampipe, 4 * mid[5],
+    L_bp = float(beampipe_length) if beampipe_length is not None else 4 * mid[5]
+    return elliptical_profile_from_half_cells(halves, beampipe, L_bp,
                                               flats=flats, name=name)

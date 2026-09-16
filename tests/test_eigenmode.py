@@ -850,3 +850,109 @@ def test_sample_cfg_and_config_sample_return_authoritative_defaults(capsys):
         assert cav.config_sample(kind, show=False) == default
     # unknown kind -> None, no raise
     assert cav.config_sample('nope', show=False) is None
+
+
+def test_open_bc_q_rad_separated(project_dir):
+    """Open boundary conditions (PML) report Q_rad [] and Prad [W] separated from Q_diel."""
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cav.set_workspace(project_dir)
+    cav.eigenmode.run({'polarisation': 'monopole', 'boundary_conditions': 'oo', 'mesh_config': {'h': 6, 'p': 3}})
+    q = cav.eigenmode.qois
+    assert 'Q_rad []' in q and q['Q_rad []'] > 0        # Poynting flux through the mouths
+    assert 'Prad [W]' in q and q['Prad [W]'] > 0
+    assert 'Q_wall []' in q and q['Q_wall []'] > 0
+    assert 'Q_eig []' in q and q['Q_eig []'] > 0        # complex eigenvalue, independent
+    assert 'Q_diel []' not in q          # No lossy dielectrics -> no Q_diel
+    # Wall loss is perturbative and adds on top; the rest of the loss comes off the
+    # eigenvalue (see evaluate_qois).
+    assert 1 / q['Q []'] == pytest.approx(1 / q['Q_wall []'] + 1 / q['Q_eig []'], rel=1e-5)
+    # With no dielectric, radiation is the ONLY channel the eigenvalue can be seeing, so
+    # 'Q balance []' is Q_eig/Q_rad -- the two independent routes to the same number.
+    assert q['Q balance []'] == pytest.approx(q['Q_eig []'] / q['Q_rad []'], rel=1e-9)
+
+
+def test_open_bc_q_rad_matches_eigenvalue_above_cutoff(project_dir):
+    """For a RADIATING mode the Poynting integral and the eigenvalue must agree.
+
+    Two independent measurements of the same loss: 1/2 Im(E x H*) integrated across the
+    pipe mouths, versus the decay rate |Re w| / 2|Im w| read off the complex eigenvalue.
+    They agree to discretisation error above the beam-pipe cutoff, which is the regime
+    the open boundary exists to model. (Below cutoff the flux is zero to within the
+    discretisation floor, so the ratio there is meaningless and is not asserted.)
+    """
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    cav.set_workspace(project_dir)
+    cav.eigenmode.run({'polarisation': 'monopole', 'n_modes': 10,
+                       'boundary_conditions': 'oo', 'mesh_config': {'h': 10, 'p': 2}})
+    df = cav.eigenmode.qois_df
+    f_cutoff = 2.405 * 299792458.0 / (2 * np.pi * MIDCELL[4] * 1e-3) / 1e6
+    # Modes carrying real field. A coarse 10-mode solve also returns near-null modes
+    # (R/Q ~ 1e-26, no field on axis) whose two Q estimates are both noise; they are not
+    # what the open boundary is there to model and they are not asserted on.
+    above = df[(df['freq [MHz]'] > f_cutoff) & (df['R/Q [Ohm]'] > 1e-3)]
+    assert not above.empty, 'no above-cutoff accelerating mode was computed'
+    # Observed spread is ~1% at h=10/p=2; the band leaves room for mesh sensitivity
+    # without being loose enough to pass on a broken flux integral (which was out by
+    # 4-5 orders of magnitude before the projection was restricted to 'phys').
+    assert (above['Q balance []'] > 0.9).all(), above[['freq [MHz]', 'Q balance []']]
+    assert (above['Q balance []'] < 1.15).all(), above[['freq [MHz]', 'Q balance []']]
+
+
+def test_open_solve_keeps_the_accelerating_mode(project_dir):
+    """The PML solve must return the SAME fundamental passband as the closed one.
+
+    Regression: the lossy Arnoldi path picked, for each shift, the Ritz pair with the
+    smallest RESIDUAL rather than the one nearest that shift. Inside a passband a
+    neighbour converges better than the targeted mode, so two adjacent shifts returned
+    the same eigenvalue; the shortfall was then topped up by smallest residual, which
+    filled the gap with an unrelated high-frequency mode. The run came back with the
+    right mode COUNT and no warning, but without the pi-mode -- the largest R/Q in the
+    cavity, and the one every figure of merit is quoted for.
+    """
+    closed = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both',
+                              name='fp_closed')
+    closed.set_workspace(os.path.join(project_dir, 'fp_closed'))
+    closed.eigenmode.run({'polarisation': 'monopole', 'n_modes': 5,
+                          'mesh_config': {'h': 20, 'p': 3},
+                          'boundary_conditions': 'mm', 'force': True})
+
+    opened = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both',
+                              name='fp_open')
+    opened.set_workspace(os.path.join(project_dir, 'fp_open'))
+    opened.eigenmode.run({'polarisation': 'monopole', 'n_modes': 5,
+                          'mesh_config': {'h': 20, 'p': 3},
+                          'boundary_conditions': 'oo', 'force': True})
+
+    dc = closed.eigenmode.qois_df
+    do = opened.eigenmode.qois_df
+
+    # the accelerating mode is the one carrying the R/Q, and it is trapped, so the
+    # PML must not move it
+    f_acc = float(dc.loc[dc['R/Q [Ohm]'].idxmax(), 'freq [MHz]'])
+    f_acc_open = float(do.loc[do['R/Q [Ohm]'].idxmax(), 'freq [MHz]'])
+    assert f_acc_open == pytest.approx(f_acc, rel=1e-3), (
+        f'open solve lost the accelerating mode: closed has it at {f_acc:.3f} MHz, '
+        f"open reports {f_acc_open:.3f} MHz. Open frequencies: "
+        f"{sorted(do['freq [MHz]'].round(2))}")
+
+    # and every trapped mode the closed solve found should still be there
+    for f in dc.loc[dc['freq [MHz]'] < f_acc * 1.05, 'freq [MHz]']:
+        assert np.min(np.abs(do['freq [MHz]'].to_numpy() - f)) < 1e-3 * f, (
+            f'open solve is missing the mode at {f:.3f} MHz; it returned '
+            f"{sorted(do['freq [MHz]'].round(2))}")
+
+
+def test_open_solve_keeps_near_degenerate_pairs(project_dir):
+    """_dedupe_shifts collapses two modes closer than 1e-3 in lambda onto ONE shift,
+    so a rule of one-mode-per-shift silently returns only one of the pair. Selecting
+    the lowest n_modes distinct eigenvalues from the pooled Arnoldi pairs keeps both.
+    """
+    cav = EllipticalCavity(2, MIDCELL, MIDCELL, MIDCELL, beampipe='both',
+                           name='degen_open')
+    cav.set_workspace(os.path.join(project_dir, 'degen_open'))
+    cav.eigenmode.run({'polarisation': 'monopole', 'n_modes': 6,
+                       'mesh_config': {'h': 20, 'p': 3},
+                       'boundary_conditions': 'oo', 'force': True})
+    f = np.sort(cav.eigenmode.qois_df['freq [MHz]'].to_numpy())
+    assert len(f) >= 5, f'expected ~6 modes, got {len(f)}: {f}'
+    assert len(np.unique(np.round(f, 6))) == len(f), f'duplicate frequencies: {f}'

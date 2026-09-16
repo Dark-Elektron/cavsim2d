@@ -1,10 +1,15 @@
 """Quadrature, sampling, and statistical weight utilities."""
 import math
+import warnings
 import numpy as np
+import pandas as pd
 from scipy.stats import qmc
 from numpy.polynomial.legendre import leggauss
 
 from cavsim2d.constants import *
+
+#: pandas separator for whitespace-delimited node files.
+SEP_WHITESPACE = r"\s+"
 
 def stroud(p):
     """
@@ -445,7 +450,21 @@ def weighted_mean_obj(tab_var, weights):
         #
         # stdDev = np.sqrt(abs(outvar - expe ** 2))
         mean = weighted_mean(tab_var, weights.T[0])
-        std = np.sqrt(weighted_variance(tab_var, weights.T[0], mean))
+        var = weighted_variance(tab_var, weights.T[0], mean)
+        # A negative variance is only possible with a negative-weight rule
+        # (Stroud5 at k >= 3). np.sqrt would turn it into a silent NaN, so say what
+        # happened: the moments from such a rule cannot be trusted for this
+        # response, rather than the solver having failed.
+        if np.any(np.asarray(var) < 0):
+            bad = int(np.sum(np.asarray(var) < 0))
+            warnings.warn(
+                f"UQ: {bad} of {np.size(var)} objectives came out with a NEGATIVE "
+                f"weighted variance, so their stdDev is NaN. This means the node "
+                f"rule has negative weights (Stroud5 at 3+ variables) and the "
+                f"response varies too sharply across its axis nodes for the rule to "
+                f"hold. Re-run those objectives with a Monte-Carlo design.",
+                UserWarning, stacklevel=3)
+        std = np.sqrt(np.asarray(var, dtype=float))
         skew = weighted_skew(tab_var, weights.T[0], mean, std)
         kurtosis = weighted_kurtosis(tab_var, weights.T[0], mean, std)
     else:
@@ -510,61 +529,321 @@ def stroud3_nodes_and_weights(p: int):
     return nodes, weights
 
 
-def generate_uniform_nodes(k: int, bound: float, n: int):
+def _bound_vector(k: int, bound):
+    """*bound* as a length-*k* array.
+
+    ``perturb_geometry`` always passes one delta PER expanded variable, so every
+    generator has to broadcast per-dimension. Taking a scalar too keeps the
+    generators usable directly.
+    """
+    b = np.asarray(bound, dtype=float)
+    if b.ndim == 0:
+        return np.full(k, float(b))
+    if b.size != k:
+        raise ValueError(f"expected {k} perturbation bounds (one per variable), got {b.size}")
+    return b.reshape(k)
+
+
+def _require_n(n, method):
+    """Sample count for the rules that have no intrinsic one."""
+    if n is None:
+        raise ValueError(
+            f"the {method!r} node rule needs a sample count: pass it as the second "
+            f"element of 'method', e.g. ['{method}', 50].")
+    n = int(n)
+    if n < 2:
+        raise ValueError(f"{method!r} needs at least 2 samples, got {n}.")
+    return n
+
+
+def generate_uniform_nodes(k: int, bound, n: int):
     """Uniform random delta-vectors in [-bound,+bound] with equal weights."""
-    deltas = [np.random.uniform(-bound, bound, size=k) for _ in range(n)]
+    n = _require_n(n, 'Uniform')
+    b = _bound_vector(k, bound)
+    # Via np.asarray, so a per-variable LIST of deltas negates elementwise
+    # instead of raising "bad operand type for unary -: 'list'".
+    deltas = [np.random.uniform(-b, b, size=k) for _ in range(n)]
     weights = [1.0 / n] * n
     return deltas, weights
 
-def generate_normal_nodes(k: int, bound: float, n: int, seed=None):
+
+def generate_normal_nodes(k: int, bound, n: int, seed=None):
     """
     n independent multivariate normal samples in k dims,
     each component ~ N(0,bound^2).
     """
+    n = _require_n(n, 'Normal')
+    b = _bound_vector(k, bound)
     rng     = np.random.default_rng(seed)
-    sample  = rng.standard_normal(size=(n, k)) * bound
+    sample  = rng.standard_normal(size=(n, k)) * b
     deltas  = list(sample)
     weights = [1.0/n]*n
     return deltas, weights
 
-def generate_gauss_legendre_nodes(k: int, bound: float, n: int):
-    """Tensor-product Gauss–Legendre nodes & weights on [-bound,bound]."""
+
+def generate_gauss_legendre_nodes(k: int, bound, n: int):
+    """Tensor-product Gauss–Legendre nodes & weights on [-bound,bound].
+
+    n**k nodes, so this is affordable for a handful of variables only.
+    """
+    n = _require_n(n, 'Gauss_Legendre')
+    b = _bound_vector(k, bound)
     x1d, w1d = leggauss(n)
-    x1d *= bound
-    w1d *= bound
     grids = np.meshgrid(*([x1d] * k), indexing='ij')
     wgrids = np.meshgrid(*([w1d] * k), indexing='ij')
-    flat_x = np.stack([g.ravel() for g in grids], axis=1)  # (n**k, k)
-    flat_w = np.prod([wg.ravel() for wg in wgrids], axis=0)  # (n**k,)
+    # Scale each DIMENSION by its own bound after the tensor product. Scaling the
+    # 1-D rule first ("x1d *= bound") broadcast a length-n array against a
+    # length-k one, so it raised for every k != n.
+    flat_x = np.stack([g.ravel() for g in grids], axis=1) * b   # (n**k, k)
+    flat_w = np.prod([wg.ravel() for wg in wgrids], axis=0)     # (n**k,)
+    flat_w = flat_w / flat_w.sum()
     return list(flat_x), list(flat_w)
 
 
-def generate_stroud3_nodes(k: int, bound: float):
+def generate_stroud3_nodes(k: int, bound):
     """Stroud-III delta-vectors mapped to [-bound,bound] and equal weights."""
+    b = _bound_vector(k, bound)
     nodes, w = stroud3_nodes_and_weights(k)
-    deltas = [(vec - 0.5) * 2 * bound for vec in nodes]
+    deltas = [(vec - 0.5) * 2 * b for vec in nodes]
     return deltas, list(w)
 
 
-def generate_nodes(k: int, bound: float, node_type: list):
-    """Dispatch to the appropriate node generator."""
-    # Flatten or identify method name from ['Category', 'Method']
-    method_name = node_type[0].lower()
+def generate_stroud5_nodes(k: int, bound):
+    """Stroud-5 (degree-5) delta-vectors on [-bound,bound].
+
+    2k^2+1 nodes against Stroud-3's 2k. It integrates quartics exactly, so it is
+    the cheapest independent check on a Stroud-3 result.
+    """
+    b = _bound_vector(k, bound)
+    nodes, w = cn_leg_05_2(k)      # (k, N) on [-1,1]^k; weights (N, 1) summing to 1
+    deltas = [vec * b for vec in np.asarray(nodes).T]
+    return deltas, list(np.asarray(w).ravel())
+
+
+def generate_lhs_nodes(k: int, bound, n: int, seed=None):
+    """Latin-hypercube delta-vectors in [-bound,+bound] with equal weights."""
+    n = _require_n(n, 'LHS')
+    b = _bound_vector(k, bound)
+    sample = qmc.LatinHypercube(d=k, seed=seed).random(n)       # (n, k) in [0, 1]
+    deltas = list((2.0 * sample - 1.0) * b)
+    weights = [1.0 / n] * n
+    return deltas, weights
+
+
+def generate_nodes_from_file(k: int, bound, path):
+    """Delta-vectors read from a whitespace-separated file, one node per row.
+
+    The file holds the perturbations themselves (same units as ``delta``), so
+    *bound* is not applied. Equal weights.
+    """
+    if path is None:
+        raise ValueError(
+            "the 'from file' node rule needs a path: ['from file', '<path>'].")
+    arr = pd.read_csv(path, sep=SEP_WHITESPACE).to_numpy(dtype=float)
+    if arr.ndim != 2 or arr.shape[1] != k:
+        got = arr.shape[1] if arr.ndim == 2 else '?'
+        raise ValueError(
+            f"{path!r} has {got} columns but there are {k} perturbed variables "
+            f"— one column per variable is required.")
+    n = arr.shape[0]
+    if n < 2:
+        raise ValueError(f"{path!r} holds {n} node(s); at least 2 are needed.")
+    return list(arr), [1.0 / n] * n
+
+
+#: Node rules reachable through :func:`generate_nodes`, for error messages.
+NODE_RULES = ('Stroud3', 'Stroud5', 'Uniform', 'Normal', 'LHS',
+              'Gauss_Legendre', 'from file')
+
+
+def generate_nodes(k: int, bound, node_type: list, seed=3799):
+    """Dispatch to the appropriate node generator.
+
+    *node_type* is ``[rule]`` or ``[rule, parameter]``, the parameter being a
+    sample count ('Uniform', 'Normal', 'LHS', 'Gauss_Legendre') or a path
+    ('from file'). ``['Quadrature', '<rule>']`` is accepted too, which is how
+    the documented default ``['Quadrature', 'Stroud3']`` is spelled.
+    """
+    if not node_type:
+        raise ValueError(f"'method' is empty; choose one of {', '.join(NODE_RULES)}.")
+    method_name = str(node_type[0]).lower()
     params = node_type[1] if len(node_type) > 1 else None
-    
-    # If the first element is 'quadrature', look at the second for the algorithm
-    if method_name == 'quadrature' and params:
-        method_name = params.lower()
+
+    # ['Quadrature', 'Stroud3'] -> the second element names the algorithm, so a
+    # third would carry its parameter. Bare ['Quadrature'] names no rule and
+    # falls through to the error below rather than silently picking one.
+    if method_name == 'quadrature' and params is not None:
+        method_name = str(params).lower()
+        params = node_type[2] if len(node_type) > 2 else None
+
+    check_node_rule(k, node_type)
 
     if method_name == 'uniform':
         return generate_uniform_nodes(k, bound, params)
     elif method_name == 'normal':
-        return generate_normal_nodes(k, bound, params, seed=3799)
+        return generate_normal_nodes(k, bound, params, seed=seed)
+    elif method_name == 'lhs':
+        return generate_lhs_nodes(k, bound, params, seed=seed)
     elif method_name == 'gauss_legendre':
         return generate_gauss_legendre_nodes(k, bound, params)
     elif method_name == 'stroud3':
         return generate_stroud3_nodes(k, bound)
-    
-    raise ValueError(f"Unknown node_type {method_name!r}")
+    elif method_name == 'stroud5':
+        return generate_stroud5_nodes(k, bound)
+    elif method_name in ('from file', 'from_file', 'file'):
+        return generate_nodes_from_file(k, bound, params)
+
+    raise ValueError(
+        f"Unknown UQ node rule {node_type[0]!r}"
+        + (f" / {node_type[1]!r}" if len(node_type) > 1 else "")
+        + f". Choose one of: {', '.join(NODE_RULES)}.")
 
 
+# ---------------------------------------------------------------------------
+# Rule adequacy
+# ---------------------------------------------------------------------------
+
+#: Dimension up to which each cubature rule's moments can be trusted WITHOUT an
+#: independent cross-check. These are not cliffs: measured against exact answers,
+#: Stroud3's sigma error on a smooth weakly-nonlinear response stays ~1-2% even at
+#: k=20. The limit is that a 2k-node degree-3 design cannot itself reveal how much
+#: degree->=4 content the response has, so past this width the result needs a
+#: second rule to confirm it.
+RULE_DIM_COMFORT = {'stroud3': 6, 'stroud5': 12}
+
+#: Node budget above which a tensor-product rule is refused as impractical.
+TENSOR_NODE_BUDGET = 20000
+
+#: Relative standard error on a reported stdDev that triggers a sample-count
+#: warning. sigma's own relative standard error is ~1/sqrt(2N), independent of
+#: dimension (verified against repeated sampling).
+SIGMA_RSE_WARN = 0.10
+
+
+def sigma_relative_standard_error(n):
+    """Relative standard error of a stdDev estimated from *n* iid samples.
+
+    ``1/sqrt(2n)`` — dimension-independent, which is what separates UQ sample
+    sizing from Saltelli sensitivity sizing (the latter scales with the number of
+    variables, this does not).
+    """
+    return 1.0 / np.sqrt(2.0 * int(n))
+
+
+def samples_for_sigma_accuracy(rel_err):
+    """Samples needed for a stdDev accurate to *rel_err* (e.g. 0.05 -> 5%)."""
+    return int(np.ceil(1.0 / (2.0 * float(rel_err) ** 2)))
+
+
+def check_node_rule(k, node_type, n_nodes=None, stacklevel=4):
+    """Warn when a UQ node rule is used where its result cannot be trusted.
+
+    Emits ``UserWarning``s rather than raising: the run is still meaningful, but
+    the caller needs to know the moments are unvalidated. Raises only for a
+    tensor rule whose node count is beyond any practical solver budget.
+    """
+    if not node_type:
+        return
+    rule = str(node_type[0]).lower()
+    params = node_type[1] if len(node_type) > 1 else None
+    if rule == 'quadrature' and params is not None:
+        rule = str(params).lower()
+        params = node_type[2] if len(node_type) > 2 else None
+
+    comfort = RULE_DIM_COMFORT.get(rule)
+    if comfort is not None and k > comfort:
+        better = "Stroud5" if rule == 'stroud3' else "a Monte-Carlo design ('LHS'/'Normal')"
+        warnings.warn(
+            f"UQ: {rule!r} over {k} random variables is past the {comfort} "
+            f"dimensions where its moments can be trusted unchecked. It stays exact "
+            f"for degree-{3 if rule == 'stroud3' else 5} responses at any width, but "
+            f"{2 * k if rule == 'stroud3' else 2 * k * k + 1} nodes cannot reveal how "
+            f"much higher-order content this response has. Cross-check with {better}, "
+            f"or treat the stdDev as indicative.",
+            UserWarning, stacklevel=stacklevel)
+
+    if rule == 'stroud5' and k >= 3:
+        # cn_leg_05_2 puts NEGATIVE weights on the 2k axis nodes for every k >= 3
+        # (min weight -0.03 at k=3, falling linearly to -1.42 at k=12). The rule is
+        # still degree-5 exact, but the quadrature is no longer a probability
+        # measure: if the response varies strongly across those nodes the weighted
+        # variance can come out NEGATIVE and the stdDev becomes NaN.
+        w_min = -(k - 2) * 0.154321 + 0.077160
+        warnings.warn(
+            f"UQ: 'Stroud5' at {k} variables uses negative weights on its axis nodes "
+            f"(min ~{w_min:.2f}), so it is not a probability measure. It stays "
+            f"degree-5 exact for smooth responses, but a sharply varying one can "
+            f"produce a negative variance and a NaN stdDev. Check the reported "
+            f"stdDev is finite, and prefer a Monte-Carlo design if it is not.",
+            UserWarning, stacklevel=stacklevel)
+
+    if rule == 'gauss_legendre' and params is not None:
+        total = int(params) ** k
+        if total > TENSOR_NODE_BUDGET:
+            raise ValueError(
+                f"UQ: ['Gauss_Legendre', {params}] over {k} variables is {params}**{k} "
+                f"= {total:,} solver runs, beyond the {TENSOR_NODE_BUDGET:,} budget. A "
+                f"tensor rule is only affordable for a handful of variables — use "
+                f"'Stroud5' (degree 5 at {2 * k * k + 1} nodes) instead.")
+        warnings.warn(
+            f"UQ: ['Gauss_Legendre', {params}] over {k} variables is {total:,} solver "
+            f"runs. 'Stroud5' reaches degree 5 in {2 * k * k + 1}.",
+            UserWarning, stacklevel=stacklevel)
+
+    if rule in ('uniform', 'normal', 'lhs') and params is not None:
+        n = int(params)
+        rse = sigma_relative_standard_error(n)
+        if rse > SIGMA_RSE_WARN:
+            warnings.warn(
+                f"UQ: {n} samples gives a stdDev with ~{rse * 100:.0f}% relative "
+                f"standard error (1/sqrt(2N)). For {SIGMA_RSE_WARN * 100:.0f}% use "
+                f"N>={samples_for_sigma_accuracy(SIGMA_RSE_WARN)}, for 5% use "
+                f"N>={samples_for_sigma_accuracy(0.05)}, for 1% use "
+                f"N>={samples_for_sigma_accuracy(0.01)}. This does not depend on the "
+                f"number of variables.",
+                UserWarning, stacklevel=stacklevel)
+        if rule == 'lhs':
+            warnings.warn(
+                "UQ: Latin hypercube sharpens the MEAN (often by 1-3 orders of "
+                "magnitude) but not the stdDev — sigma's error still follows "
+                "1/sqrt(2N). Size N from the stdDev you need.",
+                UserWarning, stacklevel=stacklevel)
+
+
+def bootstrap_moment_errors(tab_var, weights, n_boot=2000, seed=12345):
+    """Standard errors of the weighted mean and stdDev, by bootstrap.
+
+    Returns ``(se_mean, se_std)``, one entry per column of *tab_var*. Valid only
+    for an **iid sample** design ('Uniform', 'Normal', 'LHS'): a cubature rule's
+    nodes are placed deterministically, so resampling them estimates nothing and
+    the caller must not use this for one.
+
+    This is the convergence check a single UQ run can actually afford — it reuses
+    the solves already done and costs no extra runs.
+    """
+    tab = np.asarray(tab_var, dtype=float)
+    w = np.asarray(weights, dtype=float).reshape(-1)
+    n = tab.shape[0]
+    if n < 3:
+        return ([np.nan] * tab.shape[1], [np.nan] * tab.shape[1])
+    rng = np.random.default_rng(seed)
+    means = np.empty((n_boot, tab.shape[1]))
+    stds = np.empty((n_boot, tab.shape[1]))
+    for b in range(n_boot):
+        idx = rng.integers(0, n, n)
+        wb = w[idx]
+        m = np.average(tab[idx], weights=wb, axis=0)
+        v = np.average((tab[idx] - m) ** 2, weights=wb, axis=0)
+        means[b] = m
+        stds[b] = np.sqrt(v)
+    return list(np.nanstd(means, axis=0)), list(np.nanstd(stds, axis=0))
+
+
+def is_sampling_rule(node_type):
+    """True when *node_type* draws an iid sample (so a bootstrap is meaningful)."""
+    if not node_type:
+        return False
+    rule = str(node_type[0]).lower()
+    if rule == 'quadrature' and len(node_type) > 1:
+        rule = str(node_type[1]).lower()
+    return rule in ('uniform', 'normal', 'lhs')

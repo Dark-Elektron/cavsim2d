@@ -1450,9 +1450,16 @@ class EllipticalCavity(Cavity):
         """Mid-cell axial length (iris to iris), metres: twice the half-cell L."""
         return 2 * self.parameters['L_m'] * 1e-3
 
-    def profile(self):
+    def profile(self, beampipe_length=None):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native
         netgen.occ geometry path, with *exact* ellipse arcs.
+
+        *beampipe_length* (**metres**) overrides the pipe carried at each open
+        end; ``None`` keeps the default ``2 * L_m``. Below the pipe cutoff the
+        choice is immaterial — the mode is evanescent there and 2*L_m and 4*L_m
+        agree bit for bit — but above it the pipe carries a propagating wave, so
+        a longer pipe is a different problem. It is also what a beam-tube
+        absorber needs room to sit in.
 
         Covers every elliptical geometry: single-cell and multicell, symmetric and
         asymmetric end cells, any beampipe configuration, and (via
@@ -1466,7 +1473,10 @@ class EllipticalCavity(Cavity):
         """
         try:
             halves = self.half_cells() * 1e-3
-            L_bp = 2 * float(self.parameters['L_m']) * 1e-3
+            bp = (beampipe_length if beampipe_length is not None
+                  else getattr(self, 'beampipe_length', None))
+            L_bp = (float(bp) if bp is not None
+                    else 2 * float(self.parameters['L_m']) * 1e-3)
         except (KeyError, TypeError, ValueError):
             return None
         try:

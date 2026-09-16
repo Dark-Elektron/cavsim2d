@@ -569,13 +569,17 @@ class Cavity(ABC):
             self._dielectrics = []
         return self._dielectrics
 
-    def add_dielectric(self, material, eps_r, *, tan_delta=0.0, z, r, maxh=None,
-                       color=(1.0, 1.0, 0.0)):
+    def add_dielectric(self, material, eps_r, *, tan_delta=0.0, z=None, r=None,
+                       points=None, maxh=None, color=(1.0, 1.0, 0.0)):
         """Fill part of the cavity with a dielectric.
 
-        The region is an axisymmetric **rectangular ring** in the (z, r) meridian
-        plane — an annular cylinder in 3D — which is the shape dielectric loading
-        usually takes: a ceramic window, a beam-pipe liner, an absorber ring.
+        Two shapes. ``z``/``r`` give an axisymmetric **rectangular ring** in the
+        (z, r) meridian plane — an annular cylinder in 3D — the shape dielectric
+        loading usually takes: a ceramic window, a beam-pipe liner, an absorber
+        ring. ``points`` gives an arbitrary closed **polygon**, revolved into a
+        solid of revolution, so a triangle becomes a **cone** — the shape a
+        beam-tube HOM absorber actually takes, and a far better match to the pipe
+        above cutoff than a flat ring.
 
         Parameters
         ----------
@@ -593,9 +597,14 @@ class Cavity(ABC):
             and switches to the full complex eigenproblem above that. See
             :func:`~cavsim2d.solvers.NGSolve.eigen_ngsolve.resolve_loss_model`.
         z, r : (lo, hi) pairs, **millimetres**
-            Extent of the region, in the same units as every other cavity
-            dimension. Clipped to the cavity, so a generous span is fine — e.g.
-            ``z=(-1e4, 1e4)`` for "the full length".
+            Extent of a rectangular region, in the same units as every other
+            cavity dimension. Clipped to the cavity, so a generous span is fine —
+            e.g. ``z=(-1e4, 1e4)`` for "the full length". Mutually exclusive with
+            *points*.
+        points : sequence of (z, r), **millimetres**
+            Vertices of an arbitrary closed polygon instead, in the meridian
+            plane; the outline is closed automatically and its winding fixed. A
+            triangle revolves into a cone. Mutually exclusive with *z*/*r*.
         maxh : float, optional
             Local mesh size **in millimetres** inside the region. A thin shell
             needs this: a 0.5 mm tube wall in a cavity meshed at the default
@@ -618,6 +627,12 @@ class Cavity(ABC):
             cav.add_dielectric('ceramic', 9.8, tan_delta=2e-4,
                                z=(-1e4, 1e4), r=(2.5, 3.0), maxh=0.25)
 
+        A conical absorber pointing up the beam tube from the pipe end, on a pipe
+        of radius 39 mm — the Marhauser HOM-absorber geometry::
+
+            cav.add_dielectric('absorber', 10.0, tan_delta=0.3,
+                               points=[(300, 0), (420, 39), (300, 39)], maxh=3)
+
         Notes
         -----
         Dielectrics are supported by the **eigenmode** solver only, and only on
@@ -632,25 +647,43 @@ class Cavity(ABC):
             raise ValueError(
                 f"tan_delta must be >= 0 (a negative loss tangent is gain, not "
                 f"loss), got {tan_delta!r}.")
-        if len(z) != 2 or len(r) != 2:
-            raise ValueError("'z' and 'r' must each be a (lo, hi) pair in mm, "
-                             f"got z={z!r}, r={r!r}.")
-        if float(min(z)) == float(max(z)) or float(min(r)) == float(max(r)):
-            raise ValueError(f"dielectric {material!r} has zero extent "
-                             f"(z={tuple(z)}, r={tuple(r)}); both spans must be "
-                             "non-degenerate, in mm.")
+        if points is not None:
+            if z is not None or r is not None:
+                raise ValueError(
+                    f"dielectric {material!r}: give either 'points' or 'z'/'r', "
+                    "not both.")
+        else:
+            if z is None or r is None:
+                raise ValueError(
+                    f"dielectric {material!r}: give 'z' and 'r' (a rectangular "
+                    "ring), or 'points' (an arbitrary polygon).")
+            if len(z) != 2 or len(r) != 2:
+                raise ValueError("'z' and 'r' must each be a (lo, hi) pair in mm, "
+                                 f"got z={z!r}, r={r!r}.")
+            if float(min(z)) == float(max(z)) or float(min(r)) == float(max(r)):
+                raise ValueError(f"dielectric {material!r} has zero extent "
+                                 f"(z={tuple(z)}, r={tuple(r)}); both spans must be "
+                                 "non-degenerate, in mm.")
         if any(d['material'] == material for d in self.dielectrics):
             raise ValueError(f"cavity {self.name!r} already has a dielectric region "
                              f"named {material!r}; use clear_dielectrics() to reset.")
-        self.dielectrics.append({
+        entry = {
             'material': str(material),
             'eps_r': eps_r,
             'tan_delta': tan_delta,
-            'z': (float(min(z)), float(max(z))),
-            'r': (float(min(r)), float(max(r))),
             'maxh': None if maxh is None else float(maxh),
             'color': tuple(float(c) for c in color),
-        })
+        }
+        if points is not None:
+            # Validated (>=3 vertices, r >= 0, non-zero area, winding) by
+            # MaterialRegion when the profile is built.
+            entry['points'] = [(float(a), float(b)) for a, b in points]
+            entry['z'] = entry['r'] = None
+        else:
+            entry['points'] = None
+            entry['z'] = (float(min(z)), float(max(z)))
+            entry['r'] = (float(min(r)), float(max(r)))
+        self.dielectrics.append(entry)
         return self
 
     def clear_dielectrics(self):
@@ -671,8 +704,15 @@ class Cavity(ABC):
         having the regions — so nothing central needs updating when a region is
         added. Empty for an all-vacuum cavity.
         """
-        return {'%s:%s' % (d['material'], f)
-                for d in self.dielectrics for f in self.DIELECTRIC_FIELDS}
+        out = set()
+        for d in self.dielectrics:
+            for f in self.DIELECTRIC_FIELDS:
+                # A polygon region has no (lo, hi) extent, so its geometric
+                # handles do not exist; only the material fields are tunable.
+                if d.get('points') and f not in ('eps_r', 'tan_delta'):
+                    continue
+                out.add('%s:%s' % (d['material'], f))
+        return out
 
     def _dielectric_slot(self, name):
         """``(region dict, field)`` for a ``<material>:<field>`` name, or None."""
@@ -683,6 +723,8 @@ class Cavity(ABC):
             return None
         for d in self.dielectrics:
             if d['material'] == material:
+                if d.get('points') and field not in ('eps_r', 'tan_delta'):
+                    return None          # no rectangle handles on a polygon
                 return d, field
         return None
 
@@ -764,8 +806,15 @@ class Cavity(ABC):
             m = d['material']
             sig[f'_dielectric:{m}:eps_r'] = d['eps_r']
             sig[f'_dielectric:{m}:tan_delta'] = d.get('tan_delta', 0.0)
-            sig[f'_dielectric:{m}:z0'], sig[f'_dielectric:{m}:z1'] = d['z']
-            sig[f'_dielectric:{m}:r0'], sig[f'_dielectric:{m}:r1'] = d['r']
+            if d.get('points'):
+                # A polygon has no (lo, hi) pair; flatten its vertices instead so
+                # that moving one of them still invalidates cached results.
+                for i, (zv, rv) in enumerate(d['points']):
+                    sig[f'_dielectric:{m}:z{i}'] = zv
+                    sig[f'_dielectric:{m}:r{i}'] = rv
+            else:
+                sig[f'_dielectric:{m}:z0'], sig[f'_dielectric:{m}:z1'] = d['z']
+                sig[f'_dielectric:{m}:r0'], sig[f'_dielectric:{m}:r1'] = d['r']
         return sig
 
     def _write_geometry_snapshot(self):
@@ -823,10 +872,16 @@ class Cavity(ABC):
         cav = stub.rebuild(dict(state['parameters']), beampipe=stub.beampipe)
         cav.name = state.get('name', cav.name)
         for d in state.get('dielectrics', ()) or ():
-            cav.add_dielectric(d['material'], d['eps_r'],
-                               tan_delta=d.get('tan_delta', 0.0), z=d['z'], r=d['r'],
-                               maxh=d.get('maxh'),
-                               color=d.get('color', (1.0, 1.0, 0.0)))
+            if d.get('points'):
+                cav.add_dielectric(d['material'], d['eps_r'],
+                                   tan_delta=d.get('tan_delta', 0.0),
+                                   points=d['points'], maxh=d.get('maxh'),
+                                   color=d.get('color', (1.0, 1.0, 0.0)))
+            else:
+                cav.add_dielectric(d['material'], d['eps_r'],
+                                   tan_delta=d.get('tan_delta', 0.0),
+                                   z=d['z'], r=d['r'], maxh=d.get('maxh'),
+                                   color=d.get('color', (1.0, 1.0, 0.0)))
         return cav
 
     def _check_geometry_mismatch(self, analysis):
@@ -1245,7 +1300,7 @@ class Cavity(ABC):
             error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
             return False
 
-    def run_wakefield(self, MROT=2, MT=10, NFS=10000, wakelength=50, bunch_length=25,
+    def run_wakefield(self, MROT=2, MT=10, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
         """
         Run wakefield analysis on cavity
@@ -1256,8 +1311,6 @@ class Cavity(ABC):
             Polarisation 0 for longitudinal polarization and 1 for transversal polarization
         MT: int
             Number of time steps it takes for a beam to move from one mesh cell to the other
-        NFS: int
-            Number of frequency samples
         wakelength:
             Wakelength to be analysed
         bunch_length: float
@@ -1290,7 +1343,7 @@ class Cavity(ABC):
         # positionally as a full wakefield_config dict, or the config is built
         # here from the legacy keyword args.
         config = MROT if isinstance(MROT, dict) else {
-            'MROT': MROT, 'MT': MT, 'NFS': NFS, 'wakelength': wakelength,
+            'MROT': MROT, 'MT': MT, 'wakelength': wakelength,
             'bunch_length': bunch_length,
             'mesh_config': {'DDR_SIG': DDR_SIG, 'DDZ_SIG': DDZ_SIG},
         }
@@ -1429,7 +1482,7 @@ class Cavity(ABC):
             self.ff = self.eigenmode_qois['ff [%]']
             self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
             self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-            self.G = self.GR_Q / self.R_Q
+            self.G = self.eigenmode_qois.get('G [Ohm]', (self.GR_Q / self.R_Q) if self.R_Q else 0)
             self.Q = self.eigenmode_qois['Q []']
             self.e = self.eigenmode_qois['Epk/Eacc []']
             self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
@@ -2331,6 +2384,9 @@ class Cavity(ABC):
         For the flat matplotlib meridian outline use :meth:`plot` instead::
 
             cav.plot('geometry')     # matplotlib, half cross-section (r >= 0)
+
+        Draws whatever :attr:`beampipe_length` the cavity carries, so it always
+        shows the geometry a solve would mesh.
         """
         return ngsolve_mevp.show_geometry(self, maxh=maxh, order=order, plotter=plotter)
 
@@ -2944,7 +3000,14 @@ class Cavity(ABC):
             # wake only a few bunch lengths long (5 x 2.4 mm = 0.012 m), and
             # int() turned that into 0.
             out.write(
-                f' &WAKE  UBT = {UBT:g}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')  # , NFS = {NFS}
+                f' &WAKE  UBT = {UBT:g}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')
+            # No NFS here. ABCI has no such namelist variable -- its &WAKE takes
+            # UBT, LCFRON, LCBACK, LCHIN, LNAPOLY, ZCF, ZCT, RWAK, LCRBW, ZSEP,
+            # LNONAP and nothing else, and an unknown name is a namelist read
+            # error. The number of points in the FFT output is ABCI's own, and
+            # its resolution is set by the wake length (df ~ c/UBT); CUTOFF in
+            # &PLOT below bounds the range. A dead 'NFS = {NFS}' fragment used to
+            # sit at the end of this line, which made the config key look live.
             # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
             # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
             _cutoff = f'CUTOFF = {CUTOFF:g}, ' if CUTOFF is not None else ''

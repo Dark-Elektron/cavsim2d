@@ -7,7 +7,14 @@ VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 
 TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
 DIMENSION_FACTOR = {'mm': 1, 'cm': 1e-1, 'm': 1e-3}
-BOUNDARY_CONDITIONS_DICT = {'ee': 11, 'em': 13, 'me': 31, 'mm': 33}
+# One digit per beam-pipe end, left then right. e/1 = PEC (electric wall),
+# m/3 = PMC (magnetic wall, the closed default), o/2 = open (a PML absorber).
+BOUNDARY_CONDITIONS_DICT = {
+    'ee': 11, 'em': 13, 'me': 31, 'mm': 33,
+    'oo': 22, 'oe': 21, 'om': 23, 'eo': 12, 'mo': 32,
+    'open': 22,                                    # readable alias for 'oo'
+}
+BC_DIGIT = {1: 'pec', 2: 'open', 3: 'pmc'}
 LABELS = {'freq [MHz]': r'$f$ [MHz]', r'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
           "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",

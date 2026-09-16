@@ -167,3 +167,146 @@ def reconstruct_impedance(freqs, r_over_q, q_factors, f_span, transverse=False):
         z[~live] = np.sum(1j * r_shunt / q) if transverse else 0.0
 
     return z
+
+
+def reconstruct_impedance_qnm(freqs, r_over_q_complex, q_factors, f_span,
+                              transverse=False):
+    """Pole-expansion impedance from **complex** mode residues. Frequencies in Hz.
+
+    :func:`reconstruct_impedance` gives every mode a positive-real shunt impedance,
+    which is exact for an isolated resonance and wrong for overlapping ones: it makes
+    neighbouring poles add in phase. Above a beam-pipe cutoff, where radiating modes
+    have Q of order 10 and linewidths wider than the mode spacing, that coherent
+    addition overestimates ``|Z|`` by roughly the number of modes overlapping at each
+    frequency.
+
+    .. warning::
+       **Experimental, and currently not validated on radiating modes.** The residue
+       *magnitudes* are exact — ``|(R/Q)~|`` reproduces ``R/Q`` to machine precision —
+       but their *phases* do not yet come out physical: on a PML solve of a TESLA
+       3-cell the resulting spectrum violates passivity (``Re Z < 0``) over most of
+       the band above cutoff, and is further from a wakefield reference than the plain
+       RLC sum. Correct QNM normalisation of a PML eigenvector needs more than the
+       unconjugated volume integral used here. Treat the output as a diagnostic, not
+       as an impedance. Above the cutoff the reliable route today is to filter the
+       mode set with :func:`pml_stable_modes` and sum it with
+       :func:`reconstruct_impedance`.
+
+    This builds the same spectrum from the quasi-normal-mode residues instead. With
+    ``w~ = w(1 - i/2Q)`` the decaying complex eigenfrequency and ``a~ = w~ (R/Q)~ / 2``
+    the wake amplitude, the wake ``W(t) = Re[a~ exp(-i w~ t)]`` transforms to::
+
+        Z(w) = (i/2) sum_n [ a~_n / (w - w~_n)  +  conj(a~_n) / (w + conj(w~_n)) ]
+
+    The conjugate-pole partner is what enforces ``Z(-w) = conj(Z(w))``, i.e. a real
+    wake. For a real ``(R/Q)~`` and large Q this reduces term by term to the RLC form,
+    peaking at ``1/2 Q (R/Q)``.
+
+    Parameters
+    ----------
+    freqs : array-like
+        Real part of each mode frequency [Hz].
+    r_over_q_complex : array-like of complex
+        ``(R/Q)~ = V~^2 / (w~ U~)`` per mode [Ohm] — the solver's
+        ``'Re(R/Q) [Ohm]'`` + 1j*``'Im(R/Q) [Ohm]'``.
+    q_factors : array-like
+        Quality factor of each mode.
+    f_span : array-like
+        Frequencies to evaluate at [Hz]. ``f = 0`` is evaluated by its limit.
+    transverse : bool
+        Transverse impedance [Ohm/m], using the same ``w_0/c`` and ``w_0/w``
+        convention as :func:`reconstruct_impedance`.
+
+    Returns
+    -------
+    ndarray of complex
+    """
+    f0 = np.asarray(freqs, dtype=float)
+    roq = np.asarray(r_over_q_complex, dtype=complex)
+    q = np.asarray(q_factors, dtype=float)
+    f = np.asarray(f_span, dtype=float)
+
+    if not (f0.shape == roq.shape == q.shape):
+        raise ValueError(f"freqs, r_over_q_complex and q_factors must have the same "
+                         f"length; got {f0.shape}, {roq.shape}, {q.shape}.")
+    if np.any(f0 <= 0):
+        raise ValueError("mode frequencies must be positive.")
+
+    w0 = 2 * np.pi * f0
+    w = 2 * np.pi * f
+    z = np.zeros(f.shape, dtype=complex)
+
+    for w0i, roqi, qi in zip(w0, roq, q):
+        w_c = w0i * (1 - 0.5j / max(abs(qi), 1e-30))     # decaying pole
+        a_c = w_c * roqi / 2                             # wake amplitude
+        term = 0.5j * (a_c / (w - w_c) + np.conj(a_c) / (w + np.conj(w_c)))
+        if transverse:
+            # Same convention as the RLC path: R/Q_t [Ohm] -> Ohm/m via w_0/c, and
+            # the extra w_0/w that makes the transverse resonance peak at w_0.
+            with np.errstate(divide='ignore', invalid='ignore'):
+                term = term * (w0i / C0) * np.where(w > 0, w0i / np.where(w > 0, w, 1), 0.0)
+        z += term
+
+    return z
+
+
+def pml_stable_modes(modes, other, rtol_f=1e-3, rtol_q=0.15):
+    """Boolean mask over *modes*: which ones survive a change of PML settings.
+
+    An open (PML) solve returns two kinds of eigenpair above the beam-pipe cutoff,
+    and they look alike in the results table:
+
+    - genuine resonance poles of the open cavity, fixed by the geometry. Lengthening
+      the absorbing layer or changing its stretch moves them by ~1e-6;
+    - modes of the finite PML *block* itself. These shift by whole percent, appear and
+      disappear between runs, and — because the layer damps them — carry a plausible
+      low Q. They can also carry a LARGE R/Q, so they dominate a reconstructed
+      impedance while being an artifact of the truncation.
+
+    ``'Q balance []'`` does not separate them: a PML-block mode decays into the layer
+    and radiates through the mouth at the same rate, so its balance sits at 1.00 like
+    everything else. The only reliable discriminator is re-solving with a different
+    layer and keeping what does not move, which is what this does.
+
+    Parameters
+    ----------
+    modes, other : pandas.DataFrame
+        Two ``cav.eigenmode.qois_df`` frames for the same cavity, solved with
+        different ``pml_length`` (or ``pml_alpha``, or mesh).
+    rtol_f, rtol_q : float
+        A mode in *modes* is kept when *other* holds a mode within ``rtol_f``
+        in relative frequency and ``rtol_q`` in relative Q.
+
+    Returns
+    -------
+    ndarray of bool
+        Aligned with ``modes.index``.
+
+    Notes
+    -----
+    **Compare only where both runs reach.** Each solve returns its lowest ``n_modes``,
+    and two runs need not stop at the same frequency. A mode above *other*'s highest has
+    no partner to be matched against and comes back False -- unverified, not disproved.
+    Restrict the judgement to
+    ``min(modes['freq [MHz]'].max(), other['freq [MHz]'].max())`` before quoting a
+    fraction, or raise ``n_modes`` until both runs cover the band of interest.
+
+    Examples
+    --------
+    >>> keep = pml_stable_modes(cav_a.eigenmode.qois_df, cav_b.eigenmode.qois_df)
+    >>> trusted = cav_a.eigenmode.qois_df[keep]
+    """
+    f_a = np.asarray(modes['freq [MHz]'], dtype=float)
+    q_a = np.asarray(modes['Q []'], dtype=float)
+    f_b = np.asarray(other['freq [MHz]'], dtype=float)
+    q_b = np.asarray(other['Q []'], dtype=float)
+    if f_b.size == 0:
+        return np.zeros(f_a.shape, dtype=bool)
+
+    keep = np.zeros(f_a.shape, dtype=bool)
+    for i, (f, q) in enumerate(zip(f_a, q_a)):
+        j = int(np.argmin(np.abs(f_b - f)))
+        near_f = abs(f_b[j] - f) <= rtol_f * abs(f)
+        near_q = abs(q_b[j] - q) <= rtol_q * max(abs(q), 1e-30)
+        keep[i] = bool(near_f and near_q)
+    return keep
