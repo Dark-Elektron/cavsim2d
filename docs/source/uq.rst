@@ -118,6 +118,25 @@ narrower distribution than one that does not.
 The three models
 ================
 
+.. figure:: _static/uq_model_groups.png
+   :alt: The same 3-cell cavity shown three times, with its half-cells shaded by which
+         independently formed part they belong to, and each seam marked as a weld or as
+         internal to one part.
+   :align: center
+   :width: 85%
+
+   The same cavity under each model. Shading groups the half-cells that come from one
+   independently formed part. A solid line is a welded seam, where two draws are
+   averaged; a dashed line lies inside a single part, so nothing is averaged there.
+
+The three models differ in how finely the cavity is divided, and therefore in how many
+seams are welds:
+
+* **base** has two parts, so only the two mid-to-end equators are welds.
+* **multicup** has one part per half-cell, so every equator and every iris is a weld.
+* **dumb-bell** has one part per dumb-bell, so the equators are welds but the irises are
+  internal.
+
 .. figure:: _static/uq_models.png
    :alt: Three grids of half-cell index against parameter, coloured by which random
          variable drives each slot, for the base, multicup and dumb-bell models.
@@ -181,8 +200,31 @@ Multicell path
 
 Set ``cell_complexity='multicell'`` and ``independent_half_cells=True``. Every half-cell
 carries its own parameters, the draws are independent, and each seam is welded afterwards
-as shown above. This path supports all three models, and it is the one to use whenever
-parts are formed separately.
+as shown above. This path is the one to use whenever parts are formed separately.
+
+Which path supports which model:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Model
+     - Simplecell path
+     - Multicell path
+   * - ``base``
+     - yes
+     - yes
+   * - ``multicup``
+     - no
+     - yes
+   * - ``dumbbell``
+     - no
+     - yes
+
+The simplecell path perturbs the model's own parameters, and those name a cell *type*
+rather than an individual part. It can therefore express ``base`` and nothing finer. Both
+``multicup`` and ``dumb-bell`` need per-half-cell parameters, so they need the multicell
+path.
 
 .. code-block:: python
 
