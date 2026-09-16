@@ -1,0 +1,5046 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="elliptical_tesla.html">
+      
+      
+        <link rel="next" href="pillbox.html">
+      
+      
+      <link rel="icon" href="">
+    
+    
+      
+        <title>Open boundaries (PML) and the radiated impedance - cavsim2d 1.0.0 documentation</title>
+      
+    
+    
+      
+        
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+        <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-cavity" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="cavsim2d 1.0.0 documentation" class="md-header__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cavsim2d 1.0.0 documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Open boundaries (PML) and the radiated impedance
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="cavsim2d 1.0.0 documentation" class="md-nav__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    cavsim2d 1.0.0 documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Quickstart</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Introduction</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../theory.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Theory and Numerical Formulation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_2" id="__nav_1_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Theory and Numerical Formulation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification and Sensitivity Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Installation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart Tutorial</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Concepts &amp; reference</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Concepts &amp; reference</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Concepts</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../geometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry and parameterisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Configuration reference</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extending.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Writing a new cavity model</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Analysis Modules</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Analysis Modules</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Cavity Tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry Optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#how-a-cavity-is-divided" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#what-welding-does" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#the-three-models" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:the three models (reference label)"><span>The three models</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#simplecell-path" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#multicell-path" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Examples</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Examples</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Eigenmode</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-cavity" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:1. the cavity (reference label)"><span>1.<wbr> The cavity</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-usual-solve-closed-ends" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:2. the usual solve: closed ends (reference label)"><span>2.<wbr> The usual solve:<wbr> closed ends</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-same-solve-with-open-ends" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:3. the same solve with open ends (reference label)"><span>3.<wbr> The same solve with open ends</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The same solve with open ends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-independent-measurements-of-the-same-loss" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:two independent measurements of the same loss (reference label)"><span>Two independent measurements of the same loss</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#which-modes-actually-radiate" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:4. which modes actually radiate (reference label)"><span>4.<wbr> Which modes actually radiate</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-every-eigenvalue-above-the-cutoff-is-a-mode" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:5. not every eigenvalue above the cutoff is a mode (reference label)"><span>5.<wbr> Not every eigenvalue above the cutoff is a mode</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-that-does-to-the-impedance" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:6. what that does to the impedance (reference label)"><span>6.<wbr> What that does to the impedance</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-against-the-wakefield" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:7. checking against the wakefield (reference label)"><span>7.<wbr> Checking against the wakefield</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-comparison-that-actually-settles-it-the-loss-factor" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:8. the comparison that actually settles it: the loss factor (reference label)"><span>8.<wbr> The comparison that actually settles it:<wbr> the loss factor</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The comparison that actually settles it: the loss factor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-r-q-stops-being-a-property-of-the-geometry" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:why $r/q$ stops being a property of the geometry (reference label)"><span>Why R/Q stops being a property of the geometry</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-take-away" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:what to take away (reference label)"><span>What to take away</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-go-next" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:where to go next (reference label)"><span>Where to go next</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pillbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode analysis:<wbr> the pillbox cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dispersion.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dispersion diagram:<wbr> passbands of a multicell cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>1.<wbr> A cylinder with a known answer</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html#where-to-go-next" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../tuning/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Tuning</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/tune_to_frequency.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a cavity to a target frequency</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning across cavity types</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/unreachable_target.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>When a tune has no solution:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/two_cell_design_family.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../wakefield/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Wakefield</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield and impedance <wbr>(ABCI)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/spline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> a spline cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/rfgun.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> an RF gun</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/reentrant.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> a reentrant cavity <wbr>(with a field-<wbr>line animation)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/parameter_sweep.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> varying a parameter</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/multicell_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../multipacting/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Multipacting</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> the TESLA mid-<wbr>cell</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/spline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> a spline cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/rfgun.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> an RF gun</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/reentrant.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> a reentrant cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../optimisation/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimisation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Optimisation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/pareto.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multi-<wbr>objective shape optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/visualising_results.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Reading and visualising an optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a non-<wbr>elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/whole_cavity_rq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising the whole cavity:<wbr> R/Q to a target</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/whole_cavity_field_flatness.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Why whole-<wbr>cavity tuning needs field flatness</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../studies/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Studies:<wbr> sweeps and persistence</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Studies:<wbr> sweeps and persistence</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../studies/parameter_sweep.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Parameter sweeps and persistence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../studies/module_chain.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Chaining a cavity into a module <wbr>(eigenmode + wakefield)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Custom geometry</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_geometry/cone_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A custom cavity from scratch:<wbr> the cone</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_geometry/dome_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A curved custom cavity:<wbr> eigenmode, multipacting and tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../advanced/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/eigenmode_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode under uncertainty <wbr>(spline &amp; RF gun)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/robust_tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust tuning <wbr>(flat-<wbr>top cavity)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/wakefield_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/robust_optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>API Reference</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>API Reference</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>API Reference</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>References</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-cavity" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:1. the cavity (reference label)"><span>1.<wbr> The cavity</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-usual-solve-closed-ends" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:2. the usual solve: closed ends (reference label)"><span>2.<wbr> The usual solve:<wbr> closed ends</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-same-solve-with-open-ends" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:3. the same solve with open ends (reference label)"><span>3.<wbr> The same solve with open ends</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The same solve with open ends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-independent-measurements-of-the-same-loss" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:two independent measurements of the same loss (reference label)"><span>Two independent measurements of the same loss</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#which-modes-actually-radiate" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:4. which modes actually radiate (reference label)"><span>4.<wbr> Which modes actually radiate</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-every-eigenvalue-above-the-cutoff-is-a-mode" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:5. not every eigenvalue above the cutoff is a mode (reference label)"><span>5.<wbr> Not every eigenvalue above the cutoff is a mode</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-that-does-to-the-impedance" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:6. what that does to the impedance (reference label)"><span>6.<wbr> What that does to the impedance</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-against-the-wakefield" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:7. checking against the wakefield (reference label)"><span>7.<wbr> Checking against the wakefield</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-comparison-that-actually-settles-it-the-loss-factor" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:8. the comparison that actually settles it: the loss factor (reference label)"><span>8.<wbr> The comparison that actually settles it:<wbr> the loss factor</span></span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The comparison that actually settles it: the loss factor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-r-q-stops-being-a-property-of-the-geometry" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:why $r/q$ stops being a property of the geometry (reference label)"><span>Why R/Q stops being a property of the geometry</span></span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-take-away" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:what to take away (reference label)"><span>What to take away</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-go-next" class="md-nav__link">
+    
+    <span class="md-ellipsis">
+      <span title="examples/eigenmode/open_boundary_impedance:where to go next (reference label)"><span>Where to go next</span></span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                
+                
+                  
+
+
+<h1 id="open-boundaries-pml-and-the-radiated-impedance">Open boundaries (PML) and the radiated impedance<a class="headerlink" href="#open-boundaries-pml-and-the-radiated-impedance" title="Link to this heading">¶</a></h1>
+<p>A cavity eigenmode solve normally puts a <strong>closed</strong> wall across each beam-pipe end
+(<code class="docutils literal notranslate"><span class="pre">boundary_conditions='mm'</span></code>, a magnetic wall). That is the right model for a <em>trapped</em>
+mode, whose field has already decayed to nothing by the time it reaches the pipe. It is
+the wrong model for a mode <strong>above the beam-pipe cutoff</strong>: such a mode physically
+propagates out of the pipe and never comes back, but a closed end reflects it. The solver
+then reports it as a sharp resonance with the high ohmic <span class="math notranslate nohighlight">\(Q_0\)</span> of the wall material,
+instead of the low radiation-limited <span class="math notranslate nohighlight">\(Q\)</span> it really has.</p>
+<p>Because the reconstructed impedance scales with <span class="math notranslate nohighlight">\(Q\)</span>,</p>
+<div class="math notranslate nohighlight">
+\[Z(\omega) = \sum_n \frac{\tfrac{1}{2} Q_n (R/Q)_n}{1 + i Q_n\left(\frac{\omega}{\omega_n} - \frac{\omega_n}{\omega}\right)},\]</div>
+<p>that error goes straight into <span class="math notranslate nohighlight">\(|Z|\)</span>.</p>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code> replaces both end walls with a <strong>perfectly matched
+layer</strong> (PML): an absorbing extension of the beam pipe that lets the wave leave. The
+eigenvalues then come out complex, <span class="math notranslate nohighlight">\(\omega = \omega_0 + i\,\omega_i\)</span>, and the imaginary
+part is the radiation loss:</p>
+<div class="math notranslate nohighlight">
+\[Q_{\text{rad}} = \frac{|\omega_0|}{2\,|\omega_i|}.\]</div>
+<p>This example solves the same TESLA cavity both ways and checks the result against a
+time-domain wakefield run, which has an open pipe by construction.</p>
+<p>It also shows the part that is easy to get wrong. An open solve returns <strong>two kinds of
+eigenpair above the cutoff</strong> — genuine resonance poles of the open cavity, and modes of
+the finite PML <em>block</em> — and nothing in the results table separates them. Section 5 is
+about telling them apart, because the artifacts turn out to carry the largest <span class="math notranslate nohighlight">\(R/Q\)</span> in the
+whole set.</p>
+<p>See the <a class="reference internal" href="../../eigenmode.html"><span class="doc std std-doc">eigenmode guide</span></a> and the <a class="reference internal" href="../../wakefield.html"><span class="doc std std-doc">wakefield guide</span></a>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">EllipticalCavity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.style</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_style</span>
+
+<span class="n">apply_style</span><span class="p">()</span>
+<span class="n">workspace</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="the-cavity">1. The cavity<a class="headerlink" href="#the-cavity" title="Link to this heading">¶</a></h2>
+<p>A 3-cell TESLA cavity — two end cells around a mid cell — with beam pipes at both ends
+(<code class="docutils literal notranslate"><span class="pre">beampipe='both'</span></code>). The pipes matter here: they are what the radiating modes escape
+through, and their radius sets the cutoff frequency that divides trapped modes from
+propagating ones. Note that it is the <strong>end cell’s</strong> aperture that the pipe inherits, not
+the mid cell’s.</p>
+<p>For the lowest monopole (TM<span class="math notranslate nohighlight">\(_{01}\)</span>) pipe mode that cutoff is</p>
+<div class="math notranslate nohighlight">
+\[f_c = \frac{2.405\,c}{2\pi R_i},\]</div>
+<p>with <span class="math notranslate nohighlight">\(R_i\)</span> the pipe radius. Everything below <span class="math notranslate nohighlight">\(f_c\)</span> is trapped; everything above it
+radiates.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="c1">#                A       B      a     b    Ri      L         Req     [mm]</span>
+<span class="n">midcell</span>   <span class="o">=</span> <span class="p">[</span>  <span class="mf">42.00</span><span class="p">,</span>  <span class="mf">42.00</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">,</span> <span class="mf">19.0</span><span class="p">,</span> <span class="mf">35.0</span><span class="p">,</span> <span class="mf">57.6520</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
+<span class="n">endcell_l</span> <span class="o">=</span> <span class="p">[</span>  <span class="mf">40.34</span><span class="p">,</span>  <span class="mf">40.34</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mf">39.0</span><span class="p">,</span> <span class="mf">55.7251</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
+<span class="n">endcell_r</span> <span class="o">=</span> <span class="p">[</span>  <span class="mf">42.00</span><span class="p">,</span>  <span class="mf">42.00</span><span class="p">,</span>  <span class="mf">9.0</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mf">39.0</span><span class="p">,</span> <span class="mf">56.8407</span><span class="p">,</span> <span class="mf">103.3536</span><span class="p">]</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">tesla</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">midcell</span><span class="p">,</span> <span class="n">endcell_l</span><span class="p">,</span> <span class="n">endcell_r</span><span class="p">,</span>
+                           <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">workspace</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">cav</span>
+
+<span class="n">cav_closed</span> <span class="o">=</span> <span class="n">tesla</span><span class="p">(</span><span class="s1">'tesla_closed'</span><span class="p">)</span>
+<span class="n">cav_open</span> <span class="o">=</span> <span class="n">tesla</span><span class="p">(</span><span class="s1">'tesla_open'</span><span class="p">)</span>
+
+<span class="n">c0</span> <span class="o">=</span> <span class="mf">299792458.0</span>
+<span class="n">Ri</span> <span class="o">=</span> <span class="n">endcell_l</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-3</span>                   <span class="c1"># pipe radius = end-cell aperture [m]</span>
+<span class="n">f_cutoff</span> <span class="o">=</span> <span class="mf">2.405</span> <span class="o">*</span> <span class="n">c0</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">Ri</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e6</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'beam-pipe radius   </span><span class="si">{</span><span class="n">Ri</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> mm'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'TM01 pipe cutoff   </span><span class="si">{</span><span class="n">f_cutoff</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
+
+<span class="n">cav_closed</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">'geometry'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>beam-pipe radius   39.0 mm
+TM01 pipe cutoff   2942.3 MHz
+</code></pre></div>
+</div>
+<img alt="../../_images/af3ef3251fe28cb2c713a19dd6492616a61d85ee3453deaa5d72fd17e1fa094b.png" src="../../_images/af3ef3251fe28cb2c713a19dd6492616a61d85ee3453deaa5d72fd17e1fa094b.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='$z$ [mm]', ylabel='$r$ [mm]'&gt;
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="the-usual-solve-closed-ends">2. The usual solve: closed ends<a class="headerlink" href="#the-usual-solve-closed-ends" title="Link to this heading">¶</a></h2>
+<p>This is the default. Fifty monopole modes, which covers the first passbands and reaches
+well past the cutoff. The wall is copper — the solver’s default <code class="docutils literal notranslate"><span class="pre">conductivity</span></code> — so the
+ohmic <span class="math notranslate nohighlight">\(Q_0\)</span> lands near <span class="math notranslate nohighlight">\(3\times10^{4}\)</span>. With niobium it would be orders of magnitude
+larger, and everything below about <span class="math notranslate nohighlight">\(Q_0\)</span> being far too high above cutoff only gets
+stronger.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">eigen_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">'polarisation'</span><span class="p">:</span> <span class="s1">'monopole'</span><span class="p">,</span>
+    <span class="s1">'n_modes'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>          <span class="c1"># enough to reach past the pipe cutoff</span>
+    <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+    <span class="s1">'force'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>          <span class="c1"># skip the overwrite prompt (this notebook is run headless)</span>
+<span class="p">}</span>
+
+<span class="n">cav_closed</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">eigen_config</span><span class="p">,</span> <span class="n">boundary_conditions</span><span class="o">=</span><span class="s1">'mm'</span><span class="p">))</span>
+
+<span class="n">closed</span> <span class="o">=</span> <span class="n">cav_closed</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>
+<span class="n">closed</span><span class="p">[[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'Q []'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'ff [%]'</span><span class="p">]]</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>freq [MHz]</th>
+      <th>Q []</th>
+      <th>R/Q [Ohm]</th>
+      <th>ff [%]</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1281.681695</td>
+      <td>29259.855761</td>
+      <td>2.741072e-02</td>
+      <td>50.736047</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1293.828853</td>
+      <td>29361.598408</td>
+      <td>4.466535e-03</td>
+      <td>99.742812</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1300.008497</td>
+      <td>29307.536437</td>
+      <td>3.323323e+02</td>
+      <td>98.642367</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2391.165470</td>
+      <td>31738.384214</td>
+      <td>1.213930e+00</td>
+      <td>29.540475</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2420.570382</td>
+      <td>31678.231685</td>
+      <td>1.541171e+01</td>
+      <td>19.817898</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2450.896087</td>
+      <td>31128.031884</td>
+      <td>8.334843e+01</td>
+      <td>12.869294</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2488.067601</td>
+      <td>54356.346328</td>
+      <td>8.010684e-11</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2500.606956</td>
+      <td>53653.119988</td>
+      <td>1.855275e-12</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2506.659281</td>
+      <td>53904.788941</td>
+      <td>9.869645e-11</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2680.499811</td>
+      <td>44503.121069</td>
+      <td>5.910755e-02</td>
+      <td>82.378161</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2712.352299</td>
+      <td>44821.699835</td>
+      <td>2.077517e+00</td>
+      <td>95.274948</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2754.653151</td>
+      <td>46292.057383</td>
+      <td>1.037941e-01</td>
+      <td>55.583393</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>3134.655284</td>
+      <td>34627.083298</td>
+      <td>1.213481e+00</td>
+      <td>3.744858</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>3135.716260</td>
+      <td>34580.234943</td>
+      <td>3.216655e+00</td>
+      <td>1.832141</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3411.651719</td>
+      <td>38899.135763</td>
+      <td>2.938438e+00</td>
+      <td>52.757954</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3457.310694</td>
+      <td>39448.716005</td>
+      <td>4.669005e-01</td>
+      <td>18.696305</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>3534.271197</td>
+      <td>42033.951704</td>
+      <td>3.575584e+00</td>
+      <td>37.059611</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>3679.212404</td>
+      <td>49598.007357</td>
+      <td>5.401378e+00</td>
+      <td>38.006085</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>3702.011219</td>
+      <td>62894.384005</td>
+      <td>1.920764e-09</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>3726.681676</td>
+      <td>72197.209321</td>
+      <td>2.241156e-10</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>3728.723052</td>
+      <td>71434.408537</td>
+      <td>1.344523e-09</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>3738.365912</td>
+      <td>61806.632558</td>
+      <td>2.639252e-10</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>3762.785867</td>
+      <td>64654.288269</td>
+      <td>1.118035e-09</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>3762.818412</td>
+      <td>42400.735224</td>
+      <td>4.602017e+00</td>
+      <td>42.807582</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>3784.795641</td>
+      <td>62082.918632</td>
+      <td>6.325683e-10</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>3848.232273</td>
+      <td>40340.587068</td>
+      <td>2.636260e+00</td>
+      <td>13.015213</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>3855.797284</td>
+      <td>38088.461924</td>
+      <td>1.441351e+01</td>
+      <td>1.933408</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>3888.918220</td>
+      <td>38507.651214</td>
+      <td>1.005279e+01</td>
+      <td>1.786623</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>3981.763362</td>
+      <td>44701.125102</td>
+      <td>1.567867e+00</td>
+      <td>55.682936</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>4087.941066</td>
+      <td>50815.472785</td>
+      <td>4.411100e+00</td>
+      <td>13.678875</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>4183.114227</td>
+      <td>58775.394537</td>
+      <td>2.740808e-01</td>
+      <td>66.124879</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>4488.223168</td>
+      <td>44269.010143</td>
+      <td>1.872071e+01</td>
+      <td>68.772807</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>4518.565984</td>
+      <td>48357.187409</td>
+      <td>2.066137e+00</td>
+      <td>35.499609</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>4630.320004</td>
+      <td>54618.972553</td>
+      <td>5.635768e+00</td>
+      <td>35.536996</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>4638.048414</td>
+      <td>55763.041602</td>
+      <td>5.270465e-09</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>4658.597245</td>
+      <td>52325.560268</td>
+      <td>7.636634e-08</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>4700.702212</td>
+      <td>64038.742853</td>
+      <td>5.370877e+00</td>
+      <td>14.457991</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>4701.867268</td>
+      <td>60246.336853</td>
+      <td>4.436833e-07</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>4735.500365</td>
+      <td>50026.869937</td>
+      <td>4.448965e-07</td>
+      <td>52.998056</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>4750.283470</td>
+      <td>48663.765534</td>
+      <td>1.613147e-06</td>
+      <td>23.553347</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>4775.063806</td>
+      <td>54317.602299</td>
+      <td>3.457676e-06</td>
+      <td>15.311915</td>
+    </tr>
+    <tr>
+      <th>41</th>
+      <td>4866.828168</td>
+      <td>43677.938715</td>
+      <td>4.787407e-01</td>
+      <td>4.790048</td>
+    </tr>
+    <tr>
+      <th>42</th>
+      <td>4875.956147</td>
+      <td>74228.149700</td>
+      <td>5.229780e-05</td>
+      <td>10.171242</td>
+    </tr>
+    <tr>
+      <th>43</th>
+      <td>4882.763884</td>
+      <td>44543.787587</td>
+      <td>4.161622e-01</td>
+      <td>12.898521</td>
+    </tr>
+    <tr>
+      <th>44</th>
+      <td>4902.026420</td>
+      <td>44836.992751</td>
+      <td>4.071244e+00</td>
+      <td>4.008967</td>
+    </tr>
+    <tr>
+      <th>45</th>
+      <td>4924.577160</td>
+      <td>44848.447346</td>
+      <td>3.603014e+00</td>
+      <td>1.866737</td>
+    </tr>
+    <tr>
+      <th>46</th>
+      <td>4975.983862</td>
+      <td>73434.631807</td>
+      <td>1.325733e-04</td>
+      <td>4.600420</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>5047.738482</td>
+      <td>57730.421217</td>
+      <td>3.582839e-03</td>
+      <td>6.706281</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>5062.594057</td>
+      <td>65430.719960</td>
+      <td>5.130031e-03</td>
+      <td>12.754507</td>
+    </tr>
+    <tr>
+      <th>49</th>
+      <td>5127.564044</td>
+      <td>80772.173630</td>
+      <td>9.090186e-03</td>
+      <td>17.027732</td>
+    </tr>
+    <tr>
+      <th>50</th>
+      <td>5147.735676</td>
+      <td>80337.999534</td>
+      <td>6.558166e-03</td>
+      <td>3.645116</td>
+    </tr>
+    <tr>
+      <th>51</th>
+      <td>5153.604720</td>
+      <td>78653.408076</td>
+      <td>5.175801e-03</td>
+      <td>13.833472</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>Every mode carries the same <span class="math notranslate nohighlight">\(Q\)</span> of order <span class="math notranslate nohighlight">\(3\times10^{4}\)</span> — the copper wall loss alone.
+Nothing in this table knows that the modes above the cutoff are not confined.</p>
+<h2 id="the-same-solve-with-open-ends">3. The same solve with open ends<a class="headerlink" href="#the-same-solve-with-open-ends" title="Link to this heading">¶</a></h2>
+<p>The only change is <code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code>. The solver attaches a PML block to each
+pipe mouth, meshes it as part of the same domain, and solves the resulting complex
+eigenproblem.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">eigen_config</span><span class="p">,</span> <span class="n">boundary_conditions</span><span class="o">=</span><span class="s1">'oo'</span><span class="p">))</span>
+
+<span class="n">opened</span> <span class="o">=</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>
+<span class="n">opened</span><span class="p">[[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'Q []'</span><span class="p">,</span> <span class="s1">'Q_wall []'</span><span class="p">,</span> <span class="s1">'Q_rad []'</span><span class="p">,</span> <span class="s1">'Prad [W]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'ff [%]'</span><span class="p">]]</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>freq [MHz]</th>
+      <th>Q []</th>
+      <th>Q_wall []</th>
+      <th>Q_rad []</th>
+      <th>Prad [W]</th>
+      <th>R/Q [Ohm]</th>
+      <th>ff [%]</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1281.681798</td>
+      <td>29260.315870</td>
+      <td>29260.315880</td>
+      <td>1.074047e+14</td>
+      <td>2.085621e-15</td>
+      <td>2.787675e-02</td>
+      <td>50.732275</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1293.829352</td>
+      <td>29362.851079</td>
+      <td>29362.851109</td>
+      <td>3.620846e+13</td>
+      <td>6.245186e-15</td>
+      <td>4.543089e-03</td>
+      <td>99.734303</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1300.008778</td>
+      <td>29308.386214</td>
+      <td>29308.386234</td>
+      <td>5.481790e+13</td>
+      <td>4.144788e-15</td>
+      <td>3.322731e+02</td>
+      <td>98.629225</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2391.161958</td>
+      <td>31740.048907</td>
+      <td>31740.634775</td>
+      <td>1.719348e+09</td>
+      <td>2.430647e-10</td>
+      <td>1.261099e+00</td>
+      <td>29.543213</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2420.562171</td>
+      <td>31679.864328</td>
+      <td>31681.635000</td>
+      <td>5.668023e+08</td>
+      <td>7.463780e-10</td>
+      <td>1.557170e+01</td>
+      <td>19.826512</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2450.887206</td>
+      <td>31125.860528</td>
+      <td>31128.195513</td>
+      <td>4.149504e+08</td>
+      <td>1.032288e-09</td>
+      <td>8.412557e+01</td>
+      <td>12.861193</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2488.065946</td>
+      <td>54319.158317</td>
+      <td>54319.158317</td>
+      <td>1.530729e+15</td>
+      <td>2.840809e-16</td>
+      <td>9.620969e-30</td>
+      <td>10.474275</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2500.607112</td>
+      <td>53638.559312</td>
+      <td>53638.559312</td>
+      <td>4.027846e+16</td>
+      <td>1.085053e-17</td>
+      <td>6.103865e-25</td>
+      <td>48.070677</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2506.659279</td>
+      <td>53895.702068</td>
+      <td>53895.702068</td>
+      <td>1.811979e+15</td>
+      <td>2.417801e-16</td>
+      <td>6.458529e-24</td>
+      <td>16.354160</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2680.440575</td>
+      <td>44419.338366</td>
+      <td>44493.433181</td>
+      <td>2.667804e+07</td>
+      <td>1.755838e-08</td>
+      <td>1.028658e-01</td>
+      <td>82.469878</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2712.232366</td>
+      <td>44380.828454</td>
+      <td>44794.346705</td>
+      <td>4.808031e+06</td>
+      <td>9.856792e-08</td>
+      <td>1.792942e+00</td>
+      <td>95.265018</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2754.581912</td>
+      <td>45634.066326</td>
+      <td>46269.363367</td>
+      <td>3.323807e+06</td>
+      <td>1.448197e-07</td>
+      <td>3.217207e-02</td>
+      <td>55.443306</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2950.214180</td>
+      <td>151.396836</td>
+      <td>33981.240185</td>
+      <td>1.520676e+02</td>
+      <td>5.270092e-04</td>
+      <td>3.694164e+01</td>
+      <td>1.593377</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2950.223599</td>
+      <td>150.919190</td>
+      <td>34005.254718</td>
+      <td>1.515823e+02</td>
+      <td>5.270682e-04</td>
+      <td>5.927121e+01</td>
+      <td>0.875394</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3016.583234</td>
+      <td>18.212891</td>
+      <td>33493.303770</td>
+      <td>1.822121e+01</td>
+      <td>1.449994e-02</td>
+      <td>2.701476e+01</td>
+      <td>1.735937</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3016.650833</td>
+      <td>18.169833</td>
+      <td>33500.824676</td>
+      <td>1.817804e+01</td>
+      <td>1.451690e-02</td>
+      <td>4.297555e+01</td>
+      <td>0.865663</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>3154.107441</td>
+      <td>7.478490</td>
+      <td>35760.332468</td>
+      <td>7.477929e+00</td>
+      <td>3.502639e-02</td>
+      <td>7.835297e+01</td>
+      <td>0.472502</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>3154.569648</td>
+      <td>7.493899</td>
+      <td>35765.419890</td>
+      <td>7.492369e+00</td>
+      <td>3.506059e-02</td>
+      <td>2.945991e+01</td>
+      <td>0.730882</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>3372.659884</td>
+      <td>4.429038</td>
+      <td>36921.063766</td>
+      <td>4.426955e+00</td>
+      <td>6.671701e-02</td>
+      <td>1.278091e+02</td>
+      <td>0.116068</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>3375.632520</td>
+      <td>4.417115</td>
+      <td>36936.552617</td>
+      <td>4.413422e+00</td>
+      <td>6.709205e-02</td>
+      <td>1.836300e+01</td>
+      <td>2.641547</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>3431.878739</td>
+      <td>57.116313</td>
+      <td>39360.268817</td>
+      <td>5.717676e+01</td>
+      <td>1.000803e-02</td>
+      <td>2.828475e+00</td>
+      <td>60.103761</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>3506.207735</td>
+      <td>16.930222</td>
+      <td>38782.368179</td>
+      <td>1.692748e+01</td>
+      <td>3.132914e-02</td>
+      <td>1.889192e+01</td>
+      <td>10.099211</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>3595.369618</td>
+      <td>15.380984</td>
+      <td>39416.939616</td>
+      <td>1.537655e+01</td>
+      <td>3.543791e-02</td>
+      <td>3.250723e+01</td>
+      <td>26.379489</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>3655.885216</td>
+      <td>3.047149</td>
+      <td>38225.182331</td>
+      <td>3.043848e+00</td>
+      <td>1.044375e-01</td>
+      <td>1.488037e+02</td>
+      <td>1.029855</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>3657.359710</td>
+      <td>3.022662</td>
+      <td>38241.216473</td>
+      <td>3.017034e+00</td>
+      <td>1.049099e-01</td>
+      <td>1.147976e+01</td>
+      <td>0.984144</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>3702.001991</td>
+      <td>62724.148277</td>
+      <td>62724.148321</td>
+      <td>5.655861e+11</td>
+      <td>1.143975e-12</td>
+      <td>1.960317e-25</td>
+      <td>32.823700</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>3726.681840</td>
+      <td>72190.756349</td>
+      <td>72190.756353</td>
+      <td>1.160608e+13</td>
+      <td>5.611968e-14</td>
+      <td>5.486703e-26</td>
+      <td>21.569109</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>3728.723125</td>
+      <td>71429.613968</td>
+      <td>71429.614020</td>
+      <td>8.128093e+11</td>
+      <td>8.017702e-13</td>
+      <td>8.621163e-28</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>3738.366055</td>
+      <td>61764.750937</td>
+      <td>61764.750946</td>
+      <td>3.992299e+12</td>
+      <td>1.636580e-13</td>
+      <td>8.187662e-25</td>
+      <td>10.042242</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>3762.786004</td>
+      <td>64645.110152</td>
+      <td>64645.110162</td>
+      <td>5.232537e+12</td>
+      <td>1.256828e-13</td>
+      <td>1.851743e-25</td>
+      <td>24.602805</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>3784.795975</td>
+      <td>62043.049048</td>
+      <td>62043.049059</td>
+      <td>3.871379e+12</td>
+      <td>1.708658e-13</td>
+      <td>3.429980e-25</td>
+      <td>62.678869</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>3801.194925</td>
+      <td>24.153707</td>
+      <td>44672.943603</td>
+      <td>2.414472e+01</td>
+      <td>2.555246e-02</td>
+      <td>1.212190e+01</td>
+      <td>40.279250</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>3851.530329</td>
+      <td>221.748793</td>
+      <td>40900.751387</td>
+      <td>2.228144e+02</td>
+      <td>2.998170e-03</td>
+      <td>5.181005e+00</td>
+      <td>8.166328</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>3859.373138</td>
+      <td>89.861606</td>
+      <td>41854.773639</td>
+      <td>8.999508e+01</td>
+      <td>7.355359e-03</td>
+      <td>5.483850e-01</td>
+      <td>12.583539</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>3979.586978</td>
+      <td>2.347666</td>
+      <td>39306.084680</td>
+      <td>2.340058e+00</td>
+      <td>1.447754e-01</td>
+      <td>8.306390e+00</td>
+      <td>0.005107</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>3979.697569</td>
+      <td>2.362341</td>
+      <td>39290.339147</td>
+      <td>2.357815e+00</td>
+      <td>1.443724e-01</td>
+      <td>1.395220e+02</td>
+      <td>0.224605</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>3936.745042</td>
+      <td>49.792002</td>
+      <td>40601.395741</td>
+      <td>4.980293e+01</td>
+      <td>1.337571e-02</td>
+      <td>1.616448e+01</td>
+      <td>69.078348</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>4039.544987</td>
+      <td>15.658776</td>
+      <td>43638.585810</td>
+      <td>1.564298e+01</td>
+      <td>4.092250e-02</td>
+      <td>2.896902e+01</td>
+      <td>10.762963</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>4173.749074</td>
+      <td>28.356058</td>
+      <td>50579.413295</td>
+      <td>2.832852e+01</td>
+      <td>2.449360e-02</td>
+      <td>2.440490e+00</td>
+      <td>69.257241</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>4336.664637</td>
+      <td>1.991927</td>
+      <td>40162.726337</td>
+      <td>1.981966e+00</td>
+      <td>1.852465e-01</td>
+      <td>5.645385e+00</td>
+      <td>0.000686</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>4335.547782</td>
+      <td>2.000001</td>
+      <td>40142.028417</td>
+      <td>1.994018e+00</td>
+      <td>1.846080e-01</td>
+      <td>1.145472e+02</td>
+      <td>0.000742</td>
+    </tr>
+    <tr>
+      <th>41</th>
+      <td>4727.290132</td>
+      <td>1.669878</td>
+      <td>40881.129038</td>
+      <td>1.657834e+00</td>
+      <td>2.288774e-01</td>
+      <td>4.229138e+00</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>42</th>
+      <td>4734.848825</td>
+      <td>1.671748</td>
+      <td>40863.883332</td>
+      <td>1.664319e+00</td>
+      <td>2.289250e-01</td>
+      <td>8.368305e+01</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>43</th>
+      <td>4605.113754</td>
+      <td>109.663928</td>
+      <td>49599.740491</td>
+      <td>1.096474e+02</td>
+      <td>7.260869e-03</td>
+      <td>4.019093e+00</td>
+      <td>25.738943</td>
+    </tr>
+    <tr>
+      <th>44</th>
+      <td>4640.039009</td>
+      <td>44836.460865</td>
+      <td>57011.060005</td>
+      <td>4.305122e+06</td>
+      <td>1.852665e-07</td>
+      <td>4.613919e-28</td>
+      <td>23.564837</td>
+    </tr>
+    <tr>
+      <th>45</th>
+      <td>4661.612539</td>
+      <td>9116.678809</td>
+      <td>54058.759829</td>
+      <td>2.484559e+06</td>
+      <td>3.137526e-07</td>
+      <td>1.559464e-24</td>
+      <td>23.317630</td>
+    </tr>
+    <tr>
+      <th>46</th>
+      <td>4695.663407</td>
+      <td>216.272017</td>
+      <td>60794.827074</td>
+      <td>2.165119e+02</td>
+      <td>3.770176e-03</td>
+      <td>5.389879e+00</td>
+      <td>16.167441</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>4702.759921</td>
+      <td>2514.635317</td>
+      <td>60810.673078</td>
+      <td>1.625866e+07</td>
+      <td>4.908458e-08</td>
+      <td>2.360715e-24</td>
+      <td>16.495856</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>4714.206773</td>
+      <td>73.087420</td>
+      <td>46178.600338</td>
+      <td>8.890433e+05</td>
+      <td>3.300876e-07</td>
+      <td>1.768730e-25</td>
+      <td>33.793537</td>
+    </tr>
+    <tr>
+      <th>49</th>
+      <td>4716.590389</td>
+      <td>67.238149</td>
+      <td>47342.822575</td>
+      <td>9.718967e+05</td>
+      <td>3.001439e-07</td>
+      <td>9.201757e-26</td>
+      <td>32.280568</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>The open run splits the total <span class="math notranslate nohighlight">\(Q\)</span> into its two channels,</p>
+<div class="math notranslate nohighlight">
+\[\frac{1}{Q} = \frac{1}{Q_{\text{wall}}} + \frac{1}{Q_{\text{rad}}},\]</div>
+<p>and reports each separately. <code class="docutils literal notranslate"><span class="pre">Q_wall</span> <span class="pre">[]</span></code> is the same ohmic number the closed run gave;
+<code class="docutils literal notranslate"><span class="pre">Q_rad</span> <span class="pre">[]</span></code> is new, and it is what the closed run could not see.</p>
+<h3 id="two-independent-measurements-of-the-same-loss">Two independent measurements of the same loss<a class="headerlink" href="#two-independent-measurements-of-the-same-loss" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Q_rad</span> <span class="pre">[]</span></code> is obtained by integrating the power actually flowing out of the pipe mouths,</p>
+<div class="math notranslate nohighlight">
+\[P_{\text{rad}} = \oint \tfrac{1}{2}\,\text{Re}\!\left(\mathbf{E}\times\mathbf{H}^{*}\right)\cdot\hat{n}\,dA,
+\qquad Q_{\text{rad}} = \frac{\omega U}{P_{\text{rad}}}.\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">Q_eig</span> <span class="pre">[]</span></code> comes from somewhere else entirely — the imaginary part of the eigenvalue, i.e.
+how fast the mode decays. Neither is derived from the other, so comparing them is a real
+check. <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> is that comparison, and equals 1 when they agree:</p>
+<div class="math notranslate nohighlight">
+\[\text{Q balance} = \left(\frac{1}{Q_{\text{diel}}} + \frac{1}{Q_{\text{rad}}}\right) Q_{\text{eig}}.\]</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">opened</span><span class="p">[[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'Q_rad []'</span><span class="p">,</span> <span class="s1">'Q_eig []'</span><span class="p">,</span> <span class="s1">'Q balance []'</span><span class="p">]]</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>freq [MHz]</th>
+      <th>R/Q [Ohm]</th>
+      <th>Q_rad []</th>
+      <th>Q_eig []</th>
+      <th>Q balance []</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1281.681798</td>
+      <td>2.787675e-02</td>
+      <td>1.074047e+14</td>
+      <td>8.634446e+13</td>
+      <td>0.803917</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1293.829352</td>
+      <td>4.543089e-03</td>
+      <td>3.620846e+13</td>
+      <td>2.890070e+13</td>
+      <td>0.798175</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1300.008778</td>
+      <td>3.322731e+02</td>
+      <td>5.481790e+13</td>
+      <td>4.353547e+13</td>
+      <td>0.794183</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2391.161958</td>
+      <td>1.261099e+00</td>
+      <td>1.719348e+09</td>
+      <td>1.719585e+09</td>
+      <td>1.000138</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2420.562171</td>
+      <td>1.557170e+01</td>
+      <td>5.668023e+08</td>
+      <td>5.668300e+08</td>
+      <td>1.000049</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2450.887206</td>
+      <td>8.412557e+01</td>
+      <td>4.149504e+08</td>
+      <td>4.149457e+08</td>
+      <td>0.999989</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2488.065946</td>
+      <td>9.620969e-30</td>
+      <td>1.530729e+15</td>
+      <td>5.450978e+17</td>
+      <td>356.103345</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2500.607112</td>
+      <td>6.103865e-25</td>
+      <td>4.027846e+16</td>
+      <td>8.136113e+18</td>
+      <td>201.996621</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2506.659279</td>
+      <td>6.458529e-24</td>
+      <td>1.811979e+15</td>
+      <td>5.881861e+17</td>
+      <td>324.609664</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2680.440575</td>
+      <td>1.028658e-01</td>
+      <td>2.667804e+07</td>
+      <td>2.667351e+07</td>
+      <td>0.999830</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2712.232366</td>
+      <td>1.792942e+00</td>
+      <td>4.808031e+06</td>
+      <td>4.807551e+06</td>
+      <td>0.999900</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2754.581912</td>
+      <td>3.217207e-02</td>
+      <td>3.323807e+06</td>
+      <td>3.323578e+06</td>
+      <td>0.999931</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2950.214180</td>
+      <td>3.694164e+01</td>
+      <td>1.520676e+02</td>
+      <td>1.520744e+02</td>
+      <td>1.000044</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2950.223599</td>
+      <td>5.927121e+01</td>
+      <td>1.515823e+02</td>
+      <td>1.515920e+02</td>
+      <td>1.000064</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3016.583234</td>
+      <td>2.701476e+01</td>
+      <td>1.822121e+01</td>
+      <td>1.822280e+01</td>
+      <td>1.000088</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3016.650833</td>
+      <td>4.297555e+01</td>
+      <td>1.817804e+01</td>
+      <td>1.817969e+01</td>
+      <td>1.000091</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>3154.107441</td>
+      <td>7.835297e+01</td>
+      <td>7.477929e+00</td>
+      <td>7.480055e+00</td>
+      <td>1.000284</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>3154.569648</td>
+      <td>2.945991e+01</td>
+      <td>7.492369e+00</td>
+      <td>7.495470e+00</td>
+      <td>1.000414</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>3372.659884</td>
+      <td>1.278091e+02</td>
+      <td>4.426955e+00</td>
+      <td>4.429569e+00</td>
+      <td>1.000591</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>3375.632520</td>
+      <td>1.836300e+01</td>
+      <td>4.413422e+00</td>
+      <td>4.417643e+00</td>
+      <td>1.000956</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>3431.878739</td>
+      <td>2.828475e+00</td>
+      <td>5.717676e+01</td>
+      <td>5.719932e+01</td>
+      <td>1.000395</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>3506.207735</td>
+      <td>1.889192e+01</td>
+      <td>1.692748e+01</td>
+      <td>1.693762e+01</td>
+      <td>1.000599</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>3595.369618</td>
+      <td>3.250723e+01</td>
+      <td>1.537655e+01</td>
+      <td>1.538699e+01</td>
+      <td>1.000679</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>3655.885216</td>
+      <td>1.488037e+02</td>
+      <td>3.043848e+00</td>
+      <td>3.047392e+00</td>
+      <td>1.001164</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>3657.359710</td>
+      <td>1.147976e+01</td>
+      <td>3.017034e+00</td>
+      <td>3.022901e+00</td>
+      <td>1.001945</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>3702.001991</td>
+      <td>1.960317e-25</td>
+      <td>5.655861e+11</td>
+      <td>9.008545e+13</td>
+      <td>159.278026</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>3726.681840</td>
+      <td>5.486703e-26</td>
+      <td>1.160608e+13</td>
+      <td>1.294455e+15</td>
+      <td>111.532455</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>3728.723125</td>
+      <td>8.621163e-28</td>
+      <td>8.128093e+11</td>
+      <td>9.914991e+13</td>
+      <td>121.984220</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>3738.366055</td>
+      <td>8.187662e-25</td>
+      <td>3.992299e+12</td>
+      <td>4.368849e+14</td>
+      <td>109.431898</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>3762.786004</td>
+      <td>1.851743e-25</td>
+      <td>5.232537e+12</td>
+      <td>4.117867e+14</td>
+      <td>78.697343</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>3784.795975</td>
+      <td>3.429980e-25</td>
+      <td>3.871379e+12</td>
+      <td>3.413921e+14</td>
+      <td>88.183592</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>3801.194925</td>
+      <td>1.212190e+01</td>
+      <td>2.414472e+01</td>
+      <td>2.416677e+01</td>
+      <td>1.000913</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>3851.530329</td>
+      <td>5.181005e+00</td>
+      <td>2.228144e+02</td>
+      <td>2.229576e+02</td>
+      <td>1.000643</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>3859.373138</td>
+      <td>5.483850e-01</td>
+      <td>8.999508e+01</td>
+      <td>9.005495e+01</td>
+      <td>1.000665</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>3979.586978</td>
+      <td>8.306390e+00</td>
+      <td>2.340058e+00</td>
+      <td>2.347806e+00</td>
+      <td>1.003311</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>3979.697569</td>
+      <td>1.395220e+02</td>
+      <td>2.357815e+00</td>
+      <td>2.362483e+00</td>
+      <td>1.001980</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>3936.745042</td>
+      <td>1.616448e+01</td>
+      <td>4.980293e+01</td>
+      <td>4.985314e+01</td>
+      <td>1.001008</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>4039.544987</td>
+      <td>2.896902e+01</td>
+      <td>1.564298e+01</td>
+      <td>1.566440e+01</td>
+      <td>1.001369</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>4173.749074</td>
+      <td>2.440490e+00</td>
+      <td>2.832852e+01</td>
+      <td>2.837196e+01</td>
+      <td>1.001534</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>4336.664637</td>
+      <td>5.645385e+00</td>
+      <td>1.981966e+00</td>
+      <td>1.992026e+00</td>
+      <td>1.005076</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>4335.547782</td>
+      <td>1.145472e+02</td>
+      <td>1.994018e+00</td>
+      <td>2.000101e+00</td>
+      <td>1.003051</td>
+    </tr>
+    <tr>
+      <th>41</th>
+      <td>4727.290132</td>
+      <td>4.229138e+00</td>
+      <td>1.657834e+00</td>
+      <td>1.669946e+00</td>
+      <td>1.007306</td>
+    </tr>
+    <tr>
+      <th>42</th>
+      <td>4734.848825</td>
+      <td>8.368305e+01</td>
+      <td>1.664319e+00</td>
+      <td>1.671816e+00</td>
+      <td>1.004505</td>
+    </tr>
+    <tr>
+      <th>43</th>
+      <td>4605.113754</td>
+      <td>4.019093e+00</td>
+      <td>1.096474e+02</td>
+      <td>1.099069e+02</td>
+      <td>1.002367</td>
+    </tr>
+    <tr>
+      <th>44</th>
+      <td>4640.039009</td>
+      <td>4.613919e-28</td>
+      <td>4.305122e+06</td>
+      <td>2.099596e+05</td>
+      <td>0.048770</td>
+    </tr>
+    <tr>
+      <th>45</th>
+      <td>4661.612539</td>
+      <td>1.559464e-24</td>
+      <td>2.484559e+06</td>
+      <td>1.096603e+04</td>
+      <td>0.004414</td>
+    </tr>
+    <tr>
+      <th>46</th>
+      <td>4695.663407</td>
+      <td>5.389879e+00</td>
+      <td>2.165119e+02</td>
+      <td>2.170441e+02</td>
+      <td>1.002458</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>4702.759921</td>
+      <td>2.360715e-24</td>
+      <td>1.625866e+07</td>
+      <td>2.623106e+03</td>
+      <td>0.000161</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>4714.206773</td>
+      <td>1.768730e-25</td>
+      <td>8.890433e+05</td>
+      <td>7.320328e+01</td>
+      <td>0.000082</td>
+    </tr>
+    <tr>
+      <th>49</th>
+      <td>4716.590389</td>
+      <td>9.201757e-26</td>
+      <td>9.718967e+05</td>
+      <td>6.733378e+01</td>
+      <td>0.000069</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>Read that table with its <code class="docutils literal notranslate"><span class="pre">R/Q</span> <span class="pre">[Ohm]</span></code> column beside it, because the balance splits the modes
+in a way that is easy to misread.</p>
+<p>Every mode that <strong>couples to the beam at all</strong> sits within about a percent of 1: a surface
+integral of <span class="math notranslate nohighlight">\(\mathbf{E}\times\mathbf{H}^{*}\)</span> and the decay rate of a complex eigenvalue,
+computed without reference to each other, land on the same <span class="math notranslate nohighlight">\(Q\)</span>. That is the check passing,
+and it is the evidence that the layer is genuinely absorbing rather than merely lengthening
+the pipe.</p>
+<p>Where it fails, it fails on modes with <span class="math notranslate nohighlight">\(R/Q \sim 10^{-25}\,\Omega\)</span> — TE modes and other
+eigenpairs with no field on the axis — plus the fundamental trio near 1300 MHz. In both
+cases the comparison is between two numbers that are essentially zero (radiated fluxes of
+order <span class="math notranslate nohighlight">\(10^{-13}\)</span> W, or two <span class="math notranslate nohighlight">\(Q\)</span> values of order <span class="math notranslate nohighlight">\(10^{13}\)</span>), so the <em>ratio</em> is roundoff.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> is therefore a check on the <strong>absorbing layer</strong>, and a good one. What it is
+not is a filter for the impedance: every mode it rejects here contributes <span class="math notranslate nohighlight">\(10^{-25}\)</span> kΩ,
+and dropping all of them changes <span class="math notranslate nohighlight">\(|Z|\)</span> by nothing at all. The modes that really do need
+filtering are in section 5 — and every one of them passes this check.</p>
+<h2 id="which-modes-actually-radiate">4. Which modes actually radiate<a class="headerlink" href="#which-modes-actually-radiate" title="Link to this heading">¶</a></h2>
+<p>Plotting <span class="math notranslate nohighlight">\(Q_{\text{rad}}\)</span> against frequency separates the two populations. Below cutoff the
+layer receives an evanescent tail and almost no power, so <span class="math notranslate nohighlight">\(Q_{\text{rad}}\)</span> runs away to
+enormous values — the mode is trapped, exactly as the closed solve assumed. Above cutoff
+<span class="math notranslate nohighlight">\(Q_{\text{rad}}\)</span> collapses by many orders of magnitude, and <em>that</em> is the number that sets
+the impedance.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">closed</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="n">closed</span><span class="p">[</span><span class="s1">'Q []'</span><span class="p">],</span> <span class="s1">'s--'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">'$Q_0$  closed ends'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">],</span> <span class="n">opened</span><span class="p">[</span><span class="s1">'Q_rad []'</span><span class="p">],</span> <span class="s1">'o-'</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">'$Q_\mathrm</span><span class="si">{rad}</span><span class="s1">$  open ends (PML)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span>
+           <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'TM$_</span><span class="se">{{</span><span class="s1">01</span><span class="se">}}</span><span class="s1">$ pipe cutoff  </span><span class="si">{</span><span class="n">f_cutoff</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'f [MHz]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'Q []'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/32659529db74c0b5b920156c2c8042b6cfb164d1da23517a06752c10233f89f7.png" src="../../_images/32659529db74c0b5b920156c2c8042b6cfb164d1da23517a06752c10233f89f7.png" />
+</div>
+</div>
+<h2 id="not-every-eigenvalue-above-the-cutoff-is-a-mode">5. Not every eigenvalue above the cutoff is a mode<a class="headerlink" href="#not-every-eigenvalue-above-the-cutoff-is-a-mode" title="Link to this heading">¶</a></h2>
+<p>Here is the part that costs people a factor of five.</p>
+<p>A PML is an <em>approximation</em> to an open pipe. The physical resonance poles of the open
+cavity are fixed by its geometry, so they do not care how long the absorbing block is. The
+finite block, however, is itself a resonator, and it contributes eigenpairs of its own.
+Those PML-block modes are damped — the layer absorbs them — so they arrive with a
+perfectly plausible low <span class="math notranslate nohighlight">\(Q\)</span>, a <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> of 1.00, and no other tell.</p>
+<p>The one thing that distinguishes them is that they are <strong>properties of the layer, not of
+the cavity</strong>. So change the layer. <code class="docutils literal notranslate"><span class="pre">pml_length</span></code> sets the block length in metres (the
+default is 3× the pipe radius) and <code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code> its complex stretch.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_long</span> <span class="o">=</span> <span class="n">tesla</span><span class="p">(</span><span class="s1">'tesla_long_pml'</span><span class="p">)</span>
+<span class="n">cav_long</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">eigen_config</span><span class="p">,</span> <span class="n">boundary_conditions</span><span class="o">=</span><span class="s1">'oo'</span><span class="p">,</span>
+                            <span class="n">pml_length</span><span class="o">=</span><span class="mf">0.234</span><span class="p">))</span>          <span class="c1"># default here is 0.117 m</span>
+
+<span class="n">longer</span> <span class="o">=</span> <span class="n">cav_long</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'default PML : </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">opened</span><span class="p">)</span><span class="si">:</span><span class="s1">2d</span><span class="si">}</span><span class="s1"> modes'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'2x PML      : </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">longer</span><span class="p">)</span><span class="si">:</span><span class="s1">2d</span><span class="si">}</span><span class="s1"> modes'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>default PML : 50 modes
+2x PML      : 50 modes
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">cav.eigenmode.stable_modes()</span></code> keeps the modes the second solve also found, at the same
+frequency and <span class="math notranslate nohighlight">\(Q\)</span>:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">trusted</span> <span class="o">=</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">stable_modes</span><span class="p">(</span><span class="n">cav_long</span><span class="o">.</span><span class="n">eigenmode</span><span class="p">)</span>
+
+<span class="c1"># Judge only where BOTH runs have modes. Each run returns its lowest n_modes, so the</span>
+<span class="c1"># two need not reach the same ceiling, and a mode above the other run's highest has no</span>
+<span class="c1"># partner to be matched against -- it would look 'unstable' for that reason alone.</span>
+<span class="n">f_top</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">longer</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"default PML reaches </span><span class="si">{</span><span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz, "</span>
+      <span class="sa">f</span><span class="s2">"2x PML reaches </span><span class="si">{</span><span class="n">longer</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'comparing below </span><span class="si">{</span><span class="n">f_top</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> MHz, where both runs have modes'</span><span class="p">)</span>
+
+<span class="n">judged</span> <span class="o">=</span> <span class="p">((</span><span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">f_cutoff</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">opened</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1e-3</span><span class="p">)</span>
+          <span class="o">&amp;</span> <span class="p">(</span><span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">f_top</span><span class="p">))</span>
+<span class="n">kept</span> <span class="o">=</span> <span class="n">judged</span> <span class="o">&amp;</span> <span class="n">opened</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">trusted</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'beam-coupled modes above cutoff : </span><span class="si">{</span><span class="n">judged</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'   ... that survive a longer PML: </span><span class="si">{</span><span class="n">kept</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+
+<span class="n">dropped</span> <span class="o">=</span> <span class="n">opened</span><span class="p">[</span><span class="n">judged</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">opened</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">trusted</span><span class="o">.</span><span class="n">index</span><span class="p">)]</span>
+<span class="n">dropped</span><span class="p">[[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'Q []'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'Q balance []'</span><span class="p">]]</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>default PML reaches 4735 MHz, 2x PML reaches 4246 MHz
+comparing below 4246 MHz, where both runs have modes
+
+beam-coupled modes above cutoff : 21
+   ... that survive a longer PML: 8
+</code></pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>freq [MHz]</th>
+      <th>Q []</th>
+      <th>R/Q [Ohm]</th>
+      <th>Q balance []</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>12</th>
+      <td>2950.214180</td>
+      <td>151.396836</td>
+      <td>36.941644</td>
+      <td>1.000044</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2950.223599</td>
+      <td>150.919190</td>
+      <td>59.271214</td>
+      <td>1.000064</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3016.583234</td>
+      <td>18.212891</td>
+      <td>27.014756</td>
+      <td>1.000088</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3016.650833</td>
+      <td>18.169833</td>
+      <td>42.975550</td>
+      <td>1.000091</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>3154.107441</td>
+      <td>7.478490</td>
+      <td>78.352968</td>
+      <td>1.000284</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>3154.569648</td>
+      <td>7.493899</td>
+      <td>29.459910</td>
+      <td>1.000414</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>3372.659884</td>
+      <td>4.429038</td>
+      <td>127.809096</td>
+      <td>1.000591</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>3375.632520</td>
+      <td>4.417115</td>
+      <td>18.362997</td>
+      <td>1.000956</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>3655.885216</td>
+      <td>3.047149</td>
+      <td>148.803719</td>
+      <td>1.001164</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>3657.359710</td>
+      <td>3.022662</td>
+      <td>11.479758</td>
+      <td>1.001945</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>3979.586978</td>
+      <td>2.347666</td>
+      <td>8.306390</td>
+      <td>1.003311</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>3979.697569</td>
+      <td>2.362341</td>
+      <td>139.522031</td>
+      <td>1.001980</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>4173.749074</td>
+      <td>28.356058</td>
+      <td>2.440490</td>
+      <td>1.001534</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>That is the whole problem in one table. The discarded modes</p>
+<ul class="simple">
+<li><p>have the <strong>lowest <span class="math notranslate nohighlight">\(Q\)</span></strong> of any mode in the set, so they are the <strong>broadest</strong> — each one
+spans hundreds of MHz and contributes across the entire above-cutoff range;</p></li>
+<li><p>carry the <strong>largest <span class="math notranslate nohighlight">\(R/Q\)</span></strong> of any mode in the set, over <span class="math notranslate nohighlight">\(100\,\Omega\)</span> where the genuine
+poles sit in the tens;</p></li>
+<li><p>and have <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> of 1.00, so the layer check waves every one of them through.</p></li>
+</ul>
+<p>They dominate the reconstructed impedance, and they are artifacts of the box.</p>
+<p>Note also what does <em>not</em> work as a test: refining the mesh. The mesh does not change the
+PML block’s dimensions, so a block mode survives an <code class="docutils literal notranslate"><span class="pre">h</span></code> refinement happily. It is
+<code class="docutils literal notranslate"><span class="pre">pml_length</span></code> or <code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code> that has to move.</p>
+<h2 id="what-that-does-to-the-impedance">6. What that does to the impedance<a class="headerlink" href="#what-that-does-to-the-impedance" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">cav.eigenmode.impedance()</span></code> sums the modes as parallel RLC resonators, using each mode’s
+own <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code>.</p>
+<p>Asking the <strong>closed</strong> solve for an impedance is refused outright — its above-cutoff <span class="math notranslate nohighlight">\(Q\)</span>
+values are not physical, so there is no useful spectrum to build from them:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_closed</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code><span class=" -Color -Color-Red">ERROR:: refusing to reconstruct impedance from a CLOSED-boundary eigenmode solve. The pipe ends reflect, so every mode above the beam-pipe cutoff keeps its ohmic Q0 instead of its radiation Q and |Z| comes out ~100-1000x too high. Re-run with boundary_conditions='oo' (an open/PML end -- see the open_boundary_impedance example), use cav.wakefield for the broadband answer, or pass an explicit Q= if you know the loaded Q and want the reconstruction anyway.</span>
+</code></pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>To see <em>how far off</em> it would have been, we can force the issue: <code class="docutils literal notranslate"><span class="pre">Q=</span></code> states the quality
+factors explicitly, which bypasses the check. Handing it back the closed solve’s own
+<code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code> reproduces the reconstruction that used to happen silently.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">Q_closed</span> <span class="o">=</span> <span class="n">closed</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)[</span><span class="s1">'Q []'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                       <span class="n">label</span><span class="o">=</span><span class="s1">'open ends (PML)'</span><span class="p">)</span>
+<span class="n">cav_closed</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q_closed</span><span class="p">,</span>
+                                    <span class="n">ls</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'closed ends (forced with $Q_0$)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span>
+           <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'TM$_</span><span class="se">{{</span><span class="s1">01</span><span class="se">}}</span><span class="s1">$ pipe cutoff  </span><span class="si">{</span><span class="n">f_cutoff</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/13751411b79775590c7716f338174ccfd2383191200bc6dcea162e33ddebba65.png" src="../../_images/13751411b79775590c7716f338174ccfd2383191200bc6dcea162e33ddebba65.png" />
+</div>
+</div>
+<p>Below the cutoff line the two curves lie on top of each other: the PML does not disturb a
+trapped mode. Above it they separate by orders of magnitude, and the open-boundary curve
+replaces the spurious needles with the broad humps a propagating mode really produces.</p>
+<h2 id="checking-against-the-wakefield">7. Checking against the wakefield<a class="headerlink" href="#checking-against-the-wakefield" title="Link to this heading">¶</a></h2>
+<p>A time-domain wakefield run drives the cavity with a bunch through an open pipe, so it
+includes radiation without being asked to. It is the independent check on everything above
+— with two caveats that decide what the comparison can actually show.</p>
+<p><strong>The bunch sets how far up the comparison means anything.</strong> The impedance is the wake
+spectrum deconvolved by the bunch spectrum, and a Gaussian bunch of length <span class="math notranslate nohighlight">\(\sigma_z\)</span> has
+little left to deconvolve above roughly <span class="math notranslate nohighlight">\(c/(2\pi\sigma_z)\)</span> — 2.7 GHz at the 25 mm used
+here. Above that the wakefield curve is increasingly noise-dominated, so read the shapes
+rather than the values. A shorter bunch moves that limit up (5 mm reaches past 13 GHz) at
+the cost of a much longer run.</p>
+<p><strong>Narrow resonances will not match, and should not.</strong> A 50 m wake is a 167 ns window, so the
+narrowest resonance it can resolve has <span class="math notranslate nohighlight">\(Q \approx f T \sim 10^{2}\)</span>–<span class="math notranslate nohighlight">\(10^{3}\)</span>. The
+fundamental’s real <span class="math notranslate nohighlight">\(Q\)</span> is <span class="math notranslate nohighlight">\(2.9\times10^{4}\)</span>, so the wakefield peak at 1300 MHz is
+truncation-limited and lands orders of magnitude below the eigenmode value. That is a
+property of the reference, not an error in the modes. <strong>Below cutoff, compare <span class="math notranslate nohighlight">\(f\)</span> and
+<span class="math notranslate nohighlight">\(R/Q\)</span>; above it, compare <span class="math notranslate nohighlight">\(|Z|\)</span>.</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'MROT'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'wakelength'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s1">'bunch_length'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+                        <span class="s1">'force'</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+<span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">qois</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>{'|k_loss| [V/pC]': 0.51,
+ 'k_FM [V/pC]': 0.44402,
+ 'k_loss_HOM [V/pC]': 0.06597999999999998}
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">f_max</span> <span class="o">=</span> <span class="n">opened</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                       <span class="n">label</span><span class="o">=</span><span class="s1">'eigenmode, every mode'</span><span class="p">)</span>
+<span class="c1"># the same call, restricted to the PML-stable modes</span>
+<span class="n">cav_open</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">modes</span><span class="o">=</span><span class="n">trusted</span><span class="p">,</span>
+                                  <span class="n">label</span><span class="o">=</span><span class="s1">'eigenmode, PML-stable modes only'</span><span class="p">)</span>
+<span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span>
+           <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'TM$_</span><span class="se">{{</span><span class="s1">01</span><span class="se">}}</span><span class="s1">$ pipe cutoff  </span><span class="si">{</span><span class="n">f_cutoff</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">f_max</span><span class="p">)</span>          <span class="c1"># the eigenmode sum stops at the highest computed mode</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">1e5</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/0035f70722bfea9a671624d9eb8f7bf3fe2a9882f4d99706b03c978ad2daf583.png" src="../../_images/0035f70722bfea9a671624d9eb8f7bf3fe2a9882f4d99706b03c978ad2daf583.png" />
+</div>
+</div>
+<p>Above the cutoff the filtered curve drops towards the wakefield while the unfiltered one
+stays well above it — the collective contribution of those few broad artifacts. Section 8
+puts a number on that excess, on a quantity that can actually carry one. Below
+the cutoff nothing changes — the filter removes nothing there — and the eigenmode peaks
+tower over the wakefield exactly as the truncation argument predicts.</p>
+<p>What remains above the cutoff is the RLC model itself. A sum of parallel resonators gives
+every mode a positive-real shunt impedance, so modes whose linewidths overlap add <strong>in
+phase</strong>; that is exact for an isolated resonance and progressively wrong as modes broaden.
+Representing it properly needs complex mode residues, and the solver does report them
+(<code class="docutils literal notranslate"><span class="pre">Re(R/Q)</span> <span class="pre">[Ohm]</span></code> / <code class="docutils literal notranslate"><span class="pre">Im(R/Q)</span> <span class="pre">[Ohm]</span></code>, whenever the eigenvalue is complex). Their magnitudes
+are exact, but their phases are not yet physical — <code class="docutils literal notranslate"><span class="pre">impedance(model='qnm')</span></code> exists, warns,
+and is a diagnostic rather than an answer. Filtering the mode set, above, is what works
+today.</p>
+<h2 id="the-comparison-that-actually-settles-it-the-loss-factor">8. The comparison that actually settles it: the loss factor<a class="headerlink" href="#the-comparison-that-actually-settles-it-the-loss-factor" title="Link to this heading">¶</a></h2>
+<p>Peak <span class="math notranslate nohighlight">\(|Z|\)</span> is a bad thing to compare. A 50 m wake is a 167 ns window, so the narrowest
+line the wakefield can resolve has <span class="math notranslate nohighlight">\(Q \sim 10^2\)</span>–<span class="math notranslate nohighlight">\(10^3\)</span> against the fundamental’s
+<span class="math notranslate nohighlight">\(2.9\times10^4\)</span>: its peak is truncation-limited and lands orders of magnitude low. That
+says nothing about whether the modes are right.</p>
+<p>The <strong>loss factor</strong> does not have that problem. <span class="math notranslate nohighlight">\(k\)</span> is an <em>integral</em> of <span class="math notranslate nohighlight">\(\mathrm{Re}\,Z\)</span>
+over the bunch spectrum, and truncating a wake broadens a resonance while preserving its
+area. So <span class="math notranslate nohighlight">\(k\)</span> compares cleanly even when <span class="math notranslate nohighlight">\(|Z|\)</span> cannot.</p>
+<p>Each mode contributes a point-charge loss factor</p>
+<div class="math notranslate nohighlight">
+\[k_n = \frac{V_n^2}{4U_n} = \frac{\omega_n}{4}\left(\frac{R}{Q}\right)_n,\]</div>
+<p>and a bunch of rms length <span class="math notranslate nohighlight">\(\sigma_z\)</span> weights it by the form factor
+<span class="math notranslate nohighlight">\(\exp[-(\omega_n\sigma_z/c)^2]\)</span>. That weighting is the whole difference between a point
+charge and a real bunch — it is <strong>not</strong> a limitation of the eigenmode method, and once it
+is applied the two calculations are directly comparable.</p>
+<p>ABCI exports its own cumulative <span class="math notranslate nohighlight">\(k(&lt;f)\)</span>, so the two can simply be overlaid.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">C0</span> <span class="o">=</span> <span class="mf">299792458.0</span>
+<span class="n">sigma_z</span> <span class="o">=</span> <span class="mf">25e-3</span>                      <span class="c1"># the bunch the wakefield ran with [m]</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="n">opened</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)</span>
+<span class="n">fe</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+<span class="n">k_point</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fe</span> <span class="o">*</span> <span class="mf">1e6</span> <span class="o">*</span> <span class="n">m</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">/</span> <span class="mi">4</span> <span class="o">*</span> <span class="mf">1e-12</span>   <span class="c1"># V/pC</span>
+<span class="n">k_bunch</span> <span class="o">=</span> <span class="n">k_point</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fe</span> <span class="o">*</span> <span class="mf">1e6</span> <span class="o">*</span> <span class="n">sigma_z</span> <span class="o">/</span> <span class="n">C0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">wk</span> <span class="o">=</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">wake_z</span><span class="p">[[</span><span class="s1">'fk [MHz]'</span><span class="p">,</span> <span class="s1">'k_loss(f) [V/pC]'</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+<span class="n">fw</span> <span class="o">=</span> <span class="n">wk</span><span class="p">[</span><span class="s1">'fk [MHz]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+<span class="n">kw</span> <span class="o">=</span> <span class="n">wk</span><span class="p">[</span><span class="s1">'k_loss(f) [V/pC]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">staircase</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">f_end</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A mode sum is a step function: flat between modes, jumping at each one."""</span>
+    <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">run</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">fi</span><span class="p">,</span> <span class="n">ki</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="n">run</span> <span class="o">+=</span> <span class="n">ki</span>
+        <span class="n">xs</span> <span class="o">+=</span> <span class="p">[</span><span class="n">fi</span><span class="p">,</span> <span class="n">fi</span><span class="p">]</span>
+        <span class="n">ys</span> <span class="o">+=</span> <span class="p">[</span><span class="n">ys</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">run</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">xs</span> <span class="o">+</span> <span class="p">[</span><span class="n">f_end</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ys</span> <span class="o">+</span> <span class="p">[</span><span class="n">ys</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+
+
+<span class="n">f_end</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">staircase</span><span class="p">(</span><span class="n">fe</span><span class="p">,</span> <span class="n">k_point</span><span class="p">,</span> <span class="n">f_end</span><span class="p">),</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">'eigenmode sum, point charge ($\sigma_z \to 0$)'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">staircase</span><span class="p">(</span><span class="n">fe</span><span class="p">,</span> <span class="n">k_bunch</span><span class="p">,</span> <span class="n">f_end</span><span class="p">),</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">'eigenmode sum, $\sigma_z = 25$ mm'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fw</span><span class="p">,</span> <span class="n">kw</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">'wakefield (ABCI), $\sigma_z = 25$ mm'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span>
+           <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'TM$_</span><span class="se">{{</span><span class="s1">01</span><span class="se">}}</span><span class="s1">$ pipe cutoff  </span><span class="si">{</span><span class="n">f_cutoff</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> MHz'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'f [MHz]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">'cumulative $k(&lt;f)$  [V/pC]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">f_end</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">'upper left'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/cefe312c30b17a4c59002a7b9593bfd484973c474208a78a69a168f80765aa17.png" src="../../_images/cefe312c30b17a4c59002a7b9593bfd484973c474208a78a69a168f80765aa17.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">below</span> <span class="o">=</span> <span class="n">fe</span> <span class="o">&lt;=</span> <span class="n">f_cutoff</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s1">''</span><span class="si">:</span><span class="s1">32</span><span class="si">}{</span><span class="s1">'eigenmode'</span><span class="si">:</span><span class="s1">&gt;12</span><span class="si">}{</span><span class="s1">'ABCI'</span><span class="si">:</span><span class="s1">&gt;12</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s1">'k, modes below cutoff'</span><span class="si">:</span><span class="s1">32</span><span class="si">}{</span><span class="n">k_bunch</span><span class="p">[</span><span class="n">below</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}</span><span class="s1">'</span>
+      <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span><span class="w"> </span><span class="n">fw</span><span class="p">,</span><span class="w"> </span><span class="n">kw</span><span class="p">)</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s1">'k, all computed modes'</span><span class="si">:</span><span class="s1">32</span><span class="si">}{</span><span class="n">k_bunch</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}{</span><span class="n">kw</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s1">'  (above-cutoff modes add)'</span><span class="si">:</span><span class="s1">32</span><span class="si">}{</span><span class="n">k_bunch</span><span class="p">[</span><span class="o">~</span><span class="n">below</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}</span><span class="s1">'</span>
+      <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">kw</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">f_cutoff</span><span class="p">,</span><span class="w"> </span><span class="n">fw</span><span class="p">,</span><span class="w"> </span><span class="n">kw</span><span class="p">)</span><span class="si">:</span><span class="s1">12.4f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'ABCI time-domain loss factors:'</span><span class="p">,</span> <span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">qois</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>                                   eigenmode        ABCI
+k, modes below cutoff                 0.5029      0.5170
+k, all computed modes                 0.6966      0.5197
+  (above-cutoff modes add)            0.1937      0.0027
+
+ABCI time-domain loss factors: {'|k_loss| [V/pC]': 0.51, 'k_FM [V/pC]': 0.44402, 'k_loss_HOM [V/pC]': 0.06597999999999998}
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Below the cutoff the two curves lie on top of each other — the same steps at the same
+frequencies, agreeing to about 3% all the way up. That is the eigenmode reconstruction
+working exactly as advertised, and it is a far stronger statement than the <span class="math notranslate nohighlight">\(|Z|\)</span> overlay
+could make.</p>
+<p>At the cutoff they part company. The wakefield goes essentially flat; the mode sum keeps
+climbing, and the modes it climbs on are the broad, low-<span class="math notranslate nohighlight">\(Q\)</span>, large-<span class="math notranslate nohighlight">\(R/Q\)</span> ones from section
+5 — the PML-block artifacts.</p>
+<p>The dotted curve is there to head off a natural misreading: the point-charge sum is about
+fourteen times the 25 mm one. If the eigenmode side really were “stuck at zero bunch
+length” it would sit far above the wakefield everywhere, not agree with it to 3%. It does
+not, because the form factor has been applied.</p>
+<h3 id="why-r-q-stops-being-a-property-of-the-geometry">Why <span class="math notranslate nohighlight">\(R/Q\)</span> stops being a property of the geometry<a class="headerlink" href="#why-r-q-stops-being-a-property-of-the-geometry" title="Link to this heading">¶</a></h3>
+<p><span class="math notranslate nohighlight">\(R/Q = V^2/(\omega U)\)</span> is purely geometric — no material, no wall loss — <em>for a confined
+mode</em>. Every trapped mode in this run reports the identical <span class="math notranslate nohighlight">\(U\)</span>, because the eigenvector is
+normalised and the whole field is inside the cavity.</p>
+<p>A radiating mode is not confined, and <span class="math notranslate nohighlight">\(U\)</span> is only the energy inside the <strong>computational
+domain</strong>. Above the cutoff the modes here keep between 16% and 99% of their normalised
+energy inside the physical region, the rest having leaked into the absorbing layer. So
+<span class="math notranslate nohighlight">\(U\)</span> — and with it <span class="math notranslate nohighlight">\(R/Q\)</span> and <span class="math notranslate nohighlight">\(k_n = V^2/4U\)</span> — measures where you chose to truncate, not the
+cavity. The modes with the most energy outside come back with the most inflated <span class="math notranslate nohighlight">\(R/Q\)</span>, and
+those are precisely the ones inflating the loss factor above the cutoff.</p>
+<p>That is the concrete form of the general statement: above the pipe cutoff there is no
+discrete mode to attach a geometric <span class="math notranslate nohighlight">\(R/Q\)</span> to.</p>
+<h2 id="what-to-take-away">What to take away<a class="headerlink" href="#what-to-take-away" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Reconstructing an impedance from a closed-boundary solve is refused: above the beam-pipe
+cutoff the reflection at the end wall replaces a radiation <span class="math notranslate nohighlight">\(Q\)</span> with the ohmic <span class="math notranslate nohighlight">\(Q\)</span> of the
+wall. Pass <code class="docutils literal notranslate"><span class="pre">Q=</span></code> only if you know the loaded <span class="math notranslate nohighlight">\(Q\)</span> yourself.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code> fixes that at the source, at the cost of one extra PML block
+per pipe end in the mesh.</p></li>
+<li><p><strong>Above the cutoff, solve twice.</strong> A single open solve mixes real resonance poles with
+modes of the finite absorbing block, and the artifacts are the broad, high-<span class="math notranslate nohighlight">\(R/Q\)</span> ones
+that dominate a reconstructed impedance. Vary <code class="docutils literal notranslate"><span class="pre">pml_length</span></code> (or <code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code> — <em>not</em> the
+mesh) and keep what does not move, with <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.stable_modes()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> validates the absorbing layer. It does not identify these artifacts, which
+pass it at 1.00.</p></li>
+<li><p>Below the cutoff the wakefield is the one that cannot resolve a narrow line; compare <span class="math notranslate nohighlight">\(f\)</span>
+and <span class="math notranslate nohighlight">\(R/Q\)</span> there, not peak <span class="math notranslate nohighlight">\(|Z|\)</span>. And keep the bunch short enough that the wake spectrum
+still carries information at the frequencies being compared.</p></li>
+<li><p>Compare <strong>loss factors</strong>, not peak <span class="math notranslate nohighlight">\(|Z|\)</span>. <span class="math notranslate nohighlight">\(k\)</span> is an integral over the bunch spectrum
+and survives the wake truncation that makes a high-<span class="math notranslate nohighlight">\(Q\)</span> peak incomparable. Weighted by
+the same bunch, the mode sum reproduces the wakefield to ~3% below the cutoff.</p></li>
+<li><p><span class="math notranslate nohighlight">\(R/Q\)</span> is geometry-only for a <strong>confined</strong> mode. Above the cutoff part of the field lives
+outside the computational domain, so <span class="math notranslate nohighlight">\(U\)</span> — and therefore <span class="math notranslate nohighlight">\(R/Q\)</span> — depends on where the
+domain ends.</p></li>
+<li><p>The wakefield solver remains the reference for broadband impedance: an eigenmode
+reconstruction contains exactly the modes that were solved and nothing else — no
+broadband or resistive-wall contribution, and nothing above the highest computed mode.</p></li>
+</ul>
+<h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="elliptical_tesla.html"><span class="std std-doc">The TESLA elliptical cavity</span></a> — fundamental mode figures of merit and passbands.</p></li>
+<li><p><a class="reference internal" href="../wakefield/impedance.html"><span class="std std-doc">Wakefield and impedance (ABCI)</span></a> — wake potential details and bunch length parameters.</p></li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        &#169; Copyright 2024, Sosoho-Abasi Udongwo.
+        
+    </div>
+  
+    Created using
+    <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
+    9.1.0.
+     and
+    <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
+  
+</div>
+      
+    </div>
+    
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "navigation.top", "search.share", "toc.follow", "content.code.copy"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+        <script src="../../_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script id="MathJax-script" src="../../_static/mathjax/tex-mml-chtml.js"></script>
+    
+  </body>
+</html>

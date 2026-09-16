@@ -14,7 +14,7 @@
         <link rel="prev" href="index.html">
       
       
-        <link rel="next" href="pillbox.html">
+        <link rel="next" href="open_boundary_impedance.html">
       
       
       <link rel="icon" href="">
@@ -846,6 +846,126 @@
 
               
             
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#how-a-cavity-is-divided" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#what-welding-does" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#the-three-models" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:the three models (reference label)"><span>The three models</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#simplecell-path" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html#multicell-path" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1029,16 +1149,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#impedance-reconstructed-from-the-modes" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/elliptical_tesla:4. impedance reconstructed from the modes (reference label)"><span>4.<wbr> Impedance reconstructed from the modes</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#where-to-go-next" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -1052,6 +1162,30 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2612,16 +2746,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#impedance-reconstructed-from-the-modes" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/elliptical_tesla:4. impedance reconstructed from the modes (reference label)"><span>4.<wbr> Impedance reconstructed from the modes</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#where-to-go-next" class="md-nav__link">
     
     <span class="md-ellipsis">
@@ -2648,7 +2772,8 @@
 
 
 <h1 id="eigenmode-the-tesla-elliptical-cavity">Eigenmode: the TESLA elliptical cavity<a class="headerlink" href="#eigenmode-the-tesla-elliptical-cavity" title="Link to this heading">¶</a></h1>
-<p>This example runs the eigenmode solver on the canonical TESLA elliptical cell — the fundamental accelerating mode and its figures of merit, then the monopole and dipole passbands and the mode-reconstructed impedance. Everything is driven through the <code class="docutils literal notranslate"><span class="pre">cav.eigenmode</span></code> interface on a single cavity (no <code class="docutils literal notranslate"><span class="pre">Study</span></code> needed).</p>
+<p>This example runs the eigenmode solver on the canonical TESLA elliptical cell — the fundamental accelerating mode and its figures of merit, then the monopole and dipole passbands. Everything is driven through the <code class="docutils literal notranslate"><span class="pre">cav.eigenmode</span></code> interface on a single cavity (no <code class="docutils literal notranslate"><span class="pre">Study</span></code> needed).</p>
+<p>Impedance reconstructed from the modes has its own example, because it only means something with open beam-pipe ends: see <a class="reference internal" href="open_boundary_impedance.html"><span class="std std-doc">open boundaries (PML)</span></a>.</p>
 <p>See the <a class="reference internal" href="../../theory/eigenmode.html"><span class="doc std std-doc">eigenmode theory</span></a> and <a class="reference internal" href="../../eigenmode.html"><span class="doc std std-doc">user guide</span></a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2815,36 +2940,9 @@
 </div>
 </div>
 </div>
-<h2 id="impedance-reconstructed-from-the-modes">4. Impedance reconstructed from the modes<a class="headerlink" href="#impedance-reconstructed-from-the-modes" title="Link to this heading">¶</a></h2>
-<p>Each mode is treated as a resonator, so the eigenmode results reconstruct the beam-coupling impedance directly (see the theory page). This is cheap and has no wake-length truncation, so it complements a wakefield solve.</p>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'longitudinal'</span><span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../_images/117c96168aa19e353b88b7e58f70b70a08897d132731a5114b112e1c2e92b42f.png" src="../../_images/117c96168aa19e353b88b7e58f70b70a08897d132731a5114b112e1c2e92b42f.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='f [MHz]', ylabel='$|Z_\\parallel|$ [k$\\Omega$]'&gt;
-</code></pre></div>
-</div>
-</div>
-</div>
-<div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_impedance</span><span class="p">(</span><span class="s1">'transverse'</span><span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<img alt="../../_images/25f084d44871631f8f3c9097c50cd5282d68466d9ef457a5e521eba46faebf68.png" src="../../_images/25f084d44871631f8f3c9097c50cd5282d68466d9ef457a5e521eba46faebf68.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>&lt;Axes: xlabel='f [MHz]', ylabel='$|Z_\\perp|$ [k$\\Omega$/m]'&gt;
-</code></pre></div>
-</div>
-</div>
-</div>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h2>
 <ul class="simple">
+<li><p><a class="reference internal" href="open_boundary_impedance.html"><span class="std std-doc">Open boundaries (PML)</span></a> — a true radiation <span class="math notranslate nohighlight">\(Q\)</span> for the modes above the beam-pipe cutoff, and the impedance reconstruction.</p></li>
 <li><p><a class="reference internal" href="pillbox.html"><span class="std std-doc">Eigenmode: the pillbox cavity</span></a> — a fully analytic check of the solver (100 modes vs the closed form).</p></li>
 <li><p>Interactive 3D field/mesh views: <code class="docutils literal notranslate"><span class="pre">cav.show_fields(...)</span></code>, <code class="docutils literal notranslate"><span class="pre">cav.show_mesh()</span></code> (NGSolve webgui, notebook-only).</p></li>
 <li><p><a class="reference internal" href="../tuning/tune_to_frequency.html"><span class="std std-doc">Tuning</span></a> to hit a target frequency.</p></li>
@@ -2916,6 +3014,8 @@
     
       
         <script src="../../_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script id="MathJax-script" src="../../_static/mathjax/tex-mml-chtml.js"></script>
     
   </body>
 </html>

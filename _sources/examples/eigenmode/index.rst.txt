@@ -9,6 +9,7 @@ dielectric loss.
    :maxdepth: 1
 
    elliptical_tesla
+   open_boundary_impedance
    pillbox
    cavity_types
    dispersion

@@ -140,6 +140,111 @@ Once computed, the figures of merit are written to ``eigenmode/<polarisation_nam
      - mT/(MV/m)
      - Peak magnetic field normalised by the accelerating gradient.
 
+Beam-pipe boundary conditions
+*****************************
+``eigenmode_config['boundary_conditions']`` is a two-character code, one per
+beam-pipe end (left, then right):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 20 68
+
+   * - Code
+     - Wall
+     - Meaning
+   * - ``'m'``
+     - PMC (magnetic)
+     - Closed. The default, and the right model for a **trapped** mode.
+   * - ``'e'``
+     - PEC (electric)
+     - Closed, with the complementary symmetry.
+   * - ``'o'``
+     - open (PML)
+     - The pipe is extended by a perfectly matched layer that absorbs whatever
+       reaches it, so a propagating mode leaves and does not return.
+
+So ``'mm'`` (the default) closes both ends and ``'oo'`` opens both;
+``'open'`` is accepted as an alias for ``'oo'``.
+
+Why open ends
+-------------
+
+A closed end reflects. For a mode below the beam-pipe cutoff that costs nothing —
+the field has already decayed to nothing before it gets there. For a mode **above**
+the cutoff it is simply wrong: the mode physically radiates out of the pipe, but the
+closed solve bounces it back and reports the ohmic :math:`Q_0` of the wall, which can
+be ten orders of magnitude too large. Since the reconstructed impedance scales with
+:math:`Q`, :meth:`~cavsim2d.solvers.solver_objects.EigenmodeSolver.impedance` then
+overstates every propagating mode and warns that it has done so.
+
+With an open end the eigenvalue comes out complex, :math:`\omega = \omega_0 + i\omega_i`,
+and the imaginary part *is* the radiation loss:
+
+.. math::
+
+    Q_\mathrm{rad} = \frac{|\omega_0|}{2\,|\omega_i|}.
+
+How the loss is split
+---------------------
+
+Each channel is **measured**, never inferred by subtracting one :math:`Q` from another:
+
+- ``Q_rad []`` comes from the time-averaged Poynting flux integrated across the pipe
+  mouths, :math:`P_\mathrm{rad} = \oint \tfrac12 {\rm Re}(\mathbf{E}\times\mathbf{H}^*)\cdot\hat{n}\,dA`.
+- ``Q_diel []`` comes from its own volume integral over the lossy material.
+- ``Q_eig []`` comes from the complex eigenvalue — how fast the mode actually decays.
+
+The first two and the third are independent routes to the same loss, so their
+disagreement is diagnostic rather than circular. ``Q balance []`` reports it:
+
+.. math::
+
+    \text{Q balance} = \left(\frac{1}{Q_\mathrm{diel}} + \frac{1}{Q_\mathrm{rad}}\right) Q_\mathrm{eig},
+
+which is 1 when the two agree. For a **radiating** mode it lands within about a percent of
+1, and drifts away as the layer is made too short or too coarse — the signal that
+``Q_rad`` should be distrusted. A **trapped** mode agrees to within a factor of a few,
+which is tighter than it sounds given that the flux there is of order
+:math:`10^{-14}\,\mathrm{W}`; both routes agree the mode does not radiate.
+
+The reported total takes the non-wall loss from the eigenvalue — the most direct measure
+of the decay, and the one that does not depend on resolving a vanishing flux — and adds
+the perturbative wall loss on top: :math:`1/Q = 1/Q_\mathrm{wall} + 1/Q_\mathrm{eig}`.
+The impedance reconstruction uses that total.
+
+A word on the boundary integral: :math:`\mathbf{H}` is projected into an ``H1`` space
+before it is integrated (a ``GridFunction`` curl cannot be evaluated on a boundary), and
+that projection is taken over the **physical** region alone. ``H1`` is continuous, so a
+whole-mesh projection would average the two sides of every shared vertex — and on this
+mesh the other side is the complex-stretched layer, whose :math:`\mathbf{H}` is a
+different field. That contamination lands precisely on the pipe mouth where the flux is
+measured; restricting the projection is what takes ``Q balance`` from wrong by orders of
+magnitude to within a percent.
+
+Impedance needs an open end
+---------------------------
+
+:meth:`~cavsim2d.solvers.solver_objects.EigenmodeSolver.impedance` **refuses** to build a
+spectrum from a fully closed solve. Above the cutoff those :math:`Q` values are the wall's,
+not the mode's, and the resulting :math:`|Z|` is wrong by orders of magnitude rather than
+merely imprecise. Solve with at least one open end, use ``cav.wakefield`` for the
+broadband answer, or pass an explicit ``Q=`` to state the loaded :math:`Q` yourself.
+
+.. code-block:: python
+
+    cav = EllipticalCavity(1, [42, 42, 12, 19, 35, 57.7, 103.353], beampipe='both')
+    cav.eigenmode.run({'boundary_conditions': 'oo', 'n_modes': 10})
+
+    cav.eigenmode.qois_df[['freq [MHz]', 'Q []', 'Q_wall []', 'Q_rad []']]
+
+Open ends need a beam pipe to absorb into (``beampipe='both'``, or the matching
+one-sided setting), and are not currently combined with dielectric regions. The PML
+block defaults to three pipe radii long; ``pml_length`` (metres) and ``pml_alpha``
+override that.
+
+A worked comparison — the same TESLA cell closed and open, against a wakefield
+run — is in :doc:`examples/eigenmode/open_boundary_impedance`.
+
 Dielectric regions
 ******************
 
@@ -241,13 +346,22 @@ Which one ran is never left to inference — a run with a lossy material reports
    * - ``Q model``
      - ``'lossless'``, ``'perturbation'`` or ``'lossy'`` — how ``Q_diel`` was obtained
    * - ``Q []``
-     - total :math:`Q`, wall and dielectric combined
+     - total :math:`Q`, combined wall, dielectric, and radiation loss (:math:`1/Q = 1/Q_{\text{wall}} + 1/Q_{\text{diel}} + 1/Q_{\text{rad}}`)
    * - ``Q_wall []``
-     - wall loss alone (what ``Q []`` was before this feature)
+     - wall loss alone
    * - ``Q_diel []``
      - dielectric loss alone
    * - ``Pdiel [W]``
      - dielectric power dissipation at the solved field amplitude
+   * - ``Q_rad []``
+     - radiative loss alone (open PML boundaries), from the Poynting flux
+   * - ``Prad [W]``
+     - radiated power through the open pipe mouths
+   * - ``Q_eig []``
+     - :math:`Q` read off the complex eigenvalue, :math:`|{\rm Re}\,\omega| / 2|{\rm Im}\,\omega|`
+   * - ``Q balance []``
+     - :math:`(1/Q_{\rm diel} + 1/Q_{\rm rad})\,Q_{\rm eig}` — 1 when the measured
+       channels account for the eigenvalue's decay rate (see below)
    * - ``tan_delta []``
      - the largest loss tangent in the run
 
@@ -327,7 +441,8 @@ Each row holds all the QOIs as columns, plus:
     mono[mono['R/Q [Ohm]'] > 1e-6]
 
 See the worked examples: :doc:`examples/eigenmode/elliptical_tesla` (TESLA cell,
-modes, impedance), :doc:`examples/eigenmode/pillbox` (analytic verification) and
+modes), :doc:`examples/eigenmode/open_boundary_impedance` (PML open BCs & wakefield overlay),
+:doc:`examples/eigenmode/pillbox` (analytic verification),
 :doc:`examples/eigenmode/dielectric_quartz_tube` (a dielectric-loaded cavity) and
 :doc:`examples/eigenmode/dielectric_loss` (lossless vs perturbative vs fully lossy,
 swept over :math:`\tan\delta`).
