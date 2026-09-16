@@ -3390,11 +3390,28 @@ deviation <span class="math notranslate nohighlight">\(\sigma/\sqrt{2}\)</span>.
 narrower distribution than one that does not.</p>
 <h1 id="the-three-models">The three models<a class="headerlink" href="#the-three-models" title="Link to this heading">¶</a></h1>
 <figure class="align-center" id="id3">
-<img alt="Three grids of half-cell index against parameter, coloured by which random variable drives each slot, for the base, multicup and dumb-bell models." src="_images/uq_models.png" />
+<a class="reference internal image-reference" href="_images/uq_model_groups.png"><img alt="The same 3-cell cavity shown three times, with its half-cells shaded by which independently formed part they belong to, and each seam marked as a weld or as internal to one part." src="_images/uq_model_groups.png" style="width: 85%;" />
+</a>
 <figcaption>
 <p><span class="caption-number">Fig. 3 </span><span class="caption-text"><span class="caption-text">
+The same cavity under each model. Shading groups the half-cells that come from one
+independently formed part. A solid line is a welded seam, where two draws are
+averaged; a dashed line lies inside a single part, so nothing is averaged there.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></figcaption>
+</figure>
+<p>The three models differ in how finely the cavity is divided, and therefore in how many
+seams are welds:</p>
+<ul class="simple">
+<li><p><strong>base</strong> has two parts, so only the two mid-to-end equators are welds.</p></li>
+<li><p><strong>multicup</strong> has one part per half-cell, so every equator and every iris is a weld.</p></li>
+<li><p><strong>dumb-bell</strong> has one part per dumb-bell, so the equators are welds but the irises are
+internal.</p></li>
+</ul>
+<figure class="align-center" id="id4">
+<img alt="Three grids of half-cell index against parameter, coloured by which random variable drives each slot, for the base, multicup and dumb-bell models." src="_images/uq_models.png" />
+<figcaption>
+<p><span class="caption-number">Fig. 4 </span><span class="caption-text"><span class="caption-text">
 Which half-cells share a random variable. Equal numbers mean one draw is written to
-both slots.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></figcaption>
+both slots.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></figcaption>
 </figure>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">'base'</span></code></dt><dd><p>One tolerance per cell <em>type</em>. Every mid half-cell shares a draw, and so do the two end
@@ -3441,8 +3458,39 @@ built for. Use the multicell path when you want independent equator draws.</p>
 <h1 id="multicell-path">Multicell path<a class="headerlink" href="#multicell-path" title="Link to this heading">¶</a></h1>
 <p>Set <code class="docutils literal notranslate"><span class="pre">cell_complexity='multicell'</span></code> and <code class="docutils literal notranslate"><span class="pre">independent_half_cells=True</span></code>. Every half-cell
 carries its own parameters, the draws are independent, and each seam is welded afterwards
-as shown above. This path supports all three models, and it is the one to use whenever
-parts are formed separately.</p>
+as shown above. This path is the one to use whenever parts are formed separately.</p>
+<p>Which path supports which model:</p>
+<table class="docutils data align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 35.0%" />
+<col style="width: 35.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Model</p></th>
+<th class="head"><p>Simplecell path</p></th>
+<th class="head"><p>Multicell path</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">base</span></code></p></td>
+<td><p>yes</p></td>
+<td><p>yes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">multicup</span></code></p></td>
+<td><p>no</p></td>
+<td><p>yes</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dumbbell</span></code></p></td>
+<td><p>no</p></td>
+<td><p>yes</p></td>
+</tr>
+</tbody>
+</table>
+<p>The simplecell path perturbs the model’s own parameters, and those name a cell <em>type</em>
+rather than an individual part. It can therefore express <code class="docutils literal notranslate"><span class="pre">base</span></code> and nothing finer. Both
+<code class="docutils literal notranslate"><span class="pre">multicup</span></code> and <code class="docutils literal notranslate"><span class="pre">dumb-bell</span></code> need per-half-cell parameters, so they need the multicell
+path.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">uq_config</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="s1">'Ri'</span><span class="p">,</span> <span class="s1">'L'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">],</span>
     <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">7</span><span class="p">,</span>                     <span class="c1"># absolute tolerance, mm</span>
