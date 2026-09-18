@@ -3355,13 +3355,13 @@
 <p>See the worked examples in <a class="reference internal" href="examples/advanced/index.html"><span class="doc">Advanced: UQ everywhere</span></a>.</p>
 <h2 id="choosing-a-perturbation-model">Choosing a perturbation model<a class="headerlink" href="#choosing-a-perturbation-model" title="Link to this heading">¶</a></h2>
 <p>A tolerance can be posed in more than one way, and the choice changes the answer. The
-models below are different descriptions of the manufacturing route, not coarse and fine
-versions of one description. None of them is established here as the correct description
-of a real cavity: that is an empirical question about fabrication data.</p>
+models below describe different manufacturing routes; they are not coarse and fine
+versions of the same thing. Which one fits your cavity depends on how it is actually
+made, and that is not something the code can decide for you.</p>
 <h1 id="how-a-cavity-is-divided">How a cavity is divided<a class="headerlink" href="#how-a-cavity-is-divided" title="Link to this heading">¶</a></h1>
-<p>cavsim2d indexes an elliptical cavity as <code class="docutils literal notranslate"><span class="pre">2n</span></code> <strong>half-cells</strong> for <em>n</em> cells, ordered left
-to right. Cell <em>k</em> is the pair <code class="docutils literal notranslate"><span class="pre">(half_cells[2k],</span> <span class="pre">half_cells[2k+1])</span></code>, so the two halves of
-a cell meet at its <strong>equator</strong>, and neighbouring cells meet at an <strong>iris</strong>.</p>
+<p>cavsim2d indexes an elliptical cavity as <code class="docutils literal notranslate"><span class="pre">2n</span></code> half-cells for <em>n</em> cells, ordered left to
+right. Cell <em>k</em> is the pair <code class="docutils literal notranslate"><span class="pre">(half_cells[2k],</span> <span class="pre">half_cells[2k+1])</span></code>, so the two halves of a
+cell meet at its equator, and neighbouring cells meet at an iris.</p>
 <figure class="align-center" id="id1">
 <img alt="A 3-cell cavity profile with its six half-cells numbered, equators marked inside each cell and irises marked between cells." src="_images/uq_halfcells.png" />
 <figcaption>
@@ -3369,14 +3369,14 @@ a cell meet at its <strong>equator</strong>, and neighbouring cells meet at an <
 The six half-cells of a 3-cell cavity. Equators lie inside a cell; irises lie between
 cells.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></figcaption>
 </figure>
-<p>One consequence is worth stating, because it surprises people: the first cell is
-<code class="docutils literal notranslate"><span class="pre">end_l</span></code> paired with a <em>mid</em> half, so <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and <code class="docutils literal notranslate"><span class="pre">Req_m</span></code> name the <strong>same physical
-equator</strong>. They are not independent dimensions.</p>
+<p>This has a consequence that is easy to miss. The first cell pairs <code class="docutils literal notranslate"><span class="pre">end_l</span></code> with a <em>mid</em>
+half, so <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and <code class="docutils literal notranslate"><span class="pre">Req_m</span></code> refer to the same physical equator. Setting them to
+different values does not describe a cavity you could build.</p>
 <h1 id="what-welding-does">What welding does<a class="headerlink" href="#what-welding-does" title="Link to this heading">¶</a></h1>
 <p>Each part of a real cavity is formed on its own, so its dimensions carry their own error.
-Where two parts meet, the finished cavity has one dimension, not two. cavsim2d reproduces
-that: it perturbs every part independently and then <strong>welds</strong> each seam by averaging the
-two values that meet there.</p>
+Where two parts meet, the finished cavity has one dimension rather than two. cavsim2d
+follows the same sequence: it perturbs every part independently, then welds each seam by
+averaging the two values that meet there.</p>
 <figure class="align-center" id="id2">
 <img alt="Two half-cells drawn with different equator radii, showing a 10 mm step at the equator, beside the same pair after averaging, which closes the step." src="_images/uq_welding.png" />
 <figcaption>
@@ -3384,10 +3384,11 @@ two values that meet there.</p>
 Left: two half-cells whose equator radius was drawn independently, so the profile does
 not close. Right: after welding, both carry the average and the profile is continuous.</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></figcaption>
 </figure>
-<p>Welding is not only a repair for a discontinuity. It reduces spread: averaging two
-independent draws of standard deviation <span class="math notranslate nohighlight">\(\sigma\)</span> gives one value of standard
-deviation <span class="math notranslate nohighlight">\(\sigma/\sqrt{2}\)</span>. A model that welds a joint therefore predicts a
-narrower distribution than one that does not.</p>
+<p>Welding does more than close the gap in the drawing. It also narrows the distribution,
+because averaging two independent draws of standard deviation <span class="math notranslate nohighlight">\(\sigma\)</span> leaves a
+single value with standard deviation <span class="math notranslate nohighlight">\(\sigma/\sqrt{2}\)</span>. A model that welds a joint
+predicts less scatter than one that does not, and that difference is physical rather than
+numerical.</p>
 <h1 id="the-three-models">The three models<a class="headerlink" href="#the-three-models" title="Link to this heading">¶</a></h1>
 <figure class="align-center" id="id3">
 <a class="reference internal image-reference" href="_images/uq_model_groups.png"><img alt="The same 3-cell cavity shown three times, with its half-cells shaded by which independently formed part they belong to, and each seam marked as a weld or as internal to one part." src="_images/uq_model_groups.png" style="width: 85%;" />
@@ -3401,10 +3402,10 @@ averaged; a dashed line lies inside a single part, so nothing is averaged there.
 <p>The three models differ in how finely the cavity is divided, and therefore in how many
 seams are welds:</p>
 <ul class="simple">
-<li><p><strong>base</strong> has two parts, so only the two mid-to-end equators are welds.</p></li>
-<li><p><strong>multicup</strong> has one part per half-cell, so every equator and every iris is a weld.</p></li>
-<li><p><strong>dumb-bell</strong> has one part per dumb-bell, so the equators are welds but the irises are
-internal.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">base</span></code> has two parts, so only the two mid-to-end equators are welds.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">multicup</span></code> has one part per half-cell, so every equator and every iris is a weld.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dumbbell</span></code> has one part per dumb-bell, so the equators are welds and the irises sit
+inside a part.</p></li>
 </ul>
 <figure class="align-center" id="id4">
 <img alt="Three grids of half-cell index against parameter, coloured by which random variable drives each slot, for the base, multicup and dumb-bell models." src="_images/uq_models.png" />
@@ -3415,17 +3416,17 @@ both slots.</span><a class="headerlink" href="#id4" title="Permalink to this ima
 </figure>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">'base'</span></code></dt><dd><p>One tolerance per cell <em>type</em>. Every mid half-cell shares a draw, and so do the two end
-half-cells, which gives 14 random variables <strong>whatever the cell count</strong>. When the two
-end cells are different designs they get their own variables, giving 21. This is what a
-drawing tolerance usually states.</p>
+half-cells, which gives 14 random variables no matter how many cells the cavity has.
+If the two end cells are different designs they get their own variables, giving 21.
+This is usually what a tolerance on a drawing means.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">'multicup'</span></code></dt><dd><p>Every half-cell formed independently: <code class="docutils literal notranslate"><span class="pre">14n</span></code> variables for <em>n</em> cells. Both the irises
 and the equators are welds, and each averages two independent draws.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">'dumbbell'</span></code></dt><dd><p>Dumb-bells formed as units, matching the usual assembly sequence. Each half keeps its
-own <code class="docutils literal notranslate"><span class="pre">A</span></code>, <code class="docutils literal notranslate"><span class="pre">B</span></code>, <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">L</span></code> and <code class="docutils literal notranslate"><span class="pre">Req</span></code>, but the two halves of a dumb-bell
-share <strong>one</strong> iris radius, because that joint is machined rather than welded. That
-gives <code class="docutils literal notranslate"><span class="pre">13n</span> <span class="pre">+</span> <span class="pre">1</span></code> variables, and leaves only the equators as welds.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">'dumbbell'</span></code></dt><dd><p>Dumb-bells formed as units, which is how these cavities are usually assembled. Each
+half keeps its own <code class="docutils literal notranslate"><span class="pre">A</span></code>, <code class="docutils literal notranslate"><span class="pre">B</span></code>, <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">L</span></code> and <code class="docutils literal notranslate"><span class="pre">Req</span></code>, but the two halves of
+a dumb-bell share a single iris radius, since that joint is machined rather than
+welded. That gives <code class="docutils literal notranslate"><span class="pre">13n</span> <span class="pre">+</span> <span class="pre">1</span></code> variables and leaves only the equators as welds.</p>
 </dd>
 </dl>
 <p>Build a model with <code class="xref py py-func docutils literal notranslate"><span class="pre">perturbation_slots()</span></code>, which reads the
@@ -3444,21 +3445,21 @@ independent rather than sharing one tooling error.</p>
 <p><code class="docutils literal notranslate"><span class="pre">uq_config</span></code> reaches the geometry by one of two paths, and they differ in what they can
 represent.</p>
 <h1 id="simplecell-path">Simplecell path<a class="headerlink" href="#simplecell-path" title="Link to this heading">¶</a></h1>
-<p>The default. <code class="docutils literal notranslate"><span class="pre">cell_complexity</span></code> is <code class="docutils literal notranslate"><span class="pre">'simplecell'</span></code>, and the perturbation is applied to
-the model’s own parameters (<code class="docutils literal notranslate"><span class="pre">A_m</span></code>, <code class="docutils literal notranslate"><span class="pre">Req_el</span></code>, and so on). It is the cheaper path and it
-is enough when one tolerance per cell type is what you mean.</p>
+<p>The default. With <code class="docutils literal notranslate"><span class="pre">cell_complexity</span></code> set to <code class="docutils literal notranslate"><span class="pre">'simplecell'</span></code>, the perturbation is
+applied to the model’s own parameters — <code class="docutils literal notranslate"><span class="pre">A_m</span></code>, <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and so on. It is the cheaper
+of the two, and enough whenever one tolerance per cell type is what you mean.</p>
 <div class="caution warning admonition">
 <p class="admonition-title">Caution</p>
-<p>On this path the geometry builder forces <code class="docutils literal notranslate"><span class="pre">Req</span> <span class="pre">=</span> <span class="pre">Req_m</span></code> across the whole cavity, so
-the <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and <code class="docutils literal notranslate"><span class="pre">Req_er</span></code> components of a perturbation are discarded. If you
-include <code class="docutils literal notranslate"><span class="pre">Req</span></code> in <code class="docutils literal notranslate"><span class="pre">variables</span></code> with <code class="docutils literal notranslate"><span class="pre">cell='all'</span></code>, then two of the random dimensions
-do nothing, and a cubature rule is evaluated on fewer active dimensions than it was
-built for. Use the multicell path when you want independent equator draws.</p>
+<p>Every cell takes its equator radius from <code class="docutils literal notranslate"><span class="pre">Req_m</span></code> on this path, so a perturbation of
+<code class="docutils literal notranslate"><span class="pre">Req_el</span></code> or <code class="docutils literal notranslate"><span class="pre">Req_er</span></code> has no effect on the geometry that gets solved. If <code class="docutils literal notranslate"><span class="pre">Req</span></code> is
+among your <code class="docutils literal notranslate"><span class="pre">variables</span></code> with <code class="docutils literal notranslate"><span class="pre">cell='all'</span></code>, you are varying one equator radius rather
+than three, and the reported spread is correspondingly narrow. Use the multicell path
+if you need the equators to vary independently.</p>
 </div>
 <h1 id="multicell-path">Multicell path<a class="headerlink" href="#multicell-path" title="Link to this heading">¶</a></h1>
 <p>Set <code class="docutils literal notranslate"><span class="pre">cell_complexity='multicell'</span></code> and <code class="docutils literal notranslate"><span class="pre">independent_half_cells=True</span></code>. Every half-cell
-carries its own parameters, the draws are independent, and each seam is welded afterwards
-as shown above. This path is the one to use whenever parts are formed separately.</p>
+then carries its own parameters, the draws are independent, and each seam is welded
+afterwards as described above. Use this path whenever the parts are formed separately.</p>
 <p>Which path supports which model:</p>
 <table class="docutils data align-default">
 <colgroup>
@@ -3487,10 +3488,9 @@ as shown above. This path is the one to use whenever parts are formed separately
 </tr>
 </tbody>
 </table>
-<p>The simplecell path perturbs the model’s own parameters, and those name a cell <em>type</em>
-rather than an individual part. It can therefore express <code class="docutils literal notranslate"><span class="pre">base</span></code> and nothing finer. Both
-<code class="docutils literal notranslate"><span class="pre">multicup</span></code> and <code class="docutils literal notranslate"><span class="pre">dumb-bell</span></code> need per-half-cell parameters, so they need the multicell
-path.</p>
+<p>The simplecell path works on parameters that describe a cell <em>type</em> rather than an
+individual part, so it can express <code class="docutils literal notranslate"><span class="pre">base</span></code> but nothing finer. <code class="docutils literal notranslate"><span class="pre">multicup</span></code> and
+<code class="docutils literal notranslate"><span class="pre">dumbbell</span></code> both need per-half-cell parameters, and therefore the multicell path.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">uq_config</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s1">'variables'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="s1">'Ri'</span><span class="p">,</span> <span class="s1">'L'</span><span class="p">,</span> <span class="s1">'Req'</span><span class="p">],</span>
     <span class="s1">'delta'</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">7</span><span class="p">,</span>                     <span class="c1"># absolute tolerance, mm</span>
@@ -3515,19 +3515,19 @@ holding them, or loaded dictionaries:</p>
                    <span class="n">nominal</span><span class="o">=</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode_qois</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>The default view plots the mean with a <span class="math notranslate nohighlight">\(\pm 1\sigma\)</span> error bar. The bar is the
-<strong>spread of the ensemble</strong>, not the uncertainty of the estimate, which is smaller by
-<span class="math notranslate nohighlight">\(\sqrt{N}\)</span>.</p>
+<p>The default view plots the mean with a <span class="math notranslate nohighlight">\(\pm 1\sigma\)</span> error bar. That bar shows the
+spread of the ensemble, not the uncertainty of the mean itself, which is smaller by a
+factor of <span class="math notranslate nohighlight">\(\sqrt{N}\)</span>.</p>
 <p>To compare spreads rather than centres, pass <code class="docutils literal notranslate"><span class="pre">kind='sd'</span></code>, which puts the standard
 deviation on the axis, optionally as a ratio against a named result set:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="n">plot_uq_comparison</span><span class="p">({</span><span class="s1">'MC'</span><span class="p">:</span> <span class="s1">'runs/mc/uq'</span><span class="p">,</span> <span class="s1">'Stroud3'</span><span class="p">:</span> <span class="s1">'runs/s3/uq'</span><span class="p">},</span>
                    <span class="n">kind</span><span class="o">=</span><span class="s1">'sd'</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="s1">'MC'</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>A difference of 20% in standard deviation is hard to see as a difference in error-bar
-length, so use <code class="docutils literal notranslate"><span class="pre">kind='sd'</span></code> when the question is whether two methods agree on the
-spread. <code class="xref py py-func docutils literal notranslate"><span class="pre">uq_comparison_table()</span></code> returns the same numbers as a
-<code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>.</p>
+<p>A 20% difference in standard deviation is hard to judge by eye from the length of an
+error bar, so reach for <code class="docutils literal notranslate"><span class="pre">kind='sd'</span></code> when the question is whether two methods agree on
+the spread. <code class="xref py py-func docutils literal notranslate"><span class="pre">uq_comparison_table()</span></code> returns the same numbers as
+a <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> if you would rather read them than look at them.</p>
 
 
 
