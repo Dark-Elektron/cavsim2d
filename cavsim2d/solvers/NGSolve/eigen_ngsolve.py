@@ -588,7 +588,43 @@ class NGSolveMEVP:
 
         return self.step_geo, self.ngmesh, self.bcs
 
-    def set_pml(self, cav, maxh, order, bc_left, bc_right, Lpml=None, alpha=1j):
+    def _resolve_profile(self, cav, eigenmode_config):
+        """The cavity's profile with ``eigenmode_config['beampipe_length']`` applied.
+
+        Shared by the closed and the open (PML) mesh paths. It used to live inside
+        the closed branch only, below the early ``return`` that the open branch
+        takes, so an open run silently meshed the model's default pipe however long
+        a pipe the config asked for.
+
+        Returns ``None`` when the cavity has no ``profile()`` (the .geo path).
+        Raises when a length is requested of a model that cannot honour it, rather
+        than dropping the key.
+        """
+        bp_len = (eigenmode_config or {}).get('beampipe_length')
+        if bp_len is None:
+            bp_len = getattr(cav, 'beampipe_length', None)
+        elif getattr(cav, 'beampipe_length', None) != bp_len:
+            # Record it, so show_geometry()/plot() afterwards draw what was solved
+            # rather than the model default.
+            try:
+                cav.beampipe_length = float(bp_len)
+            except AttributeError:
+                pass
+        maker = getattr(cav, 'profile', None)
+        if not callable(maker):
+            return None
+        if bp_len is None:
+            return maker()
+        if 'beampipe_length' in inspect.signature(maker).parameters:
+            return maker(beampipe_length=float(bp_len))
+        raise ValueError(
+            f"eigenmode_config['beampipe_length'] is set, but "
+            f"{type(cav).__name__} {cav.name!r} does not support it: its "
+            f"profile() takes no such argument. Drop the key, or build the "
+            f"cavity with the pipe length you want.")
+
+    def set_pml(self, cav, maxh, order, bc_left, bc_right, Lpml=None, alpha=1j,
+                profile=None):
         """Mesh *cav* with PML (perfectly matched layer) blocks on the OPEN pipe ends.
 
         Built with **netgen.occ**: the physical domain is the profile's own exact OCC
@@ -607,8 +643,11 @@ class NGSolveMEVP:
         ``PEC``/``AXI``, so the wall-loss and accelerating-voltage integrals — which
         select boundaries by those names — keep seeing the physical cavity only.
         """
-        maker = getattr(cav, 'profile', None)
-        profile = maker() if callable(maker) else None
+        if profile is None:
+            # Direct callers get the model default; _build_mesh passes the profile it
+            # already resolved, so eigenmode_config['beampipe_length'] is honoured.
+            maker = getattr(cav, 'profile', None)
+            profile = maker() if callable(maker) else None
         if profile is None:
             raise RuntimeError(
                 f"{type(cav).__name__} {cav.name!r} has no profile(), which the open "
@@ -783,6 +822,10 @@ class NGSolveMEVP:
           (elliptical, spline, imported CAD).
         """
         bc_left, bc_right = parse_boundary_conditions(boundary_conditions)
+        # Resolve the geometry BEFORE branching: the open path used to return above
+        # this, so 'beampipe_length' never reached it.
+        profile = self._resolve_profile(cav, eigenmode_config)
+
         if bc_left == 'open' or bc_right == 'open':
             # The run's own config, not an attribute on the cavity: cavities never
             # carry an 'eigenmode_config', so reading it there made 'pml_length' and
@@ -791,39 +834,14 @@ class NGSolveMEVP:
             cfg = eigenmode_config or getattr(cav, 'eigenmode_config', None) or {}
             return self.set_pml(cav, maxh, order, bc_left, bc_right,
                                 Lpml=cfg.get('pml_length'),
-                                alpha=cfg.get('pml_alpha', 1j))
+                                alpha=cfg.get('pml_alpha', 1j),
+                                profile=profile)
 
         self._pml_active = False
         self._pml_bounds = None
         dielectrics = list(getattr(cav, 'dielectrics', ()) or ())
 
-        # eigenmode_config['beampipe_length'] (metres); None -> the model's own
-        # default. Refused rather than ignored on a model whose profile() cannot
-        # honour it -- a silently dropped geometry key is how 'pml_length' and
-        # ABCI's 'NFS' both came to look live while doing nothing.
-        bp_len = (eigenmode_config or {}).get('beampipe_length')
-        if bp_len is None:
-            bp_len = getattr(cav, 'beampipe_length', None)
-        elif getattr(cav, 'beampipe_length', None) != bp_len:
-            # Record it, so show_geometry()/plot() afterwards draw what was solved
-            # rather than the model default.
-            try:
-                cav.beampipe_length = float(bp_len)
-            except AttributeError:
-                pass
-        maker = getattr(cav, 'profile', None)
-        if not callable(maker):
-            profile = None
-        elif bp_len is None:
-            profile = maker()
-        elif 'beampipe_length' in inspect.signature(maker).parameters:
-            profile = maker(beampipe_length=float(bp_len))
-        else:
-            raise ValueError(
-                f"eigenmode_config['beampipe_length'] is set, but "
-                f"{type(cav).__name__} {cav.name!r} does not support it: its "
-                f"profile() takes no such argument. Drop the key, or build the "
-                f"cavity with the pipe length you want.")
+        # 'beampipe_length' was already applied by _resolve_profile above.
         if profile is not None:
             # Honour the closed-end BC digits. Apertures are built 'PMC' (the
             # natural condition), so 'pmc' needs nothing; 'pec' must retag the
