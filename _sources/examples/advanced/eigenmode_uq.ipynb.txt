@@ -7,11 +7,11 @@
    "source": [
     "# Eigenmode under uncertainty (spline & RF gun)\n",
     "\n",
-    "> **Uncertainty quantification plugs into every analysis.** In cavsim2d, a run is deterministic — one geometry, one answer — until you add a `uq_config`. With it, the analysis is evaluated over a small Stroud-3 quadrature of the uncertain geometry and returns a **distribution** (mean and standard deviation) instead of a single number. The *same* pattern works for eigenmode, tuning (robust tuning), wakefield, and optimisation (robust optimisation) — only multipacting does not yet take a `uq_config`.\n",
+    "> Uncertainty quantification plugs into every analysis. In cavsim2d, a run is deterministic — one geometry, one answer — until you add a `uq_config`. With it, the analysis is evaluated over a small Stroud-3 quadrature of the uncertain geometry and returns a distribution (mean and standard deviation) instead of a single number. The *same* pattern works for eigenmode, tuning (robust tuning), wakefield, and optimisation (robust optimisation) — only multipacting does not yet take a `uq_config`.\n",
     "\n",
     "These advanced examples deliberately span several cavity types (spline, RF gun, flat-top, elliptical, pillbox) — a good stress test of the model-agnostic machinery.\n",
     "\n",
-    "Here we propagate a geometry tolerance through the **eigenmode** solve for two non-elliptical cavities."
+    "Here we propagate a geometry tolerance through the eigenmode solve for two non-elliptical cavities."
    ]
   },
   {

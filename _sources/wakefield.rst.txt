@@ -20,7 +20,7 @@ Configuration Dictionary
 The simulation parameters are defined in a configuration dictionary. Every key
 can equally be passed as a keyword argument — ``cav.wakefield.run(wakelength=80)``
 — and kwargs override the dictionary. The config is merged over a complete set
-of defaults, and the **merged** dict is what runs and what
+of defaults, and the merged dict is what runs and what
 ``wakefield/config.json`` records:
 
 .. code-block:: python
@@ -108,7 +108,7 @@ an eigenmode-reconstructed spectrum overlays a wakefield one with no rescaling:
     cav.wakefield.plot_impedance(ax=ax)   # from the wake solve — same axis
 
 The frames themselves are available as ``cav.wakefield.impedance(kind, unit=...)``
-(and the raw ``cav.wakefield.wake_z`` / ``wake_t``). **All** wakefield plotting now
+(and the raw ``cav.wakefield.wake_z`` / ``wake_t``). All wakefield plotting now
 lives on the namespace: the old ``cav.plot('ZL'/'ZT'/'wpl'/'wpt')`` calls have been
 removed in favour of ``plot_impedance()`` / ``plot_wake()`` above.
 

@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -70,11 +71,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#what-you-must-provide" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -646,19 +642,6 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span>Writing a new cavity model</span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="#" class="md-nav__link md-nav__link--active">
         
   
@@ -670,84 +653,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-must-provide" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:what you must provide (reference label)"><span>What you must provide</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-profile-api" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:the profile api (reference label)"><span>The Profile API</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-geometry-every-analysis" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:one geometry, every analysis (reference label)"><span>One geometry, every analysis</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:optional extras (reference label)"><span>Optional extras</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#a-complete-example" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:a complete example (reference label)"><span>A complete example</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#worked-examples" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:worked examples (reference label)"><span>Worked examples</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -947,126 +852,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#how-a-cavity-is-divided" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#what-welding-does" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#the-three-models" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#simplecell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#multicell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1169,54 +954,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/eigenmode/pillbox.html" class="md-nav__link">
         
   
@@ -1241,12 +978,60 @@
   
   
     <li class="md-nav__item">
+      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="examples/eigenmode/cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1294,7 +1079,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1313,132 +1098,12 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+      <a href="examples/eigenmode/convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#where-to-go-next" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -1487,6 +1152,54 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -1583,30 +1296,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/tuning/multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/tuning/cavity_types.html" class="md-nav__link">
         
   
@@ -1636,7 +1325,31 @@
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
   </span>
   
@@ -1661,6 +1374,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2323,12 +2060,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+            <a href="examples/beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2344,6 +2081,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2421,7 +2332,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2438,14 +2349,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2727,74 +2638,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-must-provide" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:what you must provide (reference label)"><span>What you must provide</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-profile-api" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:the profile api (reference label)"><span>The Profile API</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-geometry-every-analysis" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:one geometry, every analysis (reference label)"><span>One geometry, every analysis</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:optional extras (reference label)"><span>Optional extras</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#a-complete-example" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:a complete example (reference label)"><span>A complete example</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#worked-examples" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="extending:worked examples (reference label)"><span>Worked examples</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2811,11 +2654,11 @@
 
 <h1 id="writing-a-new-cavity-model">Writing a new cavity model<a class="headerlink" href="#writing-a-new-cavity-model" title="Link to this heading">¶</a></h1>
 <p>Adding a geometry is deliberately small: implement a handful of methods on a
-<code class="xref py py-class docutils literal notranslate"><span class="pre">Cavity</span></code> subclass and it plugs into <strong>every</strong>
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Cavity</span></code> subclass and it plugs into every
 analysis — eigenmode, tuning, wakefield, multipacting, UQ and optimisation — with
 no changes anywhere else. This page walks through the contract and ends with a
 complete, runnable example.</p>
-<p>The idea is the one from <a class="reference internal" href="geometry.html"><span class="doc">Geometry and parameterisation</span></a>: you describe the meridian <strong>once</strong> (a
+<p>The idea is the one from <a class="reference internal" href="geometry.html"><span class="doc">Geometry and parameterisation</span></a>: you describe the meridian once (a
 labelled outline), and that single description drives every solver. The
 per-analysis knobs (mesh size, bunch length, launch phases, …) all live in the
 <a class="reference internal" href="configuration.html"><span class="doc">Configuration reference</span></a> dictionaries, so a new geometry never has to know which
@@ -2823,26 +2666,26 @@ analysis will consume it.</p>
 <h2 id="what-you-must-provide">What you must provide<a class="headerlink" href="#what-you-must-provide" title="Link to this heading">¶</a></h2>
 <p>Subclass <code class="xref py py-class docutils literal notranslate"><span class="pre">Cavity</span></code> and supply:</p>
 <ol class="arabic simple">
-<li><p><strong>``self.parameters``</strong> — a dict of the geometry’s <em>scalar</em> parameters
-(millimetres). This <strong>is</strong> the parameterisation: every scalar entry
+<li><p><code class="docutils literal notranslate"><span class="pre">self.parameters</span></code> — a dict of the geometry’s <em>scalar</em> parameters
+(millimetres). This is the parameterisation: every scalar entry
 automatically becomes a valid tune / UQ / optimisation variable. You get
 <code class="docutils literal notranslate"><span class="pre">tune_variables()</span></code>, <code class="docutils literal notranslate"><span class="pre">get_tune_value()</span></code> and <code class="docutils literal notranslate"><span class="pre">set_tune_value()</span></code> for free
 from the base class, which just read and write this dict.</p></li>
-<li><p><strong>``self.shape``</strong> — a dict. The framework stores the target frequency in it
+<li><p><code class="docutils literal notranslate"><span class="pre">self.shape</span></code> — a dict. The framework stores the target frequency in it
 during tuning (<code class="docutils literal notranslate"><span class="pre">self.shape['FREQ']</span> <span class="pre">=</span> <span class="pre">...</span></code>), so it must exist (any dict will
 do; conventionally <code class="docutils literal notranslate"><span class="pre">{'IC':</span> <span class="pre">[...params...],</span> <span class="pre">'BP':</span> <span class="pre">beampipe}</span></code>).</p></li>
-<li><p><strong>``profile()``</strong> — return a <code class="xref py py-class docutils literal notranslate"><span class="pre">Profile</span></code>: the meridian
-as a chain of boundary segments in <strong>metres</strong>, each carrying a boundary label
+<li><p><code class="docutils literal notranslate"><span class="pre">profile()</span></code> — return a <code class="xref py py-class docutils literal notranslate"><span class="pre">Profile</span></code>: the meridian
+as a chain of boundary segments in metres, each carrying a boundary label
 (<code class="docutils literal notranslate"><span class="pre">'PEC'</span></code> wall, <code class="docutils literal notranslate"><span class="pre">'PMC'</span></code> aperture/symmetry plane), closed along the axis
 (<code class="docutils literal notranslate"><span class="pre">'AXI'</span></code>). Read <code class="docutils literal notranslate"><span class="pre">self.parameters</span></code> here — the tuner mutates it in place, so
 the profile must reflect the <em>live</em> values. Return <code class="docutils literal notranslate"><span class="pre">None</span></code> for a degenerate
 parameter set (the solver then reports the failure instead of meshing garbage).</p></li>
-<li><p><strong>``create(n_cells, beampipe, mode)``</strong> — provision the cavity’s folders and
+<li><p><code class="docutils literal notranslate"><span class="pre">create(n_cells,</span> <span class="pre">beampipe,</span> <span class="pre">mode)</span></code> — provision the cavity’s folders and
 point <code class="docutils literal notranslate"><span class="pre">self.geo_filepath</span></code>. For a native (<code class="docutils literal notranslate"><span class="pre">profile()</span></code>-based) geometry, set
 <code class="docutils literal notranslate"><span class="pre">self.geo_filepath</span> <span class="pre">=</span> <span class="pre">None</span></code> and call <code class="docutils literal notranslate"><span class="pre">self._write_geometry_snapshot()</span></code>; the
 solver meshes <code class="docutils literal notranslate"><span class="pre">profile()</span></code> directly (exact arcs, no gmsh round-trip). Only
 implement a <code class="docutils literal notranslate"><span class="pre">.geo</span></code> writer here if your geometry has no <code class="docutils literal notranslate"><span class="pre">profile()</span></code>.</p></li>
-<li><p><strong>``rebuild(parameters, beampipe=None)``</strong> — return a <em>fresh, bare</em> instance of
+<li><p><code class="docutils literal notranslate"><span class="pre">rebuild(parameters,</span> <span class="pre">beampipe=None)</span></code> — return a <em>fresh, bare</em> instance of
 your model built from a parameter dict (same keys as <code class="docutils literal notranslate"><span class="pre">self.parameters</span></code>). This
 is the one hook the generic machinery stands on: tuning, UQ and optimisation all
 reconstruct candidates through it, so implementing <code class="docutils literal notranslate"><span class="pre">rebuild</span></code> gives you all
@@ -2862,29 +2705,29 @@ three for free.</p></li>
 </div>
 <p>Boundary labels are the only physics the outline carries:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">'PEC'</span></code> — the metal <strong>wall</strong>;</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">'PMC'</span></code> — an <strong>aperture / symmetry</strong> plane (beam-pipe mouth, cell mid-plane);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'PEC'</span></code> — the metal wall;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'PMC'</span></code> — an aperture / symmetry plane (beam-pipe mouth, cell mid-plane);</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">'AXI'</span></code> — the axis, supplied by <code class="docutils literal notranslate"><span class="pre">close('AXI')</span></code>.</p></li>
 </ul>
 <h2 id="one-geometry-every-analysis">One geometry, every analysis<a class="headerlink" href="#one-geometry-every-analysis" title="Link to this heading">¶</a></h2>
-<p>You do <strong>not</strong> write anything analysis-specific in the geometry:</p>
+<p>You do not write anything analysis-specific in the geometry:</p>
 <ul class="simple">
-<li><p><strong>Eigenmode</strong> meshes <code class="docutils literal notranslate"><span class="pre">profile()</span></code> and reads the <code class="docutils literal notranslate"><span class="pre">PEC</span></code> / <code class="docutils literal notranslate"><span class="pre">PMC</span></code> labels as
+<li><p>Eigenmode meshes <code class="docutils literal notranslate"><span class="pre">profile()</span></code> and reads the <code class="docutils literal notranslate"><span class="pre">PEC</span></code> / <code class="docutils literal notranslate"><span class="pre">PMC</span></code> labels as
 boundary conditions.</p></li>
-<li><p><strong>Wakefield</strong> writes an ABCI deck from the same <code class="docutils literal notranslate"><span class="pre">profile()</span></code>; a beam pipe is
+<li><p>Wakefield writes an ABCI deck from the same <code class="docutils literal notranslate"><span class="pre">profile()</span></code>; a beam pipe is
 added automatically at each end if the outline has none.</p></li>
-<li><p><strong>Multipacting</strong> reuses the eigenmode field and mesh, reading the <code class="docutils literal notranslate"><span class="pre">PEC</span></code>
+<li><p>Multipacting reuses the eigenmode field and mesh, reading the <code class="docutils literal notranslate"><span class="pre">PEC</span></code>
 vertices as electron-emission sites.</p></li>
 </ul>
 <p>Resolution and physics settings for each of these are passed in the
 <a class="reference internal" href="configuration.html"><span class="doc">Configuration reference</span></a> dictionaries, not baked into the geometry.</p>
 <h2 id="optional-extras">Optional extras<a class="headerlink" href="#optional-extras" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p><strong>Per-cell decomposition.</strong> Set <code class="docutils literal notranslate"><span class="pre">uses_cell_suffixes</span> <span class="pre">=</span> <span class="pre">True</span></code> and implement
+<li><p>Per-cell decomposition. Set <code class="docutils literal notranslate"><span class="pre">uses_cell_suffixes</span> <span class="pre">=</span> <span class="pre">True</span></code> and implement
 <code class="docutils literal notranslate"><span class="pre">half_cells()</span></code> / <code class="docutils literal notranslate"><span class="pre">set_half_cells()</span></code> only if your geometry has independently
 varying cells (as the elliptical family does); this unlocks multicell tuning and
 multicell UQ. Most geometries do not need it.</p></li>
-<li><p><strong>Non-scalar parameters.</strong> If a parameter is a coordinate pair rather than a
+<li><p>Non-scalar parameters. If a parameter is a coordinate pair rather than a
 scalar (as the spline’s control points are), override <code class="docutils literal notranslate"><span class="pre">expand_variable</span></code> /
 <code class="docutils literal notranslate"><span class="pre">get_tune_value</span></code> / <code class="docutils literal notranslate"><span class="pre">set_tune_value</span></code> to address the sub-fields (e.g.
 <code class="docutils literal notranslate"><span class="pre">'p2_r'</span></code>) — see <code class="xref py py-class docutils literal notranslate"><span class="pre">SplineCavity</span></code>.</p></li>
@@ -2959,7 +2802,7 @@ analyses on each:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="examples/custom_geometry/cone_cavity.html"><span class="doc">A custom cavity from scratch: the cone</span></a> — this cone, through eigenmode,
 tuning and wakefield;</p></li>
-<li><p><a class="reference internal" href="examples/custom_geometry/dome_cavity.html"><span class="doc">A curved custom cavity: eigenmode, multipacting and tuning</span></a> — a <strong>curved</strong> (arc-walled) cavity,
+<li><p><a class="reference internal" href="examples/custom_geometry/dome_cavity.html"><span class="doc">A curved custom cavity: eigenmode, multipacting and tuning</span></a> — a curved (arc-walled) cavity,
 through eigenmode, multipacting and tuning.</p></li>
 </ul>
 

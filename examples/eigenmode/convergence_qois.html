@@ -1,0 +1,3493 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="mesh_convergence.html">
+      
+      
+        <link rel="next" href="dielectric_quartz_tube.html">
+      
+      
+      <link rel="icon" href="">
+    
+    
+      
+        <title>Convergence of every figure of merit - cavsim2d 1.0.0 documentation</title>
+      
+    
+    
+      
+        
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+        <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/cavsim2d.css?v=93971e7c" />
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="cavsim2d 1.0.0 documentation" class="md-header__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cavsim2d 1.0.0 documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Convergence of every figure of merit
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="cavsim2d 1.0.0 documentation" class="md-nav__button md-logo" aria-label="cavsim2d 1.0.0 documentation" data-md-component="logo">
+      <img src="../../_static/cavsim2d_logo.svg" alt="logo">
+    </a>
+    cavsim2d 1.0.0 documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Dark-Elektron/cavsim2d" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cavsim2d
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Quickstart</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Introduction</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../theory.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Theory and Numerical Formulation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_2" id="__nav_1_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Theory and Numerical Formulation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification and Sensitivity Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Installation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Quickstart Tutorial</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Concepts &amp; reference</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Concepts &amp; reference</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Concepts</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../geometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry and parameterisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Configuration reference</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extending.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Writing a new cavity model</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Analysis Modules</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Analysis Modules</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eigenmode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Cavity Tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../wakefield.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield Analysis</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multipacting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Geometry Optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Uncertainty Quantification</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>Examples</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Examples</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Eigenmode</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pillbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode analysis:<wbr> the pillbox cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dispersion.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dispersion diagram:<wbr> passbands of a multicell cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mesh_convergence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Convergence of every figure of merit</span>
+    
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_quartz_tube.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectrics:<wbr> a quartz tube in a perturbation cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dielectric_loss.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../tuning/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Tuning</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/tune_to_frequency.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a cavity to a target frequency</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning across cavity types</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/unreachable_target.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/two_cell_design_family.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../wakefield/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Wakefield</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield and impedance <wbr>(ABCI)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/spline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> a spline cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/rfgun.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> an RF gun</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/reentrant.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> a reentrant cavity <wbr>(with a field-<wbr>line animation)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/parameter_sweep.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield:<wbr> varying a parameter</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wakefield/multicell_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../multipacting/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Multipacting</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> the TESLA mid-<wbr>cell</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/spline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> a spline cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/rfgun.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> an RF gun</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multipacting/reentrant.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multipacting:<wbr> a reentrant cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../optimisation/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimisation</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Optimisation</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/pareto.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multi-<wbr>objective shape optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/visualising_results.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Reading and visualising an optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/cavity_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a non-<wbr>elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/whole_cavity_rq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising the whole cavity:<wbr> R/Q to a target</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimisation/whole_cavity_field_flatness.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Why whole-<wbr>cavity tuning needs field flatness</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../studies/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Studies:<wbr> sweeps and persistence</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Studies:<wbr> sweeps and persistence</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../studies/parameter_sweep.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Parameter sweeps and persistence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../studies/module_chain.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Chaining a cavity into a module <wbr>(eigenmode + wakefield)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../beamline/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Beam lines</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Custom geometry</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_geometry/cone_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A custom cavity from scratch:<wbr> the cone</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_geometry/dome_cavity.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A curved custom cavity:<wbr> eigenmode, multipacting and tuning</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../advanced/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Advanced:<wbr> uncertainty quantification everywhere</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/eigenmode_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode under uncertainty <wbr>(spline &amp; RF gun)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/robust_tuning.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust tuning <wbr>(flat-<wbr>top cavity)</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/wakefield_uq.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Wakefield under uncertainty</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/robust_optimisation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Robust optimisation</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>API Reference</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            <span>API Reference</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>API Reference</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            <span>References</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>References</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                
+                
+                  
+
+
+<h1 id="convergence-of-every-figure-of-merit">Convergence of every figure of merit<a class="headerlink" href="#convergence-of-every-figure-of-merit" title="Link to this heading">¶</a></h1>
+<p>A converged frequency does not mean a converged cavity. Every number the eigenmode solver
+reports is a different functional of the same discrete field, and they do not all converge
+at the same rate — or, at low polynomial order, at all:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">R/Q</span></code> and <code class="docutils literal notranslate"><span class="pre">G</span></code> are <em>integrals</em>. Integrating averages the discretisation error over the
+whole domain, where its positive and negative parts largely cancel.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Epk/Eacc</span></code> and <code class="docutils literal notranslate"><span class="pre">Bpk/Eacc</span></code> are <em>pointwise maxima</em> of the surface field. A maximum
+averages nothing away: it seeks out the single worst-resolved point on the wall and
+reports what it finds there.</p></li>
+</ul>
+<p>The gap between the two is not subtle. On the meshes below, the frequency and <code class="docutils literal notranslate"><span class="pre">R/Q</span></code> of
+this cavity are already good to a few parts in <span class="math notranslate nohighlight">\(10^4\)</span> while the peak-field ratios are
+1–2 % out — and refining the mesh at fixed low order does not improve them, it just moves
+them around.</p>
+<p>That matters well beyond a single solve. A tolerance study or a sensitivity analysis asks
+how a figure of merit responds to a small change in geometry. A percent of mesh-to-mesh
+wander is larger than the response such a study is trying to measure, so the answer comes
+back as a property of the mesh rather than of the cavity. A figure of merit that has not
+been shown to converge cannot carry a study.</p>
+<p>So sweep both knobs — the element size <code class="docutils literal notranslate"><span class="pre">h</span></code> and the polynomial order <code class="docutils literal notranslate"><span class="pre">p</span></code> — and measure
+every figure of merit against a fine reference, for the monopole (longitudinal <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>) and
+the dipole (transverse <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>) alike.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">EllipticalCavity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.printing</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_verbose</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.style</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_style</span><span class="p">,</span> <span class="n">WARM</span>
+
+<span class="n">set_verbose</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">apply_style</span><span class="p">()</span>
+<span class="n">WORK</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="the-cavity-the-quantities-and-how-a-mode-is-matched-across-meshes">1. The cavity, the quantities, and how a mode is matched across meshes<a class="headerlink" href="#the-cavity-the-quantities-and-how-a-mode-is-matched-across-meshes" title="Link to this heading">¶</a></h2>
+<p>A two-cell TESLA cavity with beam pipes at both ends: two cells so that the cell-to-cell
+coupling <code class="docutils literal notranslate"><span class="pre">kcc</span></code> and the field flatness <code class="docutils literal notranslate"><span class="pre">ff</span></code> exist at all, and with the real (unequal) TESLA
+end cells so <code class="docutils literal notranslate"><span class="pre">ff</span></code> is not trivially 100 %.</p>
+<p>One detail decides whether the study means anything. The figures of merit must come from
+<em>the same physical mode</em> on every mesh, and a mode’s index is not a reliable handle: with
+beam pipes attached, a near-cutoff pipe mode can slide past the cavity mode as the mesh
+changes, and a curve built on “mode 0” would show that swap as a jump and invite you to
+read it as a convergence failure. <code class="docutils literal notranslate"><span class="pre">pick</span></code> therefore matches by frequency to the reference
+mode.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">MID</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mf">57.7</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>              <span class="c1"># A, B, a, b, Ri, L, Req  [mm]</span>
+<span class="n">END_L</span> <span class="o">=</span> <span class="p">[</span><span class="mf">40.34</span><span class="p">,</span> <span class="mf">40.34</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">13.5</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">55.716</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+<span class="n">END_R</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mf">12.8</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mf">56.815</span><span class="p">,</span> <span class="mf">103.353</span><span class="p">]</span>
+
+<span class="n">LONGITUDINAL</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'G [Ohm]'</span><span class="p">,</span>
+                <span class="s1">'Epk/Eacc []'</span><span class="p">,</span> <span class="s1">'Bpk/Eacc [mT/MV/m]'</span><span class="p">,</span> <span class="s1">'kcc [%]'</span><span class="p">,</span> <span class="s1">'ff [%]'</span><span class="p">]</span>
+<span class="n">TRANSVERSE</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">,</span> <span class="s1">'R/Q [Ohm]'</span><span class="p">,</span> <span class="s1">'G [Ohm]'</span><span class="p">,</span>
+              <span class="s1">'Epk/Eacc []'</span><span class="p">,</span> <span class="s1">'Bpk/Eacc [mT/MV/m]'</span><span class="p">]</span>
+<span class="n">ALL_QOIS</span> <span class="o">=</span> <span class="n">LONGITUDINAL</span> <span class="o">+</span> <span class="p">[</span><span class="n">q</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">TRANSVERSE</span> <span class="k">if</span> <span class="n">q</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">LONGITUDINAL</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">n_modes</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''Solve both polarisations at (h, p). Returns every mode, and the DOF count.'''</span>
+    <span class="n">cav</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">MID</span><span class="p">,</span> <span class="n">END_L</span><span class="p">,</span> <span class="n">END_R</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">'h</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s1">p</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+    <span class="n">cav</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">WORK</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'h</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s1">_p</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">'</span><span class="p">))</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'polarisation'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'dipole'</span><span class="p">],</span> <span class="s1">'n_modes'</span><span class="p">:</span> <span class="n">n_modes</span><span class="p">,</span>
+                       <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                       <span class="s1">'mesh_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="n">h</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="n">p</span><span class="p">}})</span>
+    <span class="n">ndof</span> <span class="o">=</span> <span class="p">{</span><span class="n">pol</span><span class="p">:</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">mpole_qois</span><span class="p">(</span><span class="n">pol</span><span class="p">,</span> <span class="n">all_modes</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="s1">'No of DOFs'</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">pol</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'monopole'</span><span class="p">,</span> <span class="s1">'dipole'</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span><span class="p">,</span> <span class="n">ndof</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">f_ref</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''The mode of azimuthal number m whose frequency is closest to f_ref.'''</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="n">m</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">g</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">g</span><span class="p">[</span><span class="s1">'freq [MHz]'</span><span class="p">]</span> <span class="o">-</span> <span class="n">f_ref</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()]</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="the-reference-solve">2. The reference solve<a class="headerlink" href="#the-reference-solve" title="Link to this heading">¶</a></h2>
+<p>Everything below is measured against one fine solve. Its monopole entry is the
+accelerating <span class="math notranslate nohighlight">\(\pi\)</span>-mode — the higher-<code class="docutils literal notranslate"><span class="pre">R/Q</span></code> member of the two-mode fundamental passband —
+and its dipole entry is the lowest deflecting mode.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">REF_H</span><span class="p">,</span> <span class="n">REF_P</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span>
+
+<span class="n">ref_df</span><span class="p">,</span> <span class="n">ref_ndof</span><span class="p">,</span> <span class="n">ref_wall</span> <span class="o">=</span> <span class="n">solve</span><span class="p">(</span><span class="n">REF_H</span><span class="p">,</span> <span class="n">REF_P</span><span class="p">)</span>
+<span class="n">band</span> <span class="o">=</span> <span class="n">ref_df</span><span class="p">[</span><span class="n">ref_df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">)</span>   <span class="c1"># the fundamental passband</span>
+<span class="n">ref_mono</span> <span class="o">=</span> <span class="n">band</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">band</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()]</span>              <span class="c1"># its pi-mode</span>
+<span class="n">ref_dip</span> <span class="o">=</span> <span class="n">ref_df</span><span class="p">[</span><span class="n">ref_df</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'freq [MHz]'</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">ref</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'monopole'</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ref_mono</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ALL_QOIS</span><span class="p">},</span>
+       <span class="s1">'dipole'</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ref_dip</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ALL_QOIS</span><span class="p">}}</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'reference h = </span><span class="si">{</span><span class="n">REF_H</span><span class="si">}</span><span class="s1"> mm, p = </span><span class="si">{</span><span class="n">REF_P</span><span class="si">}</span><span class="s1">: '</span>
+      <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ref_ndof</span><span class="p">[</span><span class="s1">'monopole'</span><span class="p">]</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">ref_ndof</span><span class="p">[</span><span class="s1">'dipole'</span><span class="p">]</span><span class="si">}</span><span class="s2"> DOFs, </span><span class="si">{</span><span class="n">ref_wall</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> s"</span><span class="p">)</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>reference h = 6 mm, p = 7: 101096 / 155377 DOFs, 94 s
+</code></pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>monopole</th>
+      <th>dipole</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>freq [MHz]</th>
+      <td>1300.0857</td>
+      <td>1642.4324</td>
+    </tr>
+    <tr>
+      <th>R/Q [Ohm]</th>
+      <td>218.8521</td>
+      <td>10.8883</td>
+    </tr>
+    <tr>
+      <th>G [Ohm]</th>
+      <td>272.5210</td>
+      <td>240.1551</td>
+    </tr>
+    <tr>
+      <th>Epk/Eacc []</th>
+      <td>2.0225</td>
+      <td>15.3308</td>
+    </tr>
+    <tr>
+      <th>Bpk/Eacc [mT/MV/m]</th>
+      <td>4.2565</td>
+      <td>116.7510</td>
+    </tr>
+    <tr>
+      <th>kcc [%]</th>
+      <td>0.9491</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>ff [%]</th>
+      <td>99.8004</td>
+      <td>39.3378</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<h2 id="the-h-p-grid">3. The (h, p) grid<a class="headerlink" href="#the-h-p-grid" title="Link to this heading">¶</a></h2>
+<p>Four element sizes at five polynomial orders, each solved for both polarisations. Watch
+the DOF counts the cell prints: between <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">24</span></code> and <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">16</span></code> mm at fixed order they
+barely move. The mesher refines on the geometry’s own curvature, and on a cavity of this
+size that already sets the element count long before <code class="docutils literal notranslate"><span class="pre">h</span></code> becomes the binding constraint.
+<code class="docutils literal notranslate"><span class="pre">h</span></code> is therefore a much weaker knob here than it looks, which is worth knowing before
+reaching for it.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">GRID_H</span> <span class="o">=</span> <span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>            <span class="c1"># element size [mm]</span>
+<span class="n">GRID_P</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>            <span class="c1"># polynomial order</span>
+
+<span class="n">records</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'monopole'</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">'dipole'</span><span class="p">:</span> <span class="p">[]}</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">GRID_P</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">GRID_H</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">,</span> <span class="n">ndof</span><span class="p">,</span> <span class="n">wall</span> <span class="o">=</span> <span class="n">solve</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">pol</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">((</span><span class="s1">'monopole'</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="s1">'dipole'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">pick</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="n">pol</span><span class="p">][</span><span class="s1">'freq [MHz]'</span><span class="p">])</span>
+            <span class="n">records</span><span class="p">[</span><span class="n">pol</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s1">'h'</span><span class="p">:</span> <span class="n">h</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="n">p</span><span class="p">,</span> <span class="s1">'ndof'</span><span class="p">:</span> <span class="n">ndof</span><span class="p">[</span><span class="n">pol</span><span class="p">],</span> <span class="s1">'wall [s]'</span><span class="p">:</span> <span class="n">wall</span><span class="p">,</span>
+                                 <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ALL_QOIS</span><span class="p">}})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'h = </span><span class="si">{</span><span class="n">h</span><span class="si">:</span><span class="s1">2d</span><span class="si">}</span><span class="s1"> mm, p = </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">   </span><span class="si">{</span><span class="n">ndof</span><span class="p">[</span><span class="s2">"monopole"</span><span class="p">]</span><span class="si">:</span><span class="s1">6d</span><span class="si">}</span><span class="s1"> DOFs   </span><span class="si">{</span><span class="n">wall</span><span class="si">:</span><span class="s1">5.1f</span><span class="si">}</span><span class="s1"> s'</span><span class="p">,</span>
+              <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">mono</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="s1">'monopole'</span><span class="p">])</span>
+<span class="n">dip</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="s1">'dipole'</span><span class="p">])</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 24 mm, p = 2     1791 DOFs    11.2 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 16 mm, p = 2     2640 DOFs    10.3 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 12 mm, p = 2     3795 DOFs    11.9 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h =  8 mm, p = 2     7554 DOFs    13.2 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 24 mm, p = 3     3288 DOFs    11.3 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 16 mm, p = 3     4860 DOFs    12.0 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 12 mm, p = 3     7000 DOFs    12.9 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h =  8 mm, p = 3    13980 DOFs    14.8 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 24 mm, p = 4     5235 DOFs    12.1 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 16 mm, p = 4     7750 DOFs    12.8 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 12 mm, p = 4    11175 DOFs    13.6 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h =  8 mm, p = 4    22360 DOFs    17.0 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 24 mm, p = 5     7632 DOFs    13.0 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 16 mm, p = 5    11310 DOFs    13.4 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 12 mm, p = 5    16320 DOFs    14.7 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h =  8 mm, p = 5    32694 DOFs    19.4 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 24 mm, p = 6    10479 DOFs    13.3 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 16 mm, p = 6    15540 DOFs    14.9 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h = 12 mm, p = 6    22435 DOFs    17.5 s
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>h =  8 mm, p = 6    44982 DOFs    29.6 s
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="relative-error-against-the-reference">4. Relative error against the reference<a class="headerlink" href="#relative-error-against-the-reference" title="Link to this heading">¶</a></h2>
+<p>One panel per figure of merit, one curve per polynomial order, against the number of
+degrees of freedom. Both axes are logarithmic and the dotted line marks 0.1 %.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">error_frame</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">ref_row</span><span class="p">,</span> <span class="n">qois</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''Relative error of each QOI against the reference solve.'''</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s1">'h'</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">,</span> <span class="s1">'ndof'</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qois</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ref_row</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">q</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">q</span><span class="p">]</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_convergence</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">qois</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">'ndof'</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">'degrees of freedom'</span><span class="p">,</span>
+                     <span class="n">by</span><span class="o">=</span><span class="s1">'p'</span><span class="p">,</span> <span class="n">logx</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">ncols</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">nrows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">qois</span><span class="p">)</span> <span class="o">/</span> <span class="n">ncols</span><span class="p">))</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">3.4</span> <span class="o">*</span> <span class="n">ncols</span><span class="p">,</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="n">nrows</span><span class="p">),</span>
+                             <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s1">'constrained'</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">qois</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="p">)):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">g</span><span class="p">[</span><span class="n">q</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">WARM</span><span class="p">)],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">by</span><span class="si">}</span><span class="s1"> = </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">logx</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">'log'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">'log'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'#888888'</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+        <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'relative error'</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axes</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[</span><span class="nb">len</span><span class="p">(</span><span class="n">qois</span><span class="p">):]:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">axes</span>
+
+
+<span class="n">err_mono</span> <span class="o">=</span> <span class="n">error_frame</span><span class="p">(</span><span class="n">mono</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s1">'monopole'</span><span class="p">],</span> <span class="n">LONGITUDINAL</span><span class="p">)</span>
+<span class="n">err_dip</span> <span class="o">=</span> <span class="n">error_frame</span><span class="p">(</span><span class="n">dip</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s1">'dipole'</span><span class="p">],</span> <span class="n">TRANSVERSE</span><span class="p">)</span>
+<span class="n">plot_convergence</span><span class="p">(</span><span class="n">err_mono</span><span class="p">,</span> <span class="n">LONGITUDINAL</span><span class="p">,</span> <span class="s1">'Monopole: the accelerating figures of merit'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/9b1142af04efd3645a45409f9b7ba7a75c4462f96f2f910b46078ad46eff7376.png" src="../../_images/9b1142af04efd3645a45409f9b7ba7a75c4462f96f2f910b46078ad46eff7376.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[&lt;Axes: title={'center': 'freq [MHz]'}, xlabel='degrees of freedom', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'R/Q [Ohm]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: title={'center': 'G [Ohm]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: title={'center': 'Epk/Eacc []'}, xlabel='degrees of freedom'&gt;],
+       [&lt;Axes: title={'center': 'Bpk/Eacc [mT/MV/m]'}, xlabel='degrees of freedom', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'kcc [%]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: title={'center': 'ff [%]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: &gt;]], dtype=object)
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>The two families separate immediately. <code class="docutils literal notranslate"><span class="pre">freq</span></code>, <code class="docutils literal notranslate"><span class="pre">R/Q</span></code> and <code class="docutils literal notranslate"><span class="pre">kcc</span></code> are already at or below
+0.1 % on the very coarsest mesh in the grid — they converge so fast that this grid cannot
+resolve their rate — and <code class="docutils literal notranslate"><span class="pre">G</span></code> joins them one order later. The peak-field ratios are still
+around half a percent at <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">2</span></code> on the <em>finest</em> mesh here, and only drop to the level of
+the others once the order reaches 4.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ff</span></code> is the odd one out and repays a careful look. Its error is small in absolute terms on
+this cavity, but it does not shrink: it sits at a few parts in <span class="math notranslate nohighlight">\(10^4\)</span> at every order and is
+no better at <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">6</span></code> than at <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">3</span></code>. Field flatness is the ratio of the on-axis field
+<em>maxima</em> cell to cell, so it inherits the convergence behaviour of a maximum rather than of
+an integral, and a quantity that stops improving under refinement should never be quoted to
+more precision than it has earned.</p>
+<h2 id="the-transverse-case">5. The transverse case<a class="headerlink" href="#the-transverse-case" title="Link to this heading">¶</a></h2>
+<p>The same for the dipole, including the transverse <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>. It is worth checking separately,
+because the transverse voltage is not an on-axis integral: it is built from a line integral
+at a radius <span class="math notranslate nohighlight">\(r_0\)</span> inside the aperture plus the Panofsky-Wenzel relation, so it samples the
+field where the mesh is coarser and could in principle converge differently from the
+longitudinal one.</p>
+<p>It does not — the transverse <code class="docutils literal notranslate"><span class="pre">R/Q</span></code> converges as cleanly as the longitudinal one, which is
+the reassuring half of this section. The unreassuring half is the dipole’s peak-field
+ratios: they are the worst-behaved quantities anywhere in this notebook, still 2 % out at
+<code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">3</span></code> and needing <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">5</span></code> before they settle. A deflecting mode concentrates its surface
+field into a smaller region than the accelerating mode does, and a maximum over a sharper
+peak is harder to resolve.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">plot_convergence</span><span class="p">(</span><span class="n">err_dip</span><span class="p">,</span> <span class="n">TRANSVERSE</span><span class="p">,</span> <span class="s1">'Dipole: the deflecting figures of merit'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/6a8140a6f4769310e2650b8963648262bc40cd16a3023cc7724fe1cd80abe2cf.png" src="../../_images/6a8140a6f4769310e2650b8963648262bc40cd16a3023cc7724fe1cd80abe2cf.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[&lt;Axes: title={'center': 'freq [MHz]'}, xlabel='degrees of freedom', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'R/Q [Ohm]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: title={'center': 'G [Ohm]'}, xlabel='degrees of freedom'&gt;,
+        &lt;Axes: title={'center': 'Epk/Eacc []'}, xlabel='degrees of freedom'&gt;],
+       [&lt;Axes: title={'center': 'Bpk/Eacc [mT/MV/m]'}, xlabel='degrees of freedom', ylabel='relative error'&gt;,
+        &lt;Axes: &gt;, &lt;Axes: &gt;, &lt;Axes: &gt;]], dtype=object)
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="which-knob-actually-moves-them">6. Which knob actually moves them<a class="headerlink" href="#which-knob-actually-moves-them" title="Link to this heading">¶</a></h2>
+<p>Plot the same errors against the polynomial order at each element size, and then against
+the element size at each order. The asymmetry is the practical lesson of this notebook:
+the peak-field ratios fall by orders of magnitude with <code class="docutils literal notranslate"><span class="pre">p</span></code> and are essentially flat in <code class="docutils literal notranslate"><span class="pre">h</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">plot_convergence</span><span class="p">(</span><span class="n">err_mono</span><span class="p">,</span> <span class="n">LONGITUDINAL</span><span class="p">,</span>
+                 <span class="s1">'Monopole error vs polynomial order (one curve per element size)'</span><span class="p">,</span>
+                 <span class="n">x</span><span class="o">=</span><span class="s1">'p'</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">'polynomial order p'</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">'h'</span><span class="p">,</span> <span class="n">logx</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/ae658bb2f2eacfc39bff3314093e5bbe3a623b8b4b8d3dfca61dadc3704f30ec.png" src="../../_images/ae658bb2f2eacfc39bff3314093e5bbe3a623b8b4b8d3dfca61dadc3704f30ec.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[&lt;Axes: title={'center': 'freq [MHz]'}, xlabel='polynomial order p', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'R/Q [Ohm]'}, xlabel='polynomial order p'&gt;,
+        &lt;Axes: title={'center': 'G [Ohm]'}, xlabel='polynomial order p'&gt;,
+        &lt;Axes: title={'center': 'Epk/Eacc []'}, xlabel='polynomial order p'&gt;],
+       [&lt;Axes: title={'center': 'Bpk/Eacc [mT/MV/m]'}, xlabel='polynomial order p', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'kcc [%]'}, xlabel='polynomial order p'&gt;,
+        &lt;Axes: title={'center': 'ff [%]'}, xlabel='polynomial order p'&gt;,
+        &lt;Axes: &gt;]], dtype=object)
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">plot_convergence</span><span class="p">(</span><span class="n">err_mono</span><span class="p">,</span> <span class="n">LONGITUDINAL</span><span class="p">,</span>
+                 <span class="s1">'Monopole error vs element size (one curve per polynomial order)'</span><span class="p">,</span>
+                 <span class="n">x</span><span class="o">=</span><span class="s1">'h'</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">'element size h [mm]'</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">'p'</span><span class="p">,</span> <span class="n">logx</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/9d56a30f5646e5ccffbdcbc8bf1afbd171e8ac3f23c1813b2e475dd342d0a413.png" src="../../_images/9d56a30f5646e5ccffbdcbc8bf1afbd171e8ac3f23c1813b2e475dd342d0a413.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[&lt;Axes: title={'center': 'freq [MHz]'}, xlabel='element size h [mm]', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'R/Q [Ohm]'}, xlabel='element size h [mm]'&gt;,
+        &lt;Axes: title={'center': 'G [Ohm]'}, xlabel='element size h [mm]'&gt;,
+        &lt;Axes: title={'center': 'Epk/Eacc []'}, xlabel='element size h [mm]'&gt;],
+       [&lt;Axes: title={'center': 'Bpk/Eacc [mT/MV/m]'}, xlabel='element size h [mm]', ylabel='relative error'&gt;,
+        &lt;Axes: title={'center': 'kcc [%]'}, xlabel='element size h [mm]'&gt;,
+        &lt;Axes: title={'center': 'ff [%]'}, xlabel='element size h [mm]'&gt;,
+        &lt;Axes: &gt;]], dtype=object)
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="the-trap-drawn-directly">7. The trap, drawn directly<a class="headerlink" href="#the-trap-drawn-directly" title="Link to this heading">¶</a></h2>
+<p>A relative error hides the sign of the mistake. Plot the two peak-field ratios themselves
+against element size, one line per order, and the failure at low order is unmistakable: at
+<code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">2</span></code> the value moves up and down as the mesh is refined, while the high orders settle
+onto a flat line at the converged answer.</p>
+<p>Non-monotonic wander is the signature to watch for. A quantity approaching its limit from
+one side is converging, however slowly; a quantity that bounces is not converging at all,
+and no amount of <code class="docutils literal notranslate"><span class="pre">h</span></code> refinement will make it.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s1">'constrained'</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">kind</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(((</span><span class="n">mono</span><span class="p">,</span> <span class="s1">'monopole'</span><span class="p">),</span> <span class="p">(</span><span class="n">dip</span><span class="p">,</span> <span class="s1">'dipole'</span><span class="p">))):</span>
+    <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">],</span> <span class="p">[</span><span class="s1">'Epk/Eacc []'</span><span class="p">,</span> <span class="s1">'Bpk/Eacc [mT/MV/m]'</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">'p'</span><span class="p">)):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'h'</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">'h'</span><span class="p">],</span> <span class="n">g</span><span class="p">[</span><span class="n">q</span><span class="p">],</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">WARM</span><span class="p">)],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'p = </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">ref</span><span class="p">[</span><span class="n">kind</span><span class="p">][</span><span class="n">q</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span>
+                   <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'reference (h=</span><span class="si">{</span><span class="n">REF_H</span><span class="si">}</span><span class="s1">, p=</span><span class="si">{</span><span class="n">REF_P</span><span class="si">}</span><span class="s1">)'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'element size h [mm]'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">invert_xaxis</span><span class="p">()</span>                      <span class="c1"># finer meshes to the right</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">'Peak-field ratios: refining h at low order does not converge them'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/aa9cd5cbce311d664d86ee626f529120bbc409485503ab03b27aa2bdbd6ec6b9.png" src="../../_images/aa9cd5cbce311d664d86ee626f529120bbc409485503ab03b27aa2bdbd6ec6b9.png" />
+</div>
+</div>
+<h2 id="the-numbers">8. The numbers<a class="headerlink" href="#the-numbers" title="Link to this heading">¶</a></h2>
+<p>The relative error of every figure of merit at each polynomial order, on the finest
+element size in the grid. This is the table to read before choosing a mesh for a study:
+the row tells you what that order costs you on that quantity.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">error_by_order</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">qois</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">err</span><span class="p">[</span><span class="n">err</span><span class="p">[</span><span class="s1">'h'</span><span class="p">]</span> <span class="o">==</span> <span class="n">h</span><span class="p">]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">'p'</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">g</span><span class="p">[</span><span class="n">qois</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+
+
+<span class="n">finest</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">GRID_H</span><span class="p">)</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">({</span><span class="s1">'monopole'</span><span class="p">:</span> <span class="n">error_by_order</span><span class="p">(</span><span class="n">err_mono</span><span class="p">,</span> <span class="n">LONGITUDINAL</span><span class="p">,</span> <span class="n">finest</span><span class="p">),</span>
+           <span class="s1">'dipole'</span><span class="p">:</span> <span class="n">error_by_order</span><span class="p">(</span><span class="n">err_dip</span><span class="p">,</span> <span class="n">TRANSVERSE</span><span class="p">,</span> <span class="n">finest</span><span class="p">)})</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s1">.1e</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>p</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="7" valign="top">monopole</th>
+      <th>freq [MHz]</th>
+      <td>9.9e-06</td>
+      <td>2.2e-06</td>
+      <td>1.8e-08</td>
+      <td>2.9e-09</td>
+      <td>1.3e-10</td>
+    </tr>
+    <tr>
+      <th>R/Q [Ohm]</th>
+      <td>4.0e-05</td>
+      <td>1.5e-04</td>
+      <td>1.3e-04</td>
+      <td>1.3e-04</td>
+      <td>1.3e-04</td>
+    </tr>
+    <tr>
+      <th>G [Ohm]</th>
+      <td>2.0e-03</td>
+      <td>5.4e-05</td>
+      <td>1.3e-05</td>
+      <td>4.4e-06</td>
+      <td>3.2e-06</td>
+    </tr>
+    <tr>
+      <th>Epk/Eacc []</th>
+      <td>6.3e-03</td>
+      <td>8.8e-03</td>
+      <td>2.4e-05</td>
+      <td>7.2e-05</td>
+      <td>8.3e-05</td>
+    </tr>
+    <tr>
+      <th>Bpk/Eacc [mT/MV/m]</th>
+      <td>2.1e-03</td>
+      <td>3.1e-07</td>
+      <td>6.6e-05</td>
+      <td>6.8e-05</td>
+      <td>6.5e-05</td>
+    </tr>
+    <tr>
+      <th>kcc [%]</th>
+      <td>4.1e-04</td>
+      <td>6.0e-05</td>
+      <td>2.4e-06</td>
+      <td>1.1e-07</td>
+      <td>5.4e-08</td>
+    </tr>
+    <tr>
+      <th>ff [%]</th>
+      <td>4.0e-05</td>
+      <td>4.9e-04</td>
+      <td>4.7e-04</td>
+      <td>4.4e-04</td>
+      <td>1.4e-03</td>
+    </tr>
+    <tr>
+      <th rowspan="5" valign="top">dipole</th>
+      <th>freq [MHz]</th>
+      <td>3.5e-05</td>
+      <td>6.2e-06</td>
+      <td>2.4e-07</td>
+      <td>9.1e-10</td>
+      <td>6.3e-10</td>
+    </tr>
+    <tr>
+      <th>R/Q [Ohm]</th>
+      <td>2.2e-04</td>
+      <td>7.2e-06</td>
+      <td>7.5e-07</td>
+      <td>2.7e-08</td>
+      <td>2.8e-07</td>
+    </tr>
+    <tr>
+      <th>G [Ohm]</th>
+      <td>8.8e-03</td>
+      <td>3.7e-03</td>
+      <td>8.4e-04</td>
+      <td>1.2e-04</td>
+      <td>2.8e-05</td>
+    </tr>
+    <tr>
+      <th>Epk/Eacc []</th>
+      <td>7.1e-03</td>
+      <td>2.4e-02</td>
+      <td>4.5e-03</td>
+      <td>6.9e-05</td>
+      <td>1.5e-05</td>
+    </tr>
+    <tr>
+      <th>Bpk/Eacc [mT/MV/m]</th>
+      <td>7.8e-03</td>
+      <td>2.5e-02</td>
+      <td>4.9e-03</td>
+      <td>6.7e-05</td>
+      <td>1.0e-05</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<h2 id="what-it-costs-to-reach-0-1">9. What it costs to reach 0.1 %<a class="headerlink" href="#what-it-costs-to-reach-0-1" title="Link to this heading">¶</a></h2>
+<p>For each figure of merit, the cheapest solve in the grid that reaches 0.1 % of the reference
+<em>and stays there on every finer mesh at that order</em>. The second condition matters: a
+quantity that wanders can cross the right answer on a coarse mesh and leave again, and a
+table built on single crossings would recommend exactly the meshes this notebook warns
+about. A blank row means nothing in the grid qualified.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cheapest_within</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">qois</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''The cheapest solve within `tol` that STAYS within it on every finer mesh.</span>
+
+<span class="sd">    A single point inside the tolerance proves nothing for a quantity that wanders:</span>
+<span class="sd">    a coarse mesh can cross the right answer on its way past. Requiring every finer</span>
+<span class="sd">    element size at that order to hold the tolerance too is what distinguishes</span>
+<span class="sd">    convergence from a lucky crossing.</span>
+<span class="sd">    '''</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qois</span><span class="p">:</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">err</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'ndof'</span><span class="p">)</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">same_order</span> <span class="o">=</span> <span class="n">err</span><span class="p">[(</span><span class="n">err</span><span class="p">[</span><span class="s1">'p'</span><span class="p">]</span> <span class="o">==</span> <span class="n">r</span><span class="p">[</span><span class="s1">'p'</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">err</span><span class="p">[</span><span class="s1">'h'</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">r</span><span class="p">[</span><span class="s1">'h'</span><span class="p">])]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">same_order</span><span class="p">[</span><span class="n">q</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">tol</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">r</span>
+                <span class="k">break</span>
+        <span class="n">rows</span><span class="p">[</span><span class="n">q</span><span class="p">]</span> <span class="o">=</span> <span class="p">({</span><span class="s1">'h [mm]'</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">best</span><span class="p">[</span><span class="s1">'h'</span><span class="p">]),</span> <span class="s1">'p'</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">best</span><span class="p">[</span><span class="s1">'p'</span><span class="p">]),</span>
+                    <span class="s1">'DOFs'</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">best</span><span class="p">[</span><span class="s1">'ndof'</span><span class="p">])}</span>
+                   <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span>
+                   <span class="p">{</span><span class="s1">'h [mm]'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">'DOFs'</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+
+<span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">({</span><span class="s1">'monopole'</span><span class="p">:</span> <span class="n">cheapest_within</span><span class="p">(</span><span class="n">err_mono</span><span class="p">,</span> <span class="n">LONGITUDINAL</span><span class="p">),</span>
+           <span class="s1">'dipole'</span><span class="p">:</span> <span class="n">cheapest_within</span><span class="p">(</span><span class="n">err_dip</span><span class="p">,</span> <span class="n">TRANSVERSE</span><span class="p">)})</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>h [mm]</th>
+      <th>p</th>
+      <th>DOFs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="7" valign="top">monopole</th>
+      <th>freq [MHz]</th>
+      <td>24</td>
+      <td>2</td>
+      <td>1791</td>
+    </tr>
+    <tr>
+      <th>R/Q [Ohm]</th>
+      <td>24</td>
+      <td>2</td>
+      <td>1791</td>
+    </tr>
+    <tr>
+      <th>G [Ohm]</th>
+      <td>24</td>
+      <td>3</td>
+      <td>3288</td>
+    </tr>
+    <tr>
+      <th>Epk/Eacc []</th>
+      <td>24</td>
+      <td>4</td>
+      <td>5235</td>
+    </tr>
+    <tr>
+      <th>Bpk/Eacc [mT/MV/m]</th>
+      <td>16</td>
+      <td>3</td>
+      <td>4860</td>
+    </tr>
+    <tr>
+      <th>kcc [%]</th>
+      <td>16</td>
+      <td>2</td>
+      <td>2640</td>
+    </tr>
+    <tr>
+      <th>ff [%]</th>
+      <td>16</td>
+      <td>2</td>
+      <td>2640</td>
+    </tr>
+    <tr>
+      <th rowspan="5" valign="top">dipole</th>
+      <th>freq [MHz]</th>
+      <td>24</td>
+      <td>2</td>
+      <td>2908</td>
+    </tr>
+    <tr>
+      <th>R/Q [Ohm]</th>
+      <td>16</td>
+      <td>2</td>
+      <td>4276</td>
+    </tr>
+    <tr>
+      <th>G [Ohm]</th>
+      <td>24</td>
+      <td>4</td>
+      <td>8221</td>
+    </tr>
+    <tr>
+      <th>Epk/Eacc []</th>
+      <td>24</td>
+      <td>5</td>
+      <td>11890</td>
+    </tr>
+    <tr>
+      <th>Bpk/Eacc [mT/MV/m]</th>
+      <td>24</td>
+      <td>5</td>
+      <td>11890</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<h2 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Check convergence per figure of merit, never once for the whole solve. The quantity you
+are about to report may be the slowest in the set, and the frequency is no guide to it —
+here it is the best-behaved number by five orders of magnitude.</p></li>
+<li><p>Integral quantities — <code class="docutils literal notranslate"><span class="pre">R/Q</span></code> longitudinal and transverse, <code class="docutils literal notranslate"><span class="pre">G</span></code>, <code class="docutils literal notranslate"><span class="pre">kcc</span></code> and the frequency —
+converge quickly and arrive first, often before the coarsest mesh you would think of
+using.</p></li>
+<li><p>Quantities built from field <em>maxima</em> arrive last. Both peak-field ratios need <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">4</span></code>
+(monopole) or <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">5</span></code> (dipole) before they join the others; at <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">2</span></code> they are around
+half a percent out on the finest mesh here, and the dipole’s are 2 % out at <code class="docutils literal notranslate"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">3</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ff</span></code> never converges on this grid at all. It is small, but it stops improving, so treat
+it as a quantity with a floor rather than one you can refine your way out of.</p></li>
+<li><p>Reach for <code class="docutils literal notranslate"><span class="pre">p</span></code> before <code class="docutils literal notranslate"><span class="pre">h</span></code> on those quantities. Two reasons: the order is what resolves the
+shape of the field inside an element, and on a curved geometry like this one the mesher’s
+own curvature refinement already sets the element count, so <code class="docutils literal notranslate"><span class="pre">h</span></code> buys far less than its
+value suggests.</p></li>
+<li><p>Do not accept a single point inside your tolerance as evidence of convergence. A quantity
+that wanders will cross the right answer on the way past; require the tolerance to hold on
+every finer mesh, as section 9 does.</p></li>
+<li><p>Match modes across meshes by frequency, not by index, or a mode swap will read as a
+convergence failure.</p></li>
+<li><p>Before any tolerance, uncertainty or sensitivity study, confirm that the figures of merit
+it will report are converged on the mesh it will use. The perturbation those studies apply
+is small, and an unconverged quantity responds to the mesh more than to the geometry.</p></li>
+</ul>
+<p>See also <a class="reference internal" href="mesh_convergence.html"><span class="std std-doc">Mesh convergence: how fine is fine enough?</span></a>, which checks
+the fundamental frequency against a closed-form answer using adaptive refinement, and
+<a class="reference internal" href="multicell_uq_sa.html"><span class="std std-doc">Multicell UQ and sensitivity analysis</span></a>, the study whose figures of
+merit this one qualifies.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        &#169; Copyright 2024, Sosoho-Abasi Udongwo.
+        
+    </div>
+  
+    Created using
+    <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
+    9.1.0.
+     and
+    <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
+  
+</div>
+      
+    </div>
+    
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "navigation.top", "search.share", "toc.follow", "content.code.copy"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+        <script src="../../_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script id="MathJax-script" src="../../_static/mathjax/tex-mml-chtml.js"></script>
+    
+  </body>
+</html>

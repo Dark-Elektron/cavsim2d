@@ -2,12 +2,12 @@ Writing a new cavity model
 ==========================
 
 Adding a geometry is deliberately small: implement a handful of methods on a
-:class:`~cavsim2d.models.base.Cavity` subclass and it plugs into **every**
+:class:`~cavsim2d.models.base.Cavity` subclass and it plugs into every
 analysis — eigenmode, tuning, wakefield, multipacting, UQ and optimisation — with
 no changes anywhere else. This page walks through the contract and ends with a
 complete, runnable example.
 
-The idea is the one from :doc:`geometry`: you describe the meridian **once** (a
+The idea is the one from :doc:`geometry`: you describe the meridian once (a
 labelled outline), and that single description drives every solver. The
 per-analysis knobs (mesh size, bunch length, launch phases, …) all live in the
 :doc:`configuration` dictionaries, so a new geometry never has to know which
@@ -18,30 +18,30 @@ What you must provide
 
 Subclass :class:`~cavsim2d.models.base.Cavity` and supply:
 
-1. **``self.parameters``** — a dict of the geometry's *scalar* parameters
-   (millimetres). This **is** the parameterisation: every scalar entry
+1. ``self.parameters`` — a dict of the geometry's *scalar* parameters
+   (millimetres). This is the parameterisation: every scalar entry
    automatically becomes a valid tune / UQ / optimisation variable. You get
    ``tune_variables()``, ``get_tune_value()`` and ``set_tune_value()`` for free
    from the base class, which just read and write this dict.
 
-2. **``self.shape``** — a dict. The framework stores the target frequency in it
+2. ``self.shape`` — a dict. The framework stores the target frequency in it
    during tuning (``self.shape['FREQ'] = ...``), so it must exist (any dict will
    do; conventionally ``{'IC': [...params...], 'BP': beampipe}``).
 
-3. **``profile()``** — return a :class:`~cavsim2d.geometry.Profile`: the meridian
-   as a chain of boundary segments in **metres**, each carrying a boundary label
+3. ``profile()`` — return a :class:`~cavsim2d.geometry.Profile`: the meridian
+   as a chain of boundary segments in metres, each carrying a boundary label
    (``'PEC'`` wall, ``'PMC'`` aperture/symmetry plane), closed along the axis
    (``'AXI'``). Read ``self.parameters`` here — the tuner mutates it in place, so
    the profile must reflect the *live* values. Return ``None`` for a degenerate
    parameter set (the solver then reports the failure instead of meshing garbage).
 
-4. **``create(n_cells, beampipe, mode)``** — provision the cavity's folders and
+4. ``create(n_cells, beampipe, mode)`` — provision the cavity's folders and
    point ``self.geo_filepath``. For a native (``profile()``-based) geometry, set
    ``self.geo_filepath = None`` and call ``self._write_geometry_snapshot()``; the
    solver meshes ``profile()`` directly (exact arcs, no gmsh round-trip). Only
    implement a ``.geo`` writer here if your geometry has no ``profile()``.
 
-5. **``rebuild(parameters, beampipe=None)``** — return a *fresh, bare* instance of
+5. ``rebuild(parameters, beampipe=None)`` — return a *fresh, bare* instance of
    your model built from a parameter dict (same keys as ``self.parameters``). This
    is the one hook the generic machinery stands on: tuning, UQ and optimisation all
    reconstruct candidates through it, so implementing ``rebuild`` gives you all
@@ -65,20 +65,20 @@ A :class:`~cavsim2d.geometry.Profile` is built by walking the wall from the axis
 
 Boundary labels are the only physics the outline carries:
 
-- ``'PEC'`` — the metal **wall**;
-- ``'PMC'`` — an **aperture / symmetry** plane (beam-pipe mouth, cell mid-plane);
+- ``'PEC'`` — the metal wall;
+- ``'PMC'`` — an aperture / symmetry plane (beam-pipe mouth, cell mid-plane);
 - ``'AXI'`` — the axis, supplied by ``close('AXI')``.
 
 One geometry, every analysis
 ----------------------------
 
-You do **not** write anything analysis-specific in the geometry:
+You do not write anything analysis-specific in the geometry:
 
-- **Eigenmode** meshes ``profile()`` and reads the ``PEC`` / ``PMC`` labels as
+- Eigenmode meshes ``profile()`` and reads the ``PEC`` / ``PMC`` labels as
   boundary conditions.
-- **Wakefield** writes an ABCI deck from the same ``profile()``; a beam pipe is
+- Wakefield writes an ABCI deck from the same ``profile()``; a beam pipe is
   added automatically at each end if the outline has none.
-- **Multipacting** reuses the eigenmode field and mesh, reading the ``PEC``
+- Multipacting reuses the eigenmode field and mesh, reading the ``PEC``
   vertices as electron-emission sites.
 
 Resolution and physics settings for each of these are passed in the
@@ -87,11 +87,11 @@ Resolution and physics settings for each of these are passed in the
 Optional extras
 ---------------
 
-- **Per-cell decomposition.** Set ``uses_cell_suffixes = True`` and implement
+- Per-cell decomposition. Set ``uses_cell_suffixes = True`` and implement
   ``half_cells()`` / ``set_half_cells()`` only if your geometry has independently
   varying cells (as the elliptical family does); this unlocks multicell tuning and
   multicell UQ. Most geometries do not need it.
-- **Non-scalar parameters.** If a parameter is a coordinate pair rather than a
+- Non-scalar parameters. If a parameter is a coordinate pair rather than a
   scalar (as the spline's control points are), override ``expand_variable`` /
   ``get_tune_value`` / ``set_tune_value`` to address the sub-fields (e.g.
   ``'p2_r'``) — see :class:`~cavsim2d.models.spline.SplineCavity`.
@@ -175,5 +175,5 @@ analyses on each:
 
 - :doc:`examples/custom_geometry/cone_cavity` — this cone, through eigenmode,
   tuning and wakefield;
-- :doc:`examples/custom_geometry/dome_cavity` — a **curved** (arc-walled) cavity,
+- :doc:`examples/custom_geometry/dome_cavity` — a curved (arc-walled) cavity,
   through eigenmode, multipacting and tuning.

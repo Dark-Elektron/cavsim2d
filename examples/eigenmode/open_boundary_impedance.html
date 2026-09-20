@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="elliptical_tesla.html">
+        <link rel="prev" href="dielectric_loss.html">
       
       
-        <link rel="next" href="pillbox.html">
+        <link rel="next" href="multicell_uq_sa.html">
       
       
       <link rel="icon" href="">
@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -70,11 +71,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#the-cavity" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -846,126 +842,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#how-a-cavity-is-divided" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#what-welding-does" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#the-three-models" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#simplecell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#multicell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1072,225 +948,6 @@
   
   
     <li class="md-nav__item">
-      <a href="elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-cavity" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:1. the cavity (reference label)"><span>1.<wbr> The cavity</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-usual-solve-closed-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:2. the usual solve: closed ends (reference label)"><span>2.<wbr> The usual solve:<wbr> closed ends</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-same-solve-with-open-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:3. the same solve with open ends (reference label)"><span>3.<wbr> The same solve with open ends</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. The same solve with open ends">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#two-independent-measurements-of-the-same-loss" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:two independent measurements of the same loss (reference label)"><span>Two independent measurements of the same loss</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#which-modes-actually-radiate" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:4. which modes actually radiate (reference label)"><span>4.<wbr> Which modes actually radiate</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#not-every-eigenvalue-above-the-cutoff-is-a-mode" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:5. not every eigenvalue above the cutoff is a mode (reference label)"><span>5.<wbr> Not every eigenvalue above the cutoff is a mode</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-that-does-to-the-impedance" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:6. what that does to the impedance (reference label)"><span>6.<wbr> What that does to the impedance</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-against-the-wakefield" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:7. checking against the wakefield (reference label)"><span>7.<wbr> Checking against the wakefield</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-comparison-that-actually-settles-it-the-loss-factor" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:8. the comparison that actually settles it: the loss factor (reference label)"><span>8.<wbr> The comparison that actually settles it:<wbr> the loss factor</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. The comparison that actually settles it: the loss factor">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-r-q-stops-being-a-property-of-the-geometry" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:why $r/q$ stops being a property of the geometry (reference label)"><span>Why R/Q stops being a property of the geometry</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-to-take-away" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:what to take away (reference label)"><span>What to take away</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:where to go next (reference label)"><span>Where to go next</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="pillbox.html" class="md-nav__link">
         
   
@@ -1315,12 +972,60 @@
   
   
     <li class="md-nav__item">
+      <a href="elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1368,7 +1073,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1387,132 +1092,12 @@
   
   
     <li class="md-nav__item">
-      <a href="mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+      <a href="convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="mesh_convergence.html#where-to-go-next" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="compare_cavities.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -1561,6 +1146,62 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -1657,30 +1298,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../tuning/multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../tuning/cavity_types.html" class="md-nav__link">
         
   
@@ -1710,7 +1327,31 @@
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
   </span>
   
@@ -1735,6 +1376,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2397,12 +2062,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../custom_geometry/index.html" class="md-nav__link ">
+            <a href="../beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2418,6 +2083,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2495,7 +2334,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2512,14 +2351,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2801,146 +2640,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-cavity" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:1. the cavity (reference label)"><span>1.<wbr> The cavity</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-usual-solve-closed-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:2. the usual solve: closed ends (reference label)"><span>2.<wbr> The usual solve:<wbr> closed ends</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-same-solve-with-open-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:3. the same solve with open ends (reference label)"><span>3.<wbr> The same solve with open ends</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. The same solve with open ends">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#two-independent-measurements-of-the-same-loss" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:two independent measurements of the same loss (reference label)"><span>Two independent measurements of the same loss</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#which-modes-actually-radiate" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:4. which modes actually radiate (reference label)"><span>4.<wbr> Which modes actually radiate</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#not-every-eigenvalue-above-the-cutoff-is-a-mode" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:5. not every eigenvalue above the cutoff is a mode (reference label)"><span>5.<wbr> Not every eigenvalue above the cutoff is a mode</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-that-does-to-the-impedance" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:6. what that does to the impedance (reference label)"><span>6.<wbr> What that does to the impedance</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-against-the-wakefield" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:7. checking against the wakefield (reference label)"><span>7.<wbr> Checking against the wakefield</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-comparison-that-actually-settles-it-the-loss-factor" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:8. the comparison that actually settles it: the loss factor (reference label)"><span>8.<wbr> The comparison that actually settles it:<wbr> the loss factor</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. The comparison that actually settles it: the loss factor">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-r-q-stops-being-a-property-of-the-geometry" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:why $r/q$ stops being a property of the geometry (reference label)"><span>Why R/Q stops being a property of the geometry</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-to-take-away" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:what to take away (reference label)"><span>What to take away</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/eigenmode/open_boundary_impedance:where to go next (reference label)"><span>Where to go next</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2956,10 +2655,10 @@
 
 
 <h1 id="open-boundaries-pml-and-the-radiated-impedance">Open boundaries (PML) and the radiated impedance<a class="headerlink" href="#open-boundaries-pml-and-the-radiated-impedance" title="Link to this heading">¶</a></h1>
-<p>A cavity eigenmode solve normally puts a <strong>closed</strong> wall across each beam-pipe end
+<p>A cavity eigenmode solve normally puts a closed wall across each beam-pipe end
 (<code class="docutils literal notranslate"><span class="pre">boundary_conditions='mm'</span></code>, a magnetic wall). That is the right model for a <em>trapped</em>
 mode, whose field has already decayed to nothing by the time it reaches the pipe. It is
-the wrong model for a mode <strong>above the beam-pipe cutoff</strong>: such a mode physically
+the wrong model for a mode above the beam-pipe cutoff: such a mode physically
 propagates out of the pipe and never comes back, but a closed end reflects it. The solver
 then reports it as a sharp resonance with the high ohmic <span class="math notranslate nohighlight">\(Q_0\)</span> of the wall material,
 instead of the low radiation-limited <span class="math notranslate nohighlight">\(Q\)</span> it really has.</p>
@@ -2967,16 +2666,16 @@ instead of the low radiation-limited <span class="math notranslate nohighlight">
 <div class="math notranslate nohighlight">
 \[Z(\omega) = \sum_n \frac{\tfrac{1}{2} Q_n (R/Q)_n}{1 + i Q_n\left(\frac{\omega}{\omega_n} - \frac{\omega_n}{\omega}\right)},\]</div>
 <p>that error goes straight into <span class="math notranslate nohighlight">\(|Z|\)</span>.</p>
-<p>Setting <code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code> replaces both end walls with a <strong>perfectly matched
-layer</strong> (PML): an absorbing extension of the beam pipe that lets the wave leave. The
+<p>Setting <code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code> replaces both end walls with a perfectly matched
+layer (PML): an absorbing extension of the beam pipe that lets the wave leave. The
 eigenvalues then come out complex, <span class="math notranslate nohighlight">\(\omega = \omega_0 + i\,\omega_i\)</span>, and the imaginary
 part is the radiation loss:</p>
 <div class="math notranslate nohighlight">
 \[Q_{\text{rad}} = \frac{|\omega_0|}{2\,|\omega_i|}.\]</div>
 <p>This example solves the same TESLA cavity both ways and checks the result against a
 time-domain wakefield run, which has an open pipe by construction.</p>
-<p>It also shows the part that is easy to get wrong. An open solve returns <strong>two kinds of
-eigenpair above the cutoff</strong> — genuine resonance poles of the open cavity, and modes of
+<p>It also shows the part that is easy to get wrong. An open solve returns two kinds of
+eigenpair above the cutoff — genuine resonance poles of the open cavity, and modes of
 the finite PML <em>block</em> — and nothing in the results table separates them. Section 5 is
 about telling them apart, because the artifacts turn out to carry the largest <span class="math notranslate nohighlight">\(R/Q\)</span> in the
 whole set.</p>
@@ -3002,7 +2701,7 @@ whole set.</p>
 <p>A 3-cell TESLA cavity — two end cells around a mid cell — with beam pipes at both ends
 (<code class="docutils literal notranslate"><span class="pre">beampipe='both'</span></code>). The pipes matter here: they are what the radiating modes escape
 through, and their radius sets the cutoff frequency that divides trapped modes from
-propagating ones. Note that it is the <strong>end cell’s</strong> aperture that the pipe inherits, not
+propagating ones. Note that it is the end cell’s aperture that the pipe inherits, not
 the mid cell’s.</p>
 <p>For the lowest monopole (TM<span class="math notranslate nohighlight">\(_{01}\)</span>) pipe mode that cutoff is</p>
 <div class="math notranslate nohighlight">
@@ -4464,7 +4163,7 @@ check. <code class="docutils literal notranslate"><span class="pre">Q</span> <sp
 </div>
 <p>Read that table with its <code class="docutils literal notranslate"><span class="pre">R/Q</span> <span class="pre">[Ohm]</span></code> column beside it, because the balance splits the modes
 in a way that is easy to misread.</p>
-<p>Every mode that <strong>couples to the beam at all</strong> sits within about a percent of 1: a surface
+<p>Every mode that couples to the beam at all sits within about a percent of 1: a surface
 integral of <span class="math notranslate nohighlight">\(\mathbf{E}\times\mathbf{H}^{*}\)</span> and the decay rate of a complex eigenvalue,
 computed without reference to each other, land on the same <span class="math notranslate nohighlight">\(Q\)</span>. That is the check passing,
 and it is the evidence that the layer is genuinely absorbing rather than merely lengthening
@@ -4473,7 +4172,7 @@ the pipe.</p>
 eigenpairs with no field on the axis — plus the fundamental trio near 1300 MHz. In both
 cases the comparison is between two numbers that are essentially zero (radiated fluxes of
 order <span class="math notranslate nohighlight">\(10^{-13}\)</span> W, or two <span class="math notranslate nohighlight">\(Q\)</span> values of order <span class="math notranslate nohighlight">\(10^{13}\)</span>), so the <em>ratio</em> is roundoff.</p>
-<p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> is therefore a check on the <strong>absorbing layer</strong>, and a good one. What it is
+<p><code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> is therefore a check on the absorbing layer, and a good one. What it is
 not is a filter for the impedance: every mode it rejects here contributes <span class="math notranslate nohighlight">\(10^{-25}\)</span> kΩ,
 and dropping all of them changes <span class="math notranslate nohighlight">\(|Z|\)</span> by nothing at all. The modes that really do need
 filtering are in section 5 — and every one of them passes this check.</p>
@@ -4509,8 +4208,8 @@ cavity are fixed by its geometry, so they do not care how long the absorbing blo
 finite block, however, is itself a resonator, and it contributes eigenpairs of its own.
 Those PML-block modes are damped — the layer absorbs them — so they arrive with a
 perfectly plausible low <span class="math notranslate nohighlight">\(Q\)</span>, a <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> of 1.00, and no other tell.</p>
-<p>The one thing that distinguishes them is that they are <strong>properties of the layer, not of
-the cavity</strong>. So change the layer. <code class="docutils literal notranslate"><span class="pre">pml_length</span></code> sets the block length in metres (the
+<p>The one thing that distinguishes them is that they are properties of the layer, not of
+the cavity. So change the layer. <code class="docutils literal notranslate"><span class="pre">pml_length</span></code> sets the block length in metres (the
 default is 3× the pipe radius) and <code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code> its complex stretch.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -4687,9 +4386,9 @@ beam-coupled modes above cutoff : 21
 </div>
 <p>That is the whole problem in one table. The discarded modes</p>
 <ul class="simple">
-<li><p>have the <strong>lowest <span class="math notranslate nohighlight">\(Q\)</span></strong> of any mode in the set, so they are the <strong>broadest</strong> — each one
+<li><p>have the lowest <span class="math notranslate nohighlight">\(Q\)</span> of any mode in the set, so they are the broadest — each one
 spans hundreds of MHz and contributes across the entire above-cutoff range;</p></li>
-<li><p>carry the <strong>largest <span class="math notranslate nohighlight">\(R/Q\)</span></strong> of any mode in the set, over <span class="math notranslate nohighlight">\(100\,\Omega\)</span> where the genuine
+<li><p>carry the largest <span class="math notranslate nohighlight">\(R/Q\)</span> of any mode in the set, over <span class="math notranslate nohighlight">\(100\,\Omega\)</span> where the genuine
 poles sit in the tens;</p></li>
 <li><p>and have <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> of 1.00, so the layer check waves every one of them through.</p></li>
 </ul>
@@ -4700,7 +4399,7 @@ PML block’s dimensions, so a block mode survives an <code class="docutils lite
 <h2 id="what-that-does-to-the-impedance">6. What that does to the impedance<a class="headerlink" href="#what-that-does-to-the-impedance" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">cav.eigenmode.impedance()</span></code> sums the modes as parallel RLC resonators, using each mode’s
 own <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code>.</p>
-<p>Asking the <strong>closed</strong> solve for an impedance is refused outright — its above-cutoff <span class="math notranslate nohighlight">\(Q\)</span>
+<p>Asking the closed solve for an impedance is refused outright — its above-cutoff <span class="math notranslate nohighlight">\(Q\)</span>
 values are not physical, so there is no useful spectrum to build from them:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -4737,9 +4436,9 @@ values are not physical, so there is no useful spectrum to build from them:</p>
 </table>
 </div></div></div>
 </div>
-<p>To see <em>how far off</em> it would have been, we can force the issue: <code class="docutils literal notranslate"><span class="pre">Q=</span></code> states the quality
-factors explicitly, which bypasses the check. Handing it back the closed solve’s own
-<code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code> reproduces the reconstruction that used to happen silently.</p>
+<p>To see <em>how far off</em> a closed-boundary reconstruction is, force the issue: <code class="docutils literal notranslate"><span class="pre">Q=</span></code> states the
+quality factors explicitly, which bypasses the check. Handing it the closed solve’s own
+<code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">[]</span></code> gives the spectrum the closed model would imply.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">Q_closed</span> <span class="o">=</span> <span class="n">closed</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'freq [MHz]'</span><span class="p">)[</span><span class="s1">'Q []'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
@@ -4766,18 +4465,18 @@ replaces the spurious needles with the broad humps a propagating mode really pro
 <p>A time-domain wakefield run drives the cavity with a bunch through an open pipe, so it
 includes radiation without being asked to. It is the independent check on everything above
 — with two caveats that decide what the comparison can actually show.</p>
-<p><strong>The bunch sets how far up the comparison means anything.</strong> The impedance is the wake
+<p>The bunch sets how far up the comparison means anything. The impedance is the wake
 spectrum deconvolved by the bunch spectrum, and a Gaussian bunch of length <span class="math notranslate nohighlight">\(\sigma_z\)</span> has
 little left to deconvolve above roughly <span class="math notranslate nohighlight">\(c/(2\pi\sigma_z)\)</span> — 2.7 GHz at the 25 mm used
 here. Above that the wakefield curve is increasingly noise-dominated, so read the shapes
 rather than the values. A shorter bunch moves that limit up (5 mm reaches past 13 GHz) at
 the cost of a much longer run.</p>
-<p><strong>Narrow resonances will not match, and should not.</strong> A 50 m wake is a 167 ns window, so the
+<p>Narrow resonances will not match, and should not. A 50 m wake is a 167 ns window, so the
 narrowest resonance it can resolve has <span class="math notranslate nohighlight">\(Q \approx f T \sim 10^{2}\)</span>–<span class="math notranslate nohighlight">\(10^{3}\)</span>. The
 fundamental’s real <span class="math notranslate nohighlight">\(Q\)</span> is <span class="math notranslate nohighlight">\(2.9\times10^{4}\)</span>, so the wakefield peak at 1300 MHz is
 truncation-limited and lands orders of magnitude below the eigenmode value. That is a
-property of the reference, not an error in the modes. <strong>Below cutoff, compare <span class="math notranslate nohighlight">\(f\)</span> and
-<span class="math notranslate nohighlight">\(R/Q\)</span>; above it, compare <span class="math notranslate nohighlight">\(|Z|\)</span>.</strong></p>
+property of the reference, not an error in the modes. Below cutoff, compare <span class="math notranslate nohighlight">\(f\)</span> and
+<span class="math notranslate nohighlight">\(R/Q\)</span>; above it, compare <span class="math notranslate nohighlight">\(|Z|\)</span>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_open</span><span class="o">.</span><span class="n">wakefield</span><span class="o">.</span><span class="n">run</span><span class="p">({</span><span class="s1">'MROT'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'wakelength'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s1">'bunch_length'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
@@ -4824,8 +4523,8 @@ puts a number on that excess, on a quantity that can actually carry one. Below
 the cutoff nothing changes — the filter removes nothing there — and the eigenmode peaks
 tower over the wakefield exactly as the truncation argument predicts.</p>
 <p>What remains above the cutoff is the RLC model itself. A sum of parallel resonators gives
-every mode a positive-real shunt impedance, so modes whose linewidths overlap add <strong>in
-phase</strong>; that is exact for an isolated resonance and progressively wrong as modes broaden.
+every mode a positive-real shunt impedance, so modes whose linewidths overlap add in
+phase; that is exact for an isolated resonance and progressively wrong as modes broaden.
 Representing it properly needs complex mode residues, and the solver does report them
 (<code class="docutils literal notranslate"><span class="pre">Re(R/Q)</span> <span class="pre">[Ohm]</span></code> / <code class="docutils literal notranslate"><span class="pre">Im(R/Q)</span> <span class="pre">[Ohm]</span></code>, whenever the eigenvalue is complex). Their magnitudes
 are exact, but their phases are not yet physical — <code class="docutils literal notranslate"><span class="pre">impedance(model='qnm')</span></code> exists, warns,
@@ -4836,7 +4535,7 @@ today.</p>
 line the wakefield can resolve has <span class="math notranslate nohighlight">\(Q \sim 10^2\)</span>–<span class="math notranslate nohighlight">\(10^3\)</span> against the fundamental’s
 <span class="math notranslate nohighlight">\(2.9\times10^4\)</span>: its peak is truncation-limited and lands orders of magnitude low. That
 says nothing about whether the modes are right.</p>
-<p>The <strong>loss factor</strong> does not have that problem. <span class="math notranslate nohighlight">\(k\)</span> is an <em>integral</em> of <span class="math notranslate nohighlight">\(\mathrm{Re}\,Z\)</span>
+<p>The loss factor does not have that problem. <span class="math notranslate nohighlight">\(k\)</span> is an <em>integral</em> of <span class="math notranslate nohighlight">\(\mathrm{Re}\,Z\)</span>
 over the bunch spectrum, and truncating a wake broadens a resonance while preserving its
 area. So <span class="math notranslate nohighlight">\(k\)</span> compares cleanly even when <span class="math notranslate nohighlight">\(|Z|\)</span> cannot.</p>
 <p>Each mode contributes a point-charge loss factor</p>
@@ -4844,7 +4543,7 @@ area. So <span class="math notranslate nohighlight">\(k\)</span> compares cleanl
 \[k_n = \frac{V_n^2}{4U_n} = \frac{\omega_n}{4}\left(\frac{R}{Q}\right)_n,\]</div>
 <p>and a bunch of rms length <span class="math notranslate nohighlight">\(\sigma_z\)</span> weights it by the form factor
 <span class="math notranslate nohighlight">\(\exp[-(\omega_n\sigma_z/c)^2]\)</span>. That weighting is the whole difference between a point
-charge and a real bunch — it is <strong>not</strong> a limitation of the eigenmode method, and once it
+charge and a real bunch — it is not a limitation of the eigenmode method, and once it
 is applied the two calculations are directly comparable.</p>
 <p>ABCI exports its own cumulative <span class="math notranslate nohighlight">\(k(&lt;f)\)</span>, so the two can simply be overlaid.</p>
 <div class="cell docutils container">
@@ -4933,8 +4632,8 @@ not, because the form factor has been applied.</p>
 <p><span class="math notranslate nohighlight">\(R/Q = V^2/(\omega U)\)</span> is purely geometric — no material, no wall loss — <em>for a confined
 mode</em>. Every trapped mode in this run reports the identical <span class="math notranslate nohighlight">\(U\)</span>, because the eigenvector is
 normalised and the whole field is inside the cavity.</p>
-<p>A radiating mode is not confined, and <span class="math notranslate nohighlight">\(U\)</span> is only the energy inside the <strong>computational
-domain</strong>. Above the cutoff the modes here keep between 16% and 99% of their normalised
+<p>A radiating mode is not confined, and <span class="math notranslate nohighlight">\(U\)</span> is only the energy inside the computational
+domain. Above the cutoff the modes here keep between 16% and 99% of their normalised
 energy inside the physical region, the rest having leaked into the absorbing layer. So
 <span class="math notranslate nohighlight">\(U\)</span> — and with it <span class="math notranslate nohighlight">\(R/Q\)</span> and <span class="math notranslate nohighlight">\(k_n = V^2/4U\)</span> — measures where you chose to truncate, not the
 cavity. The modes with the most energy outside come back with the most inflated <span class="math notranslate nohighlight">\(R/Q\)</span>, and
@@ -4948,7 +4647,7 @@ cutoff the reflection at the end wall replaces a radiation <span class="math not
 wall. Pass <code class="docutils literal notranslate"><span class="pre">Q=</span></code> only if you know the loaded <span class="math notranslate nohighlight">\(Q\)</span> yourself.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">boundary_conditions='oo'</span></code> fixes that at the source, at the cost of one extra PML block
 per pipe end in the mesh.</p></li>
-<li><p><strong>Above the cutoff, solve twice.</strong> A single open solve mixes real resonance poles with
+<li><p>Above the cutoff, solve twice. A single open solve mixes real resonance poles with
 modes of the finite absorbing block, and the artifacts are the broad, high-<span class="math notranslate nohighlight">\(R/Q\)</span> ones
 that dominate a reconstructed impedance. Vary <code class="docutils literal notranslate"><span class="pre">pml_length</span></code> (or <code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code> — <em>not</em> the
 mesh) and keep what does not move, with <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.stable_modes()</span></code>.</p></li>
@@ -4957,10 +4656,10 @@ pass it at 1.00.</p></li>
 <li><p>Below the cutoff the wakefield is the one that cannot resolve a narrow line; compare <span class="math notranslate nohighlight">\(f\)</span>
 and <span class="math notranslate nohighlight">\(R/Q\)</span> there, not peak <span class="math notranslate nohighlight">\(|Z|\)</span>. And keep the bunch short enough that the wake spectrum
 still carries information at the frequencies being compared.</p></li>
-<li><p>Compare <strong>loss factors</strong>, not peak <span class="math notranslate nohighlight">\(|Z|\)</span>. <span class="math notranslate nohighlight">\(k\)</span> is an integral over the bunch spectrum
+<li><p>Compare loss factors, not peak <span class="math notranslate nohighlight">\(|Z|\)</span>. <span class="math notranslate nohighlight">\(k\)</span> is an integral over the bunch spectrum
 and survives the wake truncation that makes a high-<span class="math notranslate nohighlight">\(Q\)</span> peak incomparable. Weighted by
 the same bunch, the mode sum reproduces the wakefield to ~3% below the cutoff.</p></li>
-<li><p><span class="math notranslate nohighlight">\(R/Q\)</span> is geometry-only for a <strong>confined</strong> mode. Above the cutoff part of the field lives
+<li><p><span class="math notranslate nohighlight">\(R/Q\)</span> is geometry-only for a confined mode. Above the cutoff part of the field lives
 outside the computational domain, so <span class="math notranslate nohighlight">\(U\)</span> — and therefore <span class="math notranslate nohighlight">\(R/Q\)</span> — depends on where the
 domain ends.</p></li>
 <li><p>The wakefield solver remains the reference for broadband impedance: an eigenmode

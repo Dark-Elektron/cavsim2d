@@ -59,7 +59,7 @@ Once the UQ simulation finishes, the standard deviations are populated in the re
 
 .. code-block:: python
 
-    cavs.eigenmode.plot_fm_bar(uq=True)
+    cavs.eigenmode.plot_fm_scatter(uq=True)
 
 .. important::
 
@@ -76,7 +76,7 @@ versions of the same thing. Which one fits your cavity depends on how it is actu
 made, and that is not something the code can decide for you.
 
 How a cavity is divided
-=======================
+-----------------------
 
 cavsim2d indexes an elliptical cavity as ``2n`` half-cells for *n* cells, ordered left to
 right. Cell *k* is the pair ``(half_cells[2k], half_cells[2k+1])``, so the two halves of a
@@ -95,7 +95,7 @@ half, so ``Req_el`` and ``Req_m`` refer to the same physical equator. Setting th
 different values does not describe a cavity you could build.
 
 What welding does
-=================
+-----------------
 
 Each part of a real cavity is formed on its own, so its dimensions carry their own error.
 Where two parts meet, the finished cavity has one dimension rather than two. cavsim2d
@@ -117,7 +117,7 @@ predicts less scatter than one that does not, and that difference is physical ra
 numerical.
 
 The three models
-================
+----------------
 
 .. figure:: _static/uq_model_groups.png
    :alt: The same 3-cell cavity shown three times, with its half-cells shaded by which
@@ -182,7 +182,7 @@ Two paths through the solver
 represent.
 
 Simplecell path
-===============
+---------------
 
 The default. With ``cell_complexity`` set to ``'simplecell'``, the perturbation is
 applied to the model's own parameters — ``A_m``, ``Req_el`` and so on. It is the cheaper
@@ -197,7 +197,7 @@ of the two, and enough whenever one tolerance per cell type is what you mean.
    if you need the equators to vary independently.
 
 Multicell path
-==============
+--------------
 
 Set ``cell_complexity='multicell'`` and ``independent_half_cells=True``. Every half-cell
 then carries its own parameters, the draws are independent, and each seam is welded

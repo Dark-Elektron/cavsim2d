@@ -1,0 +1,97 @@
+/* cavsim2d docs overrides on top of sphinx-immaterial. */
+
+/* ------------------------------------------------------------------ *
+ * Sidebar section captions
+ *
+ * With the "navigation.sections" feature every toctree caption in
+ * index.rst ("Quickstart", "Analysis Modules", "Examples", ...) becomes a
+ * label in the left navigation. The theme renders those labels at nearly
+ * the same size and colour as the page links underneath them, so the
+ * groups run together. Give them their own typography and a rule above,
+ * so a caption reads as a divider and not as another page.
+ * ------------------------------------------------------------------ */
+.md-nav--primary .md-nav__item--section > .md-nav__link {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-primary-fg-color);
+  opacity: 1;
+}
+
+/* A hairline above each section, except the first, separates the groups. */
+.md-nav--primary .md-nav__item--section + .md-nav__item--section {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* The pages inside a section stay at body weight, indented under the rule. */
+.md-nav--primary .md-nav__item--section .md-nav .md-nav__link {
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-nav--primary .md-nav__item--section .md-nav .md-nav__link--active,
+.md-nav--primary .md-nav__item--section .md-nav .md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ------------------------------------------------------------------ *
+ * Notebook output tables
+ *
+ * pandas writes its own <table class="dataframe">, which arrives with no
+ * theme styling at all: borders on every cell, no zebra striping, header
+ * text the same weight as the body. These are the result tables readers
+ * actually compare numbers in, so give them the theme's table look.
+ * ------------------------------------------------------------------ */
+.cell_output table.dataframe {
+  border-collapse: collapse;
+  border: none;
+  font-size: 0.68rem;
+  margin: 0.6em 0;
+}
+
+.cell_output table.dataframe th,
+.cell_output table.dataframe td {
+  border: none;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  padding: 0.35em 0.8em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Row labels (the index) read as labels, not as data. */
+.cell_output table.dataframe tbody th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--md-default-fg-color);
+}
+
+.cell_output table.dataframe thead th {
+  border-bottom: 2px solid var(--md-default-fg-color--light);
+  font-weight: 700;
+  text-align: right;
+  vertical-align: bottom;
+}
+
+.cell_output table.dataframe thead th:first-child {
+  text-align: left;
+}
+
+.cell_output table.dataframe tbody tr:nth-child(even) {
+  background: var(--md-default-fg-color--lightest);
+}
+
+.cell_output table.dataframe tbody tr:hover {
+  background: var(--md-accent-fg-color--transparent);
+}
+
+/* A wide table scrolls inside its own box instead of stretching the page.
+   Scoped to the HTML output so figures and text output are left alone. */
+.cell_output .output.text_html {
+  overflow-x: auto;
+}

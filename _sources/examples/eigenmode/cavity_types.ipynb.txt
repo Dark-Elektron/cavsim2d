@@ -7,7 +7,7 @@
    "source": [
     "# A gallery of cavity shapes\n",
     "\n",
-    "cavsim2d is not limited to elliptical cavities. Every geometry — elliptical, **flat-top**, **spline (Bezier)**, **RF gun**, pillbox — builds a common `profile()` and so shares the *same* API: `cav.eigenmode.run(...)`, `cav.tune`, `cav.wakefield`, UQ and optimisation all work unchanged. This notebook builds three shapes not shown elsewhere and solves each fundamental mode through the identical call."
+    "cavsim2d is not limited to elliptical cavities. Every geometry — elliptical, flat-top, spline (Bezier), RF gun, pillbox — builds a common `profile()` and so shares the *same* API: `cav.eigenmode.run(...)`, `cav.tune`, `cav.wakefield`, UQ and optimisation all work unchanged. This notebook builds three shapes not shown elsewhere and solves each fundamental mode through the identical call."
    ]
   },
   {

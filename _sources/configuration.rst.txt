@@ -1,26 +1,26 @@
 Configuration reference
 =======================
 
-Every analysis is driven by **one dictionary**. This page lists all of them and
+Every analysis is driven by one dictionary. This page lists all of them and
 all of their keys. See :doc:`concepts` for the conventions they share:
 
-- **Complete + saved.** Missing keys fall back to the analysis' defaults, and the
+- Complete + saved. Missing keys fall back to the analysis' defaults, and the
   *merged* dict (defaults + your overrides) is written to ``config.json`` beside
   the results, so a saved run records every setting it used.
-- **Keys double as kwargs.** ``cav.eigenmode.run(mesh_config={'h': 10})`` is the
+- Keys double as kwargs. ``cav.eigenmode.run(mesh_config={'h': 10})`` is the
   same as passing it in the dict; an explicit kwarg wins.
-- **Truthy, not present.** Features switch on for a *truthy* value (an empty
-  ``uq_config={}`` does **not** trigger UQ).
+- Truthy, not present. Features switch on for a *truthy* value (an empty
+  ``uq_config={}`` does not trigger UQ).
 
 Discovering the options
 -----------------------
 
 You do not have to memorise these — every default is available at runtime:
 
-- ``cav.config_sample(kind)`` **prints** the complete default config for *kind*
+- ``cav.config_sample(kind)`` prints the complete default config for *kind*
   (``'eigenmode'``, ``'wakefield'``, ``'tune'``, ``'multipacting'`` or ``'uq'``) —
   every available key with its default value — and returns it as a dict.
-- ``cav.<solver>.sample_cfg`` returns that same default for **one** solver without
+- ``cav.<solver>.sample_cfg`` returns that same default for one solver without
   printing, e.g. ``cfg = cav.eigenmode.sample_cfg`` — a fresh copy you can edit and
   pass straight to ``cav.eigenmode.run(cfg)``. (``cav.<solver>.config`` is different:
   it is the *saved* config of a run that has already happened.)
@@ -51,19 +51,19 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    a list. Every ``m >= 1`` is written to ``eigenmode/<pol name>/``.
 ``mesh_config``
    *(dict, default* ``{'h': 20, 'p': 3, 'adaptive': None}`` *)* ``h`` maximum element
-   size in **mm**; ``p`` polynomial order (**>= 2**); ``adaptive`` opt-in error-driven
+   size in mm; ``p`` polynomial order (>= 2); ``adaptive`` opt-in error-driven
    h-refinement. Pass ``adaptive: True`` for the defaults, or a dict to tune it:
    ``{'tol': 1e-12, 'max_refinements': 8, 'max_ndof': 100000, 'theta': 0.5}`` — refine
    (Dörfler-marking the elements carrying the top ``theta`` fraction of the recovery
    error) until every requested mode's error is below ``tol`` or a DOF/refinement cap is
-   hit. Adaptivity is a **mode of the eigenmode solve**, not a separate object: the
+   hit. Adaptivity is a mode of the eigenmode solve, not a separate object: the
    refined mesh *is* the eigenmode result, so ``cav.show_fields``, ``cav.show_mesh`` and
    ``cav.multipacting`` all use it directly, and ``cav.eigenmode.plot_convergence()`` plots
    the error/frequency-vs-DOF history the refinement records.
 ``n_modes`` / ``nmodes``
    *(int, default None)* Number of eigenmodes to solve. ``None`` → ``n_cells + 2``.
 ``mode_of_interest``
-   *(int | list | dict, default None)* **1-based** index of the mode(s) whose QOIs are
+   *(int | list | dict, default None)* 1-based index of the mode(s) whose QOIs are
    reported. ``None`` → the accelerating pi-mode (monopole) / the lowest deflecting
    mode (``m >= 1``).
 ``boundary_conditions``
@@ -117,9 +117,9 @@ Wakefield — ``cav.wakefield.run`` / ``study.run_wakefield``
 
 .. note::
 
-   **Adaptive refinement does not apply to wakefield.** ``mesh_config['adaptive']``
-   drives the **NGSolve eigenmode** backend (and, through it, multipacting, which reads
-   the eigenmode field). Wakefield uses the **ABCI** backend, which builds and meshes its
+   Adaptive refinement does not apply to wakefield. ``mesh_config['adaptive']``
+   drives the NGSolve eigenmode backend (and, through it, multipacting, which reads
+   the eigenmode field). Wakefield uses the ABCI backend, which builds and meshes its
    own deck from ``cav.profile()`` and is controlled by ``MT``/``NFS``/``DDR_SIG``/
    ``DDZ_SIG`` above — it has no NGSolve mesh to refine, so the eigenmode ``adaptive`` /
    ``h`` / ``p`` keys are ignored there. This is a backend boundary, not a limitation of a
@@ -135,7 +135,7 @@ Tuning — ``cav.tune.run`` / ``study.run_tune``
    blocks (``{'mid-cell': 'Req', 'end-cell': 'L'}``) to tune them in turn — see
    :doc:`tuning`.
 ``eigenmode_config``
-   *(dict)* The eigenmode settings used for the solve at **each** tuning step.
+   *(dict)* The eigenmode settings used for the solve at each tuning step.
 ``tol``
    *(float, default 1e-4)* Secant-solver tolerance.
 ``maxiter``
@@ -152,7 +152,7 @@ Emission sites are set with ``cav.multipacting.set_emission_points(xrange, ...)`
 ``mode``
    *(int, default 0)* Which computed mode to track (0 = the first).
 ``polarisation`` / ``n_modes``
-   *(default None)* Solve multipacting's **own** field for this polarisation / this
+   *(default None)* Solve multipacting's own field for this polarisation / this
    many modes (``None`` → reuse the monopole eigenmode field).
 ``epks``
    *(array, default None)* Peak-field levels [V/m] to sweep (``None`` → 0–80 MV/m, 192 steps).
@@ -165,7 +165,7 @@ Emission sites are set with ``cav.multipacting.set_emission_points(xrange, ...)`
 ``loss_model``
    *(str, default* ``'field'`` *)* How escaped particles are handled.
 ``pec_maxh``
-   *(float, default None)* If set [mm], multipacting builds its **own** finer field
+   *(float, default None)* If set [mm], multipacting builds its own finer field
    on a mesh this size (with ``mesh_config``) instead of reusing the eigenmode one.
 ``n_points``
    *(int, default None)* Extra emission sites interpolated along the wall in-band.
@@ -185,8 +185,8 @@ Nest inside an eigenmode / wakefield / tune config to sweep the uncertain geomet
    *(list of str)* Geometry variables to perturb, in that model's own names
    (``['Req', 'Ri']`` for elliptical, ``['p2_r']`` for spline, …).
 ``delta``
-   *(list of float)* Perturbation magnitude per variable. **By default this is an
-   additive perturbation in millimetres** (``perturbation_mode`` defaults to
+   *(list of float)* Perturbation magnitude per variable. By default this is an
+   additive perturbation in millimetres (``perturbation_mode`` defaults to
    ``['add', delta]``), *not* a fraction — ``delta=0.3`` is ±0.3 mm. A perturbation
    far below the solver's numerical resolution leaves the result unchanged.
 ``perturbation_mode``
@@ -209,7 +209,7 @@ Nest inside an eigenmode / wakefield / tune config to sweep the uncertain geomet
 ``objectives``
    *(list)* The QOIs to gather: ``'pol:qoi'`` for eigenmode (``'monopole:R/Q [Ohm]'``),
    or ``['min', 'ZL', [lo, hi]]`` / ``['min', 'ZT', ...]`` for wakefield impedance
-   (the interval is a **flat** ``[lo, hi, …]`` GHz list defining consecutive windows).
+   (the interval is a flat ``[lo, hi, …]`` GHz list defining consecutive windows).
 ``tune_config``
    *(dict, default None)* Re-tune each perturbed variant to a target frequency before
    measuring, so only the *shape* varies at fixed frequency (the paper workflow).

@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -70,11 +71,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#interface" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -719,19 +715,6 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode Analysis</span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="#" class="md-nav__link md-nav__link--active">
         
   
@@ -743,176 +726,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-dictionary" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:configuration dictionary (reference label)"><span>Configuration Dictionary</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quantities-of-interest-qois" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:quantities of interest (qois) (reference label)"><span>Quantities of Interest <wbr>(QOIs)</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#beam-pipe-boundary-conditions" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:beam-pipe boundary conditions (reference label)"><span>Beam-<wbr>pipe boundary conditions</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Beam-pipe boundary conditions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-open-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:why open ends (reference label)"><span>Why open ends</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-the-loss-is-split" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:how the loss is split (reference label)"><span>How the loss is split</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#impedance-needs-an-open-end" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:impedance needs an open end (reference label)"><span>Impedance needs an open end</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dielectric-regions" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:dielectric regions (reference label)"><span>Dielectric regions</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dielectric regions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-changes-in-the-solve" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:what changes in the solve (reference label)"><span>What changes in the solve</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dielectric-loss" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:dielectric loss (reference label)"><span>Dielectric loss</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#limits" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:limits (reference label)"><span>Limits</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:accessing results (reference label)"><span>Accessing Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results-as-a-table" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:results as a table (reference label)"><span>Results as a table</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualisation" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:visualisation (reference label)"><span>Visualisation</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -1039,126 +852,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#how-a-cavity-is-divided" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#what-welding-does" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#the-three-models" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#simplecell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="uq.html#multicell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1261,54 +954,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/eigenmode/pillbox.html" class="md-nav__link">
         
   
@@ -1333,12 +978,60 @@
   
   
     <li class="md-nav__item">
+      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="examples/eigenmode/cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1386,7 +1079,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1405,132 +1098,12 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+      <a href="examples/eigenmode/convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#where-to-go-next" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -1579,6 +1152,54 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -1675,30 +1296,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/tuning/multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/tuning/cavity_types.html" class="md-nav__link">
         
   
@@ -1728,7 +1325,31 @@
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
   </span>
   
@@ -1753,6 +1374,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2415,12 +2060,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+            <a href="examples/beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2436,6 +2081,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2513,7 +2332,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2530,14 +2349,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2819,166 +2638,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-dictionary" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:configuration dictionary (reference label)"><span>Configuration Dictionary</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quantities-of-interest-qois" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:quantities of interest (qois) (reference label)"><span>Quantities of Interest <wbr>(QOIs)</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#beam-pipe-boundary-conditions" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:beam-pipe boundary conditions (reference label)"><span>Beam-<wbr>pipe boundary conditions</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Beam-pipe boundary conditions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-open-ends" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:why open ends (reference label)"><span>Why open ends</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-the-loss-is-split" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:how the loss is split (reference label)"><span>How the loss is split</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#impedance-needs-an-open-end" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:impedance needs an open end (reference label)"><span>Impedance needs an open end</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dielectric-regions" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:dielectric regions (reference label)"><span>Dielectric regions</span></span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dielectric regions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-changes-in-the-solve" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:what changes in the solve (reference label)"><span>What changes in the solve</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dielectric-loss" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:dielectric loss (reference label)"><span>Dielectric loss</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#limits" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:limits (reference label)"><span>Limits</span></span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:accessing results (reference label)"><span>Accessing Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results-as-a-table" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:results as a table (reference label)"><span>Results as a table</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualisation" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="eigenmode:visualisation (reference label)"><span>Visualisation</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -3009,7 +2668,7 @@
 <p>You can pass an optional dictionary to control the solver, meshing, and physical
 boundary options. Every key can equally be passed as a keyword argument —
 <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.run(mesh_config={'h':</span> <span class="pre">10})</span></code> — and kwargs override the dictionary.
-The config is merged over a complete set of defaults, and the <strong>merged</strong> dict is
+The config is merged over a complete set of defaults, and the merged dict is
 what runs and what <code class="docutils literal notranslate"><span class="pre">eigenmode/config.json</span></code> records: a saved config always
 contains every setting the run used.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">eigenmode_config</span> <span class="o">=</span> <span class="p">{</span>
@@ -3151,7 +2810,7 @@ beam-pipe end (left, then right):</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">'m'</span></code></p></td>
 <td><p>PMC (magnetic)</p></td>
-<td><p>Closed. The default, and the right model for a <strong>trapped</strong> mode.</p></td>
+<td><p>Closed. The default, and the right model for a trapped mode.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'e'</span></code></p></td>
 <td><p>PEC (electric)</p></td>
@@ -3168,7 +2827,7 @@ reaches it, so a propagating mode leaves and does not return.</p></td>
 <code class="docutils literal notranslate"><span class="pre">'open'</span></code> is accepted as an alias for <code class="docutils literal notranslate"><span class="pre">'oo'</span></code>.</p>
 <h3 id="why-open-ends">Why open ends<a class="headerlink" href="#why-open-ends" title="Link to this heading">¶</a></h3>
 <p>A closed end reflects. For a mode below the beam-pipe cutoff that costs nothing —
-the field has already decayed to nothing before it gets there. For a mode <strong>above</strong>
+the field has already decayed to nothing before it gets there. For a mode above
 the cutoff it is simply wrong: the mode physically radiates out of the pipe, but the
 closed solve bounces it back and reports the ohmic <span class="math notranslate nohighlight">\(Q_0\)</span> of the wall, which can
 be ten orders of magnitude too large. Since the reconstructed impedance scales with
@@ -3179,7 +2838,7 @@ and the imaginary part <em>is</em> the radiation loss:</p>
 <div class="math notranslate nohighlight">
 \[Q_\mathrm{rad} = \frac{|\omega_0|}{2\,|\omega_i|}.\]</div>
 <h3 id="how-the-loss-is-split">How the loss is split<a class="headerlink" href="#how-the-loss-is-split" title="Link to this heading">¶</a></h3>
-<p>Each channel is <strong>measured</strong>, never inferred by subtracting one <span class="math notranslate nohighlight">\(Q\)</span> from another:</p>
+<p>Each channel is measured, never inferred by subtracting one <span class="math notranslate nohighlight">\(Q\)</span> from another:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Q_rad</span> <span class="pre">[]</span></code> comes from the time-averaged Poynting flux integrated across the pipe
 mouths, <span class="math notranslate nohighlight">\(P_\mathrm{rad} = \oint \tfrac12 {\rm Re}(\mathbf{E}\times\mathbf{H}^*)\cdot\hat{n}\,dA\)</span>.</p></li>
@@ -3190,9 +2849,9 @@ mouths, <span class="math notranslate nohighlight">\(P_\mathrm{rad} = \oint \tfr
 disagreement is diagnostic rather than circular. <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span> <span class="pre">[]</span></code> reports it:</p>
 <div class="math notranslate nohighlight">
 \[\text{Q balance} = \left(\frac{1}{Q_\mathrm{diel}} + \frac{1}{Q_\mathrm{rad}}\right) Q_\mathrm{eig},\]</div>
-<p>which is 1 when the two agree. For a <strong>radiating</strong> mode it lands within about a percent of
+<p>which is 1 when the two agree. For a radiating mode it lands within about a percent of
 1, and drifts away as the layer is made too short or too coarse — the signal that
-<code class="docutils literal notranslate"><span class="pre">Q_rad</span></code> should be distrusted. A <strong>trapped</strong> mode agrees to within a factor of a few,
+<code class="docutils literal notranslate"><span class="pre">Q_rad</span></code> should be distrusted. A trapped mode agrees to within a factor of a few,
 which is tighter than it sounds given that the flux there is of order
 <span class="math notranslate nohighlight">\(10^{-14}\,\mathrm{W}\)</span>; both routes agree the mode does not radiate.</p>
 <p>The reported total takes the non-wall loss from the eigenvalue — the most direct measure
@@ -3201,14 +2860,14 @@ the perturbative wall loss on top: <span class="math notranslate nohighlight">\(
 The impedance reconstruction uses that total.</p>
 <p>A word on the boundary integral: <span class="math notranslate nohighlight">\(\mathbf{H}\)</span> is projected into an <code class="docutils literal notranslate"><span class="pre">H1</span></code> space
 before it is integrated (a <code class="docutils literal notranslate"><span class="pre">GridFunction</span></code> curl cannot be evaluated on a boundary), and
-that projection is taken over the <strong>physical</strong> region alone. <code class="docutils literal notranslate"><span class="pre">H1</span></code> is continuous, so a
+that projection is taken over the physical region alone. <code class="docutils literal notranslate"><span class="pre">H1</span></code> is continuous, so a
 whole-mesh projection would average the two sides of every shared vertex — and on this
 mesh the other side is the complex-stretched layer, whose <span class="math notranslate nohighlight">\(\mathbf{H}\)</span> is a
 different field. That contamination lands precisely on the pipe mouth where the flux is
 measured; restricting the projection is what takes <code class="docutils literal notranslate"><span class="pre">Q</span> <span class="pre">balance</span></code> from wrong by orders of
 magnitude to within a percent.</p>
 <h3 id="impedance-needs-an-open-end">Impedance needs an open end<a class="headerlink" href="#impedance-needs-an-open-end" title="Link to this heading">¶</a></h3>
-<p><code class="xref py py-meth docutils literal notranslate"><span class="pre">impedance()</span></code> <strong>refuses</strong> to build a
+<p><code class="xref py py-meth docutils literal notranslate"><span class="pre">impedance()</span></code> refuses to build a
 spectrum from a fully closed solve. Above the cutoff those <span class="math notranslate nohighlight">\(Q\)</span> values are the wall’s,
 not the mode’s, and the resulting <span class="math notranslate nohighlight">\(|Z|\)</span> is wrong by orders of magnitude rather than
 merely imprecise. Solve with at least one open end, use <code class="docutils literal notranslate"><span class="pre">cav.wakefield</span></code> for the
@@ -3237,11 +2896,11 @@ absorber ring:</p>
 <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mesh_config</span><span class="o">=</span><span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
 </code></pre></div>
 </div>
-<p>The region is an axisymmetric <strong>rectangular ring</strong> in the (z, r) meridian plane —
-an annular cylinder in 3D. All lengths are in <strong>millimetres</strong>, like every other
+<p>The region is an axisymmetric rectangular ring in the (z, r) meridian plane —
+an annular cylinder in 3D. All lengths are in millimetres, like every other
 cavity dimension, and the region is <em>clipped</em> to the cavity, so a generous span
 such as <code class="docutils literal notranslate"><span class="pre">z=(-1e4,</span> <span class="pre">1e4)</span></code> simply means “the full length”.</p>
-<p><code class="docutils literal notranslate"><span class="pre">maxh</span></code> sets the local element size <strong>inside</strong> the region. A thin shell needs
+<p><code class="docutils literal notranslate"><span class="pre">maxh</span></code> sets the local element size inside the region. A thin shell needs
 it: a 0.5 mm tube wall in a cavity meshed at the default <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">20</span></code> would
 otherwise be crossed by a single element.</p>
 <h3 id="what-changes-in-the-solve">What changes in the solve<a class="headerlink" href="#what-changes-in-the-solve" title="Link to this heading">¶</a></h3>
@@ -3249,7 +2908,7 @@ otherwise be crossed by a single element.</p>
 <span class="math notranslate nohighlight">\(\nabla\times\nabla\times \mathbf{E} = \lambda\, \varepsilon_r \mathbf{E}\)</span>,
 so the eigenvalue is still <span class="math notranslate nohighlight">\(\lambda = k_0^2 = (\omega/c_0)^2\)</span> and the
 frequency conversion is unchanged. The stored energy carries
-<span class="math notranslate nohighlight">\(\varepsilon_r\)</span> <strong>inside</strong> the integral, so <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">G</span></code>, <code class="docutils literal notranslate"><span class="pre">Rsh</span></code>
+<span class="math notranslate nohighlight">\(\varepsilon_r\)</span> inside the integral, so <code class="docutils literal notranslate"><span class="pre">R/Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">G</span></code>, <code class="docutils literal notranslate"><span class="pre">Rsh</span></code>
 and <code class="docutils literal notranslate"><span class="pre">GR/Q</span></code> all follow.</p>
 <p>No special interface treatment is needed: <code class="docutils literal notranslate"><span class="pre">HCurl</span></code> enforces tangential-<span class="math notranslate nohighlight">\(E\)</span>
 continuity and <span class="math notranslate nohighlight">\(u_\varphi = r E_\varphi\)</span> is tangential to any r-z
@@ -3268,7 +2927,7 @@ permittivity is <span class="math notranslate nohighlight">\(\varepsilon_r = \va
 </div>
 <p>There are two ways to get <span class="math notranslate nohighlight">\(Q\)</span> out of that, and they cost very different
 amounts.</p>
-<p><strong>Perturbation</strong> (the default up to <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>). The cavity is
+<p>Perturbation (the default up to <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>). The cavity is
 solved as if it were lossless and the loss is integrated over the resulting field:</p>
 <div class="math notranslate nohighlight">
 \[Q_{\text{diel}} = \frac{\int \varepsilon_r'\,|\mathbf{E}|^2\, r\,dr\,dz}
@@ -3280,12 +2939,12 @@ solved as if it were lossless and the loss is integrated over the resulting fiel
 lossless ones — so it is the right tool for low-loss dielectrics (sapphire,
 alumina, quartz windows) and says nothing about the frequency pull a lossy
 material causes.</p>
-<p><strong>Full complex eigenproblem</strong> (the default above <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>).
+<p>Full complex eigenproblem (the default above <span class="math notranslate nohighlight">\(\tan\delta = 10^{-2}\)</span>).
 The resonant frequency itself is solved for as a complex number,
 <span class="math notranslate nohighlight">\(\omega = \omega_r + \mathrm{i}\alpha\)</span>, and</p>
 <div class="math notranslate nohighlight">
 \[Q_{\text{diel}} = \frac{\omega_r}{2\alpha}\]</div>
-<p>so <span class="math notranslate nohighlight">\(Q\)</span>, the frequency <strong>and the mode shape</strong> are all the lossy ones. This is
+<p>so <span class="math notranslate nohighlight">\(Q\)</span>, the frequency and the mode shape are all the lossy ones. This is
 what a lossy ferrite or an absorber at <span class="math notranslate nohighlight">\(\tan\delta \sim 0.1\)</span>–<span class="math notranslate nohighlight">\(1\)</span>
 needs, and it costs roughly twice a lossless solve. See
 <a class="reference internal" href="theory/eigenmode.html#lossy-dielectrics"><span class="std std-ref">Lossy Dielectrics</span></a> for the formulation.</p>
@@ -3344,13 +3003,13 @@ and changing it invalidates cached results.</p>
 <ul class="simple">
 <li><p><span class="math notranslate nohighlight">\(\mu_r\)</span> is <em>rejected</em>, not ignored: magnetic materials change the
 stiffness form, not just the mass form.</p></li>
-<li><p>A <strong>conductive</strong> loss, <span class="math notranslate nohighlight">\(\varepsilon_r'' = \sigma/(\omega\varepsilon_0)\)</span>, is
+<li><p>A conductive loss, <span class="math notranslate nohighlight">\(\varepsilon_r'' = \sigma/(\omega\varepsilon_0)\)</span>, is
 not modelled, because it makes the permittivity depend on the answer; pass a loss
 tangent evaluated at the frequency of interest instead.</p></li>
 <li><p>Wall loss is always treated perturbatively, on both paths.</p></li>
-<li><p><strong>Eigenmode only.</strong> <code class="docutils literal notranslate"><span class="pre">wakefield</span></code> and <code class="docutils literal notranslate"><span class="pre">multipacting</span></code> raise on a cavity with
+<li><p>Eigenmode only. <code class="docutils literal notranslate"><span class="pre">wakefield</span></code> and <code class="docutils literal notranslate"><span class="pre">multipacting</span></code> raise on a cavity with
 dielectric regions rather than returning a vacuum answer for it.</p></li>
-<li><p><strong>Native geometry only.</strong> Cavities meshed from an imported <code class="docutils literal notranslate"><span class="pre">.geo</span></code> file cannot
+<li><p>Native geometry only. Cavities meshed from an imported <code class="docutils literal notranslate"><span class="pre">.geo</span></code> file cannot
 carry regions (gmsh writes a single physical surface and the STEP round-trip
 drops surface names), so this raises too. Every built-in model has a native
 <code class="docutils literal notranslate"><span class="pre">profile()</span></code>.</p></li>
@@ -3368,7 +3027,7 @@ drops surface names), so this raises too. Every built-in model has a native
 </div>
 <h2 id="results-as-a-table">Results as a table<a class="headerlink" href="#results-as-a-table" title="Link to this heading">¶</a></h2>
 <p>The dictionaries above are convenient for lookups but awkward to filter and plot
-across polarisations. <code class="docutils literal notranslate"><span class="pre">eigenmode.qois_df</span></code> returns <strong>every</strong> mode of <strong>every</strong> solved
+across polarisations. <code class="docutils literal notranslate"><span class="pre">eigenmode.qois_df</span></code> returns every mode of every solved
 polarisation as a single <code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code> — the same layout the mesh-convergence
 study uses, so it slices the same way:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">tesla</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span>

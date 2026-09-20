@@ -9,18 +9,18 @@
     "\n",
     "The usual workflow fixes each cell's frequency on its own — tune a mid cell to\n",
     "`f`, tune an end cell to `f`, assemble, and the multi-cell cavity sits at `f`. This\n",
-    "example does something different: it optimises the **whole assembled cavity** so its\n",
-    "**R/Q meets a target**, while holding the accelerating frequency fixed.\n",
+    "example does something different: it optimises the whole assembled cavity so its\n",
+    "R/Q meets a target, while holding the accelerating frequency fixed.\n",
     "\n",
-    "The design variables come from the **end cells**, and three things keep the search\n",
+    "The design variables come from the end cells, and three things keep the search\n",
     "compact:\n",
     "\n",
-    "- The **`_e` suffix** means *both end cells, tied to one value*: `A_e` drives the\n",
+    "- The `_e` suffix means *both end cells, tied to one value*: `A_e` drives the\n",
     "  left and right end-cell `A` together, so the cavity stays symmetric with a single\n",
     "  variable.\n",
-    "- The objective **`['equal', 'monopole:R/Q [Ohm]', target]`** ranks designs by how\n",
+    "- The objective `['equal', 'monopole:R/Q [Ohm]', target]` ranks designs by how\n",
     "  close the whole-cavity R/Q is to the target.\n",
-    "- The frequency is held for every candidate by tuning **`L_e`** — both end-cell\n",
+    "- The frequency is held for every candidate by tuning `L_e` — both end-cell\n",
     "  lengths, tied — to `f`.\n",
     "\n",
     "The mid cell is tuned once up front and then held fixed."
@@ -111,10 +111,10 @@
    "source": [
     "## 2. Search the end-cell shape for a target R/Q\n",
     "\n",
-    "`bounds` are the end-cell shape variables, each with the **`_e`** suffix so the two\n",
+    "`bounds` are the end-cell shape variables, each with the `_e` suffix so the two\n",
     "ends stay tied. `mid-cell` supplies the fixed mid-cell dimensions. The objective is\n",
     "`['equal', 'monopole:R/Q [Ohm]', TARGET_RQ]` — minimise the distance of the\n",
-    "whole-cavity R/Q from the target — and `tune_config` uses **`L_e`** to hold the\n",
+    "whole-cavity R/Q from the target — and `tune_config` uses `L_e` to hold the\n",
     "frequency at `F` for every candidate."
    ]
   },
@@ -430,7 +430,7 @@
    "id": "857f5edc",
    "metadata": {},
    "source": [
-    "**Reading it.** The `_e` variables kept the two end cells symmetric throughout;\n",
+    "Reading it. The `_e` variables kept the two end cells symmetric throughout;\n",
     "`L_e` held every candidate at `F`; and the `equal` objective steered the population\n",
     "toward the target whole-cavity R/Q. Swapping the objective (`'min'`/`'max'`) or adding\n",
     "a second one turns this into the multi-objective search shown in the other examples."

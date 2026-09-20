@@ -29,7 +29,7 @@ Third-Party Solvers
 
 ABCI Setup (Wakefield Solver)
 =============================
-Wakefield and impedance analyses in ``cavsim2d`` are driven by Yang Ho Chin's **ABCI** (Azimuthal Beam Cavity Interaction) code, which solves Maxwell's equations in the time domain for axisymmetric structures.
+Wakefield and impedance analyses in ``cavsim2d`` are driven by Yang Ho Chin's ABCI (Azimuthal Beam Cavity Interaction) code, which solves Maxwell's equations in the time domain for axisymmetric structures.
 
 1. Download the latest 64-bit version of ABCI (e.g., ``ABCI_MP64_12_5.zip``) from the official `ABCI website <https://abci.kek.jp/abci.htm>`_.
 2. If the website download links are broken, you can fetch the zip file directly via PowerShell:
@@ -52,4 +52,4 @@ Wakefield and impedance analyses in ``cavsim2d`` are driven by Yang Ho Chin's **
 
 NGSolve Setup (Eigenmode Solver)
 ================================
-Eigenmode simulations are run in-memory via the **NGSolve** electromagnetic finite-element engine, which is a required Python dependency. It is installed automatically during the `pip` installation of `cavsim2d`.
+Eigenmode simulations are run in-memory via the NGSolve electromagnetic finite-element engine, which is a required Python dependency. It is installed automatically during the `pip` installation of `cavsim2d`.

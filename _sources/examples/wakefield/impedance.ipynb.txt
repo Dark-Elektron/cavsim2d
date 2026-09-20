@@ -7,7 +7,7 @@
    "source": [
     "# Wakefield and impedance (ABCI)\n",
     "\n",
-    "The wakefield solver runs the bunch through the cavity and reports the wake potentials and the beam-coupling impedance. cavsim2d drives the **ABCI** time-domain solver behind a backend-agnostic interface (`cav.wakefield`). ABCI needs beam pipes at both ends, so the cavity is built with `beampipe='both'`.\n",
+    "The wakefield solver runs the bunch through the cavity and reports the wake potentials and the beam-coupling impedance. cavsim2d drives the ABCI time-domain solver behind a backend-agnostic interface (`cav.wakefield`). ABCI needs beam pipes at both ends, so the cavity is built with `beampipe='both'`.\n",
     "\n",
     "> This example needs the bundled `ABCI.exe` (Windows, or `wine` elsewhere) — see the installation page.\n",
     "\n",

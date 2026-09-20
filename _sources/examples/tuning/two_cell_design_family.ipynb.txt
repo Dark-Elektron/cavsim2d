@@ -7,8 +7,8 @@
    "source": [
     "# Two-cell design family: is \"each cell at the same frequency\" special?\n",
     "\n",
-    "A multi-cell cavity is normally built so that **every cell resonates at the same\n",
-    "frequency** -- mid cells and end cells alike. For a symmetric **2-cell** cavity that\n",
+    "A multi-cell cavity is normally built so that every cell resonates at the same\n",
+    "frequency -- mid cells and end cells alike. For a symmetric 2-cell cavity that\n",
     "rule is not forced by the physics: mirror symmetry already flattens the field for\n",
     "*any* choice of cell shapes at a given operating frequency. So we can ask directly --\n",
     "among all 2-cell designs that operate at the target frequency, is the one where the\n",
@@ -55,7 +55,7 @@
     "## Build the family\n",
     "\n",
     "`family_scan(vary='split')` holds the mid cell fixed and sweeps the end-cell length,\n",
-    "retuning the shared equator radius so that **every member operates at `F`**. What\n",
+    "retuning the shared equator radius so that every member operates at `F`. What\n",
     "changes along the family is the *split* between the mid-cell and end-cell frequencies\n",
     "(reported as `mid_freq` and `end_freq`)."
    ]
@@ -274,9 +274,9 @@
    "source": [
     "## Takeaways\n",
     "\n",
-    "- For a symmetric 2-cell, **every** design in this family operates at 1.3 GHz with a\n",
+    "- For a symmetric 2-cell, every design in this family operates at 1.3 GHz with a\n",
     "  flat field -- mirror symmetry does the flattening, not the cell frequencies.\n",
-    "- **Every** figure of merit passes *smoothly* through the each-cell-at-`F` design\n",
+    "- Every figure of merit passes *smoothly* through the each-cell-at-`F` design\n",
     "  (dashed line) -- there is no peak, kink or extremum there. The peak-field ratios\n",
     "  `Epk/Eacc` and `Bpk/Eacc` barely move (~1-2 % across the family), while `R/Q`, `G`\n",
     "  and especially the HOM loss factor `k_loss_HOM` (~13 %) vary. So the \"both cells at\n",
@@ -285,7 +285,7 @@
     "  (The complementary `vary='shape'` mode of `family_scan` sweeps that shape freedom\n",
     "  directly, at fixed frequency and flatness.)\n",
     "- Requiring each cell to independently reach the target frequency is therefore an\n",
-    "  *optional* constraint for a 2-cell, not a requirement. It also **stiffens** the\n",
+    "  *optional* constraint for a 2-cell, not a requirement. It also stiffens the\n",
     "  design problem: for strongly-coupled (wide-iris) cavities a cell can be unable to\n",
     "  reach the target frequency on its own even when the assembly can -- so enforcing the\n",
     "  rule can turn a solvable tune into an unsolvable one."

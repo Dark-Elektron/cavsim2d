@@ -14,14 +14,14 @@
         <link rel="prev" href="cavity_types.html">
       
       
-        <link rel="next" href="two_cell_design_family.html">
+        <link rel="next" href="multicell.html">
       
       
       <link rel="icon" href="">
     
     
       
-        <title>When a tune has no solution: read the convergence - cavsim2d 1.0.0 documentation</title>
+        <title>When a tune does not reach its target: read the convergence - cavsim2d 1.0.0 documentation</title>
       
     
     
@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -70,11 +71,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#the-tune-fails" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -105,7 +101,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              When a tune has no solution: read the convergence
+              When a tune does not reach its target: read the convergence
             
           </span>
         </div>
@@ -846,126 +842,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#how-a-cavity-is-divided" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#what-welding-does" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#the-three-models" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#simplecell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#multicell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1070,54 +946,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../eigenmode/elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/open_boundary_impedance.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../eigenmode/pillbox.html" class="md-nav__link">
         
   
@@ -1142,12 +970,60 @@
   
   
     <li class="md-nav__item">
+      <a href="../eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../eigenmode/cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1195,7 +1071,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1214,132 +1090,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../eigenmode/mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+      <a href="../eigenmode/convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/mesh_convergence.html#where-to-go-next" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/compare_cavities.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../eigenmode/multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -1388,6 +1144,54 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eigenmode/multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -1486,30 +1290,6 @@
   
   
     <li class="md-nav__item">
-      <a href="multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="cavity_types.html" class="md-nav__link">
         
   
@@ -1541,109 +1321,42 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="#" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
     
   </span>
   
 
       </a>
       
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary">
+              
+            
+              
+                
   
   
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
+  </span>
   
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-tune-fails" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:1. the tune fails (reference label)"><span>1.<wbr> The tune fails</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#read-the-convergence-saved-even-on-failure" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:2. read the convergence (saved even on failure) (reference label)"><span>2.<wbr> Read the convergence <wbr>(saved even on failure)</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-there-is-no-solution" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:3. why there is no solution (reference label)"><span>3.<wbr> Why there is no solution</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-root-finder-secant-vs-a-bounded-search" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:4. the root-finder: secant vs a bounded search (reference label)"><span>4.<wbr> The root-<wbr>finder:<wbr> secant vs a bounded search</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#timing-secant-vs-bounded-on-a-tune-that-does-converge" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:5. timing: secant vs bounded on a tune that *does* converge (reference label)"><span>5.<wbr> Timing:<wbr> secant vs bounded on a tune that does converge</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reading-it" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:reading it (reference label)"><span>Reading it</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
+
+      </a>
     </li>
   
 
@@ -1663,6 +1376,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2325,12 +2062,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../custom_geometry/index.html" class="md-nav__link ">
+            <a href="../beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2346,6 +2083,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2423,7 +2334,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2440,14 +2351,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2729,74 +2640,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-tune-fails" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:1. the tune fails (reference label)"><span>1.<wbr> The tune fails</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#read-the-convergence-saved-even-on-failure" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:2. read the convergence (saved even on failure) (reference label)"><span>2.<wbr> Read the convergence <wbr>(saved even on failure)</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-there-is-no-solution" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:3. why there is no solution (reference label)"><span>3.<wbr> Why there is no solution</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-root-finder-secant-vs-a-bounded-search" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:4. the root-finder: secant vs a bounded search (reference label)"><span>4.<wbr> The root-<wbr>finder:<wbr> secant vs a bounded search</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#timing-secant-vs-bounded-on-a-tune-that-does-converge" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:5. timing: secant vs bounded on a tune that *does* converge (reference label)"><span>5.<wbr> Timing:<wbr> secant vs bounded on a tune that does converge</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reading-it" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="examples/tuning/unreachable_target:reading it (reference label)"><span>Reading it</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2811,13 +2654,20 @@
                   
 
 
-<h1 id="when-a-tune-has-no-solution-read-the-convergence">When a tune has no solution: read the convergence<a class="headerlink" href="#when-a-tune-has-no-solution-read-the-convergence" title="Link to this heading">¶</a></h1>
-<p>Not every target frequency is reachable. If a cell cannot resonate at the requested
-frequency by moving its tune variable, the tune <strong>fails</strong> — and the right thing to do is
-<strong>look at the convergence plot</strong>, which is now saved even when the tune fails.</p>
-<p>This example uses a 2-cell built from the C3795 dimensions with the iris widened to
-80 mm, tuned to the <strong>801.58 MHz</strong> design frequency. The end cell cannot reach it by
-varying its length, so the tune fails; the convergence makes the reason plain.</p>
+<h1 id="when-a-tune-does-not-reach-its-target-read-the-convergence">When a tune does not reach its target: read the convergence<a class="headerlink" href="#when-a-tune-does-not-reach-its-target-read-the-convergence" title="Link to this heading">¶</a></h1>
+<p>A tune can fail for two quite different reasons, and telling them apart is the whole job:</p>
+<ul class="simple">
+<li><p>the target is genuinely out of reach for that variable, or</p></li>
+<li><p>a solution exists but the search did not find it.</p></li>
+</ul>
+<p>They look identical from the outside — <code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> either way — and they need
+opposite responses. The first is a design problem; the second is a starting-point problem.
+The tuner gives you what you need to tell them apart: it reports the frequency range it
+actually sampled, and it writes the convergence history to disk <em>even on failure</em>.</p>
+<p>This example takes a C3795 end cell with its iris widened to 80 mm and asks it to resonate
+at the 801.58 MHz design frequency by varying the cell half-length <code class="docutils literal notranslate"><span class="pre">L</span></code>. The tune fails —
+and the reason turns out to be the second one, which the convergence and a short sweep make
+plain.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -2825,51 +2675,66 @@ varying its length, so the tune fails; the convergence makes the reason plain.</
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">root_scalar</span><span class="p">,</span> <span class="n">minimize_scalar</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Study</span><span class="p">,</span> <span class="n">EllipticalCavity</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.printing</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_verbose</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cavsim2d.utils.style</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_style</span><span class="p">,</span> <span class="n">WARM</span>
 
 <span class="n">set_verbose</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">apply_style</span><span class="p">()</span>
 
 <span class="n">F</span> <span class="o">=</span> <span class="mf">801.58</span>                                                   <span class="c1"># design frequency [MHz]</span>
-<span class="c1"># C3795 dimensions: A, B, a, b, Ri, L, Req  [mm]; iris widened to Ri = 80 everywhere</span>
-<span class="n">MID</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.22</span><span class="p">,</span> <span class="mf">66.13</span><span class="p">,</span> <span class="mf">30.22</span><span class="p">,</span> <span class="mf">23.11</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">,</span> <span class="mf">171.20</span><span class="p">]</span>
+<span class="c1"># C3795 end-cell dimensions: A, B, a, b, Ri, L, Req [mm], iris widened to Ri = 80</span>
 <span class="n">END</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.58</span><span class="p">,</span> <span class="mf">57.54</span><span class="p">,</span> <span class="mf">17.21</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mf">93.795</span><span class="p">,</span> <span class="mf">171.20</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_L</span><span class="p">(</span><span class="n">L0</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'L'</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="s1">'end-cell'</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''Tune the end-cell model to F, starting from half-length L0.'''</span>
+    <span class="n">cell_params</span> <span class="o">=</span> <span class="n">END</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">L0</span><span class="p">),</span> <span class="n">END</span><span class="p">[</span><span class="mi">6</span><span class="p">]]</span>
+    <span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'c3795_ri80'</span><span class="p">))</span>
+    <span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cell_params</span><span class="p">,</span> <span class="n">cell_params</span><span class="p">,</span> <span class="n">cell_params</span><span class="p">,</span>
+                                       <span class="n">beampipe</span><span class="o">=</span><span class="s1">'left'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'C3795'</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'C3795'</span><span class="p">])</span>
+    <span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="n">F</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'tol'</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+                    <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="n">cell</span><span class="p">:</span> <span class="n">var</span><span class="p">},</span>
+                    <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                                         <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">}})</span>
+    <span class="k">return</span> <span class="n">study</span><span class="o">.</span><span class="n">cavities_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <h2 id="the-tune-fails">1. The tune fails<a class="headerlink" href="#the-tune-fails" title="Link to this heading">¶</a></h2>
-<p>Tune each cell to <code class="docutils literal notranslate"><span class="pre">f</span></code> — <code class="docutils literal notranslate"><span class="pre">Req</span></code> for the mid cell, <code class="docutils literal notranslate"><span class="pre">L</span></code> for the end cell. The end-cell stage
-cannot reach the target, so <code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<p>Started from the nominal half-length, the search does not get there. <code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code> comes back
+<code class="docutils literal notranslate"><span class="pre">None</span></code>, and the message reports the range of frequencies it managed to sample.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s1">'c3795_ri80'</span><span class="p">))</span>
-<span class="n">study</span><span class="o">.</span><span class="n">add_cavity</span><span class="p">([</span><span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">MID</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'both'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'C3795'</span><span class="p">)],</span> <span class="p">[</span><span class="s1">'C3795'</span><span class="p">])</span>
-<span class="n">study</span><span class="o">.</span><span class="n">run_tune</span><span class="p">({</span><span class="s1">'freqs'</span><span class="p">:</span> <span class="n">F</span><span class="p">,</span> <span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'tol'</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
-                <span class="s1">'cell_type'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'mid-cell'</span><span class="p">:</span> <span class="s1">'Req'</span><span class="p">,</span> <span class="s1">'end-cell'</span><span class="p">:</span> <span class="s1">'L'</span><span class="p">},</span>
-                <span class="s1">'eigenmode_config'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'processes'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'boundary_conditions'</span><span class="p">:</span> <span class="s1">'mm'</span><span class="p">}})</span>
-<span class="n">cav</span> <span class="o">=</span> <span class="n">study</span><span class="o">.</span><span class="n">cavities_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'</span><span class="se">\n</span><span class="s1">tuned?  cav.tuned is'</span><span class="p">,</span> <span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span> <span class="o">=</span> <span class="n">tune_L</span><span class="p">(</span><span class="n">END</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'tuned?  cav.tuned is'</span><span class="p">,</span> <span class="n">cav</span><span class="o">.</span><span class="n">tuned</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code><span class=" -Color -Color-Red">ERROR:: Tune did not reach target 801.58 MHz. Best |diff| = 3.929 MHz at L_el=95.53915654563991. Achievable freq range (sampled): [789.620, 797.651] MHz. Target may be unreachable by varying L_el alone — consider adjusting other geometry parameters (e.g., Req).</span>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code><span class=" -Color -Color-Red">ERROR:: Tune aborted: Geometry degenerated 3 consecutive times at L_el~=1.85e+15. Target frequency may be unreachable.</span>
+<span class=" -Color -Color-Red">ERROR:: Tune did not reach target 801.58 MHz. Best |diff| = 12.390 MHz at L_el=93.795. Achievable freq range (sampled): [813.970, 815.879] MHz. Target may be unreachable by varying L_el alone — consider adjusting other geometry parameters (e.g., Req).</span>
 <span class=" -Color -Color-Red">ERROR:: Done Tuning Cavity C3795 [end-cell: L_el]: Failed</span>
 <span class=" -Color -Color-Red">ERROR:: Tune stage produced no result for C3795: cell_type=end-cell var=L</span>
 <span class=" -Color -Color-Red">ERROR:: Tune results not found. Please tune the cavity</span>
-
 tuned?  cav.tuned is None
+</code></pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\anaconda3\envs\cavsim2d\Lib\site-packages\scipy\optimize\_root_scalar.py:305: RuntimeWarning: Tolerance of -3810047084181993.5 reached.
+  r, sol = methodc(f, x0, args=args, fprime=None, fprime2=None,
 </code></pre></div>
 </div>
 </div>
 </div>
-<h2 id="read-the-convergence-saved-even-on-failure">2. Read the convergence (saved even on failure)<a class="headerlink" href="#read-the-convergence-saved-even-on-failure" title="Link to this heading">¶</a></h2>
-<p>The convergence history is persisted whether or not the tune succeeds, so
-<code class="docutils literal notranslate"><span class="pre">cav.tune.plot_convergence()</span></code> works here — with the <strong>target frequency</strong> drawn as a
-dashed line. The mid-cell stage reaches it; the <strong>end-cell stage plateaus below it</strong>.</p>
+<h2 id="read-the-convergence-which-is-saved-even-on-failure">2. Read the convergence, which is saved even on failure<a class="headerlink" href="#read-the-convergence-which-is-saved-even-on-failure" title="Link to this heading">¶</a></h2>
+<p>The history is persisted whether or not the tune succeeds, so <code class="docutils literal notranslate"><span class="pre">cav.tune.convergence</span></code> and
+<code class="docutils literal notranslate"><span class="pre">cav.tune.plot_convergence()</span></code> work here. The target is drawn as a dashed line. The
+tell-tale is in the <code class="docutils literal notranslate"><span class="pre">L</span></code> panel: the half-length does not settle anywhere near the cavity’s
+own scale — it runs away entirely, while the frequency it reaches barely moves.</p>
+<p>That combination — a variable diverging while the objective sits still — is the signature
+of a search that has lost the root, not of a target that cannot be met.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">plot_convergence</span><span class="p">()</span>
@@ -2877,207 +2742,159 @@ dashed line. The mid-cell stage reaches it; the <strong>end-cell stage plateaus 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/13bcfd89e0a1dc3ec8113f46e19906f3629f122580044fb4b7a6b0a2eebe5faf.png" src="../../_images/13bcfd89e0a1dc3ec8113f46e19906f3629f122580044fb4b7a6b0a2eebe5faf.png" />
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 600x900 with 3 Axes&gt;,
- array([&lt;Axes: xlabel='Iteration', ylabel='Req_m'&gt;,
-        &lt;Axes: xlabel='Iteration', ylabel='freq [MHz]'&gt;,
-        &lt;Axes: xlabel='Iteration', ylabel='L_el'&gt;], dtype=object))
+<img alt="../../_images/80bf09cda6e234c5ee5005d0c7b45110cf0eab69ecdfabac5234e439120f4a4d.png" src="../../_images/80bf09cda6e234c5ee5005d0c7b45110cf0eab69ecdfabac5234e439120f4a4d.png" />
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>(&lt;Figure size 600x600 with 2 Axes&gt;,
+ array([&lt;Axes: xlabel='Iteration', ylabel='L_el'&gt;,
+        &lt;Axes: xlabel='Iteration', ylabel='freq [MHz]'&gt;], dtype=object))
 </code></pre></div>
 </div>
 </div>
 </div>
-<h2 id="why-there-is-no-solution">3. Why there is no solution<a class="headerlink" href="#why-there-is-no-solution" title="Link to this heading">¶</a></h2>
-<p>The tuner tunes the end cell in a <strong>reduced model</strong> (end cell + beam pipe). Map its
-accelerating frequency against the end-cell length <code class="docutils literal notranslate"><span class="pre">L</span></code>: it rises but <strong>asymptotes below
-the target</strong>, so no <code class="docutils literal notranslate"><span class="pre">L</span></code> makes it resonate at <code class="docutils literal notranslate"><span class="pre">f</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">conv</span> <span class="o">=</span> <span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">convergence</span>
-<span class="n">req_star</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">conv</span><span class="p">[(</span><span class="n">conv</span><span class="p">[</span><span class="s1">'stage'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'mid-cell:Req_m'</span><span class="p">)</span>
-                      <span class="o">&amp;</span> <span class="p">(</span><span class="n">conv</span><span class="p">[</span><span class="s1">'parameter'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'Req_m'</span><span class="p">)][</span><span class="s1">'value'</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">end_freq</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">'''Accelerating frequency of the reduced end-cell model (1 cell + beam pipe).'''</span>
-    <span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.58</span><span class="p">,</span> <span class="mf">57.54</span><span class="p">,</span> <span class="mf">17.21</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="n">req_star</span><span class="p">]</span>
+<span class="n">L_hist</span> <span class="o">=</span> <span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">[</span><span class="s1">'parameter'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'L_el'</span><span class="p">][</span><span class="s1">'value'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">f_hist</span> <span class="o">=</span> <span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">[</span><span class="s1">'parameter'</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'freq [MHz]'</span><span class="p">][</span><span class="s1">'value'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'iterations       :'</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">f_hist</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'L range visited  : </span><span class="si">%.3g</span><span class="s1">  ...  </span><span class="si">%.3g</span><span class="s1"> mm'</span> <span class="o">%</span> <span class="p">(</span><span class="n">L_hist</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">L_hist</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'freq sampled     : </span><span class="si">%.3f</span><span class="s1"> ... </span><span class="si">%.3f</span><span class="s1"> MHz   (target </span><span class="si">%.2f</span><span class="s1">)'</span>
+      <span class="o">%</span> <span class="p">(</span><span class="n">f_hist</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">f_hist</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">F</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>iterations       : 8
+L range visited  : -5.46e+13  ...  3.76e+15 mm
+freq sampled     : 813.970 ... 815.879 MHz   (target 801.58)
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="why-the-response-is-not-monotonic">3. Why: the response is not monotonic<a class="headerlink" href="#why-the-response-is-not-monotonic" title="Link to this heading">¶</a></h2>
+<p>Sweep the cell’s accelerating frequency against its half-length directly. The frequency
+does not fall steadily with <code class="docutils literal notranslate"><span class="pre">L</span></code> as one might assume — it <em>rises</em> to a maximum near
+<code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">120</span></code> mm and only then falls, very slowly.</p>
+<p>That shape is what defeats the search. From the nominal start, the frequency has to come
+down by about 12 MHz to reach the target. Locally, increasing <code class="docutils literal notranslate"><span class="pre">L</span></code> increases the frequency,
+so the secant extrapolates in the other direction, towards larger <code class="docutils literal notranslate"><span class="pre">L</span></code> — where the curve
+turns over and approaches the target so gradually that the extrapolation runs off to
+absurd lengths. The root is real, but it lies on the <em>short</em> side of the start point,
+just above <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">80</span></code> mm, and an unbracketed search that steps the wrong way once never comes
+back.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cell_freq</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">'''Accelerating frequency of the end-cell model at half-length L.'''</span>
+    <span class="n">cell</span> <span class="o">=</span> <span class="n">END</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="n">END</span><span class="p">[</span><span class="mi">6</span><span class="p">]]</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'left'</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">profile</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">profile</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>                      <span class="c1"># degenerate geometry</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
     <span class="n">c</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">())</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">c</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mesh_config</span><span class="o">=</span><span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span> <span class="n">n_modes</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mesh_config</span><span class="o">=</span><span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span> <span class="n">n_modes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                        <span class="n">boundary_conditions</span><span class="o">=</span><span class="s1">'mm'</span><span class="p">)</span>
         <span class="n">d</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">'m == 0'</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()][</span><span class="s1">'freq [MHz]'</span><span class="p">])</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-<span class="n">Ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">76</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-<span class="n">fs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">end_freq</span><span class="p">(</span><span class="n">L</span><span class="p">)</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">Ls</span><span class="p">])</span>
+
+<span class="n">Ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">78</span><span class="p">,</span> <span class="mi">170</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+<span class="n">fs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">cell_freq</span><span class="p">(</span><span class="n">L</span><span class="p">)</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">Ls</span><span class="p">])</span>
+
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Ls</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'reduced end-cell frequency'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Ls</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">WARM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">'end-cell frequency'</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'k'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'target </span><span class="si">%.2f</span><span class="s1"> MHz'</span> <span class="o">%</span> <span class="n">F</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'end-cell length L [mm]'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'frequency [MHz]'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'The end cell cannot reach the target — no root exists'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'reachable end-cell frequency: [</span><span class="si">%.1f</span><span class="s1">, </span><span class="si">%.1f</span><span class="s1">] MHz  vs target </span><span class="si">%.2f</span><span class="s1"> MHz'</span>
-      <span class="o">%</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">fs</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">fs</span><span class="p">),</span> <span class="n">F</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">END</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">ls</span><span class="o">=</span><span class="s1">':'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'0.5'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'start L = </span><span class="si">%.2f</span><span class="s1"> mm'</span> <span class="o">%</span> <span class="n">END</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'cell half-length L [mm]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'frequency [MHz]'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Non-monotonic: the root is on the short side of the start point'</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">'sampled range: [</span><span class="si">%.2f</span><span class="s1">, </span><span class="si">%.2f</span><span class="s1">] MHz   target </span><span class="si">%.2f</span><span class="s1">   maximum near L = </span><span class="si">%.0f</span><span class="s1"> mm'</span>
+      <span class="o">%</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">fs</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">fs</span><span class="p">),</span> <span class="n">F</span><span class="p">,</span> <span class="n">Ls</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmax</span><span class="p">(</span><span class="n">fs</span><span class="p">)]))</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/51e1492279f20d40209bc9b9b5f4bd29f6cbd40798f2a4c52f473197eeee4ea2.png" src="../../_images/51e1492279f20d40209bc9b9b5f4bd29f6cbd40798f2a4c52f473197eeee4ea2.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>reachable end-cell frequency: [765.2, 799.2] MHz  vs target 801.58 MHz
+<img alt="../../_images/1c3ab7bec92b8459b0fc53babbc273ae6fd5708ce21cf37016976c90298e614e.png" src="../../_images/1c3ab7bec92b8459b0fc53babbc273ae6fd5708ce21cf37016976c90298e614e.png" />
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>sampled range: [794.99, 821.19] MHz   target 801.58   maximum near L = 120 mm
 </code></pre></div>
 </div>
 </div>
 </div>
-<h2 id="the-root-finder-secant-vs-a-bounded-search">4. The root-finder: secant vs a bounded search<a class="headerlink" href="#the-root-finder-secant-vs-a-bounded-search" title="Link to this heading">¶</a></h2>
-<p>cavsim2d tunes with a <strong>secant</strong> root-finder, which is <em>unbracketed</em> — with no root it can
-extrapolate to <strong>non-physical</strong> lengths (the convergence in §2 shows <code class="docutils literal notranslate"><span class="pre">L_el</span></code> diving to a
-large negative value). A <strong>bounded</strong> search instead stays inside a physical <code class="docutils literal notranslate"><span class="pre">L</span></code> range.</p>
-<p><strong>What sets the bounds?</strong> The <em>geometry</em>: below <code class="docutils literal notranslate"><span class="pre">L_min</span></code> the end-cell profile degenerates
-(the iris and equator ellipses overlap, so <code class="docutils literal notranslate"><span class="pre">profile()</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code>); <code class="docutils literal notranslate"><span class="pre">L_max</span></code> is a
-generous practical limit. We find <code class="docutils literal notranslate"><span class="pre">L_min</span></code> by walking <code class="docutils literal notranslate"><span class="pre">L</span></code> down until the profile breaks.</p>
+<h2 id="two-ways-to-fix-it">4. Two ways to fix it<a class="headerlink" href="#two-ways-to-fix-it" title="Link to this heading">¶</a></h2>
+<h3 id="start-on-the-right-side-of-the-turning-point">Start on the right side of the turning point<a class="headerlink" href="#start-on-the-right-side-of-the-turning-point" title="Link to this heading">¶</a></h3>
+<p>The sweep puts the root just above <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">80</span></code> mm. Start the same tune there and it converges at
+once — same cavity, same variable, same target.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">valid</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
-    <span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.58</span><span class="p">,</span> <span class="mf">57.54</span><span class="p">,</span> <span class="mf">17.21</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">),</span> <span class="n">req_star</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'left'</span><span class="p">)</span><span class="o">.</span><span class="n">profile</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-
-<span class="n">L_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">L</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span> <span class="k">if</span> <span class="n">valid</span><span class="p">(</span><span class="n">L</span><span class="p">))</span>     <span class="c1"># degenerate below this</span>
-<span class="n">L_max</span> <span class="o">=</span> <span class="mf">130.0</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'physical L range: [</span><span class="si">%.1f</span><span class="s1">, </span><span class="si">%.1f</span><span class="s1">] mm  (profile degenerates below </span><span class="si">%.1f</span><span class="s1"> mm)'</span> <span class="o">%</span> <span class="p">(</span><span class="n">L_min</span><span class="p">,</span> <span class="n">L_max</span><span class="p">,</span> <span class="n">L_min</span><span class="p">))</span>
-
-<span class="c1"># current algorithm: the secant (records every L it evaluates)</span>
-<span class="n">secant_Ls</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">g</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
-    <span class="n">secant_Ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">))</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="n">end_freq</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">F</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">else</span> <span class="mf">50.0</span>    <span class="c1"># penalty on non-physical L, no crash</span>
-<span class="k">try</span><span class="p">:</span>
-    <span class="n">root_scalar</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'secant'</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="mf">93.795</span><span class="p">,</span> <span class="n">x1</span><span class="o">=</span><span class="mf">93.795</span> <span class="o">*</span> <span class="mf">1.05</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-    <span class="k">pass</span>
-
-<span class="c1"># alternative: a bounded search minimising |freq - target| over the physical range</span>
-<span class="n">bounded_Ls</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">h</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
-    <span class="n">bounded_Ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">L</span><span class="p">))</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="n">end_freq</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">F</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">else</span> <span class="mf">50.0</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">minimize_scalar</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="n">L_min</span><span class="p">,</span> <span class="n">L_max</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="s1">'bounded'</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s1">'secant : </span><span class="si">%2d</span><span class="s1"> evaluations, L in [</span><span class="si">%7.1f</span><span class="s1">, </span><span class="si">%6.1f</span><span class="s1">] mm  (wanders out of range)'</span>
-      <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">secant_Ls</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">secant_Ls</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">secant_Ls</span><span class="p">)))</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'bounded: </span><span class="si">%2d</span><span class="s1"> evaluations, L in [</span><span class="si">%7.1f</span><span class="s1">, </span><span class="si">%6.1f</span><span class="s1">] mm  -&gt; best f=</span><span class="si">%.2f</span><span class="s1"> (|diff|=</span><span class="si">%.2f</span><span class="s1"> MHz)'</span>
-      <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bounded_Ls</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">bounded_Ls</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">bounded_Ls</span><span class="p">),</span> <span class="n">end_freq</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="n">res</span><span class="o">.</span><span class="n">fun</span><span class="p">))</span>
-
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">4.2</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">secant_Ls</span><span class="p">)),</span> <span class="n">secant_Ls</span><span class="p">,</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'secant (</span><span class="si">%d</span><span class="s1"> evals)'</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">secant_Ls</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bounded_Ls</span><span class="p">)),</span> <span class="n">bounded_Ls</span><span class="p">,</span> <span class="s1">'s-'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'bounded (</span><span class="si">%d</span><span class="s1"> evals)'</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounded_Ls</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axhspan</span><span class="p">(</span><span class="n">L_min</span><span class="p">,</span> <span class="n">L_max</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'green'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.12</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'physical L range'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'0.6'</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'evaluation #'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'end-cell length L [mm]'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Secant vs bounded search: how L evolves'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_ok</span> <span class="o">=</span> <span class="n">tune_L</span><span class="p">(</span><span class="mf">84.0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'tuned?'</span><span class="p">,</span> <span class="s1">'None'</span> <span class="k">if</span> <span class="n">cav_ok</span><span class="o">.</span><span class="n">tuned</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">'yes'</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">cav_ok</span><span class="o">.</span><span class="n">tuned</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'L      : </span><span class="si">%.3f</span><span class="s1"> mm (started from 84.0)'</span> <span class="o">%</span> <span class="n">cav_ok</span><span class="o">.</span><span class="n">tuned</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">'L_el'</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'freq   : </span><span class="si">%.4f</span><span class="s1"> MHz  (target </span><span class="si">%.2f</span><span class="s1">)'</span>
+          <span class="o">%</span> <span class="p">(</span><span class="n">cav_ok</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'end-cell'</span><span class="p">][</span><span class="s1">'FREQ'</span><span class="p">],</span> <span class="n">F</span><span class="p">))</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>physical L range: [74.0, 130.0] mm  (profile degenerates below 74.0 mm)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>tuned? yes
+L      : 80.640 mm (started from 84.0)
+freq   : 801.5800 MHz  (target 801.58)
 </code></pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>secant : 17 evaluations, L in [ -645.1,  151.2] mm  (wanders out of range)
-</code></pre></div>
-</div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>bounded: 28 evaluations, L in [   95.4,  126.0] mm  -&gt; best f=799.37 (|diff|=2.21 MHz)
-</code></pre></div>
-</div>
-<img alt="../../_images/c305b45ee154a5fecf5089fa5a676f7b629e0d768b8e91af3daa3050882c241c.png" src="../../_images/c305b45ee154a5fecf5089fa5a676f7b629e0d768b8e91af3daa3050882c241c.png" />
 </div>
 </div>
-<h2 id="timing-secant-vs-bounded-on-a-tune-that-does-converge">5. Timing: secant vs bounded on a tune that <em>does</em> converge<a class="headerlink" href="#timing-secant-vs-bounded-on-a-tune-that-does-converge" title="Link to this heading">¶</a></h2>
-<p>The end-cell case had no solution. For a tune that <strong>converges</strong> — the mid cell, tuning
-<code class="docutils literal notranslate"><span class="pre">Req</span></code> to <code class="docutils literal notranslate"><span class="pre">f</span></code> — the secant’s fast (superlinear) convergence is a real advantage. Here we
-run both methods on the mid-cell periodic model and compare evaluations and wall time
-(both land on the same answer).</p>
+<h3 id="or-use-a-variable-whose-response-is-monotonic">Or use a variable whose response is monotonic<a class="headerlink" href="#or-use-a-variable-whose-response-is-monotonic" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">L</span></code> is an awkward handle for this cell: it turns over, and it only moves the frequency by a
+couple of MHz either side of the turning point. The equator radius moves it monotonically
+and by roughly 5 MHz per millimetre, so the same target is reached from the nominal start
+with no care at all.</p>
+<p>Note which key that is. <code class="docutils literal notranslate"><span class="pre">Req</span></code> is the <em>shared</em> equator radius — one value for the whole
+cavity rather than a per-cell one — so it lives in the <code class="docutils literal notranslate"><span class="pre">'mid-cell'</span></code> slot even on a single
+cell. Asking for it as <code class="docutils literal notranslate"><span class="pre">{'end-cell':</span> <span class="pre">'Req'}</span></code> addresses a value the geometry ignores, and
+the tune then reports that the variable did not move the frequency at all.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">mid_freq</span><span class="p">(</span><span class="n">Req</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">'''Accelerating frequency of the periodic mid-cell model.'''</span>
-    <span class="n">mid</span> <span class="o">=</span> <span class="p">[</span><span class="mf">62.22</span><span class="p">,</span> <span class="mf">66.13</span><span class="p">,</span> <span class="mf">30.22</span><span class="p">,</span> <span class="mf">23.11</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mf">93.5</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">Req</span><span class="p">)]</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">EllipticalCavity</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">beampipe</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">set_workspace</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">())</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">mesh_config</span><span class="o">=</span><span class="p">{</span><span class="s1">'h'</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">'p'</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span> <span class="n">n_modes</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">qois_df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">'m == 0'</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="s1">'R/Q [Ohm]'</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()][</span><span class="s1">'freq [MHz]'</span><span class="p">])</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">_Reached</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-<span class="c1"># secant with a frequency early-stop (how the tuner now converges)</span>
-<span class="n">sec</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_g</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
-    <span class="n">sec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">R</span><span class="p">));</span> <span class="n">f</span> <span class="o">=</span> <span class="n">mid_freq</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">F</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">_Reached</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">f</span> <span class="o">-</span> <span class="n">F</span>
-<span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="k">try</span><span class="p">:</span>
-    <span class="n">root_scalar</span><span class="p">(</span><span class="n">_g</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'secant'</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="mf">171.2</span><span class="p">,</span> <span class="n">x1</span><span class="o">=</span><span class="mf">171.2</span> <span class="o">*</span> <span class="mf">1.05</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-    <span class="k">pass</span>
-<span class="n">t_sec</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-
-<span class="c1"># bounded search over a physical Req range</span>
-<span class="n">bnd</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_h</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
-    <span class="n">bnd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">R</span><span class="p">));</span> <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">mid_freq</span><span class="p">(</span><span class="n">R</span><span class="p">)</span> <span class="o">-</span> <span class="n">F</span><span class="p">)</span>
-<span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="n">minimize_scalar</span><span class="p">(</span><span class="n">_h</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mi">168</span><span class="p">,</span> <span class="mi">178</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="s1">'bounded'</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'xatol'</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">})</span>
-<span class="n">t_bnd</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s1">'secant : </span><span class="si">%2d</span><span class="s1"> evaluations, </span><span class="si">%5.1f</span><span class="s1"> s  -&gt; Req = </span><span class="si">%.3f</span><span class="s1"> mm  (f = </span><span class="si">%.4f</span><span class="s1">)'</span>
-      <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sec</span><span class="p">),</span> <span class="n">t_sec</span><span class="p">,</span> <span class="n">sec</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">mid_freq</span><span class="p">(</span><span class="n">sec</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])))</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'bounded: </span><span class="si">%2d</span><span class="s1"> evaluations, </span><span class="si">%5.1f</span><span class="s1"> s  -&gt; Req = </span><span class="si">%.3f</span><span class="s1"> mm  (f = </span><span class="si">%.4f</span><span class="s1">)'</span>
-      <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bnd</span><span class="p">),</span> <span class="n">t_bnd</span><span class="p">,</span> <span class="n">bnd</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">mid_freq</span><span class="p">(</span><span class="n">bnd</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])))</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">'secant is </span><span class="si">%.1f</span><span class="s1">x faster on this converging tune'</span> <span class="o">%</span> <span class="p">(</span><span class="n">t_bnd</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">t_sec</span><span class="p">,</span> <span class="mf">1e-9</span><span class="p">)))</span>
-
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">8.5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sec</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">sec</span><span class="p">,</span> <span class="s1">'o-'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'secant (</span><span class="si">%d</span><span class="s1"> evals, </span><span class="si">%.0f</span><span class="s1"> s)'</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sec</span><span class="p">),</span> <span class="n">t_sec</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bnd</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">bnd</span><span class="p">,</span> <span class="s1">'s-'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'bounded (</span><span class="si">%d</span><span class="s1"> evals, </span><span class="si">%.0f</span><span class="s1"> s)'</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bnd</span><span class="p">),</span> <span class="n">t_bnd</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'evaluation #'</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'Req [mm]'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Converging mid-cell tune: secant vs bounded'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">cav_req</span> <span class="o">=</span> <span class="n">tune_L</span><span class="p">(</span><span class="n">END</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">var</span><span class="o">=</span><span class="s1">'Req'</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="s1">'mid-cell'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'tuned?'</span><span class="p">,</span> <span class="s1">'None'</span> <span class="k">if</span> <span class="n">cav_req</span><span class="o">.</span><span class="n">tuned</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">'yes'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'Req    : </span><span class="si">%.3f</span><span class="s1"> mm (was </span><span class="si">%.3f</span><span class="s1">)'</span> <span class="o">%</span> <span class="p">(</span><span class="n">cav_req</span><span class="o">.</span><span class="n">tuned</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">'Req_m'</span><span class="p">],</span> <span class="n">END</span><span class="p">[</span><span class="mi">6</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'freq   : </span><span class="si">%.4f</span><span class="s1"> MHz  (target </span><span class="si">%.2f</span><span class="s1">)'</span>
+      <span class="o">%</span> <span class="p">(</span><span class="n">cav_req</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">qois</span><span class="p">[</span><span class="s1">'mid-cell'</span><span class="p">][</span><span class="s1">'FREQ'</span><span class="p">],</span> <span class="n">F</span><span class="p">))</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>secant :  5 evaluations,  12.5 s  -&gt; Req = 174.631 mm  (f = 801.5800)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>tuned? yes
+Req    : 175.888 mm (was 171.200)
+freq   : 801.5802 MHz  (target 801.58)
 </code></pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>bounded: 18 evaluations,  40.7 s  -&gt; Req = 174.631 mm  (f = 801.5801)
-secant is 3.3x faster on this converging tune
-</code></pre></div>
-</div>
-<img alt="../../_images/6d32dd6b3d891e2501eb9436fa6332464c1c1bc3809b41b39fbaca13e7e73311.png" src="../../_images/6d32dd6b3d891e2501eb9436fa6332464c1c1bc3809b41b39fbaca13e7e73311.png" />
 </div>
 </div>
 <h2 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>A tune <strong>fails when the target is unreachable</strong> — here the end cell’s reduced model
-asymptotes below <code class="docutils literal notranslate"><span class="pre">f</span></code>, so no length works.</p></li>
-<li><p><strong>The convergence is saved even on failure</strong>, so <code class="docutils literal notranslate"><span class="pre">cav.tune.convergence</span></code> /
-<code class="docutils literal notranslate"><span class="pre">cav.tune.plot_convergence()</span></code> (with the target line) let you <em>see</em> it: the end-cell
-stage stuck below the target is the signature of “no solution”.</p></li>
-<li><p><strong>Secant vs bounded is a trade-off.</strong> On a <em>converging</em> tune (the mid cell, §5) the
-secant is much faster — ~4× fewer evaluations and wall time — thanks to its superlinear
-convergence. But it is unbracketed, so on a <em>hard</em> case (the end cell, §4) it wanders to
-non-physical lengths. A bounded search — bounds set by where the geometry degenerates —
-is slower but stays physical and reports the best reachable frequency instead of
-diverging. Secant for the common case; a bounded fallback for the hard ones.</p></li>
+<li><p>A tune that does not reach its target leaves <code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code> as <code class="docutils literal notranslate"><span class="pre">None</span></code> rather than handing
+back a geometry that misses. Read the message: it names the frequency range the search
+actually sampled.</p></li>
+<li><p>Compare that range with your target. If the target lies inside it, a root exists and the
+search is the problem — start it closer, or bracket it. If the target lies well outside,
+the variable genuinely cannot get there and the design has to change.</p></li>
+<li><p>A range of essentially zero width is a third case: the variable is not reaching the
+geometry at all. The usual cause is a shared parameter addressed through a per-cell slot.</p></li>
+<li><p>The convergence is written on failure as well as on success, so
+<code class="docutils literal notranslate"><span class="pre">cav.tune.convergence</span></code> and <code class="docutils literal notranslate"><span class="pre">cav.tune.plot_convergence()</span></code> show what the search did. A tune
+variable running away while the objective barely moves means the search lost the root.</p></li>
+<li><p>Sweep the variable before trusting a tune that has misbehaved. A monotonic response is
+what an unbracketed root-finder assumes; this one turns over, and that is the whole
+explanation.</p></li>
 </ul>
+<p>See <a class="reference internal" href="tune_to_frequency.html"><span class="std std-doc">tuning to a frequency</span></a> for the straightforward case, and
+<a class="reference internal" href="qoi_targets.html"><span class="std std-doc">tuning to a figure of merit</span></a> for what changes once there is more than
+one target — including a staged tune that reports a genuine no-solution.</p>
 
 
 

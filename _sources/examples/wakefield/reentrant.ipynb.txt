@@ -7,13 +7,13 @@
    "source": [
     "# Wakefield: a reentrant cavity (with a field-line animation)\n",
     "\n",
-    "A **reentrant** cell — its equator wall overhanging the iris neck — trades a higher gradient for a stronger wake. We run the ABCI wakefield on the reentrant TESLA cell of\n",
+    "A reentrant cell — its equator wall overhanging the iris neck — trades a higher gradient for a stronger wake. We run the ABCI wakefield on the reentrant TESLA cell of\n",
     "\n",
-    "> V. Shemelin, H. Padamsee, R. L. Geng, *Optimal cells for TESLA accelerating structure*, Nucl. Instrum. Methods A **496** (2003) 1-7,\n",
+    "> V. Shemelin, H. Padamsee, R. L. Geng, *Optimal cells for TESLA accelerating structure*, Nucl. Instrum. Methods A 496 (2003) 1-7,\n",
     "\n",
-    "their most reentrant cell (Table 2, `delta_e = +50%`, aperture `Ra = 35 mm`), and also **animate the electric field lines** as the bunch passes.\n",
+    "their most reentrant cell (Table 2, `delta_e = +50%`, aperture `Ra = 35 mm`), and also animate the electric field lines as the bunch passes.\n",
     "\n",
-    "> Needs the bundled `ABCI.exe` (Windows) / `abci` on PATH; ABCI needs a beam pipe at **both** ends."
+    "> Needs the bundled `ABCI.exe` (Windows) / `abci` on PATH; ABCI needs a beam pipe at both ends."
    ]
   },
   {

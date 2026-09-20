@@ -1,0 +1,439 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "8fcb389c",
+   "metadata": {},
+   "source": [
+    "# Assembling a beam line\n",
+    "\n",
+    "Real hardware is a sequence of devices: a beam pipe, a bellows, a cavity,\n",
+    "another bellows, an absorber. `cavsim2d` lets you concatenate them with `+`.\n",
+    "The result is an `Assembly`, and an `Assembly` is itself a cavity — it meshes,\n",
+    "runs eigenmode and wakefield analyses, tunes and optimises exactly like a\n",
+    "single geometry.\n",
+    "\n",
+    "We will\n",
+    "\n",
+    "1. build a line and look at it,\n",
+    "2. see how its parameters are named,\n",
+    "3. check that concatenating costs nothing,\n",
+    "4. set the boundary condition at the two ends,\n",
+    "5. tune one element while it sits in the line.\n",
+    "\n",
+    "This notebook is live: every figure below is produced by running `cavsim2d`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "dc1797d8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import tempfile\n",
+    "\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from scipy.special import jn_zeros\n",
+    "\n",
+    "from cavsim2d import Assembly, BLA, Beampipe, Bellows, EllipticalCavity\n",
+    "from cavsim2d.utils.style import apply_style, WARM\n",
+    "\n",
+    "apply_style()\n",
+    "workspace = tempfile.mkdtemp()\n",
+    "\n",
+    "# A TESLA-like mid cell: A, B, a, b, Ri, L, Req  (mm)\n",
+    "MIDCELL = [62.22, 66.13, 30.22, 23.11, 80.0, 93.5, 171.20]\n",
+    "RI = MIDCELL[4]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b4783169",
+   "metadata": {},
+   "source": [
+    "## 1. Building a line\n",
+    "\n",
+    "Add the devices together in beam order. Each element keeps whatever beam pipe\n",
+    "its own parameterisation carries, so the cavity here is built with\n",
+    "`beampipe='none'` and the drift is supplied by explicit `Beampipe` elements —\n",
+    "what you write is what you get."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "97f544c3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def bellows():\n",
+    "    return Bellows(Ri=RI, A=15.0, L_p=10.0, N_conv=6, R_root=2.0, R_crest=2.0)\n",
+    "\n",
+    "line = (Beampipe(R=RI, L=187.0, name='bp_in')\n",
+    "        + bellows()\n",
+    "        + EllipticalCavity(1, MIDCELL, beampipe='none', name='cav')\n",
+    "        + bellows()\n",
+    "        + BLA(R=RI, L=150.0, absorber_length=80.0, absorber_thickness=8.0,\n",
+    "              eps_r=10.0, tan_delta=0.3, maxh=4.0))\n",
+    "line.set_name('line')\n",
+    "\n",
+    "print(repr(line))\n",
+    "print('elements :', line.labels)\n",
+    "print(f'length   : {line.length:.1f} mm')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "11a08fbf",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ax = line.plot('geometry', mirror=True, show=False)\n",
+    "ax.legend(loc='center', fontsize=8, ncols=2)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "57250195",
+   "metadata": {},
+   "source": [
+    "The two bellows were both called `bellows`, so they were given distinct labels\n",
+    "`bellows_1` and `bellows_2`. Any element is reachable by its label."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "88a77f19",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(line.element('bellows_2').parameters)\n",
+    "print('cavity cells :', line.element('cav').n_cells)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d8455353",
+   "metadata": {},
+   "source": [
+    "## 2. Parameters are namespaced by element\n",
+    "\n",
+    "An assembly gathers its elements' parameters into one flat dictionary, keyed\n",
+    "`'<label>:<name>'`. That string is the handle everywhere else: a tune config, an\n",
+    "optimisation variable, a UQ variable."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c3d2ab03",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(f'{len(line.parameters)} parameters in total, for example:\\n')\n",
+    "for key in ('bp_in:L', 'bellows_1:A', 'bellows_1:R_crest',\n",
+    "            'cav:Req_m', 'bla:absorber_thickness'):\n",
+    "    print(f'  {key:26s} = {line.parameters[key]}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e0ad73ad",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# A bare name still means what it means to the element that owns it: on an\n",
+    "# elliptical cavity 'Req' is the same quantity in every cell.\n",
+    "print(line.expand_variable('cav:Req'))\n",
+    "\n",
+    "# Reading and writing go straight through to the element.\n",
+    "line.set_tune_value('bellows_1:A', 12.0)\n",
+    "print('bellows_1 depth now :', line.element('bellows_1').parameters['A'], 'mm')\n",
+    "line.set_tune_value('bellows_1:A', 15.0)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "88490a09",
+   "metadata": {},
+   "source": [
+    "Each element still owns its own constraints. Push a corner radius past what\n",
+    "fits and the bellows says so, naming the quantity — an optimiser searching this\n",
+    "space gets a meaningful rejection rather than a meshing failure."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "365d6333",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "line.parameters['bellows_1:R_crest'] = 3.0\n",
+    "try:\n",
+    "    line.profile()\n",
+    "except ValueError as err:\n",
+    "    print(err)\n",
+    "line.parameters['bellows_1:R_crest'] = 2.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "43f53f1b",
+   "metadata": {},
+   "source": [
+    "## 3. Concatenating costs nothing\n",
+    "\n",
+    "Joining two devices removes the aperture at each side of the junction: the\n",
+    "walls meet and the vacuum becomes one region. There is no interface plane, and\n",
+    "nothing is inserted.\n",
+    "\n",
+    "The check is direct — build a cavity with its pipes the ordinary way, build the\n",
+    "same thing by concatenation, and compare."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "847367e5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "L_bp = 2 * MIDCELL[5]\n",
+    "\n",
+    "monolithic = EllipticalCavity(1, MIDCELL, beampipe='both', name='monolithic')\n",
+    "assembled = Assembly([Beampipe(R=RI, L=L_bp, name='l'),\n",
+    "                      EllipticalCavity(1, MIDCELL, beampipe='none', name='c'),\n",
+    "                      Beampipe(R=RI, L=L_bp, name='r')], name='assembled')\n",
+    "\n",
+    "a = np.asarray(monolithic.profile().contour_points(2e-4, skip=('AXI',)))\n",
+    "b = np.asarray(assembled.profile().contour_points(2e-4, skip=('AXI',)))\n",
+    "a[:, 0] -= a[:, 0].min()\n",
+    "b[:, 0] -= b[:, 0].min()\n",
+    "print('same number of points :', a.shape == b.shape)\n",
+    "print('largest difference    :', np.abs(a - b).max(), 'm')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "da1dc618",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cfg = {'polarisation': 'monopole', 'n_modes': 3,\n",
+    "       'boundary_conditions': 'mm', 'mesh_config': {'h': 8, 'p': 2}}\n",
+    "\n",
+    "for cav in (monolithic, assembled):\n",
+    "    cav.set_workspace(os.path.join(workspace, cav.name))\n",
+    "    cav.eigenmode.run(cfg)\n",
+    "    q = cav.eigenmode.qois\n",
+    "    print(f\"{cav.name:11s} f = {q['freq [MHz]']:9.4f} MHz   \"\n",
+    "          f\"R/Q = {q['R/Q [Ohm]']:6.2f} Ohm   ff = {q['ff [%]']:6.2f} %\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "556e62f2",
+   "metadata": {},
+   "source": [
+    "Identical, as it must be. So any difference you see when you *do* add a device\n",
+    "is that device's physics, not an artefact of assembling."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "cc04f15e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "line.set_workspace(os.path.join(workspace, 'line'))\n",
+    "line.eigenmode.run(cfg)\n",
+    "q = line.eigenmode.qois\n",
+    "b = monolithic.eigenmode.qois\n",
+    "print(f\"bare cavity          f = {b['freq [MHz]']:9.4f} MHz   \"\n",
+    "      f\"R/Q = {b['R/Q [Ohm]']:6.2f} Ohm   ff = {b['ff [%]']:6.2f} %\")\n",
+    "print(f\"with bellows + BLA   f = {q['freq [MHz]']:9.4f} MHz   \"\n",
+    "      f\"R/Q = {q['R/Q [Ohm]']:6.2f} Ohm   ff = {q['ff [%]']:6.2f} %\")\n",
+    "print(f\"\\nshift: {q['freq [MHz]'] - b['freq [MHz]']:+.3f} MHz, \"\n",
+    "      f\"{q['R/Q [Ohm]'] - b['R/Q [Ohm]']:+.2f} Ohm\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "860d2d98",
+   "metadata": {},
+   "source": [
+    "## 4. The two ends\n",
+    "\n",
+    "Only the outer ends of a line are boundaries at all, and `set_ends` decides what\n",
+    "they are. It overrides whatever the end elements declared, in either direction —\n",
+    "it can open an end an element built closed.\n",
+    "\n",
+    "A two-pipe line makes this checkable: shorted at both ends it is a closed\n",
+    "cylinder, whose TM$_{010}$ frequency is known exactly."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4dd4cf2f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "R = 80.0\n",
+    "f_analytic = 299792458.0 * jn_zeros(0, 1)[0] / (2 * np.pi * R * 1e-3) * 1e-6\n",
+    "\n",
+    "for ends in ('pec', 'pmc'):\n",
+    "    # note the first element was built closed; the assembly's ends win\n",
+    "    tube = Assembly([Beampipe(R=R, L=100.0, ends='pec', name='a'),\n",
+    "                     Beampipe(R=R, L=100.0, name='b')],\n",
+    "                    ends=ends, name=f'tube_{ends}')\n",
+    "    tube.set_workspace(os.path.join(workspace, tube.name))\n",
+    "    tube.eigenmode.run({'polarisation': 'monopole', 'n_modes': 3,\n",
+    "                        'boundary_conditions': 'mm',\n",
+    "                        'mesh_config': {'h': 6, 'p': 3}})\n",
+    "    print(f\"ends = {ends} :  f = {tube.eigenmode.qois['freq [MHz]']:9.3f} MHz\")\n",
+    "\n",
+    "print(f\"\\nanalytic closed cylinder TM010 = {f_analytic:.3f} MHz\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b7f2beb1",
+   "metadata": {},
+   "source": [
+    "## 5. Tuning an element inside the line\n",
+    "\n",
+    "Tuning takes the namespaced variable name. Everything else is the ordinary tune\n",
+    "config, and the tuned line comes back as an `Assembly`.\n",
+    "\n",
+    "One practical note: ask for a frequency tolerance your mesh can actually deliver.\n",
+    "A beam line is a much larger mesh than a single cavity, and re-meshing it each\n",
+    "iteration moves the answer by ~1 kHz, so a `tol` tighter than that just spends\n",
+    "iterations chasing noise. 10 kHz (`tol=1e-2` MHz) is far finer than any tuning\n",
+    "you would trust from a 2D model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b826ccc8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "target = 800.0\n",
+    "\n",
+    "tuned_line = (Beampipe(R=RI, L=187.0, name='bp_in')\n",
+    "              + bellows()\n",
+    "              + EllipticalCavity(1, MIDCELL, beampipe='none', name='cav')\n",
+    "              + Beampipe(R=RI, L=187.0, name='bp_out'))\n",
+    "tuned_line.set_name('tuned_line')\n",
+    "tuned_line.set_workspace(os.path.join(workspace, 'tuned_line'))\n",
+    "\n",
+    "before = tuned_line.parameters['cav:Req_m']\n",
+    "tuned_line.tune.run({'freqs': target,\n",
+    "                     'cell_type': {'mid-cell': 'cav:Req'},\n",
+    "                     'tol': 1e-2,                      # MHz\n",
+    "                     'eigenmode_config': cfg})\n",
+    "\n",
+    "res = tuned_line.tune.qois['mid-cell']\n",
+    "print(f\"\\ntarget      : {target:.3f} MHz\")\n",
+    "print(f\"achieved    : {res['FREQ']:.3f} MHz\")\n",
+    "print(f\"cav:Req     : {before:.3f} -> {tuned_line.parameters['cav:Req_m']:.3f} mm\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6b2ff1c8",
+   "metadata": {},
+   "source": [
+    "## 6. The absorber\n",
+    "\n",
+    "`BLA` is a beam pipe with a lossy ring set into its wall.\n",
+    "\n",
+    "| parameter | meaning |\n",
+    "| --- | --- |\n",
+    "| `R` | bore radius — the free aperture, unchanged by the ring |\n",
+    "| `L` | overall element length |\n",
+    "| `absorber_length` | axial length of the ring |\n",
+    "| `absorber_thickness` | radial thickness, measured outward from the bore: the ring spans `R` to `R + absorber_thickness` |\n",
+    "| `z_absorber` | axial centre of the ring, from the element centre (default 0) |\n",
+    "| `eps_r`, `tan_delta` | permittivity and loss tangent of the absorber material |\n",
+    "| `maxh` | mesh size inside the ring |\n",
+    "\n",
+    "![BLA parameters](../../_static/beamline_bla_nomenclature.png)\n",
+    "\n",
+    "In an assembly the ring is reported in line coordinates and its material name is\n",
+    "prefixed with the element label, so two absorbers in one line stay distinct."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8c959292",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "bore = line.element('bla').parameters['R']\n",
+    "for d in line.dielectrics:\n",
+    "    print(f\"{d['material']:16s} z = {d['z'][0]:7.1f} .. {d['z'][1]:7.1f} mm\"\n",
+    "          f\"   r = {d['r'][0]:5.1f} .. {d['r'][1]:5.1f} mm\"\n",
+    "          f\"   eps_r = {d['eps_r']}, tan d = {d['tan_delta']}\")\n",
+    "print()\n",
+    "print(f\"bore radius {bore:.1f} mm; the ring starts at r = {d['r'][0]:.1f} mm, \"\n",
+    "      \"so the aperture is untouched.\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3daa56f6",
+   "metadata": {},
+   "source": [
+    "## What to take away\n",
+    "\n",
+    "* `a + b + c` builds an `Assembly`, and an `Assembly` behaves like any cavity.\n",
+    "* Parameters are `'<label>:<name>'`; that is the handle for tuning, optimisation\n",
+    "  and UQ, and each element keeps enforcing its own constraints.\n",
+    "* Junctions are not boundaries — an assembled cavity reproduces the monolithic\n",
+    "  one exactly.\n",
+    "* `set_ends` controls the two outer faces, and overrides the end elements.\n",
+    "* Use `chain=` instead when you want *one* cavity repeated into a module; that\n",
+    "  is a different operation and it is unchanged.\n",
+    "\n",
+    "Next: [The taper element](taper.ipynb) for matching two bores, and\n",
+    "[A multi-cavity module](multi_cavity_module.ipynb) for a nine-element line with\n",
+    "three cavities and its fundamental passband."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

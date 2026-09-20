@@ -14,14 +14,14 @@
         <link rel="prev" href="dispersion.html">
       
       
-        <link rel="next" href="compare_cavities.html">
+        <link rel="next" href="convergence_qois.html">
       
       
       <link rel="icon" href="">
     
     
       
-        <title>1. A cylinder with a known answer - cavsim2d 1.0.0 documentation</title>
+        <title>Mesh convergence: how fine is fine enough? - cavsim2d 1.0.0 documentation</title>
       
     
     
@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -100,7 +101,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              1. A cylinder with a known answer
+              Mesh convergence: how fine is fine enough?
             
           </span>
         </div>
@@ -841,126 +842,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#how-a-cavity-is-divided" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#what-welding-does" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#the-three-models" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#simplecell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../uq.html#multicell-path" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1067,54 +948,6 @@
   
   
     <li class="md-nav__item">
-      <a href="elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="open_boundary_impedance.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="pillbox.html" class="md-nav__link">
         
   
@@ -1139,12 +972,60 @@
   
   
     <li class="md-nav__item">
+      <a href="elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1199,135 +1080,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
-    
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      <a href="#run-the-convergence-sweep" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      <a href="#spectral-convergence-of-the-fundamental" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      <a href="#how-fine-is-fine-enough" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      <a href="#where-to-go-next" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1347,36 +1100,12 @@
   
   
     <li class="md-nav__item">
-      <a href="compare_cavities.html" class="md-nav__link">
+      <a href="convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -1425,6 +1154,54 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -1521,30 +1298,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../tuning/multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../tuning/cavity_types.html" class="md-nav__link">
         
   
@@ -1574,7 +1327,31 @@
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
   </span>
   
@@ -1599,6 +1376,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2261,12 +2062,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../custom_geometry/index.html" class="md-nav__link ">
+            <a href="../beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2282,6 +2083,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2359,7 +2334,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2376,14 +2351,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -2679,13 +2654,12 @@
                   
 
 
-<p>cav.study_mesh_convergence(
-h=25, p=3, p_passes=3, p_step=1,
-n_modes=4, polarisation=(‘monopole’,),
-max_refinements=6, max_ndof=80000,
-)
-df = cav.convergence_df_data
-df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].head(12)</p>
+<h1 id="mesh-convergence-how-fine-is-fine-enough">Mesh convergence: how fine is fine enough?<a class="headerlink" href="#mesh-convergence-how-fine-is-fine-enough" title="Link to this heading">¶</a></h1>
+<p>Every number the eigenmode solver reports is a discretisation of the real cavity, so
+the first question about any of them is how much of it is the mesh. Here the cavity is
+a plain cylinder, whose TM<span class="math notranslate nohighlight">\(_{010}\)</span> frequency is known in closed form, so the error is
+measurable rather than merely estimated — and the answer generalises: reach for the
+polynomial order before the element size.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -2699,7 +2673,7 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 </div>
 </div>
 </div>
-<h1 id="a-cylinder-with-a-known-answer">1. A cylinder with a known answer<a class="headerlink" href="#a-cylinder-with-a-known-answer" title="Link to this heading">¶</a></h1>
+<h2 id="a-cylinder-with-a-known-answer">1. A cylinder with a known answer<a class="headerlink" href="#a-cylinder-with-a-known-answer" title="Link to this heading">¶</a></h2>
 <p>The TM<span class="math notranslate nohighlight">\(_{010}\)</span> frequency of a cylinder of radius <span class="math notranslate nohighlight">\(R\)</span> is <span class="math notranslate nohighlight">\(f = c_0\,\chi_{01} / (2\pi R)\)</span>, with <span class="math notranslate nohighlight">\(\chi_{01}=2.405\)</span> the first zero of <span class="math notranslate nohighlight">\(J_0\)</span> — independent of the length.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2719,7 +2693,7 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 </div>
 </div>
 </div>
-<h1 id="run-the-convergence-sweep">2. Run the convergence sweep<a class="headerlink" href="#run-the-convergence-sweep" title="Link to this heading">¶</a></h1>
+<h2 id="run-the-convergence-sweep">2. Run the convergence sweep<a class="headerlink" href="#run-the-convergence-sweep" title="Link to this heading">¶</a></h2>
 <p>Solve the monopole modes at polynomial orders <span class="math notranslate nohighlight">\(p = 3, 4, 5\)</span>; at each order the mesh is adaptively h-refined from a coarse <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">25</span></code> mm start until the modes stop moving (or the DOF cap is hit). This is the slow cell.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2860,7 +2834,7 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 </table>
 </div></div></div>
 </div>
-<h1 id="spectral-convergence-of-the-fundamental">3. Spectral convergence of the fundamental<a class="headerlink" href="#spectral-convergence-of-the-fundamental" title="Link to this heading">¶</a></h1>
+<h2 id="spectral-convergence-of-the-fundamental">3. Spectral convergence of the fundamental<a class="headerlink" href="#spectral-convergence-of-the-fundamental" title="Link to this heading">¶</a></h2>
 <p>Plot the fundamental’s relative error against the analytic value versus the number of degrees of freedom, one curve per polynomial order. Higher <span class="math notranslate nohighlight">\(p\)</span> reaches a given accuracy on far fewer DOFs — the hallmark of a high-order method.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2884,7 +2858,7 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 <img alt="../../_images/fb9c234e7c7d17e5e51c492c9043e4fea783c1a4bf12e4bd9c3e2cc18b65f66b.png" src="../../_images/fb9c234e7c7d17e5e51c492c9043e4fea783c1a4bf12e4bd9c3e2cc18b65f66b.png" />
 </div>
 </div>
-<h1 id="how-fine-is-fine-enough">4. How fine is fine enough?<a class="headerlink" href="#how-fine-is-fine-enough" title="Link to this heading">¶</a></h1>
+<h2 id="how-fine-is-fine-enough">4. How fine is fine enough?<a class="headerlink" href="#how-fine-is-fine-enough" title="Link to this heading">¶</a></h2>
 <p>The best frequency reached at each order — for this cavity, cubic elements (<span class="math notranslate nohighlight">\(p=3\)</span>) hit part-per-million accuracy with a modest mesh.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2946,7 +2920,7 @@ df[[‘p’, ‘h_pass’, ‘No of DOFs’, ‘freq [MHz]’, ‘max_err’]].h
 </table>
 </div></div></div>
 </div>
-<h1 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h1>
+<h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="pillbox.html"><span class="std std-doc">The pillbox / circular waveguide</span></a> — the same cylinder, checked against the closed form for 900 modes.</p></li>
 <li><p><a class="reference internal" href="elliptical_tesla.html"><span class="std std-doc">The TESLA elliptical cavity</span></a> — figures of merit on a converged mesh.</p></li>

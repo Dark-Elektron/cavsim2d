@@ -24,7 +24,7 @@ Configuration Dictionary
 You can pass an optional dictionary to control the solver, meshing, and physical
 boundary options. Every key can equally be passed as a keyword argument —
 ``cav.eigenmode.run(mesh_config={'h': 10})`` — and kwargs override the dictionary.
-The config is merged over a complete set of defaults, and the **merged** dict is
+The config is merged over a complete set of defaults, and the merged dict is
 what runs and what ``eigenmode/config.json`` records: a saved config always
 contains every setting the run used.
 
@@ -154,7 +154,7 @@ beam-pipe end (left, then right):
      - Meaning
    * - ``'m'``
      - PMC (magnetic)
-     - Closed. The default, and the right model for a **trapped** mode.
+     - Closed. The default, and the right model for a trapped mode.
    * - ``'e'``
      - PEC (electric)
      - Closed, with the complementary symmetry.
@@ -170,7 +170,7 @@ Why open ends
 -------------
 
 A closed end reflects. For a mode below the beam-pipe cutoff that costs nothing —
-the field has already decayed to nothing before it gets there. For a mode **above**
+the field has already decayed to nothing before it gets there. For a mode above
 the cutoff it is simply wrong: the mode physically radiates out of the pipe, but the
 closed solve bounces it back and reports the ohmic :math:`Q_0` of the wall, which can
 be ten orders of magnitude too large. Since the reconstructed impedance scales with
@@ -187,7 +187,7 @@ and the imaginary part *is* the radiation loss:
 How the loss is split
 ---------------------
 
-Each channel is **measured**, never inferred by subtracting one :math:`Q` from another:
+Each channel is measured, never inferred by subtracting one :math:`Q` from another:
 
 - ``Q_rad []`` comes from the time-averaged Poynting flux integrated across the pipe
   mouths, :math:`P_\mathrm{rad} = \oint \tfrac12 {\rm Re}(\mathbf{E}\times\mathbf{H}^*)\cdot\hat{n}\,dA`.
@@ -201,9 +201,9 @@ disagreement is diagnostic rather than circular. ``Q balance []`` reports it:
 
     \text{Q balance} = \left(\frac{1}{Q_\mathrm{diel}} + \frac{1}{Q_\mathrm{rad}}\right) Q_\mathrm{eig},
 
-which is 1 when the two agree. For a **radiating** mode it lands within about a percent of
+which is 1 when the two agree. For a radiating mode it lands within about a percent of
 1, and drifts away as the layer is made too short or too coarse — the signal that
-``Q_rad`` should be distrusted. A **trapped** mode agrees to within a factor of a few,
+``Q_rad`` should be distrusted. A trapped mode agrees to within a factor of a few,
 which is tighter than it sounds given that the flux there is of order
 :math:`10^{-14}\,\mathrm{W}`; both routes agree the mode does not radiate.
 
@@ -214,7 +214,7 @@ The impedance reconstruction uses that total.
 
 A word on the boundary integral: :math:`\mathbf{H}` is projected into an ``H1`` space
 before it is integrated (a ``GridFunction`` curl cannot be evaluated on a boundary), and
-that projection is taken over the **physical** region alone. ``H1`` is continuous, so a
+that projection is taken over the physical region alone. ``H1`` is continuous, so a
 whole-mesh projection would average the two sides of every shared vertex — and on this
 mesh the other side is the complex-stretched layer, whose :math:`\mathbf{H}` is a
 different field. That contamination lands precisely on the pipe mouth where the flux is
@@ -224,7 +224,7 @@ magnitude to within a percent.
 Impedance needs an open end
 ---------------------------
 
-:meth:`~cavsim2d.solvers.solver_objects.EigenmodeSolver.impedance` **refuses** to build a
+:meth:`~cavsim2d.solvers.solver_objects.EigenmodeSolver.impedance` refuses to build a
 spectrum from a fully closed solve. Above the cutoff those :math:`Q` values are the wall's,
 not the mode's, and the resulting :math:`|Z|` is wrong by orders of magnitude rather than
 merely imprecise. Solve with at least one open end, use ``cav.wakefield`` for the
@@ -261,12 +261,12 @@ absorber ring:
 
     cav.eigenmode.run(mesh_config={'h': 3, 'p': 3})
 
-The region is an axisymmetric **rectangular ring** in the (z, r) meridian plane —
-an annular cylinder in 3D. All lengths are in **millimetres**, like every other
+The region is an axisymmetric rectangular ring in the (z, r) meridian plane —
+an annular cylinder in 3D. All lengths are in millimetres, like every other
 cavity dimension, and the region is *clipped* to the cavity, so a generous span
 such as ``z=(-1e4, 1e4)`` simply means "the full length".
 
-``maxh`` sets the local element size **inside** the region. A thin shell needs
+``maxh`` sets the local element size inside the region. A thin shell needs
 it: a 0.5 mm tube wall in a cavity meshed at the default ``h = 20`` would
 otherwise be crossed by a single element.
 
@@ -277,7 +277,7 @@ Weighting the mass form by :math:`\varepsilon_r` solves
 :math:`\nabla\times\nabla\times \mathbf{E} = \lambda\, \varepsilon_r \mathbf{E}`,
 so the eigenvalue is still :math:`\lambda = k_0^2 = (\omega/c_0)^2` and the
 frequency conversion is unchanged. The stored energy carries
-:math:`\varepsilon_r` **inside** the integral, so ``R/Q``, ``Q``, ``G``, ``Rsh``
+:math:`\varepsilon_r` inside the integral, so ``R/Q``, ``Q``, ``G``, ``Rsh``
 and ``GR/Q`` all follow.
 
 No special interface treatment is needed: ``HCurl`` enforces tangential-:math:`E`
@@ -306,7 +306,7 @@ permittivity is :math:`\varepsilon_r = \varepsilon_r' - j\varepsilon_r''` and
 There are two ways to get :math:`Q` out of that, and they cost very different
 amounts.
 
-**Perturbation** (the default up to :math:`\tan\delta = 10^{-2}`). The cavity is
+Perturbation (the default up to :math:`\tan\delta = 10^{-2}`). The cavity is
 solved as if it were lossless and the loss is integrated over the resulting field:
 
 .. math::
@@ -322,7 +322,7 @@ lossless ones — so it is the right tool for low-loss dielectrics (sapphire,
 alumina, quartz windows) and says nothing about the frequency pull a lossy
 material causes.
 
-**Full complex eigenproblem** (the default above :math:`\tan\delta = 10^{-2}`).
+Full complex eigenproblem (the default above :math:`\tan\delta = 10^{-2}`).
 The resonant frequency itself is solved for as a complex number,
 :math:`\omega = \omega_r + \mathrm{i}\alpha`, and
 
@@ -330,7 +330,7 @@ The resonant frequency itself is solved for as a complex number,
 
    Q_{\text{diel}} = \frac{\omega_r}{2\alpha}
 
-so :math:`Q`, the frequency **and the mode shape** are all the lossy ones. This is
+so :math:`Q`, the frequency and the mode shape are all the lossy ones. This is
 what a lossy ferrite or an absorber at :math:`\tan\delta \sim 0.1`–:math:`1`
 needs, and it costs roughly twice a lossless solve. See
 :ref:`theory/eigenmode:Lossy Dielectrics` for the formulation.
@@ -378,13 +378,13 @@ Limits
 
 - :math:`\mu_r` is *rejected*, not ignored: magnetic materials change the
   stiffness form, not just the mass form.
-- A **conductive** loss, :math:`\varepsilon_r'' = \sigma/(\omega\varepsilon_0)`, is
+- A conductive loss, :math:`\varepsilon_r'' = \sigma/(\omega\varepsilon_0)`, is
   not modelled, because it makes the permittivity depend on the answer; pass a loss
   tangent evaluated at the frequency of interest instead.
 - Wall loss is always treated perturbatively, on both paths.
-- **Eigenmode only.** ``wakefield`` and ``multipacting`` raise on a cavity with
+- Eigenmode only. ``wakefield`` and ``multipacting`` raise on a cavity with
   dielectric regions rather than returning a vacuum answer for it.
-- **Native geometry only.** Cavities meshed from an imported ``.geo`` file cannot
+- Native geometry only. Cavities meshed from an imported ``.geo`` file cannot
   carry regions (gmsh writes a single physical surface and the STEP round-trip
   drops surface names), so this raises too. Every built-in model has a native
   ``profile()``.
@@ -406,7 +406,7 @@ To read the output results directly in Python:
 Results as a table
 ******************
 The dictionaries above are convenient for lookups but awkward to filter and plot
-across polarisations. ``eigenmode.qois_df`` returns **every** mode of **every** solved
+across polarisations. ``eigenmode.qois_df`` returns every mode of every solved
 polarisation as a single :class:`pandas.DataFrame` — the same layout the mesh-convergence
 study uses, so it slices the same way:
 

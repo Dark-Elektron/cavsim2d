@@ -46,6 +46,7 @@
         <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+        <link rel="stylesheet" type="text/css" href="_static/cavsim2d.css?v=93971e7c" />
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -70,11 +71,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#interface" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -839,19 +835,6 @@
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span>Uncertainty Quantification</span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="#" class="md-nav__link md-nav__link--active">
         
   
@@ -863,717 +846,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#how-a-cavity-is-divided" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:how a cavity is divided (reference label)"><span>How a cavity is divided</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#what-welding-does" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:what welding does (reference label)"><span>What welding does</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__current-nested md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="#the-three-models" class="md-nav__link md-nav__link--active">
-              
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link md-nav__link--active" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_9">
-            <span class="md-nav__icon md-icon"></span>
-            <span title="uq:the three models (reference label)"><span>The three models</span></span>
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="#two-paths-through-the-solver" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:two paths through the solver (reference label)"><span>Two paths through the solver</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-  
-      
-    <li class="md-nav__item md-nav__item--active md-nav__current-toc">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#the-three-models" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:the three models (reference label)"><span>The three models</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#simplecell-path" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:simplecell path (reference label)"><span>Simplecell path</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-    
-  
-  
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__current-nested md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="#multicell-path" class="md-nav__link md-nav__link--active">
-              
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link md-nav__link--active" for="__nav_3_11" id="__nav_3_11_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_11">
-            <span class="md-nav__icon md-icon"></span>
-            <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="#comparing-models-and-rules" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:comparing models and rules (reference label)"><span>Comparing models and rules</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-  
-      
-    <li class="md-nav__item md-nav__item--active md-nav__current-toc">
-      
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#multicell-path" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="uq:multicell path (reference label)"><span>Multicell path</span></span>
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -1682,54 +954,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/eigenmode/pillbox.html" class="md-nav__link">
         
   
@@ -1754,12 +978,60 @@
   
   
     <li class="md-nav__item">
+      <a href="examples/eigenmode/elliptical_tesla.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Eigenmode:<wbr> the TESLA elliptical cavity</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="examples/eigenmode/cavity_types.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     <span>A gallery of cavity shapes</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Comparing several cavities</span>
     
   </span>
   
@@ -1807,7 +1079,7 @@
   
   
   <span class="md-ellipsis">
-    <span>1.<wbr> A cylinder with a known answer</span>
+    <span>Mesh convergence:<wbr> how fine is fine enough?</span>
     
   </span>
   
@@ -1826,132 +1098,12 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#run-the-convergence-sweep" class="md-nav__link">
+      <a href="examples/eigenmode/convergence_qois.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:2. run the convergence sweep (reference label)"><span>2.<wbr> Run the convergence sweep</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#spectral-convergence-of-the-fundamental" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:3. spectral convergence of the fundamental (reference label)"><span>3.<wbr> Spectral convergence of the fundamental</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#how-fine-is-fine-enough" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:4. how fine is fine enough? (reference label)"><span>4.<wbr> How fine is fine enough?</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/mesh_convergence.html#where-to-go-next" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span title="examples/eigenmode/mesh_convergence:where to go next (reference label)"><span>Where to go next</span></span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/compare_cavities.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Comparing several cavities</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
+    <span>Convergence of every figure of merit</span>
     
   </span>
   
@@ -2000,6 +1152,54 @@
   
   <span class="md-ellipsis">
     <span>Dielectric loss:<wbr> perturbation vs the full complex eigenproblem</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/open_boundary_impedance.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Open boundaries <wbr>(PML) and the radiated impedance</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/eigenmode/multicell_uq_sa.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Multicell UQ and sensitivity analysis <wbr>(WEPB015)</span>
     
   </span>
   
@@ -2096,30 +1296,6 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/tuning/multicell.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="examples/tuning/cavity_types.html" class="md-nav__link">
         
   
@@ -2149,7 +1325,31 @@
   
   
   <span class="md-ellipsis">
-    <span>When a tune has no solution:<wbr> read the convergence</span>
+    <span>When a tune does not reach its target:<wbr> read the convergence</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/multicell.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning a multicell cavity:<wbr> mid and end cells</span>
     
   </span>
   
@@ -2174,6 +1374,30 @@
   
   <span class="md-ellipsis">
     <span>Two-<wbr>cell design family:<wbr> is “each cell at the same frequency” special?</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/tuning/qoi_targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Tuning to a figure of merit, not just a frequency</span>
     
   </span>
   
@@ -2836,12 +2060,12 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+            <a href="examples/beamline/index.html" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    <span>Custom geometry</span>
+    <span>Beam lines</span>
     
   </span>
   
@@ -2857,6 +2081,180 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            <span>Beam lines</span>
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/taper.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The taper element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/bellows.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>The bellows element</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/beam_line_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Assembling a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/multi_cavity_module.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>A multi-<wbr>cavity module</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/beamline/optimise_assembly.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <span>Optimising a cavity inside a beam line</span>
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="examples/custom_geometry/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    <span>Custom geometry</span>
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             <span>Custom geometry</span>
           </label>
@@ -2934,7 +2332,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2951,14 +2349,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             <span>Advanced:<wbr> uncertainty quantification everywhere</span>
           </label>
@@ -3240,54 +2638,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#interface" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:interface (reference label)"><span>Interface</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:configuration settings (reference label)"><span>Configuration Settings</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualising-results" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:visualising results (reference label)"><span>Visualising Results</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-perturbation-model" class="md-nav__link">
-    
-    <span class="md-ellipsis">
-      <span title="uq:choosing a perturbation model (reference label)"><span>Choosing a perturbation model</span></span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -3345,7 +2695,7 @@
 </dl>
 <h2 id="visualising-results">Visualising Results<a class="headerlink" href="#visualising-results" title="Link to this heading">¶</a></h2>
 <p>Once the UQ simulation finishes, the standard deviations are populated in the results database. You can compare the fundamental-mode quantities with error bars across different cavities:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_bar</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="n">cavs</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_fm_scatter</span><span class="p">(</span><span class="n">uq</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="important tip admonition">
@@ -3358,21 +2708,21 @@
 models below describe different manufacturing routes; they are not coarse and fine
 versions of the same thing. Which one fits your cavity depends on how it is actually
 made, and that is not something the code can decide for you.</p>
-<h1 id="how-a-cavity-is-divided">How a cavity is divided<a class="headerlink" href="#how-a-cavity-is-divided" title="Link to this heading">¶</a></h1>
+<h3 id="how-a-cavity-is-divided">How a cavity is divided<a class="headerlink" href="#how-a-cavity-is-divided" title="Link to this heading">¶</a></h3>
 <p>cavsim2d indexes an elliptical cavity as <code class="docutils literal notranslate"><span class="pre">2n</span></code> half-cells for <em>n</em> cells, ordered left to
 right. Cell <em>k</em> is the pair <code class="docutils literal notranslate"><span class="pre">(half_cells[2k],</span> <span class="pre">half_cells[2k+1])</span></code>, so the two halves of a
 cell meet at its equator, and neighbouring cells meet at an iris.</p>
 <figure class="align-center" id="id1">
 <img alt="A 3-cell cavity profile with its six half-cells numbered, equators marked inside each cell and irises marked between cells." src="_images/uq_halfcells.png" />
 <figcaption>
-<p><span class="caption-number">Fig. 1 </span><span class="caption-text"><span class="caption-text">
+<p><span class="caption-number">Fig. 4 </span><span class="caption-text"><span class="caption-text">
 The six half-cells of a 3-cell cavity. Equators lie inside a cell; irises lie between
 cells.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></figcaption>
 </figure>
 <p>This has a consequence that is easy to miss. The first cell pairs <code class="docutils literal notranslate"><span class="pre">end_l</span></code> with a <em>mid</em>
 half, so <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and <code class="docutils literal notranslate"><span class="pre">Req_m</span></code> refer to the same physical equator. Setting them to
 different values does not describe a cavity you could build.</p>
-<h1 id="what-welding-does">What welding does<a class="headerlink" href="#what-welding-does" title="Link to this heading">¶</a></h1>
+<h3 id="what-welding-does">What welding does<a class="headerlink" href="#what-welding-does" title="Link to this heading">¶</a></h3>
 <p>Each part of a real cavity is formed on its own, so its dimensions carry their own error.
 Where two parts meet, the finished cavity has one dimension rather than two. cavsim2d
 follows the same sequence: it perturbs every part independently, then welds each seam by
@@ -3380,7 +2730,7 @@ averaging the two values that meet there.</p>
 <figure class="align-center" id="id2">
 <img alt="Two half-cells drawn with different equator radii, showing a 10 mm step at the equator, beside the same pair after averaging, which closes the step." src="_images/uq_welding.png" />
 <figcaption>
-<p><span class="caption-number">Fig. 2 </span><span class="caption-text"><span class="caption-text">
+<p><span class="caption-number">Fig. 5 </span><span class="caption-text"><span class="caption-text">
 Left: two half-cells whose equator radius was drawn independently, so the profile does
 not close. Right: after welding, both carry the average and the profile is continuous.</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></figcaption>
 </figure>
@@ -3389,12 +2739,12 @@ because averaging two independent draws of standard deviation <span class="math 
 single value with standard deviation <span class="math notranslate nohighlight">\(\sigma/\sqrt{2}\)</span>. A model that welds a joint
 predicts less scatter than one that does not, and that difference is physical rather than
 numerical.</p>
-<h1 id="the-three-models">The three models<a class="headerlink" href="#the-three-models" title="Link to this heading">¶</a></h1>
+<h3 id="the-three-models">The three models<a class="headerlink" href="#the-three-models" title="Link to this heading">¶</a></h3>
 <figure class="align-center" id="id3">
 <a class="reference internal image-reference" href="_images/uq_model_groups.png"><img alt="The same 3-cell cavity shown three times, with its half-cells shaded by which independently formed part they belong to, and each seam marked as a weld or as internal to one part." src="_images/uq_model_groups.png" style="width: 85%;" />
 </a>
 <figcaption>
-<p><span class="caption-number">Fig. 3 </span><span class="caption-text"><span class="caption-text">
+<p><span class="caption-number">Fig. 6 </span><span class="caption-text"><span class="caption-text">
 The same cavity under each model. Shading groups the half-cells that come from one
 independently formed part. A solid line is a welded seam, where two draws are
 averaged; a dashed line lies inside a single part, so nothing is averaged there.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></figcaption>
@@ -3410,7 +2760,7 @@ inside a part.</p></li>
 <figure class="align-center" id="id4">
 <img alt="Three grids of half-cell index against parameter, coloured by which random variable drives each slot, for the base, multicup and dumb-bell models." src="_images/uq_models.png" />
 <figcaption>
-<p><span class="caption-number">Fig. 4 </span><span class="caption-text"><span class="caption-text">
+<p><span class="caption-number">Fig. 7 </span><span class="caption-text"><span class="caption-text">
 Which half-cells share a random variable. Equal numbers mean one draw is written to
 both slots.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></figcaption>
 </figure>
@@ -3444,7 +2794,7 @@ independent rather than sharing one tooling error.</p>
 <h2 id="two-paths-through-the-solver">Two paths through the solver<a class="headerlink" href="#two-paths-through-the-solver" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">uq_config</span></code> reaches the geometry by one of two paths, and they differ in what they can
 represent.</p>
-<h1 id="simplecell-path">Simplecell path<a class="headerlink" href="#simplecell-path" title="Link to this heading">¶</a></h1>
+<h3 id="simplecell-path">Simplecell path<a class="headerlink" href="#simplecell-path" title="Link to this heading">¶</a></h3>
 <p>The default. With <code class="docutils literal notranslate"><span class="pre">cell_complexity</span></code> set to <code class="docutils literal notranslate"><span class="pre">'simplecell'</span></code>, the perturbation is
 applied to the model’s own parameters — <code class="docutils literal notranslate"><span class="pre">A_m</span></code>, <code class="docutils literal notranslate"><span class="pre">Req_el</span></code> and so on. It is the cheaper
 of the two, and enough whenever one tolerance per cell type is what you mean.</p>
@@ -3456,7 +2806,7 @@ among your <code class="docutils literal notranslate"><span class="pre">variable
 than three, and the reported spread is correspondingly narrow. Use the multicell path
 if you need the equators to vary independently.</p>
 </div>
-<h1 id="multicell-path">Multicell path<a class="headerlink" href="#multicell-path" title="Link to this heading">¶</a></h1>
+<h3 id="multicell-path">Multicell path<a class="headerlink" href="#multicell-path" title="Link to this heading">¶</a></h3>
 <p>Set <code class="docutils literal notranslate"><span class="pre">cell_complexity='multicell'</span></code> and <code class="docutils literal notranslate"><span class="pre">independent_half_cells=True</span></code>. Every half-cell
 then carries its own parameters, the draws are independent, and each seam is welded
 afterwards as described above. Use this path whenever the parts are formed separately.</p>

@@ -48,7 +48,7 @@
    "source": [
     "## The cavity\n",
     "\n",
-    "A Bezier spline with a **smooth iris**: `p1` and `p4` sit at the beam-pipe radius, so the wall leaves the pipe tangentially (C1 continuity) instead of at a sharp corner."
+    "A Bezier spline with a smooth iris: `p1` and `p4` sit at the beam-pipe radius, so the wall leaves the pipe tangentially (C1 continuity) instead of at a sharp corner."
    ]
   },
   {
@@ -180,7 +180,7 @@
    "source": [
     "## Launch sites\n",
     "\n",
-    "Emission sites are wall vertices, so a coarse mesh offers only a few in a narrow band. `n_points` interpolates extra sites **along** the wall — no mesh change."
+    "Emission sites are wall vertices, so a coarse mesh offers only a few in a narrow band. `n_points` interpolates extra sites along the wall — no mesh change."
    ]
   },
   {

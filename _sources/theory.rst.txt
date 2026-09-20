@@ -5,6 +5,7 @@ This section provides the mathematical foundation and numerical implementation d
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
 
    theory/eigenmode
    theory/wakefield

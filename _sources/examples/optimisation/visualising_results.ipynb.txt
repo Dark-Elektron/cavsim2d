@@ -8,12 +8,12 @@
     "# Reading and visualising an optimisation\n",
     "\n",
     "The [Pareto example](pareto) runs a minimal two-objective search. Here we run a\n",
-    "slightly larger **three-objective** optimisation and focus on the tools for making\n",
+    "slightly larger three-objective optimisation and focus on the tools for making\n",
     "sense of the result: the several views of the Pareto front, the per-generation\n",
     "history, a convergence trace, and reading the result tables programmatically.\n",
     "\n",
-    "The three objectives — minimise peak surface **electric** field, minimise peak\n",
-    "surface **magnetic** field, and maximise **R/Q** — genuinely conflict, so there is\n",
+    "The three objectives — minimise peak surface electric field, minimise peak\n",
+    "surface magnetic field, and maximise R/Q — genuinely conflict, so there is\n",
     "a real trade-off surface to explore. See the [optimisation guide](../../optimisation)."
    ]
   },
@@ -145,7 +145,7 @@
     "## 2. The Pareto front, several ways\n",
     "\n",
     "With three objectives a single scatter plot cannot show every trade-off at once, so\n",
-    "the optimiser offers complementary views (`kind=`). The **scatter matrix** shows\n",
+    "the optimiser offers complementary views (`kind=`). The scatter matrix shows\n",
     "every pair of objectives:"
    ]
   },
@@ -195,7 +195,7 @@
    "id": "f49f0690",
    "metadata": {},
    "source": [
-    "**Parallel coordinates** (`pcp`) draws each candidate as a line across all three\n",
+    "Parallel coordinates (`pcp`) draws each candidate as a line across all three\n",
     "objective axes — crossing lines are the sign of a trade-off:"
    ]
   },
@@ -243,7 +243,7 @@
    "id": "85491566",
    "metadata": {},
    "source": [
-    "A **radar** plot gives each Pareto candidate its own polygon over the (normalised)\n",
+    "A radar plot gives each Pareto candidate its own polygon over the (normalised)\n",
     "objectives — a compact fingerprint of where each design is strong:"
    ]
   },

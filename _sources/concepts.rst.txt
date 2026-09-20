@@ -20,7 +20,7 @@ Two objects carry the whole workflow:
   :class:`~cavsim2d.models.rfgun.RFGun`,
   :class:`~cavsim2d.models.spline.SplineCavity`) — one simulatable structure.
 
-Each analysis is reached through a **namespace** attached to the cavity (and, for
+Each analysis is reached through a namespace attached to the cavity (and, for
 comparisons, to the study):
 
 .. code-block:: python
@@ -67,8 +67,8 @@ An entire project reloads in one call. Each cavity also saves a small
     study = Study.load('my_project')     # reconstruct every cavity + its cached results
 
 returns a Study with every cavity reconstructed (the right model type, pointing at
-its existing folder). All cached results are then available with **no
-re-simulation**, and because a loaded Study behaves like any other, two studies —
+its existing folder). All cached results are then available with no
+re-simulation, and because a loaded Study behaves like any other, two studies —
 from different sessions, or a loaded one against a fresh one — compare directly
 (``study.eigenmode.qois_df``, ``study.eigenmode.plot_compare()``). Custom
 in-notebook models whose module cannot be imported by name are passed explicitly:
@@ -89,7 +89,7 @@ Configuration dictionaries
 --------------------------
 
 Every ``run_*`` call takes one dictionary. Missing keys fall back to that
-analysis' documented defaults, and the **merged** dict (defaults + your overrides)
+analysis' documented defaults, and the merged dict (defaults + your overrides)
 is saved to ``config.json`` beside the results — so a saved run always records
 every setting it used, not just the keys you passed. Config keys double as keyword
 arguments. Truthy values (never mere presence) switch features on.
@@ -112,7 +112,7 @@ Setting ``mesh_config['adaptive']`` refines the eigenmode mesh where the solver'
 error estimate is largest. It is a *mode* of the eigenmode solve — the refined mesh is
 the eigenmode result, so ``show_fields``/``show_mesh``/``multipacting`` use it directly
 and ``cav.eigenmode.plot_convergence()`` shows the error-vs-DOF history. Because the
-wakefield below runs on the **ABCI** backend (its own deck, meshed from
+wakefield below runs on the ABCI backend (its own deck, meshed from
 ``cav.profile()``), adaptivity applies to eigenmode/multipacting only.
 
 Wakefield (``cav.wakefield.run`` / ``study.run_wakefield``) — ABCI backend:
@@ -161,21 +161,21 @@ Quantities of interest and mode conventions
 Solved fields are reduced to scalar QOIs (written to ``qois.json``). The azimuthal
 order ``m`` sets both *which* mode is reported and *how* the QOIs are defined.
 
-- **Monopole (m = 0)** — the accelerating family. The reported mode defaults to the
-  **pi-mode** (index ``n_cells`` of the fundamental passband). QOIs include
+- Monopole (m = 0) — the accelerating family. The reported mode defaults to the
+  pi-mode (index ``n_cells`` of the fundamental passband). QOIs include
   ``freq [MHz]``, ``R/Q [Ohm]``, ``G [Ohm]``, ``Q []``, ``Epk/Eacc []``,
   ``Bpk/Eacc [mT/MV/m]``, and — for multicell cavities — the cell-to-cell coupling
   ``kcc [%]`` and field flatness ``ff [%]``.
-- **m >= 1 (dipole, quadrupole, …)** — the deflecting / higher-order-mode families.
+- m >= 1 (dipole, quadrupole, …) — the deflecting / higher-order-mode families.
   The reported mode defaults to mode 1 (the lowest of the deflecting passband); the
   accelerating voltage is evaluated off-axis because ``E_z ~ r^m`` vanishes on axis.
 
-**R/Q convention.** cavsim2d reports the *linac* (accelerator) definition
-:math:`R/Q = V^2/(\omega U)`. This is **twice** the *circuit* definition
+R/Q convention. cavsim2d reports the *linac* (accelerator) definition
+:math:`R/Q = V^2/(\omega U)`. This is twice the *circuit* definition
 :math:`V^2/(2\omega U)` used in some references (e.g. the TESLA report's 518 Ohm
 per cell is the circuit value; cavsim2d reports ~1036 Ohm for the same cell).
 
-**Impedance.** The eigenmode impedance spectrum sums the contribution of **every**
+Impedance. The eigenmode impedance spectrum sums the contribution of every
 solved m-pole mode: the longitudinal spectrum is the monopole modes, and the
 transverse spectrum spans every ``m >= 1`` multipole. Solve the polarisations you
 want represented before reading the impedance.
