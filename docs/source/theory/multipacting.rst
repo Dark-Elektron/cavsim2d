@@ -29,7 +29,7 @@ the velocity update integrated by the solver is
           - \frac{1}{c_0^2}(\mathbf{u}\cdot\mathbf{E})\,\mathbf{u} \right],
 
 with :math:`\mathbf{B} = \mu_0 H_\varphi\,\hat{\boldsymbol{\varphi}}`. The system
-is advanced with a fixed-step **RK4** integrator; the time step is a fixed
+is advanced with a fixed-step RK4 integrator; the time step is a fixed
 fraction of the RF period. Wall crossings are detected geometrically (the
 straight segment between successive positions is intersected against the local
 wall polyline) and the impact point and RF phase are recovered by sub-step
@@ -61,19 +61,19 @@ behaviour; 'wait' re-launches uncounted; 'always' re-launches and counts).
 Multipacting Metrics
 --------------------
 The analysis launches a cloud of electrons from the wall over a grid of emission
-sites and RF launch phases, for each value of a **peak-field sweep**, and tracks
+sites and RF launch phases, for each value of a peak-field sweep, and tracks
 them for a fixed number of RF cycles. An electron surviving to :math:`N = 20`
 impacts is a resonant ("bright") trajectory. The metrics reported against the
 peak surface field :math:`E_{\mathrm{pk}}` are:
 
-- **Counter function** :math:`c_{20}/c_0` — the fraction of launched electrons
+- Counter function :math:`c_{20}/c_0` — the fraction of launched electrons
   that reach 20 impacts. Peaks locate the multipacting barriers.
-- **Enhanced counter** :math:`e_{20}/c_0` — the same, weighted by the product of
+- Enhanced counter :math:`e_{20}/c_0` — the same, weighted by the product of
   the secondary yields along each trajectory; :math:`e_{20}/c_0 > 1` signals a
   self-sustaining avalanche.
-- **Final impact energy** :math:`E_{\mathrm{f},20}` — the mean impact energy of
+- Final impact energy :math:`E_{\mathrm{f},20}` — the mean impact energy of
   the 20-hit electrons, compared against the SEY crossover energies.
-- **Distance function** :math:`d_{20}` — the distance in (position, RF-phase)
+- Distance function :math:`d_{20}` — the distance in (position, RF-phase)
   space between an electron's launch point and its 20th impact (the Ylä-Oijala
   distance metric used by MultiPac),
 

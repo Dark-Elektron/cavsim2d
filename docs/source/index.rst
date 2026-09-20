@@ -11,7 +11,8 @@ cavsim2d documentation!
    :caption: Contents:
 
 .. toctree::
-   :maxdepth: 6
+   :maxdepth: 1
+   :titlesonly:
    :caption: Quickstart
 
    introduction
@@ -20,7 +21,8 @@ cavsim2d documentation!
    quickstart
 
 .. toctree::
-   :maxdepth: 6
+   :maxdepth: 1
+   :titlesonly:
    :caption: Concepts & reference
 
    concepts
@@ -29,7 +31,8 @@ cavsim2d documentation!
    extending
 
 .. toctree::
-   :maxdepth: 6
+   :maxdepth: 1
+   :titlesonly:
    :caption: Analysis Modules
 
    eigenmode
@@ -40,7 +43,8 @@ cavsim2d documentation!
    uq
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :titlesonly:
    :caption: Examples
 
    examples/eigenmode/index
@@ -49,17 +53,20 @@ cavsim2d documentation!
    examples/multipacting/index
    examples/optimisation/index
    examples/studies/index
+   examples/beamline/index
    examples/custom_geometry/index
    examples/advanced/index
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
    :caption: API Reference
 
    api
 
 .. toctree::
-   :maxdepth: 6
+   :maxdepth: 1
+   :titlesonly:
    :caption: References
 
    references

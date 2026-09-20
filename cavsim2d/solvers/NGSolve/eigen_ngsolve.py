@@ -2278,15 +2278,41 @@ class NGSolveMEVP:
         Eout = Vout / (n_cells * L * 1e-3 * 2)   # active length = 2*L*n_cells
 
         # --- Peak surface fields (pointwise maxima over the azimuth) -----------
+        # Sampled DENSELY along every PEC boundary element, not at its vertices.
+        # With order-p elements the trace is a degree-p polynomial along the wall,
+        # so its maximum generally falls strictly between two vertices: taking the
+        # max over vertices alone quantises Epk to wherever the mesher happened to
+        # put a node. That is invisible in a single run but fatal downstream --
+        # under a geometry perturbation the mesh is regenerated, the node positions
+        # jump, and Epk/Eacc picks up ~1% of non-monotonic jitter that does NOT
+        # shrink with h. It swamped the real tolerance response in a sensitivity
+        # analysis (a degree-2 surrogate cannot fit discretisation noise), while
+        # R/Q and G -- field INTEGRALS, immune to where the nodes are -- fit almost
+        # perfectly. Mapping a uniform sampling rule onto each boundary element
+        # (endpoints included, so the vertices are still covered) restores a
+        # smoothly h-convergent Epk. It is also faster than the old per-vertex
+        # Python loop: one vectorised CoefficientFunction evaluation, not one
+        # mesh point lookup per node.
         norm_H_in, norm_H_phi = Norm(H_inplane), Norm(H_phi)
-        Esurf, Hsurf = [], []
-        for (xi, yi) in xpnts_surf:
-            mip = mesh(xi, yi)
-            e_phi = abs(uphi_gf(mip)) / yi if yi > AXIS_EPS else 0.0
-            Esurf.append(max(norm_u(mip), e_phi))
-            Hsurf.append(max(norm_H_in(mip), norm_H_phi(mip)))
-        Epk = max(Esurf)
-        Hpk = max(Hsurf)
+        surf_pnts, y_surf = _boundary_sample_points(mesh, 'PEC',
+                                                    u_gf.space.globalorder)
+        on_axis = y_surf <= AXIS_EPS
+        r_safe = np.where(on_axis, 1.0, y_surf)
+
+        def _at(cf):
+            return np.abs(np.asarray(cf(surf_pnts))).ravel()
+
+        def _at_slow(cf):
+            # H_phi = curl(E)/(mu0 w): a GridFunction curl has no SIMD evaluator,
+            # so it is read one mapped point at a time (the same call the old
+            # per-vertex loop made, just on a denser set of points).
+            return np.abs(np.fromiter((cf(mp) for mp in surf_pnts),
+                                      float, len(surf_pnts)))
+
+        # E_phi = u_phi / r, defined by its (zero) limit on the axis.
+        e_phi_surf = np.where(on_axis, 0.0, _at(uphi_gf) / r_safe)
+        Epk = float(np.max(np.maximum(_at(norm_u), e_phi_surf)))
+        Hpk = float(np.max(np.maximum(_at(norm_H_in), _at_slow(norm_H_phi))))
 
         # --- Surface power loss: H1-projected boundary integral (all m) --------
         # H = curl(E)/(mu0 w) cannot be SIMD-evaluated as a GridFunction curl on
@@ -2641,7 +2667,7 @@ class NGSolveMEVP:
             return sqrt(Norm(H_inplane) ** 2 + Norm(H_phi) ** 2)
         return sqrt(Norm(u_gf) ** 2 + Norm(e_phi) ** 2)
 
-    def show_fields(self, folder, mode=1, which='E', plotter='ngsolve'):
+    def show_fields(self, folder, mode=1, which='E', plotter='ngsolve', ax=None, show=True):
         gfu_E, gfu_H = self.load_fields(folder, mode)
         # Draw over the field's OWN mesh (curved to the solve order inside
         # load_fields) so the field CF and the render mesh are the same object.
@@ -2649,19 +2675,17 @@ class NGSolveMEVP:
         field_cf = self._field_cf(gfu_E[mode], gfu_H[mode], which)
 
         if plotter == 'matplotlib':
-            self._plot_field_matplotlib(mesh, field_cf)
-        else:
-            return Draw(field_cf, mesh, order=2, settings={'Objects': {'Wireframe': False}})
+            return self._plot_field_matplotlib(mesh, field_cf, ax=ax, show=show)
+        return Draw(field_cf, mesh, order=2, settings={'Objects': {'Wireframe': False}})
 
-    def show_mesh(self, folder, plotter='ngsolve'):
+    def show_mesh(self, folder, plotter='ngsolve', ax=None, show=True):
         mesh = self.load_mesh(folder)
 
         if plotter == 'matplotlib':
-            self._plot_mesh_matplotlib(mesh)
-        else:
-            return Draw(mesh)
+            return self._plot_mesh_matplotlib(mesh, ax=ax, show=show)
+        return Draw(mesh)
 
-    def show_geometry(self, cav, maxh=20e-3, order=1, plotter='ngsolve'):
+    def show_geometry(self, cav, maxh=20e-3, order=1, plotter='ngsolve', ax=None, show=True):
         """Draw the cavity's meshed geometry *without* needing a prior run — a
         coarse mesh is built on the fly just to preview the analysed domain.
 
@@ -2669,9 +2693,8 @@ class NGSolveMEVP:
         solve would mesh."""
         mesh = self._build_mesh(cav, maxh, order)
         if plotter == 'matplotlib':
-            self._plot_mesh_matplotlib(mesh)
-        else:
-            return Draw(mesh)
+            return self._plot_mesh_matplotlib(mesh, ax=ax, show=show)
+        return Draw(mesh)
 
     @staticmethod
     def _mesh_points_and_triangles(mesh, subdivide=0):
@@ -2742,8 +2765,13 @@ class NGSolveMEVP:
         return np.array(vals)
 
     @staticmethod
-    def _plot_field_matplotlib(mesh, field_cf):
-        """Render a field magnitude over the mesh using matplotlib tricontourf."""
+    def _plot_field_matplotlib(mesh, field_cf, ax=None, show=True):
+        """Render a field magnitude over the mesh using matplotlib tricontourf.
+
+        Draws on *ax* when one is given (otherwise the current axes), and only
+        calls ``plt.show()`` when *show* — the same contract as the ``plot_*``
+        methods, so this can be one panel of a larger figure. Returns the axes.
+        """
         pts, triangles = NGSolveMEVP._mesh_points_and_triangles(mesh, subdivide=2)
         triang = tri.Triangulation(pts[:, 0], pts[:, 1], triangles=triangles)
         vals = NGSolveMEVP._sample_field(mesh, pts, field_cf)
@@ -2751,18 +2779,26 @@ class NGSolveMEVP:
         if np.isnan(vals).any():
             vals = np.where(np.isnan(vals), np.nanmin(vals), vals)
 
-        plt.tricontourf(triang, vals, levels=40, cmap='jet')
-        plt.gca().set_aspect('equal', 'box')
-        plt.show()
+        ax = ax if ax is not None else plt.gca()
+        ax.tricontourf(triang, vals, levels=40, cmap='jet')
+        ax.set_aspect('equal', 'box')
+        if show:
+            plt.show()
+        return ax
 
     @staticmethod
-    def _plot_mesh_matplotlib(mesh):
-        """Render the mesh using matplotlib triplot (true element edges)."""
+    def _plot_mesh_matplotlib(mesh, ax=None, show=True):
+        """Render the mesh using matplotlib triplot (true element edges).
+
+        Same *ax* / *show* contract as :meth:`_plot_field_matplotlib`."""
         pts, triangles = NGSolveMEVP._mesh_points_and_triangles(mesh)
         triang = tri.Triangulation(pts[:, 0], pts[:, 1], triangles=triangles)
-        plt.triplot(triang, lw=0.6, c='k')
-        plt.gca().set_aspect('equal', 'box')
-        plt.show()
+        ax = ax if ax is not None else plt.gca()
+        ax.triplot(triang, lw=0.6, c='k')
+        ax.set_aspect('equal', 'box')
+        if show:
+            plt.show()
+        return ax
 
     # ──────────────────────────────────────────────────────────────────────
     # Deformation utilities
@@ -2794,6 +2830,29 @@ class NGSolveMEVP:
         surface_def[-1, 1] = 0
 
         return pd.DataFrame(surface_def, columns=[1, 0, 2])
+
+
+def _boundary_sample_points(mesh, boundary_name, order, min_per_element=5):
+    """Dense sample points along a named boundary, as VOLUME mesh points.
+
+    A uniform parametric sampling of each boundary element -- endpoints included,
+    so the element vertices are still covered -- at roughly ``2*order + 1`` points
+    per element, which is enough to resolve the maximum of a degree-``order``
+    trace. Returns ``(points, r)``: the mesh points and their radial coordinate.
+
+    The points are looked up in the VOLUME mesh, not kept as boundary points.
+    An HCurl field evaluated at a boundary point returns its tangential trace,
+    which on a PEC wall is zero by construction; the volume element sees the full
+    vector. Both the mapping and the lookup are vectorised, so this is cheaper
+    than the per-vertex ``mesh(x, y)`` search it replaces.
+    """
+    n = max(min_per_element, 2 * int(order) + 1)
+    t = np.linspace(0.0, 1.0, n)
+    ir = IntegrationRule([(float(ti),) for ti in t], [1.0 / n] * n)
+    bnd = mesh.MapToAllElements(ir, mesh.Boundaries(boundary_name))
+    zs = np.asarray(x(bnd), float).ravel()
+    rs = np.asarray(y(bnd), float).ravel()
+    return mesh(zs, rs), rs
 
 
 def get_boundary_nodes(mesh, boundary_name):

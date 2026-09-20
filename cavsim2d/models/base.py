@@ -198,6 +198,38 @@ class Cavity(ABC):
         # ───────────────────────────────────────────────────────────────────────────────────────────
         self.parameters = {}
 
+    # ─── Composition ──────────────────────────────────────────────────────
+
+    #: Does this model contribute *accelerating cells* to a beam line?
+    #: An :class:`~cavsim2d.models.assembly.Assembly` sums ``n_cells`` over the
+    #: elements that say yes, and that sum is what picks the monopole mode of
+    #: interest (the pi-mode of an n-cell structure). Passive elements — a beam
+    #: pipe, a bellows, an absorber — carry ``n_cells = 1`` for the rest of the
+    #: machinery but must not shift that mode index, so they set this False.
+    contributes_cells = True
+
+    #: Set by :mod:`cavsim2d.models.assembly` when it is imported. Registering it
+    #: rather than importing it here keeps the dependency one-way: the assembly
+    #: knows about the base class, not the other way round.
+    _assembly_class = None
+
+    def __add__(self, other):
+        """``a + b`` concatenates two devices into an
+        :class:`~cavsim2d.models.assembly.Assembly`.
+
+        The result is itself a :class:`Cavity`, so it meshes, solves, tunes and
+        optimises like any single geometry, and ``a + b + c`` flattens into one
+        three-element line rather than nesting. Use ``chain=`` instead to repeat
+        *one* cavity into a module — that path is unchanged.
+        """
+        if not isinstance(other, Cavity):
+            return NotImplemented
+        if Cavity._assembly_class is None:
+            raise RuntimeError(
+                'Assembly support is not loaded; import cavsim2d.models (or the '
+                'top-level cavsim2d package) before concatenating devices.')
+        return Cavity._assembly_class([self, other])
+
     # ─── Chaining helpers ─────────────────────────────────────────────────
 
     def _spacing_m(self):
@@ -1841,7 +1873,82 @@ class Cavity(ABC):
         return self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
                                        breaks=breaks, light_lines=light_lines, **kwargs)
 
-    def plot_axis_field(self, show_min_max=True, show=True):
+    def axis_field_profile(self, mode, pol='monopole', n=801, normalise=True):
+        """Signed on-axis accelerating field of one mode: ``(z_mm, Ez)``.
+
+        The cached ``Ez_0_abs.csv`` holds ``|Ez|`` for the *mode of interest*
+        only, which cannot show whether two parts of a structure are in phase.
+        This samples the saved field of any solved mode, keeping the sign, so a
+        multi-cavity line can be read directly: where the lobes sit tells you
+        which cavity a mode lives in, and their relative sign tells you how the
+        cavities are phased.
+
+        *mode* is the 0-based index within the polarisation, matching
+        ``eigenmode.qois_df``. ``normalise`` scales to a peak of 1 so modes can
+        be overlaid.
+        """
+        gfu_E, _ = self.get_fields(mode, pol)
+        field = gfu_E[mode].components[0]          # in-plane (E_z, E_r)
+        mesh = gfu_E[mode].space.mesh
+        xs = np.array([v.point[0] for v in mesh.vertices], dtype=float)
+        # Just off the axis: r = 0 is the domain boundary, and a point exactly on
+        # it can fall outside the element the evaluator picks.
+        r_probe = 1e-4
+        z = np.linspace(xs.min(), xs.max(), int(n))
+        # Complex: a lossy solve (a beam line absorber, say) returns complex
+        # fields, and a float buffer would reject them.
+        vals = np.full(z.shape, np.nan, dtype=complex)
+        for i, zi in enumerate(z):
+            try:
+                point = mesh(float(zi), r_probe)
+            except Exception:
+                continue                            # outside the domain
+            vals[i] = complex(field(point)[0])
+
+        good = np.isfinite(vals)
+        if not good.any():
+            raise RuntimeError(
+                f"could not sample the axis field of mode {mode} for "
+                f"{self.name!r}: every probe point fell outside the meshed "
+                "domain. The saved mesh spans "
+                f"z = {xs.min() * 1e3:.1f} to {xs.max() * 1e3:.1f} mm.")
+        # A complex mode carries an arbitrary global phase, so the raw real part
+        # can come out near zero everywhere. Rotate the largest sample onto the
+        # real axis first; the remaining sign is then the physical one.
+        k = int(np.argmax(np.where(good, np.abs(vals), -1.0)))
+        if abs(vals[k]) > 0:
+            vals = vals * (np.conj(vals[k]) / abs(vals[k]))
+        ez = np.where(good, vals.real, np.nan)
+
+        if normalise:
+            peak = np.nanmax(np.abs(ez))
+            if peak > 0:
+                ez = ez / peak
+        return z * 1e3, ez
+
+    def plot_axis_field(self, mode=None, show_min_max=True, show=True, ax=None,
+                        pol='monopole', normalise=True, label=None, **kwargs):
+        """Plot the on-axis accelerating field.
+
+        With *mode* given, the **signed** field of that mode is drawn (see
+        :meth:`axis_field_profile`), which is what shows how a multi-cavity line
+        is phased. With ``mode=None`` (default) the cached ``|Ez|`` of the mode
+        of interest is drawn, annotated with the field flatness.
+        """
+        if mode is not None:
+            z, ez = self.axis_field_profile(mode, pol=pol, normalise=normalise)
+            if ax is None:
+                _, ax = plt.subplots(figsize=(12, 3))
+            ax.plot(z, ez, label=label if label is not None else f'mode {mode}',
+                    **kwargs)
+            ax.axhline(0.0, color='0.6', lw=0.8, ls=(0, (6, 4)), zorder=0)
+            ax.set_xlabel('$z$ [mm]')
+            ax.set_ylabel('$E_z(0,0)$' + (' [normalised]' if normalise else ''))
+            if show:
+                plt.tight_layout()
+                plt.show()
+            return ax
+
         # Load the on-axis field if it isn't already in memory.
         if len(self.Ez_0_abs['z(0, 0)']) == 0:
             csv = os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')
@@ -2178,7 +2285,7 @@ class Cavity(ABC):
         return gfu_E, gfu_H
 
     def _plot_profile(self, profile, ax=None, mirror=False, fill=False,
-                      center=True, control_points=None, **kwargs):
+                      center=True, control_points=None, regions=True, **kwargs):
         """Draw a cavity's meridian outline straight from its :class:`Profile`.
 
         Geometry-independent: works for every model, since each builds a Profile.
@@ -2216,10 +2323,40 @@ class Cavity(ABC):
             if mirror:
                 ax.plot(z, -r, color=color, lw=lw, **kwargs)
             self._overlay_control_points(ax, z_shift, mirror, control_points)
+            self._overlay_regions(ax, z_shift, mirror, regions)
             ax.set_aspect('equal')
             ax.set_xlabel('$z$ [mm]')
             ax.set_ylabel(r'$r$ [mm]')
             return ax
+
+    def _overlay_regions(self, ax, z_shift_mm, mirror, regions=True):
+        """Shade this cavity's material regions on a geometry plot.
+
+        A beam line absorber, a ceramic window or a dielectric liner is part of
+        the geometry, so a drawing that omits it is misleading — most obviously
+        for a :class:`~cavsim2d.models.bla.BLA`, whose whole point is the ring
+        in its wall. Drawn in the same shifted-mm frame as the wall, and skipped
+        with ``regions=False``.
+        """
+        if not regions:
+            return
+        for i, d in enumerate(self.dielectrics or ()):
+            fc = d.get('color') or WARM[1 + i % (len(WARM) - 1)]
+            if d.get('points'):
+                poly = np.asarray(d['points'], dtype=float)
+            elif d.get('z') is not None:
+                (z0, z1), (r0, r1) = d['z'], d['r']
+                poly = np.array([[z0, r0], [z1, r0], [z1, r1], [z0, r1]], dtype=float)
+            else:
+                continue
+            pz = poly[:, 0] - z_shift_mm            # region extents are already mm
+            pr = poly[:, 1]
+            ax.fill(pz, pr, color=fc, alpha=0.45, lw=0, zorder=0,
+                    label=d['material'])
+            if mirror:
+                ax.fill(pz, -pr, color=fc, alpha=0.45, lw=0, zorder=0,
+                        label='_nolegend_')
+        return ax
 
     def _overlay_control_points(self, ax, z_shift_mm, mirror, control_points):
         """Overlay spline control points and their connecting control polygon on a
@@ -2377,7 +2514,7 @@ class Cavity(ABC):
         error(f"No {what} for polarisation '{pol}' "
               f"(looked for {required_file}). {avail_msg}{hint}")
 
-    def show_geometry(self, plotter='ngsolve', maxh=20e-3, order=1):
+    def show_geometry(self, plotter='ngsolve', maxh=20e-3, order=1, ax=None, show=True):
         """Interactive NGSolve (webgui) view of the analysed geometry.
 
         Meshes the geometry on the fly, so it needs no prior eigenmode run.
@@ -2387,25 +2524,37 @@ class Cavity(ABC):
 
         Draws whatever :attr:`beampipe_length` the cavity carries, so it always
         shows the geometry a solve would mesh.
-        """
-        return ngsolve_mevp.show_geometry(self, maxh=maxh, order=order, plotter=plotter)
 
-    def show_mesh(self, plotter='ngsolve', pol='monopole'):
-        """Interactive NGSolve (webgui) view of the mesh used in the analysis."""
+        With ``plotter='matplotlib'``, *ax* and *show* work as they do on the
+        ``plot_*`` methods: draw into a given axes and pass ``show=False`` to
+        keep the figure open for further panels. Both are ignored by the
+        webgui plotter.
+        """
+        return ngsolve_mevp.show_geometry(self, maxh=maxh, order=order, plotter=plotter,
+                                          ax=ax, show=show)
+
+    def show_mesh(self, plotter='ngsolve', pol='monopole', ax=None, show=True):
+        """Interactive NGSolve (webgui) view of the mesh used in the analysis.
+
+        *ax* / *show* apply to ``plotter='matplotlib'`` — see :meth:`show_geometry`."""
         mesh_path = self._eigenmode_pol_dir(pol)
         if any(os.path.exists(os.path.join(mesh_path, f)) for f in ('mesh.vol', 'mesh.pkl')):
-            return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter)
+            return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter, ax=ax, show=show)
         self._eigenmode_artifact_error(pol, 'mesh.vol', 'mesh')
 
-    def show_fields(self, mode=0, which='E', plotter='ngsolve', pol='monopole'):
+    def show_fields(self, mode=0, which='E', plotter='ngsolve', pol='monopole',
+                    ax=None, show=True):
         """Interactive NGSolve (webgui) view of the eigenmode fields.
 
         For m-pole results pass ``pol`` ('dipole', 'quadrupole', ... or the mode
         number m); *which* then accepts 'E'/'H' (in-plane envelopes) as well as
-        'Ephi'/'Hphi' (azimuthal envelopes)."""
+        'Ephi'/'Hphi' (azimuthal envelopes).
+
+        *ax* / *show* apply to ``plotter='matplotlib'`` — see :meth:`show_geometry`."""
         field_path = self._eigenmode_pol_dir(pol)
         if any(os.path.exists(os.path.join(field_path, f)) for f in ('field_meta.json', 'gfu_EH.pkl')):
-            return ngsolve_mevp.show_fields(field_path, mode, which, plotter)
+            return ngsolve_mevp.show_fields(field_path, mode, which, plotter,
+                                            ax=ax, show=show)
         self._eigenmode_artifact_error(pol, 'field_meta.json', 'field data')
 
     def _plot_convergence(self, ax):
@@ -2900,6 +3049,15 @@ class Cavity(ABC):
             if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
                 LCPUTM = value
 
+        # ABCI's own field mesh. geo_to_abc already reads these to size the
+        # contour sampling and the minimum beam pipe, so leaving them out here
+        # left the deck pinned at the default: a caller who set DDR/DDZ got a
+        # differently *sampled* wall solved on an unchanged mesh, and a mesh
+        # convergence check came back perfectly flat.
+        _mesh_cfg = wakefield_config.get('mesh_config') or {}
+        mesh_DDR = float(_mesh_cfg.get('DDR', mesh_DDR))
+        mesh_DDZ = float(_mesh_cfg.get('DDZ', mesh_DDZ))
+
         if 'save_fields' in wakefield_config.keys():
             LPLE, LCBACK = 'T', 'F'
             if isinstance(wakefield_config['save_fields'], dict):
@@ -3140,6 +3298,18 @@ class Cavity(ABC):
         return fr"{json.dumps(p, indent=4)}"
 
     # @abstractmethod
+    def _row_slots(self, key):
+        """Parameter slot(s) a spawn / UQ / optimisation row column writes to.
+
+        A column is normally a parameter name, and writes to itself. The hook
+        exists so a model whose variables need resolving — an
+        :class:`~cavsim2d.models.assembly.Assembly`, where ``'cav:A'`` stands for
+        three per-cell slots — can expand it. A column that resolves to nothing
+        is ignored, which is what keeps unrelated bookkeeping columns out of the
+        parameter dict.
+        """
+        return [key] if key in (self.parameters or {}) else []
+
     def spawn(self, difference, folder):
         """A container of perturbed cavities, one per row of *difference*.
 
@@ -3158,8 +3328,8 @@ class Cavity(ABC):
         for key, row in difference.iterrows():
             params = dict(self.parameters)
             for k, v in row.items():
-                if k in params:
-                    params[k] = v
+                for slot in self._row_slots(k):
+                    params[slot] = v
 
             scav = self._carry_dielectrics_to(self.rebuild(params))
             # Dielectric variables are not in `parameters`, so rebuild() cannot
@@ -3168,6 +3338,12 @@ class Cavity(ABC):
                 if scav._dielectric_slot(k) is not None:
                     scav.set_dielectric_value(k, v)
             scav.name = str(key)
+            # The clone inherits the template's plot_label, so a sweep of six
+            # points used to draw six legend entries all reading "cavity".
+            # The row key is what distinguishes them, so label by it unless the
+            # template carries a label of its own.
+            if self.plot_label in (None, self.name):
+                scav.plot_label = str(key)
             scav.projectDir = folder
             scav.self_dir = os.path.join(folder, str(key))
             scav.uq_dir = os.path.join(scav.self_dir, 'uq')

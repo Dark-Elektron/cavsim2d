@@ -255,3 +255,88 @@ def jac(z, *data):
          [df4_dx1, df4_dy1, df4_dx2, df4_dy2]]
 
     return J
+
+
+#: Lengths below this (metres) count as zero when rounding a wall: a flat that
+#: short is treated as absent rather than emitted as a degenerate edge.
+CORNER_TOL = 1e-12
+
+
+def inscribed_corner(vertex, prev_pt, next_pt, radius, tol=CORNER_TOL):
+    """The arc of radius *radius* that rounds the corner at *vertex*.
+
+    Returns ``(t_in, t_out, centre)`` — the two tangent points and the arc
+    centre, as numpy arrays — or ``None`` when the corner is straight, the
+    radius is zero, or an adjacent edge has no length.
+
+    For a wedge of angle ``phi`` between the incoming and outgoing walls the
+    tangent points sit ``radius / tan(phi / 2)`` back from the vertex along each
+    edge, and the centre is on the bisector at ``radius / sin(phi / 2)``. That
+    is one formula for every corner: a right angle gives an offset of exactly
+    ``radius``, and a leaning wall changes ``phi``, not the method.
+    """
+    v = np.asarray(vertex, dtype=float)
+    u_in = v - np.asarray(prev_pt, dtype=float)
+    u_out = np.asarray(next_pt, dtype=float) - v
+    n_in, n_out = np.linalg.norm(u_in), np.linalg.norm(u_out)
+    if radius <= 0 or n_in < tol or n_out < tol:
+        return None
+    u_in, u_out = u_in / n_in, u_out / n_out
+    phi = np.arccos(float(np.clip(np.dot(-u_in, u_out), -1.0, 1.0)))
+    if phi > np.pi - 1e-9:                      # collinear: nothing to round
+        return None
+    bisector = u_out - u_in
+    norm = np.linalg.norm(bisector)
+    if norm < tol:
+        return None
+    d = radius / np.tan(phi / 2.0)
+    centre = v + (radius / np.sin(phi / 2.0)) * (bisector / norm)
+    return v - d * u_in, v + d * u_out, centre
+
+
+def corner_offset(vertex, prev_pt, next_pt, radius):
+    """How far back from *vertex* a corner of *radius* reaches, along each edge.
+
+    This is the quantity a feasibility check compares against the available
+    flat, so it is exposed separately from :func:`inscribed_corner`: a model can
+    reject an impossible radius analytically, before anything is built.
+    """
+    got = inscribed_corner(vertex, prev_pt, next_pt, radius)
+    if got is None:
+        return 0.0
+    return float(np.linalg.norm(got[0] - np.asarray(vertex, dtype=float)))
+
+
+def emit_rounded_wall(prof, vertices, boundary, tol=CORNER_TOL):
+    """Draw *vertices* onto *prof*, rounding each one by its own radius.
+
+    ``vertices`` is ``[(z, r, radius), ...]`` in metres, walked in order; the
+    first and last are endpoints and their radius is ignored. A corner whose
+    radius is zero stays sharp, and a flat that the rounding consumes entirely
+    is skipped rather than emitted as a zero-length edge — which is the nominal
+    case for a deep convolution, not an exotic one.
+
+    The current point must already be ``vertices[0]``.
+    """
+    pts = [(float(v[0]), float(v[1])) for v in vertices]
+    cursor = np.asarray(pts[0], dtype=float)
+    for i in range(1, len(vertices) - 1):
+        corner = inscribed_corner(pts[i], pts[i - 1], pts[i + 1], float(vertices[i][2]), tol)
+        if corner is None:
+            # A corner with no radius, or one whose adjacent run has zero length
+            # (a taper with no straight section). Only emit when the point
+            # actually moves, or the wire picks up a degenerate edge.
+            here = np.asarray(pts[i], dtype=float)
+            if np.linalg.norm(here - cursor) > tol:
+                prof.line_to(pts[i][0], pts[i][1], boundary)
+                cursor = here
+            continue
+        t_in, t_out, centre = corner
+        if np.linalg.norm(t_in - cursor) > tol:
+            prof.line_to(t_in[0], t_in[1], boundary)
+        prof.circle_arc_to(t_out[0], t_out[1], centre, boundary)
+        cursor = t_out
+    end = np.asarray(pts[-1], dtype=float)
+    if np.linalg.norm(end - cursor) > tol:
+        prof.line_to(end[0], end[1], boundary)
+    return prof

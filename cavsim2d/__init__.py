@@ -8,6 +8,11 @@ Main entry points:
     SplineCavity       - Spline-based cavity
     RFGun              - RF gun cavity
     Pillbox            - Pillbox cavity
+    Beampipe           - Straight circular beam pipe (drift element)
+    Bellows            - Corrugated bellows section
+    BLA                - Beam line absorber (pipe + lossy ring)
+    Taper              - Conical transition between two bore radii
+    Assembly           - Several devices concatenated into one beam line
 
 Solver objects (attached as lazy properties on Cavity/Study):
     cav.tune           - TuneSolver
@@ -22,6 +27,11 @@ from cavsim2d.models import (
     SplineCavity,
     RFGun,
     Pillbox,
+    Beampipe,
+    Bellows,
+    BLA,
+    Taper,
+    Assembly,
     CircularWaveguide,
 )
 from cavsim2d.study import Study
@@ -48,6 +58,11 @@ __all__ = [
     'SplineCavity',
     'RFGun',
     'Pillbox',
+    'Beampipe',
+    'Bellows',
+    'BLA',
+    'Taper',
+    'Assembly',
     'OperationPoints',
     'show_welcome',
     'CircularWaveguide',

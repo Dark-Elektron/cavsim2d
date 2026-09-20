@@ -134,12 +134,12 @@ Longitudinal QOIs
 """""""""""""""""
 Once the fields are computed, the following figures of merit are evaluated:
 
-1. **Stored Energy** :math:`U`:
+1. Stored Energy :math:`U`:
 
    .. math::
       U = \frac{1}{2} \varepsilon_0 \int_{\Omega} |\mathbf{E}|^2 \mathrm{d}V = \pi \varepsilon_0 \int_{\Omega_{2D}} \left( r |\mathbf{E}_{rz}|^2 + \frac{1}{r} |u_\phi|^2 \right) \mathrm{d}z \mathrm{d}r
 
-2. **Accelerating Voltage** :math:`V_{\text{acc}}` **and Gradient** :math:`E_{\text{acc}}`:
+2. Accelerating Voltage :math:`V_{\text{acc}}` and Gradient :math:`E_{\text{acc}}`:
 
    Integrated along the :math:`z`-axis (:math:`r=0`) for a particle traveling at speed :math:`\beta c_0` :cite:p:`Wangler2008`:
 
@@ -148,24 +148,24 @@ Once the fields are computed, the following figures of merit are evaluated:
 
    where :math:`L_{\text{active}} = 2 L_{\text{cell}} N_{\text{cells}}` is the active cavity length.
 
-3. **Shunt Impedance over Q** :math:`(R/Q)`:
+3. Shunt Impedance over Q :math:`(R/Q)`:
 
    .. math::
       \frac{R}{Q} = \frac{V_{\text{acc}}^2}{\omega U}
 
-4. **Surface Power Dissipation** :math:`P_{\text{loss}}`:
+4. Surface Power Dissipation :math:`P_{\text{loss}}`:
 
    .. math::
       P_{\text{loss}} = \frac{1}{2} R_s \int_{\partial\Omega_{\text{PEC}}} |\mathbf{H}|^2 \mathrm{d}S = \pi R_s \int_{\Gamma_{\text{PEC}}} r \left( |H_{rz}|^2 + |H_\phi|^2 \right) \mathrm{d}s
 
    where :math:`R_s = \sqrt{\frac{\omega\mu_0}{2\sigma}}` is the surface resistance of the cavity wall with conductivity :math:`\sigma` :cite:p:`Padamsee2008`.
 
-5. **Quality Factor** :math:`Q` **and Geometry Factor** :math:`G`:
+5. Quality Factor :math:`Q` and Geometry Factor :math:`G`:
 
    .. math::
       Q = \frac{\omega U}{P_{\text{loss}}}, \quad G = Q R_s = \frac{\omega \mu_0 \int_{\Omega} |\mathbf{E}|^2 \mathrm{d}V}{\int_{\partial\Omega} |\mathbf{H}|^2 \mathrm{d}S}
 
-6. **Peak Fields** :math:`E_{\text{pk}}` **and** :math:`B_{\text{pk}}`:
+6. Peak Fields :math:`E_{\text{pk}}` and :math:`B_{\text{pk}}`:
 
    Pointwise maxima along the PEC boundary:
 
@@ -247,7 +247,7 @@ Weighting the mass form by the complex :math:`\varepsilon_r` gives
    B = B' - \mathrm{i}B'', \qquad \lambda \in \mathbb{C}
 
 with :math:`A` real symmetric positive semi-definite and :math:`B` complex
-**symmetric** — not Hermitian. Three consequences follow:
+symmetric — not Hermitian. Three consequences follow:
 
 - :math:`\lambda` is complex, so :math:`\omega = c_0\sqrt{\lambda}` has
   :math:`\mathbf{E} \propto e^{-\alpha t}` with :math:`\alpha = \operatorname{Im}\omega`;
@@ -261,7 +261,7 @@ with :math:`A` real symmetric positive semi-definite and :math:`B` complex
 - the preconditioned inverse iteration (PINVIT) used for the real problem assumes
   a Hermitian pencil and does not apply.
 
-The spectrum is therefore reached with **shift-and-invert Arnoldi** on
+The spectrum is therefore reached with shift-and-invert Arnoldi on
 :math:`(A - \sigma B)^{-1} B`. On a 2D meridian mesh the shifted matrix is small
 enough to factorise with a sparse direct solver, so no preconditioner is needed.
 

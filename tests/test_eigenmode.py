@@ -451,6 +451,31 @@ def test_field_and_mesh_render_non_blank(project_dir):
     plt.close('all')
 
 
+def test_show_fields_accepts_ax_and_show(project_dir):
+    """``show_*(plotter='matplotlib')`` must be composable into a multi-panel
+    figure: draw into the *ax* it is given and leave the figure alone unless
+    ``show=True``. Regression for the unconditional ``plt.show()``, which closed
+    the inline figure so any later panel drew onto a dead canvas."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    cav = _run(project_dir)
+    plt.close('all')
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3))
+    cav.show_geometry(plotter='matplotlib', ax=axes[0], show=False)
+    cav.show_mesh(plotter='matplotlib', ax=axes[1], show=False)
+    out = cav.show_fields(mode=1, which='E', plotter='matplotlib', ax=axes[2], show=False)
+
+    assert out is axes[2]
+    assert axes[0].lines and axes[1].lines, "geometry/mesh panel is blank"
+    assert axes[2].collections, "field panel is blank"
+    # Nothing was drawn outside the three panels, and the figure is still live.
+    assert plt.gcf() is fig and len(fig.axes) == 3
+    plt.close('all')
+
+
 def test_legacy_flat_layout_fallback(project_dir):
     """Monopole results written flat in eigenmode/ (refactor-era layout) must
     still be readable via the monopole_dir fallback."""

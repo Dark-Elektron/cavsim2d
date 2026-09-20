@@ -379,3 +379,29 @@ def test_wakefield_field_line_animation(project_dir):
     anim = cav.wakefield.animate_fields(embed=False)
     assert anim is not None
     assert anim._save_count >= 1                 # at least one field-line frame
+
+def test_abci_deck_carries_the_requested_mesh(tmp_path):
+    """wakefield_config['mesh_config'] must reach ABCI's own field mesh.
+
+    geo_to_abc already read DDR/DDZ to size the contour sampling and the
+    minimum beam pipe, so the key looked supported; the deck writer ignored it
+    and pinned the mesh at its default. A caller sweeping DDR got a differently
+    sampled wall solved on an unchanged mesh, and the convergence check they
+    wrote came back flat. Writing the deck needs no ABCI binary, so this runs
+    everywhere.
+    """
+    import glob
+    from cavsim2d import Bellows
+
+    cav = Bellows(Ri=35.0, A=8.0, L_p=6.0, N_conv=4,
+                  R_root=1.2, R_crest=1.2, name='deck')
+    cav.set_workspace(str(tmp_path / 'deck'))
+    cav.geo_to_abc({'MROT': 0, 'wakelength': 10, 'bunch_length': 25,
+                    'mesh_config': {'DDR': 0.0007, 'DDZ': 0.0009}})
+
+    decks = glob.glob(str(tmp_path / 'deck' / 'wakefield' / '**' / '*.abc'),
+                      recursive=True)
+    assert decks, 'no ABCI deck was written'
+    text = open(decks[0]).read()
+    assert 'DDR = 0.0007' in text
+    assert 'DDZ = 0.0009' in text

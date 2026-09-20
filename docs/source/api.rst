@@ -44,6 +44,32 @@ their own geometry parameterisation and tuning handles.
    :members:
    :show-inheritance:
 
+Beam-line elements
+------------------
+
+Devices that concatenate into a beam line with ``+``. See
+:ref:`geometry-assembly`.
+
+.. autoclass:: cavsim2d.models.beampipe.Beampipe
+   :members:
+   :show-inheritance:
+
+.. autoclass:: cavsim2d.models.bellows.Bellows
+   :members:
+   :show-inheritance:
+
+.. autoclass:: cavsim2d.models.taper.Taper
+   :members:
+   :show-inheritance:
+
+.. autoclass:: cavsim2d.models.bla.BLA
+   :members:
+   :show-inheritance:
+
+.. autoclass:: cavsim2d.models.assembly.Assembly
+   :members:
+   :show-inheritance:
+
 Analysis namespaces
 -------------------
 

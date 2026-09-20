@@ -17,7 +17,11 @@ from cavsim2d.models.elliptical_flattop import EllipticalCavityFlatTop
 from cavsim2d.models.spline import SplineCavity
 from cavsim2d.models.rfgun import RFGun
 from cavsim2d.models.pillbox import Pillbox
-from cavsim2d.models.circular_waveguide import CircularWaveguide
+from cavsim2d.models.beampipe import Beampipe, CircularWaveguide
+from cavsim2d.models.bellows import Bellows
+from cavsim2d.models.bla import BLA
+from cavsim2d.models.taper import Taper
+from cavsim2d.models.assembly import Assembly
 
 __all__ = [
     'Cavity',
@@ -26,5 +30,10 @@ __all__ = [
     'SplineCavity',
     'RFGun',
     'Pillbox',
+    'Beampipe',
+    'Bellows',
+    'BLA',
+    'Taper',
+    'Assembly',
     'CircularWaveguide',
 ]

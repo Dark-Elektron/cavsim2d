@@ -185,13 +185,32 @@ class PyTuneNGSolve:
             if abs(best_diff) > freq_tol_mhz:
                 min_f = min(self._valid_freqs())
                 max_f = max(self._valid_freqs())
-                error(
-                    f"Tune did not reach target {self.target_freq} MHz. "
-                    f"Best |diff| = {abs(best_diff):.3f} MHz at {self.tune_var}={root_val}. "
-                    f"Achievable freq range (sampled): [{min_f:.3f}, {max_f:.3f}] MHz. "
-                    f"Target may be unreachable by varying {self.tune_var} alone — "
-                    f"consider adjusting other geometry parameters (e.g., Req)."
-                )
+                # A variable that does not reach the geometry gives a sampled
+                # range of essentially zero while the search runs its value off
+                # to absurdity. That is a different diagnosis from "too weak",
+                # and pointing at the geometry would send the user the wrong way:
+                # the usual cause is a SHARED parameter addressed through a
+                # per-cell slot that the model ignores (Req is one equator radius
+                # for the whole cavity and lives in the mid-cell slot, so
+                # cell_type={'end-cell': 'Req'} moves a value nothing reads).
+                if max_f - min_f < 1e-6 * max(1.0, self.target_freq):
+                    error(
+                        f"Tune did not reach target {self.target_freq} MHz, and "
+                        f"{self.tune_var} did not move the frequency at all "
+                        f"(sampled range {max_f - min_f:.3g} MHz over "
+                        f"{self.tune_var} up to {root_val:.3g}). That variable does "
+                        f"not reach this geometry — check the name and the cell it "
+                        f"is asked for; a shared parameter such as Req belongs in the "
+                        f"mid-cell slot, not a per-cell one."
+                    )
+                else:
+                    error(
+                        f"Tune did not reach target {self.target_freq} MHz. "
+                        f"Best |diff| = {abs(best_diff):.3f} MHz at {self.tune_var}={root_val}. "
+                        f"Achievable freq range (sampled): [{min_f:.3f}, {max_f:.3f}] MHz. "
+                        f"Target may be unreachable by varying {self.tune_var} alone — "
+                        f"consider adjusting other geometry parameters (e.g., Req)."
+                    )
                 return 0, 0, self.conv_dict, self.abs_err_list
 
         if converged:

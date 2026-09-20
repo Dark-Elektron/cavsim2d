@@ -57,7 +57,7 @@ Settings description:
 
    .. note::
 
-      A **2-cell** candidate tunes to a *family* of designs (see :doc:`examples/tuning/two_cell_design_family`) rather than a single geometry, and each family member is evaluated and ranked on its own — so one candidate contributes several rows to the history. Set ``tune_config['equal_cell_freq'] = True`` to instead evaluate only the single each-cell-at-frequency design, or ``tune_config['n_family']`` to change how many members are tried.
+      A 2-cell candidate tunes to a *family* of designs (see :doc:`examples/tuning/two_cell_design_family`) rather than a single geometry, and each family member is evaluated and ranked on its own — so one candidate contributes several rows to the history. Set ``tune_config['equal_cell_freq'] = True`` to instead evaluate only the single each-cell-at-frequency design, or ``tune_config['n_family']`` to change how many members are tried.
 
 ``bounds``
    *(dict)* Defines the search bounds ``[lower, upper]`` for each geometric variable (in mm). Variables that should remain constant must be entered with identical upper and lower bounds (e.g. ``'L': [93.5, 93.5]``).
@@ -65,8 +65,8 @@ Settings description:
 ``objectives``
    *(list of lists)* Specifies the optimisation objectives. Each entry is a list with the structure ``[direction, metric, ...]``:
 
-   - **Direction:** ``'min'`` (minimise), ``'max'`` (maximise), or ``'equal'`` (target a specific value).
-   - **Metric:** A QOI key prefixed with the polarisation name (e.g. ``'monopole:Epk/Eacc []'``, ``'monopole:freq [MHz]'``).
+   - Direction: ``'min'`` (minimise), ``'max'`` (maximise), or ``'equal'`` (target a specific value).
+   - Metric: A QOI key prefixed with the polarisation name (e.g. ``'monopole:Epk/Eacc []'``, ``'monopole:freq [MHz]'``).
    - For wakefield impedance objectives (``'ZL'`` or ``'ZT'``), the third element is a list of frequency intervals (in GHz) over which the peak impedance is evaluated.
 
 ``initial_points``
@@ -86,7 +86,7 @@ Settings description:
 
 Archive size and convergence
 ****************************
-The elite archive is bounded and the search stops on **ε‑progress** — the additive ε‑indicator between successive Pareto fronts, which is Pareto‑compliant, needs no reference set, and decays monotonically to zero as the front stops improving.
+The elite archive is bounded and the search stops on ε‑progress — the additive ε‑indicator between successive Pareto fronts, which is Pareto‑compliant, needs no reference set, and decays monotonically to zero as the front stops improving.
 
 ``archive_size``
    *(int, default: 100)* Maximum size of the Pareto/elite archive. Each generation the surviving set is truncated to this many designs by non‑dominated sorting plus crowding distance (NSGA‑II environmental selection), so the front stops growing without bound. ``None`` restores the legacy unbounded archive.

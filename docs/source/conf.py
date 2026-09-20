@@ -144,6 +144,9 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+# Sidebar section captions and the pandas result tables that notebook cells emit
+# (see the file's own comments for what each rule is for).
+html_css_files = ['cavsim2d.css']
 html_logo = "../images/cavsim2d_logo.svg"
 
 # Enable numref

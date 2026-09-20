@@ -8,8 +8,8 @@ Core Concepts
 
 The core workflow of ``cavsim2d`` revolves around two main classes:
 
-1. **``Cavity`` (and subclasses like ``EllipticalCavity``):** Represents a single physical RF cavity device, holding its cell dimensions, geometry configurations, and local analysis results.
-2. **``Study`` (Study Manager):** A study manager class that groups multiple ``Cavity`` objects under a single project folder, handles directory layouts, triggers parallelised analyses, and facilitates comparisons between different designs.
+1. ``Cavity`` (and subclasses like ``EllipticalCavity``): Represents a single physical RF cavity device, holding its cell dimensions, geometry configurations, and local analysis results.
+2. ``Study`` (Study Manager): A study manager class that groups multiple ``Cavity`` objects under a single project folder, handles directory layouts, triggers parallelised analyses, and facilitates comparisons between different designs.
 
 Step 1: Set Up the Project and Geometry
 ***************************************

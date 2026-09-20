@@ -19,6 +19,8 @@ Example (a box)::
          .close('AXI'))              # back along the axis
     mesh = p.mesh(maxh=0.02, order=3)
 """
+import warnings
+
 import numpy as np
 from scipy.interpolate import BSpline
 from scipy.special import comb
@@ -101,6 +103,26 @@ class MaterialRegion:
         if self._is_rect:
             return f"MaterialRegion({self.material!r}, z={self.z}, r={self.r})"
         return f"MaterialRegion({self.material!r}, points={self.points})"
+
+    def translated(self, dz):
+        """A copy of this region shifted by *dz* along z.
+
+        Needed when a profile is concatenated downstream of another
+        (:meth:`Profile.then`): the region has to travel with the wall it
+        belongs to, or a beam-line absorber would stay behind at the origin.
+        """
+        if self._is_rect:
+            return MaterialRegion(self.material,
+                                  z=(self.z[0] + dz, self.z[1] + dz), r=self.r,
+                                  color=self.color)
+        return MaterialRegion(self.material, color=self.color,
+                              points=[(z + dz, r) for z, r in self.points])
+
+    def renamed(self, material):
+        """A copy of this region carrying a different material name."""
+        if self._is_rect:
+            return MaterialRegion(material, z=self.z, r=self.r, color=self.color)
+        return MaterialRegion(material, color=self.color, points=list(self.points))
 
     def edges(self):
         """The region outline as a list of ``((z0, r0), (z1, r1))`` line segments."""
@@ -360,6 +382,134 @@ class Profile:
             p.line_to(cursor, Ri_r, wall[-1]['name'] if hi < len(wall) else stub_name)
         p.line_to(cursor, 0.0, right_ap['name'])                # right aperture
         p.close(axi['name'])
+        return p
+
+    # -- concatenation ------------------------------------------------------
+
+    def _meridian_parts(self):
+        """``(left_aperture, wall, right_aperture, axis)`` of a standard meridian.
+
+        Every profile this package builds runs axis -> up the left aperture ->
+        along the wall -> down the right aperture -> back along the axis. The
+        concatenation and chaining code both need that decomposition, and both
+        need it to fail loudly rather than silently mis-slice a contour that was
+        drawn some other way.
+        """
+        segs = self._segs
+        if len(segs) < 3:
+            raise ValueError(
+                f"profile {self.name!r} is too simple to concatenate: it needs an "
+                "aperture, a wall and a closing aperture.")
+        left_ap, right_ap, axi = segs[0], segs[-2], segs[-1]
+        if (abs(self._pts[left_ap['i0']][1]) > 1e-9
+                or abs(self._pts[right_ap['i1']][1]) > 1e-9):
+            raise ValueError(
+                f"profile {self.name!r} is not the standard axis-to-axis meridian "
+                "(it must start and end on r = 0), so it cannot be concatenated.")
+        return left_ap, segs[1:-2], right_ap, axi
+
+    def wall_span(self):
+        """``(z_start, z_end)`` of the wall — the two aperture tops, in metres.
+
+        This is the span :meth:`then` joins on, so a caller that needs to know
+        where a concatenated profile put each device (to move a material region
+        with it, say) can work it out without re-deriving the translation.
+        """
+        left_ap, _, right_ap, _ = self._meridian_parts()
+        return self._pts[left_ap['i1']][0], self._pts[right_ap['i0']][0]
+
+    def then(self, other, gap=0.0, name=None, allow_step=False):
+        """A new :class:`Profile` with *other* concatenated downstream of this one.
+
+        This is the geometric half of building a beam line out of separate
+        devices: a beam pipe, a bellows, a cavity, another bellows. The two inner
+        apertures vanish and the walls join, so the result is one connected vacuum
+        region capped by a single aperture at each end — exactly what
+        :meth:`chained` produces for repeats of one cavity, but for two *different*
+        structures.
+
+        Unlike :meth:`chained`, nothing is stripped: each device keeps whatever
+        beam pipe its own parameterisation carries. Drift between devices is
+        therefore explicit — either a :class:`~cavsim2d.models.beampipe.Beampipe`
+        element of its own, or *gap*.
+
+        Parameters
+        ----------
+        other : Profile
+            The downstream profile. It is translated so its wall begins where this
+            one's ends (plus *gap*); its own z origin is irrelevant.
+        gap : float, optional
+            Straight drift inserted between the two walls, in metres, at this
+            profile's downstream radius. Default 0 (the walls butt).
+        name : str, optional
+            Name for the result. Defaults to ``'<self>+<other>'``.
+        allow_step : bool, optional
+            Set True when a step at this junction is intended, to suppress the
+            mismatch warning. Default False.
+
+        Notes
+        -----
+        Where the two bores differ the junction is closed with an abrupt radial
+        step — a legitimate geometry — and a :class:`UserWarning` reports where
+        it is and how big it is, so an unintended one is visible rather than
+        silently built. A gradual change of aperture is made with a
+        :class:`~cavsim2d.models.taper.Taper`.
+
+        Material regions travel with their wall.
+        """
+        if not isinstance(other, Profile):
+            raise TypeError(f'can only concatenate a Profile, got {type(other).__name__}')
+        gap = float(gap)
+        if gap < 0:
+            raise ValueError('gap must be non-negative')
+
+        l_ap, wall, r_ap, axi = self._meridian_parts()
+        o_l_ap, o_wall, o_r_ap, _ = other._meridian_parts()
+        if not wall or not o_wall:
+            raise ValueError('cannot concatenate a profile that has no wall segments.')
+
+        dup = {r.material for r in self._regions} & {r.material for r in other._regions}
+        if dup:
+            raise ValueError(
+                f"both profiles carry a material region named {sorted(dup)!r}; "
+                "material names must be unique across a concatenated profile "
+                "(an Assembly prefixes them with the element label).")
+
+        z_join = self._pts[r_ap['i0']][0]        # downstream end of this wall
+        r_join = self._pts[r_ap['i0']][1]
+        o_z0 = other._pts[o_l_ap['i1']][0]       # upstream end of other's wall
+        o_r0 = other._pts[o_l_ap['i1']][1]
+        dz = (z_join + gap) - o_z0
+        join_name = wall[-1]['name']
+
+        if abs(o_r0 - r_join) > 1e-9 and not allow_step:
+            warnings.warn(
+                f'aperture mismatch joining {other.name!r} onto {self.name!r}: '
+                f'{self.name!r} ends at r = {r_join * 1e3:.6g} mm but '
+                f'{other.name!r} starts at r = {o_r0 * 1e3:.6g} mm, so the '
+                f'junction at z = {(z_join + gap) * 1e3:.6g} mm is closed with '
+                f'an abrupt radial step of {abs(o_r0 - r_join) * 1e3:.6g} mm. '
+                'If that is intended, pass allow_step=True to silence this; if '
+                f'not, insert a Taper(R_left={r_join * 1e3:.6g}, '
+                f'R_right={o_r0 * 1e3:.6g}, L=...) between them.',
+                UserWarning, stacklevel=2)
+
+        p = Profile(name or f'{self.name}+{other.name}')
+        p.start(*self._pts[l_ap['i0']])
+        self._replay_segment(p, l_ap, self._pts, 0.0)
+        for s in wall:
+            self._replay_segment(p, s, self._pts, 0.0)
+        if gap > 1e-12:
+            p.line_to(z_join + gap, r_join, join_name)
+        if abs(o_r0 - r_join) > 1e-12:                   # radial step at the junction
+            p.line_to(z_join + gap, o_r0, join_name)
+        for s in o_wall:
+            other._replay_segment(p, s, other._pts, dz)
+        other._replay_segment(p, o_r_ap, other._pts, dz)
+        p.close(axi['name'])
+
+        p._regions = ([reg.translated(0.0) for reg in self._regions]
+                      + [reg.translated(dz) for reg in other._regions])
         return p
 
     # -- spline helpers -----------------------------------------------------

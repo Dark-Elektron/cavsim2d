@@ -20,9 +20,16 @@ from SALib.analyze import sobol as _sobol
 from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import r2_score
+
+
+# Ridge penalty grid: wide enough to span "no regularisation needed" (a QOI the
+# polynomial represents exactly) to "heavily shrunk" (a kinked QOI such as a peak
+# field, which is a MAXIMUM over nominally identical cells and has no faithful
+# low-order polynomial at all).
+_ALPHAS = np.logspace(-6, 6, 61)
 
 
 def independent_inputs(X, atol=1e-9):
@@ -67,7 +74,8 @@ def analyse(X, Y, objectives=None, N=1024, degree=2, cv=5, seed=12347):
     (sobol, surrogate) : tuple of dict
         ``sobol``     — ``{objective: {input_name: {'S1', 'ST'}}}``.
         ``surrogate`` — ``{objective: {'r2', 'cv_r2', 'rmse', 'max_abs_err',
-        'n_samples', 'n_terms', 'actual': [...], 'predicted': [...]}}`` where the
+        'n_samples', 'n_terms', 'alpha', 'samples_per_term', 'undersampled',
+        'actual': [...], 'predicted': [...]}}`` where the
         cross-validated ``predicted`` vs ``actual`` are the honest, out-of-sample
         fit used for the parity plot; ``rmse``/``max_abs_err`` are in the FM's own
         units (cf. the paper's per-FM cross-validation errors).
@@ -126,8 +134,21 @@ def analyse(X, Y, objectives=None, N=1024, degree=2, cv=5, seed=12347):
         # centring/scaling makes the least-squares fit numerically robust without
         # changing the model. (The Saltelli design is transformed by the same fitted
         # scaler inside the pipeline, so predict() stays consistent.)
+        #
+        # RIDGE, not plain least squares. A degree-2 expansion over p inputs has
+        # C(p+2, 2) terms -- 190 for the 18 independent inputs of a welded 9-cell --
+        # against a sample count that is only a few times larger. Unpenalised OLS
+        # then spends its surplus terms fitting the sampling noise: it reports a
+        # flattering in-sample R^2 and a NEGATIVE cross-validated one, and the Sobol
+        # indices read off it inherit that noise. The penalty is chosen by the
+        # built-in leave-one-out CV over a wide alpha grid, so a figure of merit the
+        # polynomial represents exactly (an integral QOI such as R/Q or G) drives
+        # alpha to ~0 and is fitted exactly as before; only the under-determined
+        # ones are shrunk. The second scaler puts every polynomial term on the same
+        # footing, without which the penalty would fall almost entirely on the
+        # high-order cross terms.
         model = make_pipeline(StandardScaler(), PolynomialFeatures(degree),
-                              LinearRegression())
+                              StandardScaler(), RidgeCV(alphas=_ALPHAS))
         model.fit(Xm, ym)
 
         # goodness-of-fit: in-sample R^2 + honest k-fold cross-validated prediction
@@ -142,6 +163,7 @@ def analyse(X, Y, objectives=None, N=1024, degree=2, cv=5, seed=12347):
         # here: calling fit_transform on model's own StandardScaler would refit it
         # (on one row) and corrupt the fitted model before model.score() below.
         n_terms = int(model.named_steps['polynomialfeatures'].n_output_features_)
+        alpha = float(model.named_steps['ridgecv'].alpha_)
         # A figure of merit with (near-)zero spread carries no signal for the
         # surrogate to learn — e.g. the frequency after per-sample TUNING is driven
         # to the target, so its variance is tuning-residual + numerical noise, not a
@@ -157,6 +179,12 @@ def analyse(X, Y, objectives=None, N=1024, degree=2, cv=5, seed=12347):
             'max_abs_err': float(np.max(np.abs(resid))),
             'n_samples': n_ok,
             'n_terms': n_terms,
+            'alpha': alpha,
+            # Samples per free coefficient. Below ~3 the expansion is only weakly
+            # determined however good the physics: the surrogate (and every Sobol
+            # index read off it) is then sample-count-limited, not model-limited.
+            'samples_per_term': float(n_ok / n_terms),
+            'undersampled': bool(n_ok < 3 * n_terms),
             'y_mean': y_mean,
             'y_std': y_std,
             'near_constant': near_constant,

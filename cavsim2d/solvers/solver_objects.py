@@ -15,6 +15,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT
 from cavsim2d.analysis.impedance import (NATIVE_Z_UNIT, convert_impedance_frame,
@@ -467,12 +468,26 @@ class TuneSolver:
 
     def plot_convergence(self, show=True, target=None):
         """One subplot per tuned parameter (e.g. Req_m, freq [MHz]), with one
-        line per tune stage. The **target frequency** is drawn as a horizontal line
+        line per tune stage. The target frequency is drawn as a horizontal line
         on the ``freq [MHz]`` panel — read from the saved tune status unless passed
-        explicitly. Returns (fig, axes)."""
+        explicitly. Returns (fig, axes).
+
+        A tune that resolved to a design *family* has no iteration history to draw:
+        a family is a parametric sweep over the split, not a root-find. Look at
+        ``cav.tune.family`` instead."""
         df = self.convergence
         if df.empty:
-            info("No convergence data available.")
+            # Always-visible (not the verbosity-gated info): someone calling this
+            # directly and getting a blank needs to be told why, and "a family has
+            # no convergence history" is a different answer from "nothing ran".
+            if (self.folder / 'family.json').exists():
+                print("plot_convergence: this tune resolved to a design family, "
+                      "which is a sweep rather than an iterative search, so it has "
+                      "no convergence history. Use cav.tune.family to inspect the "
+                      "members.")
+            else:
+                print(f"plot_convergence: no convergence history in {self.folder} - "
+                      "run cav.tune.run(...) first.")
             return None, None
 
         if target is None:                         # target frequency for the reference line
@@ -1821,9 +1836,18 @@ class EigenmodeSolver:
         return results
 
     def surrogate_quality(self):
-        """The SA surrogate's goodness-of-fit per figure of merit as a DataFrame
-        (R², cross-validated R², RMSE, max abs error, #samples, #terms) — reads
-        ``uq/surrogate.json`` (written by :meth:`run_sensitivity`)."""
+        """The SA surrogate's goodness-of-fit per figure of merit as a DataFrame,
+        read from ``uq/surrogate.json`` (written by :meth:`run_sensitivity`).
+
+        Columns: ``r2`` and ``cv_r2`` (in-sample and cross-validated
+        coefficient of determination), ``rmse`` and ``max_abs_err`` in the
+        FM’s own units, ``y_std`` and ``near_constant`` (a FM with no spread
+        has nothing to fit), ``n_samples``, ``n_terms``, their ratio
+        ``samples_per_term``, the ridge penalty ``alpha`` the fit settled on,
+        and ``undersampled`` (fewer than three samples per free coefficient).
+        Read ``cv_r2`` first: it is the honest out-of-sample number, and a FM
+        whose ``cv_r2`` sits near zero has no usable Sobol indices however
+        good its ``r2`` looks."""
         path = os.path.join(self.cavity.uq_dir, 'surrogate.json')
         if not os.path.exists(path):
             print(f"surrogate_quality: no surrogate.json in {self.cavity.uq_dir} - "
@@ -1832,7 +1856,7 @@ class EigenmodeSolver:
         with open(path) as f:
             surro = json.load(f)
         cols = ['r2', 'cv_r2', 'rmse', 'max_abs_err', 'y_std', 'near_constant',
-                'n_samples', 'n_terms']
+                'n_samples', 'n_terms', 'samples_per_term', 'alpha', 'undersampled']
         return pd.DataFrame(
             {obj: {c: surro[obj].get(c) for c in cols} for obj in surro}).T
 
@@ -1863,8 +1887,8 @@ class EigenmodeSolver:
         ncols = min(ncols, n)
         nrows = int(np.ceil(n / ncols))
         with house_style():
-            fig, axes = plt.subplots(nrows, ncols, figsize=(3.4 * ncols, 3.2 * nrows),
-                                     squeeze=False)
+            fig, axes = plt.subplots(nrows, ncols, figsize=(3.6 * ncols, 3.3 * nrows),
+                                     squeeze=False, layout='constrained')
             flat = axes.ravel()
             for ax, fm in zip(flat, fms):
                 a = np.asarray(surro[fm]['actual'], float)
@@ -1872,7 +1896,24 @@ class EigenmodeSolver:
                 lo, hi = float(min(a.min(), p.min())), float(max(a.max(), p.max()))
                 ax.plot([lo, hi], [lo, hi], color='#888888', lw=1, ls='--', zorder=1)
                 ax.scatter(a, p, s=18, color=WARM[0], edgecolors='k', lw=0.4, zorder=2)
-                ax.set_title(_bare(fm), fontsize=10)
+                # One range on both axes: this is a parity plot, so the dashed
+                # line must read as 45 degrees, and letting the axes scale
+                # independently gives a near-constant FM two different offsets
+                # ("+1.2999e3" against "+1.29997e3") that cannot be compared.
+                pad = 0.05 * (hi - lo) or 1e-12
+                ax.set_xlim(lo - pad, hi + pad)
+                ax.set_ylim(lo - pad, hi + pad)
+                # Few ticks, and room above the axes: a near-constant FM is drawn
+                # with a shared offset ("+1.2999e3") that matplotlib parks where
+                # the title would otherwise sit, and its full-precision labels
+                # run into each other at the default tick density.
+                # The SAME tick count on both: the axes already share a range, and
+                # matplotlib derives its shared offset from the tick values, so two
+                # different counts give a near-constant FM two offsets that look
+                # like two different scales.
+                ax.xaxis.set_major_locator(MaxNLocator(4))
+                ax.yaxis.set_major_locator(MaxNLocator(4))
+                ax.set_title(_bare(fm), fontsize=10, pad=14)
                 ax.set_xlabel('actual')
                 ax.set_ylabel('surrogate (CV)')
                 txt = (f"$R^2$={surro[fm]['r2']:.4f}\nCV $R^2$={surro[fm]['cv_r2']:.4f}\n"
@@ -1882,28 +1923,48 @@ class EigenmodeSolver:
                 if surro[fm].get('near_constant'):
                     txt += (f"\nstd={surro[fm].get('y_std', float('nan')):.2g}"
                             "\n(~const: no SA signal)")
+                # Only worth saying when the fit is actually poor: a QOI the
+                # polynomial represents exactly fits fine on few samples, and the
+                # note would be noise on its panel.
+                spt = surro[fm].get('samples_per_term')
+                if (surro[fm].get('undersampled') and spt
+                        and surro[fm]['cv_r2'] < 0.95
+                        and not surro[fm].get('near_constant')):
+                    txt += f"\n({spt:.1f} samples/term: undersampled)"
                 ax.text(0.04, 0.96, txt,
                         transform=ax.transAxes, va='top', ha='left', fontsize=8,
                         bbox=dict(boxstyle='round', fc='white', ec='#333333', alpha=0.9))
             for ax in flat[n:]:
                 ax.set_visible(False)
-            fig.tight_layout()
         _maybe_show(show)
         # Return the axes, not the Figure: a bare Figure as a cell's last
         # expression does not render under the ipympl (%matplotlib widget)
         # backend. Every other plot_* returns axes — match them.
         return flat[:n]
 
-    def plot_sobol_indices(self, results=None, objectives=None, group=False, show=True):
+    def plot_sobol_indices(self, results=None, objectives=None, sort_by=None,
+                           group=None, show=True):
         r"""Grouped bars of Sobol' main (``S_1``) and total (``S_T``) indices per
         input variable, one panel per figure of merit (WEPB015 Fig. 6). Pass the
         ``results`` from :meth:`run_sensitivity`, or omit to read ``uq/sobol.json``.
         The wide gap between a variable's main and total index flags its
         higher-order interactions.
 
-        ``group=True`` orders the x-axis by variable **stem** — every ``Req``
-        (``Req1, Req2, …``) before every ``Ri``, as in the paper's Fig. 6 — instead
-        of the order they were sampled in."""
+        ``sort_by`` reorders the x-axis:
+
+        - ``None`` (default) — the order the inputs were sampled in, which for a
+          multicell interleaves the variables along the cavity
+          (``Ri1, Req1, Ri2, …``).
+        - ``'variable'`` — by variable stem, so every ``Req`` (``Req1, Req3,
+          …``) is drawn before every ``Ri``, as in the paper's Fig. 6. Use this to
+          read one variable's profile along the cavity at a glance.
+        - ``'S1'`` / ``'ST'`` — descending by that index, which puts the
+          influential inputs first.
+
+        ``group=True`` is the old spelling of ``sort_by='variable'``.
+        """
+        if group is not None and sort_by is None:
+            sort_by = 'variable' if group else None
         if results is None:
             path = os.path.join(self.cavity.uq_dir, 'sobol.json')
             if not os.path.exists(path):
@@ -1933,11 +1994,19 @@ class EigenmodeSolver:
             n = len(fms)
             n_vars = max(len(results[fm]) for fm in fms)
             fig, axes = plt.subplots(n, 1, figsize=(max(6, 0.45 * n_vars + 2),
-                                                    2.4 * n), squeeze=False)
+                                                    2.4 * n), squeeze=False,
+                                     layout='constrained')
             for ax, fm in zip(axes[:, 0], fms):
                 variables = list(results[fm])
-                if group:
+                if sort_by == 'variable':
                     variables = sorted(variables, key=_stem_key)
+                elif sort_by in ('S1', 'ST'):
+                    variables = sorted(variables,
+                                       key=lambda v: -results[fm][v][sort_by])
+                elif sort_by is not None:
+                    raise ValueError(
+                        f"plot_sobol_indices: sort_by={sort_by!r} is not one of "
+                        "None, 'variable', 'S1', 'ST'.")
                 x = np.arange(len(variables))
                 w = 0.4
                 s1 = [results[fm][v]['S1'] for v in variables]
@@ -1949,8 +2018,14 @@ class EigenmodeSolver:
                 ax.set_xticks(x)
                 ax.set_xticklabels(variables, rotation=90, fontsize=7)
                 ax.set_ylabel(_bare(fm))
+                # Sorting by variable puts each stem's cells in one run; a rule at
+                # every change of stem is what makes that run readable as a block.
+                if sort_by == 'variable':
+                    stems = [_stem_key(v)[0] for v in variables]
+                    for j in range(1, len(stems)):
+                        if stems[j] != stems[j - 1]:
+                            ax.axvline(j - 0.5, color='#888888', lw=0.8, ls=':')
             axes[0, 0].legend(ncol=2, loc='upper right')
-            fig.tight_layout()
         _maybe_show(show)
         # Return the axes, not the Figure: a cell whose last expression is a bare
         # Figure fails to render under the ipympl (%matplotlib widget) backend
@@ -2488,16 +2563,18 @@ class MultipactingSolver:
         return profile.mesh(maxh=mesh_h_metres(spec, default=6),
                             order=1, edge_maxh=edge)
 
-    def show_mesh(self, plotter='ngsolve'):
+    def show_mesh(self, plotter='ngsolve', ax=None, show=True):
         """Preview the mesh multipacting will use — the staged own-field mesh
         when :meth:`set_mesh_parameters`/``pec_maxh`` were given, otherwise the
-        eigenmode mesh. No field is solved."""
+        eigenmode mesh. No field is solved.
+
+        *ax* / *show* apply to ``plotter='matplotlib'`` and behave as on the
+        ``plot_*`` methods; the webgui plotter ignores them."""
         mesh = self._preview_mesh()
         if plotter == 'matplotlib':
             # Deferred: ngsolve is an optional heavy dependency.
             from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
-            NGSolveMEVP()._plot_mesh_matplotlib(mesh)
-            return None
+            return NGSolveMEVP()._plot_mesh_matplotlib(mesh, ax=ax, show=show)
         # Deferred: webgui is notebook-oriented.
         from ngsolve.webgui import Draw
         return Draw(mesh)
