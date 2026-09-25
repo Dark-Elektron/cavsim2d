@@ -24,12 +24,12 @@ The package is layered:
 directly (see ``writers/__init__.py`` for the reason).
 """
 from cavsim2d.geometry.profile import Profile, mesh_from_profile
-from cavsim2d.geometry.tangency import (update_alpha, calculate_alpha, tangent_coords,
+from cavsim2d.geometry.tangency import (update_alpha, calculate_alpha, tangent_coords, wall_tangent,
                                         ellipse_tangent, jac, inscribed_corner,
                                         corner_offset, emit_rounded_wall)
 from cavsim2d.geometry.primitives import linspace, lineTo, arcTo, shortest_direction
 
 __all__ = ['Profile', 'mesh_from_profile',
-           'update_alpha', 'calculate_alpha', 'tangent_coords', 'ellipse_tangent', 'jac',
+           'update_alpha', 'calculate_alpha', 'tangent_coords', 'wall_tangent', 'ellipse_tangent', 'jac',
            'inscribed_corner', 'corner_offset', 'emit_rounded_wall',
            'linspace', 'lineTo', 'arcTo', 'shortest_direction']

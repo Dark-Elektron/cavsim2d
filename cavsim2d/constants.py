@@ -8,13 +8,16 @@ TUNE_ACCURACY = 1e-4
 DIMENSION = 'm'
 DIMENSION_FACTOR = {'mm': 1, 'cm': 1e-1, 'm': 1e-3}
 # One digit per beam-pipe end, left then right. e/1 = PEC (electric wall),
-# m/3 = PMC (magnetic wall, the closed default), o/2 = open (a PML absorber).
+# m/3 = PMC (magnetic wall, the closed default), o/2 = open (a PML absorber),
+# p/4 = a waveguide port (the pipe's exact modal impedance; both ends only).
 BOUNDARY_CONDITIONS_DICT = {
     'ee': 11, 'em': 13, 'me': 31, 'mm': 33,
     'oo': 22, 'oe': 21, 'om': 23, 'eo': 12, 'mo': 32,
+    'pp': 44,
     'open': 22,                                    # readable alias for 'oo'
+    'port': 44,                                    # readable alias for 'pp'
 }
-BC_DIGIT = {1: 'pec', 2: 'open', 3: 'pmc'}
+BC_DIGIT = {1: 'pec', 2: 'open', 3: 'pmc', 4: 'port'}
 LABELS = {'freq [MHz]': r'$f$ [MHz]', r'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
           "Epk/Eacc []": r"$E_\mathrm{pk}/E_\mathrm{acc} ~[\cdot]$",
           "Bpk/Eacc [mT/MV/m]": r"$B_\mathrm{pk}/E_\mathrm{acc} ~\mathrm{[mT/MV/m]}$",

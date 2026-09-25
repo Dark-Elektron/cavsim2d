@@ -353,9 +353,10 @@ class Profile:
                 gaps = [float(spacing)]
             if len(gaps) == 1:
                 gaps = gaps * (n - 1)
-            assert len(gaps) == n - 1, (
-                'spacing list must have one entry per inter-cavity gap: '
-                'its length must equal chain - 1 == %d, but got %d.' % (n - 1, len(gaps)))
+            if len(gaps) != n - 1:
+                raise ValueError(
+                    'spacing list must have one entry per inter-cavity gap: its length '
+                    'must equal chain - 1 == %d, but got %d.' % (n - 1, len(gaps)))
             if any(g < 0 for g in gaps):
                 raise ValueError('spacing must be non-negative.')
 
@@ -675,9 +676,9 @@ class Profile:
         dropped. Retagging only ever adds to the Dirichlet set, so a default
         all-``'pmc'`` run meshes exactly as before.
 
-        *left* and *right* are ``'pec'`` or ``'pmc'``. Ends that are already
-        solid metal have no ``'PMC'`` aperture to retag and are left alone: they
-        satisfy ``'pec'`` as built.
+        *left* and *right* are ``'pec'``, ``'pmc'`` or ``'open'``; only ``'pec'``
+        retags. Ends that are already solid metal have no ``'PMC'`` aperture to
+        retag and are left alone: they satisfy ``'pec'`` as built.
         """
         i_left, i_right = self.end_aperture_segments()
         for idx, want in ((i_left, left), (i_right, right)):

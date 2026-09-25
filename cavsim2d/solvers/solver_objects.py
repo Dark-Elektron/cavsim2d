@@ -67,6 +67,7 @@ DEFAULT_EIGENMODE_CONFIG = {
     'beampipe_length': None,         # [m]; None -> the model's own default (2*L_m)
     'pml_length': None,              # PML block length [m]; None -> 3x the pipe radius
     'pml_alpha': 1j,                 # PML complex stretch (only with boundary_conditions='oo')
+    'n_port_modes': 3,               # TM_0n pipe modes per port (boundary_conditions='port')
     'mesh_config': {'h': 20, 'p': 3, 'adaptive': None},
 }
 
@@ -145,26 +146,38 @@ def _solved_with_open_boundary(cfg, modes=None):
 
     Two sources of evidence, because neither alone is reliable:
 
-    - the saved ``boundary_conditions`` (digit 2 = open), and
-    - ``Q_rad []`` in the results, which ONLY an open solve produces.
+    - the saved ``boundary_conditions`` (digit 2 = open/PML, 4 = waveguide port), and
+    - ``Q_rad []`` or ``Q_ext []`` in the results, which only an open (PML) or a port
+      solve produces.
 
     The results are checked first and are the stronger evidence: they are what the solver
     actually did, whereas ``config.json`` is written by ``EigenmodeSolver.run`` and not by
     every path that can produce results (``Study.run_eigenmode`` does not write one), so a
     perfectly good open solve can arrive with an empty config.
     """
-    if modes is not None and 'Q_rad []' in getattr(modes, 'columns', ()):
-        if modes['Q_rad []'].notna().any():
-            return True
+    for col in ('Q_rad []', 'Q_ext []'):
+        if modes is not None and col in getattr(modes, 'columns', ()):
+            if modes[col].notna().any():
+                return True
     bc = (cfg or {}).get('boundary_conditions')
     if bc is None:
         return False
     if isinstance(bc, str):
         bc = BOUNDARY_CONDITIONS_DICT.get(bc.strip().lower(), 33)
     try:
-        return '2' in f'{int(bc):02d}'
+        digits = f'{int(bc):02d}'
+        return '2' in digits or '4' in digits
     except (TypeError, ValueError):
         return False
+
+
+#: The caveat on every impedance reconstructed from eigenmodes. See
+#: EigenmodeSolver._warn_mode_filtering for where the numbers behind it come from.
+_MODE_FILTER_CAVEAT = (
+    "The filtering is not perfect: genuine cavity modes may have been discarded (a Q "
+    "that has not converged with pipe length, or a mode the second solve missed) and "
+    "some beam-pipe or PML modes may still be included. Treat |Z| above the beam-pipe "
+    "cutoff as indicative and check it against a wakefield solve.")
 
 
 def _z_axis_label(unit, transverse=False):
@@ -565,6 +578,7 @@ class TuneSolver:
             ``.eigenmode.run()`` / ``.wakefield.run()``), with the design table
             attached as ``.designs``.
         """
+        # Deferred: models and study both import solver_objects (cycle).
         from cavsim2d.models.elliptical import EllipticalCavity
         from cavsim2d.study import Study
 
@@ -719,6 +733,7 @@ class TuneSolver:
           'achieved': {col: val}, 'variables': [...], 'history': [...]}``
         - family: ``{'mode': 'family', 'family': <Study>}``
         """
+        # Deferred: models imports solver_objects (cycle).
         from cavsim2d.models.elliptical import EllipticalCavity
 
         cav = self.cavity
@@ -1207,11 +1222,59 @@ class EigenmodeSolver:
             Columns ``f [MHz]``, ``|Z| [u]``, ``Re(Z) [u]``, ``Im(Z) [u]`` with
             ``u`` = kOhm (longitudinal) or kOhm/m (transverse) by default.
 
+        Warns
+        -----
+        UserWarning
+            Every reconstruction warns that the mode set is only as good as the
+            beam-pipe/PML mode filtering behind it, and that no filter is perfect
+            (see :meth:`stable_modes`).
+
         >>> z = cav.eigenmode.impedance()                       # 0 .. highest mode
         >>> zt = cav.eigenmode.impedance('transverse', span=(400, 1200), Q=1e4)
         >>> z = cav.eigenmode.impedance(unit='')                # in Ohm instead
         >>> z = cav.eigenmode.impedance(model='qnm')            # interfering poles
         """
+        df = self._impedance_frame(kind, span, n_points, Q, unit, model, modes)
+        if not df.empty:
+            self._warn_mode_filtering(modes)
+        return df
+
+    def _warn_mode_filtering(self, modes, plotted_unfiltered=False):
+        """The caveat every eigenmode impedance carries: the mode set is filtered
+        imperfectly, or not at all.
+
+        An open (PML) solve returns genuine cavity modes mixed with modes of the beam
+        pipe and of the absorbing block, and above the pipe cutoff the artefacts are
+        the broad, high-R/Q ones that dominate ``|Z|``. The best discriminant found
+        so far is frequency invariance between two solves that differ only in pipe
+        (or PML) length, and even that misclassifies a few per cent of modes in
+        both directions: it drops real modes whose Q has not converged with pipe
+        length, or that the other solve missed, and it keeps artefacts whose
+        frequency repeats within the tolerance by chance. The error does not have a
+        fixed sign either. The same filter under-counted cavity modes on a 3-cell
+        pillbox and over-counted them on a 9-cell one.
+        """
+        total = len(self.qois_df)
+        if modes is None:
+            head = (f"This impedance sums all {total} computed modes, with no "
+                    "beam-pipe/PML mode filter. Above the beam-pipe cutoff it includes "
+                    "modes of the pipe and the absorbing layer, which are artefacts "
+                    "of the truncated domain and can dominate |Z|. Filter the set with "
+                    "cav.eigenmode.stable_modes(<a second solve with a different "
+                    "beampipe_length or pml_length>) and pass modes=. ")
+        else:
+            head = (f"This impedance sums {len(modes)} of {total} computed modes, "
+                    "after beam-pipe/PML mode filtering. ")
+        tail = _MODE_FILTER_CAVEAT
+        if plotted_unfiltered:
+            tail += (" The reconstruction from every mode is drawn on the same axes "
+                     "(dashed) to show how much the filter changes.")
+        warnings.warn(head + tail, UserWarning, stacklevel=3)
+
+    def _impedance_frame(self, kind='longitudinal', span=None, n_points=8001, Q=None,
+                         unit='k', model='rlc', modes=None):
+        """Build the reconstructed spectrum for :meth:`impedance`, without the
+        mode-filtering warning (callers that draw several spectra warn once)."""
         transverse = not str(kind).lower().startswith('long')
 
         df = self.qois_df if modes is None else modes
@@ -1329,8 +1392,14 @@ class EigenmodeSolver:
 
     def plot_impedance(self, kind='longitudinal', ax=None, span=None,
                        n_points=8001, Q=None, unit='k', model='rlc', modes=None,
-                       show=True, **kwargs):
+                       show_unfiltered=True, show=True, **kwargs):
         """Plot the reconstructed impedance (see :meth:`impedance`).
+
+        With a filtered mode table (``modes=``, e.g. from :meth:`stable_modes`),
+        the reconstruction from every computed mode is drawn on the same axes
+        as a dashed grey line, so the effect of the filter is visible. No mode
+        filter is perfect, so that reference stays on the plot. Pass
+        ``show_unfiltered=False`` to draw the filtered curve alone.
 
         Returns the axes, so a wakefield result can be overlaid on the same one —
         both default to kOhm, so the two land on the same scale (pass
@@ -1338,21 +1407,46 @@ class EigenmodeSolver:
 
             ax = cav.eigenmode.plot_impedance(show=False)
             cav.wakefield.plot_impedance(ax=ax)
+
+            trusted = cav.eigenmode.stable_modes(cav_longer_pipe.eigenmode)
+            cav.eigenmode.plot_impedance(modes=trusted)   # filtered + every mode
         """
-        df = self.impedance(kind=kind, span=span, n_points=n_points, Q=Q, unit=unit,
-                            model=model, modes=modes)
+        overlay = modes is not None and show_unfiltered
+        if overlay and span is None:
+            # One span for both curves, so they are comparable: the filtered set
+            # alone would stop at its own highest mode.
+            span = (0.0, float(self.qois_df['freq [MHz]'].max()))
+        df = self._impedance_frame(kind=kind, span=span, n_points=n_points, Q=Q,
+                                   unit=unit, model=model, modes=modes)
         if df.empty:
             return ax
+        df_all = pd.DataFrame()
+        if overlay:
+            df_all = self._impedance_frame(kind=kind, span=span, n_points=n_points,
+                                           Q=Q, unit=unit, model=model, modes=None)
+        self._warn_mode_filtering(modes, plotted_unfiltered=not df_all.empty)
+
         transverse = str(kind).lower().startswith('trans')
         u = impedance_unit(unit, transverse)
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(8, 4))
+            if not df_all.empty:
+                ax.plot(df_all['f [MHz]'], df_all[f'|Z| [{u}]'], ls='--', lw=1.0,
+                        color='0.6', zorder=1,
+                        label=f'{self.cavity.name}, every mode ({len(self.qois_df)}, '
+                              f'unfiltered)')
+            if modes is not None:
+                kwargs.setdefault('label', f'{self.cavity.name}, filtered '
+                                           f'({len(modes)} of {len(self.qois_df)} modes)')
             kwargs.setdefault('label', f'{self.cavity.name} (eigenmode)')
+            kwargs.setdefault('zorder', 2)
             ax.plot(df['f [MHz]'], df[f'|Z| [{u}]'], **kwargs)
             ax.set_xlabel('f [MHz]')
             ax.set_ylabel(_z_axis_label(unit, transverse))
             ax.set_yscale('log')
+            if not df_all.empty:
+                ax.legend()
         _maybe_show(show)
         return ax
 
@@ -2042,7 +2136,11 @@ class EigenmodeSolver:
         # Deferred: breaks the solver_objects <-> study import cycle.
         from cavsim2d.study import Study
         cav = self.cavity
-        s = Study(getattr(cav, 'self_dir', None) or '.', _skip_project_init=True)
+        # The cavity's OWN folder, never '.': the study this builds is handed to
+        # the comparison plots, which save into <projectDir>/PostProcessingData/,
+        # and a '.' here writes that tree into whatever directory the interpreter
+        # was started in.
+        s = Study(cav._ensure_workspace(), _skip_project_init=True)
         s.cavities_list = [cav]
         s.cavities_dict = {cav.name: cav}
         s.eigenmode_qois = {cav.name: getattr(cav, 'eigenmode_qois', {}) or {}}
@@ -3904,13 +4002,24 @@ class StudyEigenmode(_StudyNamespace):
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(9, 4.5))
+            drawn = 0
             for cav, color in zip(self.cavities, self._colors()):
-                df = cav.eigenmode.impedance(kind=kind, span=span,
-                                             n_points=n_points, Q=Q, unit=unit)
+                df = cav.eigenmode._impedance_frame(kind=kind, span=span,
+                                                    n_points=n_points, Q=Q, unit=unit)
                 if df.empty:
                     continue
+                drawn += 1
                 ax.plot(df['f [MHz]'], df[f'|Z| [{u}]'], color=color,
                         label=cav.name, **kwargs)
+            if drawn:
+                # Once for the study, not once per cavity.
+                warnings.warn(
+                    "Each curve sums every computed mode of its cavity, with no "
+                    "beam-pipe/PML mode filter, so above the beam-pipe cutoff it "
+                    "includes modes of the pipe and the absorbing layer. Filter a "
+                    "cavity with cav.eigenmode.stable_modes() and plot it with "
+                    "cav.eigenmode.plot_impedance(modes=...). " + _MODE_FILTER_CAVEAT,
+                    UserWarning, stacklevel=2)
             ax.set_xlabel('f [MHz]')
             ax.set_ylabel(_z_axis_label(unit, transverse))
             ax.set_yscale('log')
@@ -4016,17 +4125,26 @@ class StudyWakefield(_StudyNamespace):
         return ax
 
     # -- HOM / power comparison plots (were Study.plot_compare_{hom,power}_*) --
-    def plot_hom_scatter(self, op_points_list, ncols=3, uq=False, figsize=(12, 3),
+    def plot_hom_scatter(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3),
                          qois=None, show=True):
-        """Scatter each cavity's higher-order-mode QOIs (optionally UQ mean±std)."""
+        """Scatter each cavity's higher-order-mode QOIs (optionally UQ mean±std).
+
+        ``op_points_list`` names the operating points for the per-operating-point
+        QOIs (``k_loss``, ``k_kick``, ``p_hom``). Omit it with ``uq=True`` to plot
+        a wakefield UQ run whose objectives are impedance windows instead
+        (``ZL``/``ZT`` peaks): one panel per window, each cavity's mean with its
+        ±1σ error bar."""
         axd = self.study._hom_scatter_impl(op_points_list, ncols=ncols, uq=uq,
                                            figsize=figsize, qois=qois)
         _maybe_show(show)
         return axd
 
-    def plot_hom_bar(self, op_points_list, ncols=3, uq=False, figsize=(12, 3),
+    def plot_hom_bar(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3),
                      qois=None, show=True):
-        """Bar chart of each cavity's higher-order-mode QOIs (optionally UQ)."""
+        """Bar chart of each cavity's higher-order-mode QOIs (optionally UQ).
+
+        ``op_points_list`` may be omitted with ``uq=True`` for impedance-window
+        objectives — see :meth:`plot_hom_scatter`."""
         axd = self.study._hom_bar_impl(op_points_list, ncols=ncols, uq=uq,
                                        figsize=figsize, qois=qois)
         _maybe_show(show)

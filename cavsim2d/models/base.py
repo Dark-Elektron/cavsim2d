@@ -29,12 +29,53 @@ from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import (TuneSolver, EigenmodeSolver, WakefieldSolver,
                                              MultipactingSolver, _maybe_show)
 from cavsim2d.constants import SOFTWARE_DIRECTORY
+from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
 from cavsim2d.utils.style import house_style, polarisation_color, shades, WARM
 from fractions import Fraction
 
 # Safe arithmetic evaluator for simple expressions
 _ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
         ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg}
+
+#: ABCI mesh step [m] used when neither an explicit DDR/DDZ nor a short bunch asks
+#: for a finer one.
+ABCI_DEFAULT_STEP = 0.00125
+
+
+def abci_bunch_length(wakefield_config):
+    """RMS bunch length [m] a wakefield config asks for, nested (``beam_config``)
+    or top-level; ``None`` when it sets none."""
+    cfg = wakefield_config or {}
+    bunch = (cfg.get('beam_config') or {}).get('bunch_length', cfg.get('bunch_length'))
+    return None if bunch is None else float(bunch) * 1e-3
+
+
+def abci_mesh_steps(wakefield_config):
+    """ABCI's radial and axial mesh steps ``(DDR, DDZ)`` in metres.
+
+    An explicit ``mesh_config['DDR']``/``['DDZ']`` wins. Otherwise the step is
+    ``DDR_SIG``/``DDZ_SIG`` (default 0.1) times the bunch length, capped at
+    :data:`ABCI_DEFAULT_STEP`. Those two ratios were documented as the mesh control
+    but never read, so the mesh stayed at 1.25 mm whatever the bunch. That is 20
+    steps per sigma for the default 25 mm bunch, but only 3.5 for a 4.32 mm one,
+    too coarse to resolve it. The cap keeps every run with a bunch of 12.5 mm or
+    longer on exactly the mesh it always had.
+    """
+    cfg = wakefield_config or {}
+    mesh_cfg = cfg.get('mesh_config') or {}
+    sig = abci_bunch_length(cfg)
+    steps = []
+    for key in ('DDR', 'DDZ'):
+        if mesh_cfg.get(key) is not None:
+            steps.append(float(mesh_cfg[key]))
+            continue
+        ratio = mesh_cfg.get(f'{key}_SIG', cfg.get(f'{key}_SIG', 0.1))
+        step = ABCI_DEFAULT_STEP
+        if sig is not None and ratio:
+            step = min(step, float(ratio) * sig)
+        steps.append(step)
+    return tuple(steps)
+
 
 class Cavity(ABC):
     """
@@ -1403,7 +1444,9 @@ class Cavity(ABC):
 
         """
         if not self.freq:
-            self.freq = (c0 / 4 * self.L)
+            # A pi-mode half cell is lambda/4 long, so f = c / (4 L). L is in mm and
+            # freq in MHz. This used to read c0 / 4 * L, which is ~4e9 for TESLA.
+            self.freq = c0 / (4 * self.L * 1e-3) * 1e-6
 
     # Cavity._run_ngsolve (a dead pre-refactor staticmethod) was removed 2026-07-09:
     # it was never called (the live one is processes.eigenmode._run_ngsolve), it
@@ -2077,17 +2120,22 @@ class Cavity(ABC):
         parameters and per-bunch-length re-runs.
         """
         op_path = os.path.join(self.self_dir, 'wakefield', 'qois_op.json')
+        all_wakefield_qois = {}
         if os.path.exists(op_path):
             with open(op_path) as json_file:
                 all_wakefield_qois = json.load(json_file)
 
         # get only keys in op_points. Truthy check (not just presence): the
         # complete saved config carries 'operating_points': None when unset.
+        # Matched on the exact sub-run ids, not a substring: 'Z' is a substring of
+        # 'Z_b_2024_SR_4.32mm', so two operating points sharing a prefix used to
+        # pull in each other's results.
         if wakefield_config.get('operating_points'):
-            for op_pt in wakefield_config['operating_points'].keys():
-                for key, val in all_wakefield_qois.items():
-                    if op_pt in key:
-                        self.wakefield_qois[key] = val
+            for op_pt, op_vals in wakefield_config['operating_points'].items():
+                for label, sigma in bunch_lengths(op_vals).items():
+                    key = bunch_tag(op_pt, label, sigma)
+                    if key in all_wakefield_qois:
+                        self.wakefield_qois[key] = all_wakefield_qois[key]
 
             for key, val in self.wakefield_qois.items():
                 self.k_fm[key] = val['k_FM [V/pC]']
@@ -2136,134 +2184,133 @@ class Cavity(ABC):
         for ii, op_pt in enumerate(op_points_list):
             self.rf_performance_qois_uq[op_pt] = {}
             val = self.operating_points[op_pt]
-            for kk, vv in val.items():
-                if 'sigma' in kk:
-                    sig_id = kk.split('_')[-1].split(' ')[0]
+            for sig_id, vv in bunch_lengths(val).items():
+                if 'Eacc [MV/m]' in rf_config.keys():
+                    op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                else:
+                    # All four moments: the loop below reads every one of them,
+                    # and a bare {'expe', 'stdDev'} raised KeyError on 'skew'.
+                    op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                    self.Eacc_rf_config = val['Eacc [MV/m]']
 
-                    if 'Eacc [MV/m]' in rf_config.keys():
-                        op_field = {'expe': [self.Eacc_rf_config * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    else:
-                        op_field = {'expe': [val['Eacc [MV/m]'] * 1e6], 'stdDev': [0]}
-                        self.Eacc_rf_config = val['Eacc [MV/m]']
+                if 'V [GV]' in rf_config.keys():
+                    v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                else:
+                    v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
 
-                    if 'V [GV]' in rf_config.keys():
-                        v_rf = {'expe': [rf_config['V [GV]'][ii] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    else:
-                        v_rf = {'expe': [val['V [GV]'] * 1e9], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                Q0 = {'expe': [self.Q0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                inv_eta = {'expe': [self.inv_eta], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                n_cav = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                p_in = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                p_cryo = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                pdyn = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                pstat = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                p_wp = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
 
-                    Q0 = {'expe': [self.Q0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    inv_eta = {'expe': [self.inv_eta], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_sr = {'expe': [rf_config['SR per turn [MW]'] * 1e6], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    n_cav = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_in = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_cryo = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    pdyn = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    pstat = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
-                    p_wp = {'expe': [0], 'stdDev': [0], 'skew': [0], 'kurtosis': [0]}
+                # test
+                n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
 
-                    # test
-                    n_cav['expe'][0] = int(np.ceil(v_rf['expe'][0] / (self.Eacc_rf_config * 1e6 * self.l_active)))
+                # p_in = rf_config['SR per turn [MW]'] * 1e6 / n_cav * 1e-3  # maximum synchrotron radiation per beam
 
-                    # p_in = rf_config['SR per turn [MW]'] * 1e6 / n_cav * 1e-3  # maximum synchrotron radiation per beam
+                p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
 
-                    p_cryo_n = 8 / (np.sqrt(self.neighbours['freq [MHz]'] / 500))  # W/m
+                pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
+                        self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
+                pdyn_expe, pdyn_std, pdyn_skew, pdyn_kurtosis = weighted_mean_obj(
+                    np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
+                pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std, 'skew': pdyn_skew, 'kurtosis': pdyn_kurtosis}
 
-                    pdyn_n = v_rf['expe'][0] * (self.Eacc_rf_config * 1e6 * self.l_active) / (
-                            self.neighbours['R/Q [Ohm]'] * self.Q0 * n_cav['expe'][0])  # per cavity
-                    pdyn_expe, pdyn_std, pdyn_skew, pdyn_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(pdyn_n.to_numpy()).T, self.uq_weights)
-                    pdyn = {'expe': pdyn_expe, 'stdDev': pdyn_std, 'skew': pdyn_skew, 'kurtosis': pdyn_kurtosis}
+                pstat_n = (self.l_cavity * v_rf['expe'][0] / (
+                        self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
+                pstat_expe, pstat_std, pstat_skew, pstat_kurtosis = weighted_mean_obj(
+                    np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
+                pstat = {'expe': pstat_expe, 'stdDev': pstat_std, 'skew': pstat_skew, 'kurtosis': pstat_kurtosis}
 
-                    pstat_n = (self.l_cavity * v_rf['expe'][0] / (
-                            self.l_active * self.Eacc_rf_config * 1e6 * n_cav['expe'][0])) * p_cryo_n
-                    pstat_expe, pstat_std, pstat_skew, pstat_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(pstat_n.to_numpy()).T, self.uq_weights)
-                    pstat = {'expe': pstat_expe, 'stdDev': pstat_std, 'skew': pstat_skew, 'kurtosis': pstat_kurtosis}
+                p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
+                p_wp_expe, p_wp_std, p_wp_skew, p_wp_kurtosis = weighted_mean_obj(
+                    np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
+                p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std, 'skew': p_wp_skew, 'kurtosis': p_wp_kurtosis}
 
-                    p_wp_n = self.inv_eta * (pdyn_n + pstat_n) * 1e-3  # per cavity
-                    p_wp_expe, p_wp_std, p_wp_skew, p_wp_kurtosis = weighted_mean_obj(
-                        np.atleast_2d(p_wp_n.to_numpy()).T, self.uq_weights)
-                    p_wp = {'expe': p_wp_expe, 'stdDev': p_wp_std, 'skew': p_wp_skew, 'kurtosis': p_wp_kurtosis}
+                for stat_mom in stat_moms:
+                    if op_field[stat_mom][0] != 0:
+                        # n_cav[stat_mom] = [
+                        #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
 
-                    for stat_mom in stat_moms:
-                        if op_field[stat_mom][0] != 0:
-                            # n_cav[stat_mom] = [
-                            #     int(np.ceil(v_rf[stat_mom][0] / (op_field[stat_mom][0] * self.l_active)))]
+                        p_in[stat_mom] = [
+                            p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
 
-                            p_in[stat_mom] = [
-                                p_sr[stat_mom][0] / n_cav[stat_mom][0] * 1e-3]  # maximum synchrotron radiation per beam
+                    # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
+                    #     p_cryo[stat_mom] = [
+                    #         8 / (np.sqrt(self.uq_fm_results['freq [MHz]'][stat_mom][0] / 500))]  # W/m
+                    #
+                    # if self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] * n_cav[stat_mom][0] != 0:
+                    #     pdyn[stat_mom] = [v_rf[stat_mom][0] * (op_field[stat_mom][0] * self.l_active) / (
+                    #             self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] *
+                    #             n_cav[stat_mom][0])]  # per cavity
+                    #
+                    # if op_field[stat_mom][0] != 0 and n_cav[stat_mom][0] != 0:
+                    #     pstat[stat_mom] = [(self.l_cavity * v_rf[stat_mom][0] / (
+                    #             self.l_active * op_field[stat_mom][0] * n_cav[stat_mom][0])) * p_cryo[stat_mom][
+                    #                            0]]
+                    #
+                    # if inv_eta[stat_mom][0] != 0:
+                    #     p_wp[stat_mom] = [
+                    #         (inv_eta[stat_mom][0]) * (pdyn[stat_mom][0] + pstat[stat_mom][0]) * 1e-3]  # per cavity
 
-                        # if self.uq_fm_results['freq [MHz]'][stat_mom][0] != 0:
-                        #     p_cryo[stat_mom] = [
-                        #         8 / (np.sqrt(self.uq_fm_results['freq [MHz]'][stat_mom][0] / 500))]  # W/m
-                        #
-                        # if self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] * n_cav[stat_mom][0] != 0:
-                        #     pdyn[stat_mom] = [v_rf[stat_mom][0] * (op_field[stat_mom][0] * self.l_active) / (
-                        #             self.uq_fm_results['R/Q [Ohm]'][stat_mom][0] * Q0[stat_mom][0] *
-                        #             n_cav[stat_mom][0])]  # per cavity
-                        #
-                        # if op_field[stat_mom][0] != 0 and n_cav[stat_mom][0] != 0:
-                        #     pstat[stat_mom] = [(self.l_cavity * v_rf[stat_mom][0] / (
-                        #             self.l_active * op_field[stat_mom][0] * n_cav[stat_mom][0])) * p_cryo[stat_mom][
-                        #                            0]]
-                        #
-                        # if inv_eta[stat_mom][0] != 0:
-                        #     p_wp[stat_mom] = [
-                        #         (inv_eta[stat_mom][0]) * (pdyn[stat_mom][0] + pstat[stat_mom][0]) * 1e-3]  # per cavity
-
-                    self.rf_performance_qois_uq[op_pt][sig_id] = {
-                        r"Ncav": n_cav,
-                        r"Q0 []": Q0,
-                        r"Pstat/cav [W]": pstat,
-                        r"Pdyn/cav [W]": pdyn,
-                        r"Pwp/cav [kW]": p_wp,
-                        r"Pin/cav [kW]": p_in,
-                        r"PHOM/cav [kW]": self.uq_hom_results[fr'P_HOM [kW]_{op_pt}_{sig_id}_{vv}mm']
-                    }
+                self.rf_performance_qois_uq[op_pt][sig_id] = {
+                    r"Ncav": n_cav,
+                    r"Q0 []": Q0,
+                    r"Pstat/cav [W]": pstat,
+                    r"Pdyn/cav [W]": pdyn,
+                    r"Pwp/cav [kW]": p_wp,
+                    r"Pin/cav [kW]": p_in,
+                    r"PHOM/cav [kW]": self.uq_hom_results[f'P_HOM [kW]_{bunch_tag(op_pt, sig_id, vv)}']
+                }
         return self.rf_performance_qois_uq
 
     def get_power(self, rf_config, op_points_list):
         for ii, op_pt in enumerate(op_points_list):
             self.rf_performance_qois[op_pt] = {}
             val = self.operating_points[op_pt]
-            for kk, vv in val.items():
-                if 'sigma' in kk:
-                    sig_id = kk.split('_')[-1].split(' ')[0]
+            for sig_id, vv in bunch_lengths(val).items():
+                if 'Eacc [MV/m]' in rf_config.keys():
+                    op_field = self.Eacc_rf_config * 1e6
+                else:
+                    op_field = val['Eacc [MV/m]'] * 1e6
+                    # MV/m, like every other writer of this attribute. Storing
+                    # op_field here (V/m) made the next reader scale it by 1e6
+                    # a second time.
+                    self.Eacc_rf_config = val['Eacc [MV/m]']
 
-                    if 'Eacc [MV/m]' in rf_config.keys():
-                        op_field = self.Eacc_rf_config * 1e6
-                    else:
-                        op_field = val['Eacc [MV/m]'] * 1e6
-                        self.Eacc_rf_config = op_field
+                if 'V [GV]' in rf_config.keys():
+                    v_rf = rf_config['V [GV]'][ii] * 1e9
+                else:
+                    v_rf = val['V [GV]'] * 1e9
 
-                    if 'V [GV]' in rf_config.keys():
-                        v_rf = rf_config['V [GV]'][ii] * 1e9
-                    else:
-                        v_rf = val['V [GV]'] * 1e9
+                Q0 = self.Q0
+                inv_eta = self.inv_eta
+                p_sr = rf_config['SR per turn [MW]'] * 1e6
 
-                    Q0 = self.Q0
-                    inv_eta = self.inv_eta
-                    p_sr = rf_config['SR per turn [MW]'] * 1e6
+                n_cav = int(np.ceil(v_rf / (op_field * self.l_active)))
+                p_in = p_sr / n_cav  # maximum synchrotron radiation per beam
 
-                    n_cav = int(np.ceil(v_rf / (op_field * self.l_active)))
-                    p_in = p_sr / n_cav  # maximum synchrotron radiation per beam
+                p_cryo = 8 / (np.sqrt(self.freq / 500))
 
-                    p_cryo = 8 / (np.sqrt(self.freq / 500))
+                pdyn = v_rf * (op_field * self.l_active) / (self.R_Q * Q0 * n_cav)
 
-                    pdyn = v_rf * (op_field * self.l_active) / (self.R_Q * Q0 * n_cav)
+                pstat = (self.l_cavity * v_rf / (self.l_active * op_field * n_cav)) * p_cryo  # per cavity
+                p_wp = (inv_eta) * (pdyn + pstat)  # per cavity
 
-                    pstat = (self.l_cavity * v_rf / (self.l_active * op_field * n_cav)) * p_cryo  # per cavity
-                    p_wp = (inv_eta) * (pdyn + pstat)  # per cavity
-
-                    self.rf_performance_qois[op_pt][sig_id] = {
-                        r"Ncav": n_cav,
-                        r"Q0 []": Q0,
-                        r"Pstat/cav [W]": pstat,
-                        r"Pdyn/cav [W]": pdyn,
-                        r"Pwp/cav [kW]": p_wp * 1e-3,
-                        r"Pin/cav [kW]": p_in * 1e-3,
-                        r"PHOM/cav [kW]": self.phom[fr'{op_pt}_{sig_id}_{vv}mm']
-                    }
+                self.rf_performance_qois[op_pt][sig_id] = {
+                    r"Ncav": n_cav,
+                    r"Q0 []": Q0,
+                    r"Pstat/cav [W]": pstat,
+                    r"Pdyn/cav [W]": pdyn,
+                    r"Pwp/cav [kW]": p_wp * 1e-3,
+                    r"Pin/cav [kW]": p_in * 1e-3,
+                    r"PHOM/cav [kW]": self.phom[bunch_tag(op_pt, sig_id, vv)]
+                }
         return self.rf_performance_qois
 
     def get_uq_post(self, qoi):
@@ -2884,9 +2931,7 @@ class Cavity(ABC):
         self.create()
 
         cfg = wakefield_config or {}
-        mesh_cfg = cfg.get('mesh_config') or {}
-        ddr = float(mesh_cfg.get('DDR', 0.00125))
-        ddz = float(mesh_cfg.get('DDZ', 0.00125))
+        ddr, ddz = abci_mesh_steps(cfg)
         ds = float(cfg.get('contour_ds', min(ddr, ddz)))
         # ABCI wants at least 5 mesh lengths of pipe; ask for a little margin.
         min_pipe = 6.0 * ddz
@@ -3015,8 +3060,6 @@ class Cavity(ABC):
         UBT = 50
         SIG = 25e-3
         MT = 4
-        mesh_DDR = 0.00125
-        mesh_DDZ = 0.00125
 
         # unpack kwargs
         for key, value in kwargs.items():
@@ -3053,10 +3096,9 @@ class Cavity(ABC):
         # contour sampling and the minimum beam pipe, so leaving them out here
         # left the deck pinned at the default: a caller who set DDR/DDZ got a
         # differently *sampled* wall solved on an unchanged mesh, and a mesh
-        # convergence check came back perfectly flat.
-        _mesh_cfg = wakefield_config.get('mesh_config') or {}
-        mesh_DDR = float(_mesh_cfg.get('DDR', mesh_DDR))
-        mesh_DDZ = float(_mesh_cfg.get('DDZ', mesh_DDZ))
+        # convergence check came back perfectly flat. The same helper sizes both,
+        # so the wall sampling and the field mesh cannot disagree.
+        mesh_DDR, mesh_DDZ = abci_mesh_steps(wakefield_config)
 
         if 'save_fields' in wakefield_config.keys():
             LPLE, LCBACK = 'T', 'F'

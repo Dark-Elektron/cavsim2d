@@ -826,6 +826,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         with an informative NO SOLUTION message. Per-cup convergence is aggregated onto
         cav.tune.convergence; the achieved assembled (freq, ff, R/Q) is reported so the
         user can compare against the target and adjust."""
+        # Deferred: models -> solver_objects -> processes.tune import cycle.
         from cavsim2d.models.elliptical import EllipticalCavity
 
         pre = dict(cav.parameters)
@@ -877,7 +878,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             if bc:
                 run['boundary_conditions'] = bc
             c.eigenmode.run(**run)
-            # Deferred import: solver_objects <-> processes.tune cycle.
+            # Deferred: solver_objects <-> processes.tune import cycle.
             from cavsim2d.solvers.solver_objects import _accelerating_mode_row
             return _accelerating_mode_row(c.eigenmode.qois_df, target_freq)
 

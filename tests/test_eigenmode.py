@@ -981,3 +981,34 @@ def test_open_solve_keeps_near_degenerate_pairs(project_dir):
     f = np.sort(cav.eigenmode.qois_df['freq [MHz]'].to_numpy())
     assert len(f) >= 5, f'expected ~6 modes, got {len(f)}: {f}'
     assert len(np.unique(np.round(f, 6))) == len(f), f'duplicate frequencies: {f}'
+
+
+def test_port_boundary_condition_runs_like_any_other(tmp_path):
+    """boundary_conditions='port' is selected like 'oo': results land in qois_df,
+    a trapped mode has an effectively infinite Q_ext (the port is purely reactive
+    below the pipe cutoff), a mode above the cutoff radiates, and the run reports
+    exactly n_modes modes."""
+    from conftest import MIDCELL
+    end = [40.34, 40.34, 10.0, 13.5, 39.0, 55.7251, 103.3536]
+    cav = EllipticalCavity(1, MIDCELL, end, end, beampipe='both', name='port')
+    cav.set_workspace(str(tmp_path / 'port'))
+    cav.eigenmode.run({'boundary_conditions': 'port', 'n_modes': 6,
+                       'beampipe_length': 0.2, 'mesh_config': {'h': 15, 'p': 3}})
+    df = cav.eigenmode.qois_df.sort_values('freq [MHz]')
+    assert len(df) == 6
+    f_cut = 2.405 * 299792458.0 / (2 * np.pi * 39e-3) * 1e-6
+    trapped = df[df['freq [MHz]'] < f_cut]
+    radiating = df[df['freq [MHz]'] > f_cut]
+    assert (trapped['Q_ext []'] > 1e15).all()
+    assert (radiating['Q_ext []'] < 1e3).all() and len(radiating)
+    # total Q combines the wall and the port
+    assert np.allclose(1 / df['Q []'], 1 / df['Q_wall []'] + 1 / df['Q_ext []'], rtol=1e-6)
+
+
+def test_port_boundary_condition_refuses_mpoles(tmp_path):
+    from conftest import MIDCELL
+    from cavsim2d.solvers.NGSolve.eigen_ports import PortEigenSolver
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both', name='port_m1')
+    cav.set_workspace(str(tmp_path / 'port_m1'))
+    with pytest.raises(NotImplementedError):
+        PortEigenSolver().run(cav, {'boundary_conditions': 'port', 'polarisation': 'dipole'})

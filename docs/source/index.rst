@@ -48,11 +48,11 @@ cavsim2d documentation!
    :caption: Examples
 
    examples/eigenmode/index
-   examples/tuning/index
+   examples/studies/index
    examples/wakefield/index
+   examples/tuning/index
    examples/multipacting/index
    examples/optimisation/index
-   examples/studies/index
    examples/beamline/index
    examples/custom_geometry/index
    examples/advanced/index

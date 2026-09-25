@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from cavsim2d.constants import LABELS
@@ -82,7 +83,6 @@ def uq_comparison_table(results, qois=None):
     Same inputs as :func:`plot_uq_comparison`. Useful when the numbers are wanted
     alongside - or instead of - the figure.
     """
-    import pandas as pd
     results = {k: _as_uq_dict(v) for k, v in results.items()}
     rows = []
     for label, d in results.items():

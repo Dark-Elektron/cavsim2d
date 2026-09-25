@@ -4,7 +4,9 @@ import shutil
 import time
 from pathlib import Path
 
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, parse_polarisations
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import (NGSolveMEVP, parse_boundary_conditions,
+                                                    parse_polarisations)
+from cavsim2d.solvers.NGSolve.eigen_ports import PortEigenSolver
 from cavsim2d.solvers.eigenmode_result import pol_name
 from cavsim2d.constants import *
 from cavsim2d.processes.uq import uq_parallel
@@ -80,7 +82,8 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
             key = bc.strip().lower()
             require(key in BOUNDARY_CONDITIONS_DICT,
                     f"unknown boundary_conditions {bc!r}. Use one of "
-                    f"{sorted(BOUNDARY_CONDITIONS_DICT)} (e = PEC, m = PMC, o = open/PML).")
+                    f"{sorted(BOUNDARY_CONDITIONS_DICT)} (e = PEC, m = PMC, o = open/PML, "
+                    f"p = waveguide port).")
             eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[key]
     else:
         eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT['mm']
@@ -91,7 +94,13 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
 
         cav.create()
         with timer.step('solve'):
-            ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
+            # Waveguide ports are a different eigenproblem (nonlinear in w), with
+            # their own solver; every other boundary condition is the NGSolve one.
+            ends = parse_boundary_conditions(eigenmode_config.get('boundary_conditions', 33))
+            if 'port' in ends:
+                PortEigenSolver().run(cav, eigenmode_config)
+            else:
+                ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
 
         # Run UQ if configured. With uq_config['cell_complexity'] = 'multicell',
         # every half-cell becomes an independent random variable (subject to the

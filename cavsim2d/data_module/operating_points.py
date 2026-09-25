@@ -1,7 +1,59 @@
 import os
 import json
+import re
 import numpy as np
 import pandas as pd
+
+#: Operating-point key holding the RMS bunch length(s), in mm. ``'sigma'`` is
+#: accepted as a short alias.
+SIGMA_KEY = 'sigma [mm]'
+
+# The original spelling: one key per named bunch length, 'sigma_SR [mm]' and
+# 'sigma_BS [mm]'. Still read, so saved configs and the built-in tables keep working.
+_LEGACY_SIGMA = re.compile(r'^sigma_(\w+)\s*\[mm\]$')
+
+
+def bunch_lengths(op_point):
+    """The bunch lengths an operating point asks for, as ``{label: sigma [mm]}``.
+
+    One bunch length::
+
+        {'I0 [mA]': 1280, 'Nb [1e11]': 2.76, 'sigma [mm]': 4.32}         # {'': 4.32}
+
+    Several, each under a label of your choice (for instance the
+    synchrotron-radiation and beamstrahlung lengths of a collider)::
+
+        {..., 'sigma [mm]': {'SR': 4.32, 'BS': 15.2}}                     # {'SR': 4.32, 'BS': 15.2}
+
+    The older ``'sigma_SR [mm]'``/``'sigma_BS [mm]'`` keys are still read. The
+    order is preserved, and the first entry is the operating point's primary bunch
+    length, the one the comparison plots and tables show.
+    """
+    out = {}
+    value = op_point.get(SIGMA_KEY, op_point.get('sigma'))
+    if isinstance(value, dict):
+        out.update({str(k): float(v) for k, v in value.items()})
+    elif value is not None:
+        out[''] = float(value)
+    for key, v in op_point.items():
+        match = _LEGACY_SIGMA.match(str(key))
+        if match and match.group(1) not in out:
+            out[match.group(1)] = float(v)
+    if not out:
+        raise KeyError(
+            f"operating point has no bunch length: give '{SIGMA_KEY}' as one value "
+            f"(e.g. 4.32) or as named values (e.g. {{'SR': 4.32, 'BS': 15.2}}).")
+    return out
+
+
+def bunch_tag(op_name, label, sigma_mm):
+    """The id a bunch-length sub-run is filed under: ``'Z_SR_4.32mm'``, or
+    ``'Z_4.32mm'`` for an operating point with a single, unlabelled bunch length.
+    Every reader and writer builds it here, so the two cannot disagree on
+    formatting."""
+    sigma_mm = float(sigma_mm)
+    return f'{op_name}_{label}_{sigma_mm}mm' if label else f'{op_name}_{sigma_mm}mm'
+
 
 class OperationPoints:
     def __init__(self, filepath=None):

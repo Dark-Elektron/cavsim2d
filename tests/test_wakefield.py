@@ -405,3 +405,55 @@ def test_abci_deck_carries_the_requested_mesh(tmp_path):
     text = open(decks[0]).read()
     assert 'DDR = 0.0007' in text
     assert 'DDZ = 0.0009' in text
+
+
+def test_abci_mesh_follows_a_short_bunch():
+    """DDR_SIG/DDZ_SIG set the mesh as a fraction of the bunch length, capped at
+    the 1.25 mm default. They were documented but never read, so a 4.32 mm bunch
+    was meshed at 1.25 mm: 3.5 steps per sigma."""
+    from cavsim2d.models.base import abci_mesh_steps, ABCI_DEFAULT_STEP
+
+    # the default 25 mm bunch keeps the mesh it always had
+    assert abci_mesh_steps({'bunch_length': 25}) == (ABCI_DEFAULT_STEP, ABCI_DEFAULT_STEP)
+    # a short bunch is resolved at 0.1 sigma, nested or top-level
+    assert abci_mesh_steps({'beam_config': {'bunch_length': 4.32}}) == pytest.approx(
+        (0.000432, 0.000432))
+    assert abci_mesh_steps({'bunch_length': 4.32,
+                            'mesh_config': {'DDZ_SIG': 0.2}}) == pytest.approx(
+        (0.000432, 0.000864))
+    # an explicit step always wins
+    assert abci_mesh_steps({'bunch_length': 4.32,
+                            'mesh_config': {'DDR': 0.001}}) == pytest.approx(
+        (0.001, 0.000432))
+
+
+def test_abci_deck_mesh_for_a_short_bunch(tmp_path):
+    """The deck carries the bunch-scaled mesh, not the fixed 1.25 mm default."""
+    import glob
+    from cavsim2d import Bellows
+
+    cav = Bellows(Ri=35.0, A=8.0, L_p=6.0, N_conv=4,
+                  R_root=1.2, R_crest=1.2, name='deck')
+    cav.set_workspace(str(tmp_path / 'deck'))
+    cav.geo_to_abc({'MROT': 0, 'wakelength': 1, 'bunch_length': 5})
+    decks = glob.glob(str(tmp_path / 'deck' / 'wakefield' / '**' / '*.abc'),
+                      recursive=True)
+    text = open(decks[0]).read()
+    assert 'DDR = 0.0005' in text and 'DDZ = 0.0005' in text
+
+
+def test_operating_point_bunch_lengths():
+    """One bunch length, several named ones, and the old sigma_<label> keys."""
+    from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
+
+    assert bunch_lengths({'sigma [mm]': 4.32}) == {'': 4.32}
+    assert bunch_lengths({'sigma': 4.32}) == {'': 4.32}
+    assert bunch_lengths({'sigma [mm]': {'SR': 4.32, 'BS': 15.2}}) == {'SR': 4.32, 'BS': 15.2}
+    # legacy spelling, order kept, so SR stays the primary
+    assert list(bunch_lengths({'sigma_SR [mm]': 4.32, 'sigma_BS [mm]': 15.2})) == ['SR', 'BS']
+    with pytest.raises(KeyError):
+        bunch_lengths({'I0 [mA]': 1280})
+
+    # an int and a float bunch length file under the same id
+    assert bunch_tag('Z', 'SR', 25) == bunch_tag('Z', 'SR', 25.0) == 'Z_SR_25.0mm'
+    assert bunch_tag('Z', '', 4.32) == 'Z_4.32mm'

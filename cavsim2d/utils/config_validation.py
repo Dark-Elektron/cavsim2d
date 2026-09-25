@@ -18,7 +18,7 @@ EIGENMODE_KEYS = {
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
     'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
     'opt', 'target', 'solver_save_directory', 'preconditioner', 'freq_only',
-    'pml_length', 'pml_alpha', 'beampipe_length',
+    'pml_length', 'pml_alpha', 'beampipe_length', 'n_port_modes',
 }
 UQ_KEYS = {
     'variables', 'objectives', 'delta', 'epsilon', 'processes', 'distribution',

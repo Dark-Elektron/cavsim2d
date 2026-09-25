@@ -2,8 +2,7 @@
 from matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from scipy.optimize import fsolve
+from scipy.optimize import brentq, fsolve, minimize_scalar
 
 
 def update_alpha(cell, cell_parameterisation='simplecell'):
@@ -64,7 +63,8 @@ def calculate_alpha(A, B, a, b, Ri, L, Req, L_bp):
 
 def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
     """
-    Calls to :py:func:`utils.shared_function.ellipse_tangent`
+    Tangent points of the straight wall joining the iris and equator ellipses.
+    See :func:`wall_tangent` for the method.
 
     Parameters
     ----------
@@ -89,42 +89,24 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
 
     Returns
     -------
-    df: pandas.Dataframe
-        Pandas dataframe containing information on the results from fsolve
+    df: tuple
+        ``(x, infodict, ier, mesg)``, the shape of ``scipy.optimize.fsolve``'s
+        full output: ``x = [x1, y1, x2, y2]`` (iris then equator tangent point,
+        shifted by *L_bp*) and ``ier == 1`` on success. On failure ``ier`` is 5
+        and ``x`` is a best-effort estimate.
     """
-    # data = ([0 + L_bp, Ri + b, L + L_bp, Req - B],
-    #         [a, b, A, B])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-    #
-    # df = fsolve(ellipse_tangent,
-    #             np.array([a + L_bp, Ri + f[0] * b, L - A + L_bp, Req - f[1] * B]),
-    #             args=data, fprime=jac, xtol=1.49012e-12, full_output=True)
-    #
-    #     # ic(df)
-
     data = ([0 + L_bp, Ri + b, L + L_bp, Req - B], [a, b, A, B])  # data = ([h, k, p, q], [a_m, b_m, A_m, B_m])
-    # checks = {"non-reentrant": [0.5, -0.5],
-    #           "reentrant": [0.85, -0.85],
-    #           "expansion": [0.15, -0.01]}
 
-    max_restart = 4
-    checks = {"non-reentrant": [[0.5, -0.5], [0.75, -0.25], [0.25, -0.75], [0.9, -0.1]],
-              "reentrant": [[1.1, -1.1], [1.9, -1.9], [1.5, -1.5], [1.75, -1.75], ]
-              }
-    msg = 4
-    df = pd.DataFrame()
-    for ii in range(max_restart):
-        if msg != 1:
-            if a + A > L:
-                df = fsolve(ellipse_tangent,
-                            np.array([a + L_bp, Ri + checks['reentrant'][ii][0] * b, L - A + L_bp,
-                                      Req + checks['reentrant'][ii][1] * B]),
-                            args=data, fprime=jac, xtol=1.49012e-12, full_output=True)
-            else:
-                df = fsolve(ellipse_tangent,
-                            np.array([a + L_bp, Ri + checks['non-reentrant'][ii][0] * b, L - A + L_bp,
-                                      Req + checks['non-reentrant'][ii][1] * B]),
-                            args=data, fprime=jac, xtol=1.49012e-12, full_output=True)
-            msg = df[-2]
+    # The returned tuple keeps fsolve's full_output shape, (x, infodict, ier, mesg),
+    # because every caller reads df[0] for the points and df[-2] == 1 for success.
+    pts = wall_tangent(A, B, a, b, Ri, L, Req)
+    if pts is not None:
+        df = (pts + np.array([L_bp, 0.0, L_bp, 0.0]), {}, 1, 'The solution converged.')
+    else:
+        # No tangent exists. Callers that pass ignore_degenerate still read the
+        # points, so hand them the old Newton estimate, flagged as a failure.
+        df = (_legacy_fsolve(data, a, b, A, B, Ri, L, Req, L_bp), {}, 5,
+              'The iris and equator ellipses overlap: no tangent line joins them.')
 
     x1, y1, x2, y2 = df[0]
     # alpha = 180 - np.arctan2(y2 - y1, (x2 - x1)) * 180 / np.pi
@@ -145,6 +127,72 @@ def tangent_coords(A, B, a, b, Ri, L, Req, L_bp, lft=0, tangent_check=False):
         ax.legend()
 
     return df
+
+
+def wall_tangent(A, B, a, b, Ri, L, Req):
+    """Tangent points ``[x1, y1, x2, y2]`` of a half-cell wall, iris plane at ``z = 0``.
+
+    Returns ``None`` when the iris and equator ellipses overlap, so no tangent line
+    can join them.
+
+    The wall runs from the iris ellipse (metal on one side of the line) to the
+    equator ellipse (vacuum on the other), so it is an *internal* common tangent.
+    Writing the line as ``n . X = c`` with unit normal ``n = (cos t, sin t)``
+    pointing from metal to vacuum, it touches the iris ellipse where ``c`` equals
+    that ellipse's support value and the equator ellipse where ``c`` equals the
+    equator's lowest value along ``n``. Equating the two leaves one scalar
+    equation in ``t``::
+
+        g(t) = n . (C_eq - C_iris) - |(A n_z, B n_r)| - |(a n_z, b n_r)| = 0
+
+    Two disjoint ellipses have exactly two internal tangents, one on each side of
+    the maximum of ``g``. The wall is the one on the ``-pi/2`` side, since the
+    iris arc leaves the iris bottom and turns toward the equator, so that root is
+    bracketed and solved with Brent's method.
+
+    This replaces a four-unknown Newton solve whose residuals divided by
+    ``(y1 - k)`` and ``(x2 - p)``. Those vanish for an exactly vertical wall
+    (``a + A == L``), which never converged. Newton could also converge to the
+    other internal tangent, or to a point that is not a tangent at all when the
+    ellipses overlap, and still report success. That gave a broken contour with
+    no error.
+    """
+    h, k, p, q = 0.0, Ri + b, L, Req - B
+    d_z, d_r = p - h, q - k
+
+    def g(t):
+        nz, nr = np.cos(t), np.sin(t)
+        return nz * d_z + nr * d_r - np.hypot(A * nz, B * nr) - np.hypot(a * nz, b * nr)
+
+    lo = -np.pi / 2
+    peak = minimize_scalar(lambda t: -g(t), bounds=(lo, np.pi / 2), method='bounded',
+                           options={'xatol': 1e-14})
+    t_max = float(peak.x)
+    if not g(t_max) > 0:
+        return None
+    t = brentq(g, lo, t_max, xtol=1e-15, rtol=4 * np.finfo(float).eps, maxiter=500)
+
+    nz, nr = np.cos(t), np.sin(t)
+    s_iris = np.hypot(a * nz, b * nr)
+    s_eq = np.hypot(A * nz, B * nr)
+    return np.array([h + a * a * nz / s_iris, k + b * b * nr / s_iris,
+                     p - A * A * nz / s_eq, q - B * B * nr / s_eq])
+
+
+def _legacy_fsolve(data, a, b, A, B, Ri, L, Req, L_bp):
+    """The original Newton estimate of the tangent points, kept only as the
+    best-effort points returned alongside a failure flag."""
+    checks = {"non-reentrant": [[0.5, -0.5], [0.75, -0.25], [0.25, -0.75], [0.9, -0.1]],
+              "reentrant": [[1.1, -1.1], [1.9, -1.9], [1.5, -1.5], [1.75, -1.75]]}
+    guesses = checks['reentrant'] if a + A > L else checks['non-reentrant']
+    df = None
+    for f_b, f_B in guesses:
+        df = fsolve(ellipse_tangent,
+                    np.array([a + L_bp, Ri + f_b * b, L - A + L_bp, Req + f_B * B]),
+                    args=data, fprime=jac, xtol=1.49012e-12, full_output=True)
+        if df[-2] == 1:
+            break
+    return df[0]
 
 
 def ellipse_tangent(z, *data):

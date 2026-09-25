@@ -30,6 +30,8 @@ averages them - see :func:`cavsim2d.utils.shapes.perturb_half_cells_independent`
 """
 import numpy as np
 
+from cavsim2d.utils.quadrature import generate_nodes
+
 __all__ = ['perturbation_slots', 'perturbation_nodes', 'HALF_CELL_VARS']
 
 #: Elliptical half-cell parameters, in the order :meth:`Cavity.half_cells` returns them.
@@ -122,8 +124,6 @@ def perturbation_nodes(cav, kind, method, half_width, n=None, seed=None,
     n, seed
         Sample count and seed for the sampling rules; ignored by cubature.
     """
-    from cavsim2d.utils.quadrature import generate_nodes
-
     slots = perturbation_slots(cav, kind, split_ends=split_ends)
     k = len(slots)
     n_rows = 2 * int(cav.n_cells)

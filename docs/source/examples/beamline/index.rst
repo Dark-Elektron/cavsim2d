@@ -3,8 +3,9 @@ Beam lines
 
 Worked examples of the beam-line elements and of concatenating devices into a
 single simulatable structure. The two standalone elements come first, then the
-assembly that joins them, then a module of cavities, then optimising a cavity
-with its neighbours in place.
+assembly that joins them, then modules of cavities, first by repeating one cavity
+with ``chain=`` and then by assembling different devices, and finally optimising a
+cavity with its neighbours in place.
 
 A beam line is built by adding devices together::
 
@@ -17,7 +18,7 @@ A beam line is built by adding devices together::
 The result is an :class:`~cavsim2d.models.assembly.Assembly`, which is itself a
 :class:`~cavsim2d.models.base.Cavity`: it meshes, solves, tunes and optimises
 like any single geometry. Use ``chain=`` instead when you want *one* cavity
-repeated into a module — see :doc:`../studies/index`.
+repeated into a module, as in the module-chain example below.
 
 Each element's parameters are named and dimensioned in :ref:`geometry-beamline`.
 
@@ -28,5 +29,6 @@ Each element's parameters are named and dimensioned in :ref:`geometry-beamline`.
    taper
    bellows
    beam_line_assembly
+   ../studies/module_chain
    multi_cavity_module
    optimise_assembly

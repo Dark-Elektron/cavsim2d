@@ -18,6 +18,7 @@ from cavsim2d.utils.shared_functions import *
 from cavsim2d.solvers.eigenmode_result import monopole_dir
 from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.config_validation import require
+from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
 
 
 def run_wakefield_parallel(cavs_dict, solver_config, subdir=''):
@@ -113,18 +114,25 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                         WP = key_op
                         I0 = float(vals['I0 [mA]'])
                         Nb = float(vals['Nb [1e11]'])
-                        sigma_z = [float(vals["sigma_SR [mm]"]), float(vals["sigma_BS [mm]"])]
-                        bl_diff = ['SR', 'BS']
-
-                        for i, s in enumerate(sigma_z):
-                            fid = f"{WP}_{bl_diff[i]}_{s}mm"
+                        # One sub-run per bunch length: 'sigma [mm]' is a single
+                        # value or {label: value, ...} (see bunch_lengths).
+                        for label, s in bunch_lengths(vals).items():
+                            fid = bunch_tag(WP, label, s)
                             wakefield_folder_structure = {fid: {'wakefield': {'longitudinal': None, 'transversal': None}}}
                             make_dirs_from_dict(wakefield_folder_structure, os.path.join(cav.self_dir, 'wakefield'))
 
                             # This op-point/bunch-length sub-run and its read
                             # both go through the backend, so the loss/kick
                             # factors are read from the normalised schema.
-                            backend.run(cav, wakefield_config, subdir=fid)
+                            # The sub-run must use THIS bunch length. It used to
+                            # be handed the main config unchanged, so every
+                            # SR/BS sub-run repeated the main run's bunch, and
+                            # P_HOM subtracted a k_FM at sigma = s from a k_loss
+                            # at the main bunch length.
+                            sub_config = dict(wakefield_config, bunch_length=s)
+                            sub_config['beam_config'] = dict(
+                                wakefield_config.get('beam_config') or {}, bunch_length=s)
+                            backend.run(cav, sub_config, subdir=fid)
                             fid_qois = backend.read_dir(
                                 os.path.join(cav.self_dir, 'wakefield', fid, 'wakefield')).qois
                             k_loss = fid_qois.get('|k_loss| [V/pC]')
@@ -132,7 +140,6 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
 
                             d[fid] = get_qois_value(freq, R_Q, k_loss, k_kick, s, I0, Nb, cav.n_cells)
 
-                    print(d)
                     # Operating-point results go to qois_op.json; the main run's
                     # loss/kick factors are the (always-written) wakefield/qois.json.
                     run_save_directory = os.path.join(cav.wakefield_dir)
@@ -398,12 +405,12 @@ def show_valid_operating_point_structure():
         '<wp1>': {
             'I0 [mA]': <value>,
             'Nb [1e11]': <value>,
-            'sigma_z (SR/BS) [mm]': <value>
+            'sigma [mm]': <value>                      # one bunch length
         },
         '<wp2>': {
             'I0 [mA]': <value>,
             'Nb [1e11]': <value>,
-            'sigma_z (SR/BS) [mm]': <value>
+            'sigma [mm]': {'SR': <value>, 'BS': <value>}   # several, labelled
         }
     }"""
     info(dd)

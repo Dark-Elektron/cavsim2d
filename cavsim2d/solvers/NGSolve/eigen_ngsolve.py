@@ -826,6 +826,15 @@ class NGSolveMEVP:
         # this, so 'beampipe_length' never reached it.
         profile = self._resolve_profile(cav, eigenmode_config)
 
+        # Honour the closed-end BC digits, on BOTH paths. Apertures are built 'PMC'
+        # (the natural condition), so 'pmc' needs nothing; 'pec' must retag the face
+        # 'PEC' or it never reaches DIRICHLET_E. This used to run on the closed path
+        # only, so the closed end of a mixed 'oe'/'eo' run silently stayed PMC and
+        # 'oe' solved the same cavity as 'om'. Done on the freshly built profile, so
+        # nothing leaks.
+        if profile is not None:
+            profile.set_end_conditions(bc_left, bc_right)
+
         if bc_left == 'open' or bc_right == 'open':
             # The run's own config, not an attribute on the cavity: cavities never
             # carry an 'eigenmode_config', so reading it there made 'pml_length' and
@@ -841,13 +850,8 @@ class NGSolveMEVP:
         self._pml_bounds = None
         dielectrics = list(getattr(cav, 'dielectrics', ()) or ())
 
-        # 'beampipe_length' was already applied by _resolve_profile above.
+        # 'beampipe_length' and the end conditions were already applied above.
         if profile is not None:
-            # Honour the closed-end BC digits. Apertures are built 'PMC' (the
-            # natural condition), so 'pmc' needs nothing; 'pec' must retag the
-            # face or it never reaches DIRICHLET_E and every BC solves the same
-            # cavity. Done on the freshly built profile, so nothing leaks.
-            profile.set_end_conditions(bc_left, bc_right)
             region_maxh = {}
             for d in dielectrics:
                 # Model API is in mm (like every other cavity dimension); Profile
@@ -955,6 +959,14 @@ class NGSolveMEVP:
             self._pre_kind = 'direct'
 
         pols = parse_polarisations((eigenmode_config or {}).get('polarisation', 0))
+        if 'port' in parse_boundary_conditions(
+                (eigenmode_config or {}).get('boundary_conditions', 33)):
+            # A port end would mesh as its natural (PMC) face and solve the closed
+            # cavity without a word. Ports go through PortEigenSolver.run, which
+            # cav.eigenmode.run selects for this boundary condition.
+            raise ValueError(
+                "boundary_conditions='port' is solved by PortEigenSolver, not "
+                "NGSolveMEVP.solve; run it through cav.eigenmode.run(...).")
 
         # One solve path for every polarisation, each on its OWN mesh: with
         # adaptive on, m >= 1 refines to resolve its own deflecting field just
@@ -988,13 +1000,15 @@ class NGSolveMEVP:
         # Q is never ambiguous about how it was obtained.
         loss_model = resolve_loss_model(materials, eigenmode_config)
 
-        # Active-length normalisation. Elliptical cavities store the half-cell
-        # length as 'L_m'; otherwise take an explicit 'normalization_length'
-        # (monopole) and finally let evaluate_qois fall back to the on-axis
-        # field extent (L=None).
+        # Active-length normalisation, the same for every polarisation. Elliptical
+        # cavities store the half-cell length as 'L_m'; otherwise take an explicit
+        # 'normalization_length' and finally let evaluate_qois fall back to the
+        # on-axis field extent (L=None). The m >= 1 branch used to fall back to
+        # L = 1 mm, i.e. a 2 mm active length, which inflated Et and deflated
+        # Epk/Et and Bpk/Et by the ratio of the real length to 2 mm.
         L_norm = cav.parameters.get('L_m', None)
         if L_norm is None:
-            L_norm = (eigenmode_config or {}).get('normalization_length', None) if m == 0 else 1
+            L_norm = (eigenmode_config or {}).get('normalization_length', None)
 
         # Solve on this polarisation's own mesh; adaptive refines it in place to
         # resolve *this* polarisation's modes (adaptive=None -> single solve).
@@ -1969,6 +1983,17 @@ class NGSolveMEVP:
                     mesh, mesh_p, m, materials, freq_fes, n_modes,
                     direct_solver=None, n_arnoldi=n_arnoldi)
 
+        # Report the modes that were asked for, and no more. PINVIT iterates on
+        # n_modes + 2 vectors because the extra two speed up the convergence of the
+        # rest, but those two are themselves barely converged (the adaptive driver
+        # already refuses to be steered by them). Returning them put two unconverged
+        # modes in every results table, selectable as a mode of interest.
+        if len(freq_fes) > n_modes:
+            freq_fes, gfu_E, gfu_H = (list(freq_fes)[:n_modes], list(gfu_E)[:n_modes],
+                                      list(gfu_H)[:n_modes])
+            if self._last_dielectric_q is not None:
+                self._last_dielectric_q = list(self._last_dielectric_q)[:n_modes]
+
         if save_dir:
             self.save_fields(save_dir, gfu_E, gfu_H, mesh_p, m, freq_fes, materials=materials)
         return freq_fes, gfu_E, gfu_H
@@ -2006,10 +2031,10 @@ class NGSolveMEVP:
         conductivity = eigenmode_config.get('conductivity', SIGMA_COPPER)
         rs_ohm = eigenmode_config.get('surface_resistance', None)
         materials = self.resolve_materials(cav, eigenmode_config)
-        L_mono = cav.parameters.get('L_m', None)
-        if L_mono is None:
-            L_mono = eigenmode_config.get('normalization_length', None)
-        L_mpole = cav.parameters.get('L_m', 1)
+        # One active length for every polarisation (see _solve_pol).
+        L_norm = cav.parameters.get('L_m', None)
+        if L_norm is None:
+            L_norm = eigenmode_config.get('normalization_length', None)
 
         f_shift = eigenmode_config.get('f_shift', 0)
         direct_solver = eigenmode_config.get('direct_solver', default_direct_solver())
@@ -2022,6 +2047,8 @@ class NGSolveMEVP:
         for level in range(max_ref + 1):
             t0 = time.perf_counter()
             freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+            # the requested modes only, as in _solve_eigenproblem
+            freq_fes, gfu_E, gfu_H = freq_fes[:n_modes], gfu_E[:n_modes], gfu_H[:n_modes]
             ndof_level = int(system['fes'].ndof)
 
             # Per-mode recovery error fields: each mode gets its OWN 'max_err' so
@@ -2038,7 +2065,7 @@ class NGSolveMEVP:
             if 0 in pols:
                 for ii in range(len(freq_fes)):
                     q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii,
-                                           n_cells=cav.n_cells, L=L_mono,
+                                           n_cells=cav.n_cells, L=L_norm,
                                            conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                            materials=materials)
                     # composite key '<m>-<mode>' — polarisation then mode index,
@@ -2051,10 +2078,11 @@ class NGSolveMEVP:
             for m_pol in [pp for pp in pols if pp > 0]:
                 fr_m, gE_m, gH_m = self._solve_modes(mesh, mesh_p, m_pol, n_modes,
                                                      materials=materials)
+                fr_m, gE_m, gH_m = fr_m[:n_modes], gE_m[:n_modes], gH_m[:n_modes]
                 m_err = self._error_fields(mesh, gE_m[0].components[0].space, gE_m) if gE_m else []
                 for ii in range(len(fr_m)):
                     q = self.evaluate_qois(mesh, gE_m, gH_m, fr_m, m_pol, mode_idx=ii,
-                                           n_cells=cav.n_cells, L=L_mpole,
+                                           n_cells=cav.n_cells, L=L_norm,
                                            conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                            materials=materials)
                     q['mode_index'] = f"{q['m']}-{ii}"
@@ -2227,8 +2255,7 @@ class NGSolveMEVP:
                                                       integ_domain).real)
 
         norm_u = Norm(u_gf)
-        xpnts_surf = np.array(list(get_boundary_nodes(mesh, 'PEC')))
-        r0 = 0.5 * xpnts_surf[:, 1][xpnts_surf[:, 1] > AXIS_EPS].min()   # aperture/2 (m>=1)
+        r0 = beam_line_radius(mesh)                     # aperture/2 (m>=1)
         n_ax_pts = int(5000 * (maxz - minz))
         xpnts_ax = np.linspace(minz, maxz, n_ax_pts)
 
@@ -2394,7 +2421,15 @@ class NGSolveMEVP:
         # Axis field flatness (min/max of the on-axis |E| peaks). ``distance``
         # must stay >= 1: an axis shorter than 20 mm gives n_ax_pts < 100, and
         # find_peaks then raises — killing the whole solve over a cosmetic QOI.
-        peaks, _ = find_peaks(Ez_axis, distance=max(1, n_ax_pts // 100), width=100)
+        # The minimum peak ``width`` scales with the cell: about a third of a
+        # half-cell, capped at the 100 samples it always was (20 mm at 0.2 mm
+        # spacing). A fixed 100 is wider than a whole cell above ~7 GHz, so every
+        # peak was rejected and ff came out 0 for any X-band structure. The cap
+        # keeps L-band and larger cells exactly as before.
+        dz = (maxz - minz) / max(n_ax_pts - 1, 1)
+        half_cell_pts = L * 1e-3 / dz if dz > 0 else n_ax_pts
+        width = max(1, min(100, int(0.35 * half_cell_pts)))
+        peaks, _ = find_peaks(Ez_axis, distance=max(1, n_ax_pts // 100), width=width)
         try:
             ff = min(Ez_axis[peaks]) / max(Ez_axis[peaks]) * 100
         except ValueError:
@@ -2425,7 +2460,7 @@ class NGSolveMEVP:
             "No of Mesh Elements": mesh.GetNE(VorB.VOL),
         }
 
-        if Q_diel is not None or Q_rad is not None:
+        if Q_diel is not None or Q_rad is not None or Q_eig is not None:
             qois["Q_wall []"] = Q_wall
 
         if Q_diel is not None:
@@ -2853,6 +2888,35 @@ def _boundary_sample_points(mesh, boundary_name, order, min_per_element=5):
     zs = np.asarray(x(bnd), float).ravel()
     rs = np.asarray(y(bnd), float).ravel()
     return mesh(zs, rs), rs
+
+
+def beam_line_radius(mesh, wall='PEC'):
+    """Radius [m] of the off-axis line an m >= 1 voltage is taken along: half the
+    beam aperture.
+
+    The aperture is the smallest radius of the wall, counting only wall edges that
+    stay clear of the axis. An edge that reaches the axis is a plate across the bore:
+    an end cap closed by a ``'pec'`` boundary condition, a closed pillbox's end plate,
+    or a pipe built with metal ends. Its lowest off-axis node is just the first mesh
+    node above the axis, so including it put the line at half an element size.
+    That made ``r0`` depend on the mesh and made R/Q for m >= 2, which scales as
+    ``r0**(2(m-1))``, meaningless.
+
+    Edges are the mesh's boundary indices, one per geometric edge. When every wall
+    edge reaches the axis, the rule falls back to all wall nodes.
+    """
+    lowest, touches = {}, set()
+    for el in mesh.Elements(BND):
+        if el.mat.upper() != wall.upper():
+            continue
+        for v in el.vertices:
+            r = mesh[v].point[1]
+            if r <= AXIS_EPS:
+                touches.add(el.index)
+            else:
+                lowest[el.index] = min(lowest.get(el.index, np.inf), r)
+    clear = [r for idx, r in lowest.items() if idx not in touches]
+    return 0.5 * min(clear or lowest.values())
 
 
 def get_boundary_nodes(mesh, boundary_name):

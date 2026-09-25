@@ -32,6 +32,13 @@ from cavsim2d.solvers.solver_objects import (OptimisationSolver, StudyEigenmode,
                                              DEFAULT_WAKEFIELD_CONFIG, _maybe_show)
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.style import house_style, WARM
+from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
+
+
+def _primary(by_label):
+    """The entry of an operating point's primary (first) bunch length, from a
+    result nested ``{label: ...}``. The primary used to be hard-wired as 'SR'."""
+    return by_label[next(iter(by_label))]
 
 
 def _sweep_point_name(keys, combo):
@@ -996,8 +1003,11 @@ class Study:
                                 "beta_xy [m]": 56,  # <- Beta function
                                 "N_c []": 56,  # <- Number of cavities
                                 "T [K]": 4.5,  # <- Operating tempereature
-                                "sigma_SR [mm]": 4.32,  # <- Bunch length
-                                "sigma_BS [mm]": 15.2,  # <- Bunch length
+                                # RMS bunch length: one value, or several under
+                                # labels of your choice (here with synchrotron
+                                # radiation only, and with beamstrahlung too).
+                                # The first is the primary one the plots show.
+                                "sigma [mm]": {"SR": 4.32, "BS": 15.2},
                                 "Nb [1e11]": 2.76  # <- Bunch population
                             }
                 }
@@ -1024,9 +1034,10 @@ class Study:
         rerun : bool
             Recompute even if results exist (default True).
         MT : int
-            Number of mesh lines / frequency samples for the solver.
+            ABCI time steps per mesh cell (clamped to 19, ABCI's limit).
         DDR_SIG, DDZ_SIG : float
-            Radial / longitudinal mesh density (mesh lines per sigma).
+            Radial / axial mesh step as a fraction of the bunch length (default
+            0.1), capped at 1.25 mm. ``mesh_config['DDR'/'DDZ']`` overrides them.
         mesh_config : dict
             Mesh controls, e.g. ``{'DDR': ..., 'DDZ': ...}`` (metres).
         contour_ds : float
@@ -1179,12 +1190,10 @@ class Study:
                     uq_hom_results_op = {}
                     for op, val in op_points.items():
                         uq_hom_results_op[op] = {}
-                        for k, v in val.items():
-                            if 'sigma' in k:
-                                sig_id = k.split('_')[-1].split(' ')[0]
-                                ident = fr'_{op}_{sig_id}_{v}mm'
-                                uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
-                                                                 cav_uq_hom_results.items() if ident in kk}
+                        for sig_id, v in bunch_lengths(val).items():
+                            ident = f'_{bunch_tag(op, sig_id, v)}'
+                            uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
+                                                             cav_uq_hom_results.items() if ident in kk}
                 else:
                     uq_hom_results_op = cav.uq_hom_results
 
@@ -1676,9 +1685,6 @@ class Study:
         if isinstance(op_points_list, str):
             op_points_list = [op_points_list]
 
-        # display formula used
-        display(Math(r'Dims: {}x{}m \\ Area: {}m^2 \\ Volume: {}m^3'.format(2, round(3, 2), 5, 5)))
-
         for ii, cav in enumerate(self.cavities_list):
             # set cavity intrinsic quality factor and inv_eta
             cav.Q0 = rf_config['Q0 []'][ii]
@@ -1687,7 +1693,12 @@ class Study:
                 cav.Eacc_rf_config = rf_config['Eacc [MV/m]'][ii]  # change this later, not effective way
 
             self.power_qois[cav.name] = self.get_power_qois(cav, rf_config, op_points_list)
-            self.power_qois_uq[cav.name] = self.get_power_qois(cav, rf_config, op_points_list, uq=True)
+            # Only with uq=True: the UQ variant reads the UQ sample table
+            # (cav.neighbours), which a cavity without a UQ run does not have, so
+            # computing it unconditionally made every plain power plot raise.
+            if uq:
+                self.power_qois_uq[cav.name] = self.get_power_qois(cav, rf_config, op_points_list,
+                                                                   uq=True)
 
         if not uq:
             self.hom_results = self.qois_hom(op_points_list[0])
@@ -1705,7 +1716,7 @@ class Study:
             # Plot each column in a separate subplot
             for key, ax in axd.items():
                 for i, label in enumerate(labels):
-                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                    ax.scatter(df.index[i], df[key].iloc[i], color=colors[i % len(colors)], ec='k', label=label)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.set_ylabel(key)
@@ -1718,8 +1729,8 @@ class Study:
                 # get nominal qois
                 dd_nominal = {}
                 for cav, metrics in self.power_qois.items():
-                    # for metric, values in metrics[op_pt]['SR'].items():
-                    dd_nominal[cav] = metrics[op_pt]['SR']
+                    # for metric, values in _primary(metrics[op_pt]).items():
+                    dd_nominal[cav] = _primary(metrics[op_pt])
 
                 df_nominal = pd.DataFrame.from_dict(dd_nominal).T
                 df_nominal_list.append(df_nominal)
@@ -1727,7 +1738,7 @@ class Study:
                 rows = []
                 # get uq opt
                 for cavity, metrics in self.power_qois_uq.items():
-                    for metric, values in metrics[op_pt]['SR'].items():
+                    for metric, values in _primary(metrics[op_pt]).items():
                         rows.append({
                             'cavity': cavity,
                             'metric': metric,
@@ -1874,7 +1885,76 @@ class Study:
     #
     #     return axd
 
-    def _hom_bar_impl(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
+    def _hom_window_uq_impl(self, kind='scatter', ncols=3, figsize=(12, 3),
+                            qois=None):
+        """Mean and standard deviation of each impedance-window UQ objective.
+
+        The companion to :meth:`_hom_scatter_impl` for a wakefield UQ run whose
+        objectives are ``ZL``/``ZT`` peaks over frequency windows rather than
+        operating-point quantities. One panel per window, every cavity in the
+        study on it, each drawn as its mean with a +/-1 sigma error bar.
+        """
+        rows = []
+        for cavity, metrics in self.uq_hom_results.items():
+            for metric, values in metrics.items():
+                if not (isinstance(values, dict) and 'expe' in values):
+                    continue        # an operating-point nest, not a flat window
+                rows.append({'cavity': cavity, 'metric': metric,
+                             'mean': float(np.atleast_1d(values['expe'])[0]),
+                             'std': float(np.atleast_1d(values['stdDev'])[0])})
+        if not rows:
+            info('No impedance-window UQ results in this study. Run a wakefield '
+                 'with a uq_config whose objectives are ZL/ZT windows, or pass '
+                 'op_points_list for the operating-point QOIs.')
+            return None
+
+        df = pd.DataFrame(rows)
+        metrics = list(dict.fromkeys(df['metric']))
+        if qois:
+            wanted = self._resolve_qoi_keys(qois, metrics) or [
+                m for m in metrics if any(str(q) in m for q in qois)]
+            metrics = [m for m in metrics if m in wanted] or metrics
+
+        labels = list(dict.fromkeys(df['cavity']))
+        # Honour an explicitly-set cavity colour; fall back to the house palette
+        # when it is still the default 'k', so several cavities stay tellable
+        # apart instead of all coming out black.
+        colors = {cav.name: (cav.color if cav.color not in (None, 'k') else None)
+                  for cav in self.cavities_list}
+        with house_style():
+            fig, axd = plt.subplot_mosaic([metrics], layout='constrained',
+                                          figsize=(3 * len(metrics), figsize[1]))
+            for metric, ax in axd.items():
+                sub = df[df['metric'] == metric]
+                for i, label in enumerate(labels):
+                    r = sub[sub['cavity'] == label]
+                    if r.empty:
+                        continue
+                    colour = colors.get(label) or WARM[i % len(WARM)]
+                    if kind == 'bar':
+                        ax.bar(i, r['mean'].iloc[0], yerr=r['std'].iloc[0],
+                               capsize=6, color=colour, edgecolor='k', label=label)
+                    else:
+                        ax.errorbar(i, r['mean'].iloc[0], yerr=r['std'].iloc[0],
+                                    fmt='o', ms=8, capsize=6, lw=1.6, mfc='none',
+                                    mew=2, color=colour, label=label)
+                ax.set_xticks([])
+                ax.set_xlim(-0.6, len(labels) - 0.4)
+                ax.margins(y=0.25)
+                # LABELS has no entry for an expanded window name, and indexing it
+                # used to raise; fall back to the objective's own name.
+                ax.set_ylabel(LABELS.get(metric, metric))
+            h, l = axd[metrics[0]].get_legend_handles_labels()
+            if not ncols:
+                ncols = min(4, len(labels))
+            fig.legend(*reorder_legend(h, l, ncols), loc='outside upper center',
+                       borderaxespad=0, ncol=ncols)
+
+        fname = '_'.join(cav.name for cav in self.cavities_list)
+        self.save_all_plots(f"{fname}_hom_window_uq_{kind}.png")
+        return axd
+
+    def _hom_bar_impl(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -1892,11 +1972,26 @@ class Study:
         axd : dict
             A dictionary of axes from the scatter plot.
         """
+        if isinstance(op_points_list, str):
+            op_points_list = [op_points_list]
+
+        # Impedance-window objectives. Without 'operating_points' in the uq_config,
+        # uq_hom_results is flat -- {objective: {'expe', 'stdDev'}} keyed by the
+        # expanded window name ('ZL [max(0.2<f<2.0)]') -- with no operating point and
+        # no 'SR' level for the branch below to index. That is what a wakefield UQ
+        # run over ZL/ZT windows produces, so it gets its own renderer.
+        if uq and not op_points_list:
+            return self._hom_window_uq_impl(kind='bar', ncols=ncols,
+                                            figsize=figsize, qois=qois)
+
         if qois is None:
             qois = ['k_loss', 'k_kick', 'p_hom']
 
-        if isinstance(op_points_list, str):
-            op_points_list = [op_points_list]
+        if not op_points_list:
+            raise ValueError(
+                'plot_hom_bar: op_points_list is required for the operating-point '
+                'QOIs (k_loss, k_kick, p_hom). Omit it only with uq=True, to plot '
+                'impedance-window UQ objectives.')
 
         if not uq:
             self.hom_results = self.qois_hom(op_points_list[0])
@@ -1914,7 +2009,7 @@ class Study:
             # Plot each column in a separate subplot
             for key, ax in axd.items():
                 for i, label in enumerate(labels):
-                    ax.bar(df.index, df[key], color=colors[i], ec='k', label=label)
+                    ax.bar(df.index[i], df[key].iloc[i], color=colors[i % len(colors)], ec='k', label=label)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.set_ylabel(key)
@@ -1930,7 +2025,7 @@ class Study:
                 dd_nominal = {}
                 for cav, ops_id in self.wakefield_qois_op.items():
                     for kk, vv in ops_id.items():
-                        if fr'{opt}_SR' in kk:
+                        if kk == self._primary_tag(opt):
                             dd_nominal[cav] = vv
 
                 df_nominal = pd.DataFrame.from_dict(dd_nominal).T
@@ -1939,7 +2034,7 @@ class Study:
                 rows = []
                 # get uq opt
                 for cavity, metrics in self.uq_hom_results.items():
-                    for metric, values in metrics[opt]['SR'].items():
+                    for metric, values in _primary(metrics[opt]).items():
                         rows.append({
                             'cavity': cavity,
                             'metric': metric,
@@ -2002,7 +2097,7 @@ class Study:
 
         return axd
 
-    def _hom_scatter_impl(self, op_points_list, ncols=3, uq=False, figsize=(12, 3), qois=None):
+    def _hom_scatter_impl(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3), qois=None):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -2020,11 +2115,26 @@ class Study:
         axd : dict
             A dictionary of axes from the scatter plot.
         """
+        if isinstance(op_points_list, str):
+            op_points_list = [op_points_list]
+
+        # Impedance-window objectives. Without 'operating_points' in the uq_config,
+        # uq_hom_results is flat -- {objective: {'expe', 'stdDev'}} keyed by the
+        # expanded window name ('ZL [max(0.2<f<2.0)]') -- with no operating point and
+        # no 'SR' level for the branch below to index. That is what a wakefield UQ
+        # run over ZL/ZT windows produces, so it gets its own renderer.
+        if uq and not op_points_list:
+            return self._hom_window_uq_impl(kind='scatter', ncols=ncols,
+                                            figsize=figsize, qois=qois)
+
         if qois is None:
             qois = ['k_loss', 'k_kick', 'p_hom']
 
-        if isinstance(op_points_list, str):
-            op_points_list = [op_points_list]
+        if not op_points_list:
+            raise ValueError(
+                'plot_hom_scatter: op_points_list is required for the operating-point '
+                'QOIs (k_loss, k_kick, p_hom). Omit it only with uq=True, to plot '
+                'impedance-window UQ objectives.')
 
         if not uq:
             self.hom_results = self.qois_hom(op_points_list[0])
@@ -2042,7 +2152,7 @@ class Study:
             # Plot each column in a separate subplot
             for key, ax in axd.items():
                 for i, label in enumerate(labels):
-                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                    ax.scatter(df.index[i], df[key].iloc[i], color=colors[i % len(colors)], ec='k', label=label)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.set_ylabel(key)
@@ -2058,7 +2168,7 @@ class Study:
                 dd_nominal = {}
                 for cav, ops_id in self.wakefield_qois_op.items():
                     for kk, vv in ops_id.items():
-                        if fr'{opt}_SR' in kk:
+                        if kk == self._primary_tag(opt):
                             dd_nominal[cav] = vv
 
                 df_nominal = pd.DataFrame.from_dict(dd_nominal).T
@@ -2067,7 +2177,7 @@ class Study:
                 rows = []
                 # get uq opt
                 for cavity, metrics in self.uq_hom_results.items():
-                    for metric, values in metrics[opt]['SR'].items():
+                    for metric, values in _primary(metrics[opt]).items():
                         rows.append({
                             'cavity': cavity,
                             'metric': metric,
@@ -2402,7 +2512,7 @@ class Study:
 
         return axd
 
-    def _all_scatter_impl(self, opt, ncols=3):
+    def _all_scatter_impl(self, opt, ncols=3, uq=False):
         """
         Plot scatter chart of fundamental mode quantities of interest.
 
@@ -2432,7 +2542,7 @@ class Study:
             # Plot each column in a separate subplot
             for key, ax in axd.items():
                 for i, label in enumerate(labels):
-                    ax.scatter(df.index, df[key], color=colors[i], ec='k', label=label)
+                    ax.scatter(df.index[i], df[key].iloc[i], color=colors[i % len(colors)], ec='k', label=label)
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.set_ylabel(key)
@@ -2443,7 +2553,7 @@ class Study:
             dd_nominal = {}
             for cav, ops_id in self.wakefield_qois_op.items():
                 for kk, vv in ops_id.items():
-                    if fr'{opt}_SR' in kk:
+                    if kk == self._primary_tag(opt):
                         dd_nominal[cav] = vv
 
             dict_all_nominal = {key: {**self.eigenmode_qois.get(key, {}), **dd_nominal.get(key, {})} for key in
@@ -2464,7 +2574,7 @@ class Study:
                     })
 
             for cavity, metrics in self.uq_hom_results.items():
-                for metric, values in metrics[opt]['SR'].items():
+                for metric, values in _primary(metrics[opt]).items():
                     rows.append({
                         'cavity': cavity,
                         'metric': metric,
@@ -2646,9 +2756,10 @@ class Study:
     # HOM/power QOIs, so they live at the Study level rather than under a single
     # result namespace. Per-domain comparisons live under study.eigenmode.* /
     # study.wakefield.*.
-    def plot_all_scatter(self, opt, ncols=3, show=True):
-        """Scatter of fundamental-mode + HOM/power QOIs across every cavity."""
-        r = self._all_scatter_impl(opt, ncols=ncols)
+    def plot_all_scatter(self, opt, ncols=3, uq=False, show=True):
+        """Scatter of fundamental-mode + HOM/power QOIs across every cavity
+        (``uq=True``: UQ mean with a +/-1 sigma error bar)."""
+        r = self._all_scatter_impl(opt, ncols=ncols, uq=uq)
         _maybe_show(show)
         return r
 
@@ -3417,25 +3528,25 @@ class Study:
                         self.cavities_list]) + r" \\"
 
                 Ncav = r"$N_\mathrm{cav}$ " + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Ncav']} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Q0 = r"$Q_\mathrm{0}~[]$ " + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Pin = r"$P_\mathrm{in}\mathrm{/cav} [\mathrm{kW}]$ " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
@@ -3446,7 +3557,7 @@ class Study:
 
                 PHOM = r"$P_\mathrm{HOM}$ ~[kW] " + "".join(
                     [
-                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        fr"& {'/'.join([str(round(phom * _primary(cav.rf_performance_qois[op_pt])['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
                         for op_pt in op_pts_list for cav in
                         self.cavities_list]) + r" \\"
 
@@ -3510,25 +3621,25 @@ class Study:
                      self.cavities_list]) + r" \\"
 
                 Ncav = r"$N_\mathrm{cav}$ " + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Ncav']} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Q0 = r"$Q_\mathrm{0}$~[]" + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Pin = r"$P_\mathrm{in}\mathrm{/cav} ~[\mathrm{kW}]$ " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
@@ -3539,7 +3650,7 @@ class Study:
 
                 PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
                     [
-                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        fr"& {'/'.join([str(round(phom * _primary(cav.rf_performance_qois[op_pt])['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
                         for op_pt in op_pts_list for cav in
                         self.cavities_list]) + r" \\"
 
@@ -3651,25 +3762,25 @@ class Study:
                 #      self.cavities_list]) + r" \\"
 
                 Ncav = r"$N_\mathrm{cav}$ " + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Ncav']} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Ncav']} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Q0 = r"$Q_\mathrm{0}$ " + "".join(
-                    [fr"& {cav.rf_performance_qois[op_pt]['SR']['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
+                    [fr"& {_primary(cav.rf_performance_qois[op_pt])['Q0 []']:.2E} " for op_pt in op_pts_list for cav in
                      self.cavities_list]) + r" \\"
                 Pin = r"$P_\mathrm{in}\mathrm{/cav} [\mathrm{kW}]$ " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pin/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pstat = r"$P_\mathrm{stat}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pstat/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pdyn = r"$P_\mathrm{dyn}$/cav [W] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pdyn/cav [W]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Pwp = r"$P_\mathrm{wp}$/cav [kW] " + "".join(
-                    [fr"& {round(cav.rf_performance_qois[op_pt]['SR']['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
+                    [fr"& {round(_primary(cav.rf_performance_qois[op_pt])['Pwp/cav [kW]'], 2)} " for op_pt in op_pts_list
                      for cav in self.cavities_list]) + r" \\"
 
                 Phom = r"$P_\mathrm{HOM}$/cav [kW] " + "".join(
@@ -3691,7 +3802,7 @@ class Study:
 
                 PHOM = r"$P_\mathrm{HOM}$ [kW] " + "".join(
                     [
-                        fr"& {'/'.join([str(round(phom * cav.rf_performance_qois[op_pt]['SR']['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
+                        fr"& {'/'.join([str(round(phom * _primary(cav.rf_performance_qois[op_pt])['Ncav'], 2)) for phom in [vv for kk, vv in cav.phom.items() if fr'{op_pt}' in kk]])} "
                         for op_pt in op_pts_list for cav in
                         self.cavities_list]) + r" \\"
 
@@ -3806,36 +3917,49 @@ class Study:
         """
         self.cavities_list.remove(cav)
 
+    def _primary_tag(self, opt):
+        """Sub-run id of operating point *opt*'s primary (first) bunch length, or
+        ``None`` if the study does not know that operating point."""
+        ops = (self.operating_points
+               or (getattr(self, 'wakefield_config', None) or {}).get('operating_points')
+               or {})
+        if opt not in ops:
+            return None
+        label, sigma = next(iter(bunch_lengths(ops[opt]).items()))
+        return bunch_tag(opt, label, sigma)
+
     def save_all_plots(self, plot_name):
+        """Save the current figure into this study's project folder, under
+        ``<projectDir>/PostProcessingData/Plots/<cavity names>/``.
+
+        Returns the path written, or ``None`` when there is no project folder to
+        write into.
+
+        A comparison plot is a result, so it belongs beside the simulation it came
+        from. It must therefore never be written to the *working* directory: a
+        cavity that has no workspace used to resolve ``projectDir`` to ``'.'``, and
+        plotting it dropped a ``PostProcessingData/`` tree wherever the interpreter
+        happened to be started -- including, once, into the repository itself.
         """
-        Save all plots
-        Parameters
-        ----------
-        plot_name: str
-            Name of saved plot
+        if not self.projectDir:
+            return None
+        project = os.path.abspath(str(self.projectDir))
+        if project == os.path.abspath(os.getcwd()):
+            info('save_all_plots: no project folder for this study (it resolves to '
+                 'the working directory), so the figure was not saved. Give the '
+                 'cavity a workspace with cav.set_workspace(...) to keep it.')
+            return None
 
-        Returns
-        -------
-
-        """
-        fname = [cav.name for cav in self.cavities_list]
-        if self.projectDir != '':
-            # check if folder exists
-            if os.path.exists(fr"{self.projectDir}\PostProcessingData\Plots"):
-                # create new subdirectory
-                if not os.path.exists(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}"):
-                    os.mkdir(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}")
-
-                save_folder = fr"{self.projectDir}\PostProcessingData\Plots\{'_'.join(fname)}"
-                plt.savefig(f"{save_folder}/{plot_name}", dpi=300)
-            else:
-                if not os.path.exists(fr"{self.projectDir}\PostProcessingData"):
-                    os.mkdir(fr"{self.projectDir}\PostProcessingData")
-                    os.mkdir(fr"{self.projectDir}\PostProcessingData\Plots")
-                    os.mkdir(fr"{self.projectDir}\PostprocessingData\Plots\{'_'.join(fname)}")
-
-                save_folder = fr"{self.projectDir}\PostProcessingData\Plots\{'_'.join(fname)}"
-                plt.savefig(f"{save_folder}/{plot_name}", dpi=300)
+        fname = '_'.join(cav.name for cav in self.cavities_list)
+        # makedirs, not mkdir: the old code created the leaf only when the whole
+        # tree was absent, so a half-existing tree raised. Casing is consistent
+        # now too -- it used to mix 'PostProcessingData' and 'PostprocessingData',
+        # which are the same folder on Windows and two different ones elsewhere.
+        save_folder = os.path.join(project, 'PostProcessingData', 'Plots', fname)
+        os.makedirs(save_folder, exist_ok=True)
+        path = os.path.join(save_folder, plot_name)
+        plt.savefig(path, dpi=300)
+        return path
 
     def calc_limits(self, which, selection):
         if self.operating_points is not None:

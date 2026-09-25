@@ -59,6 +59,9 @@ the standing-wave amplitude changes. That position dependence is precisely why t
 classical recipes (Kroll-Yu; Balleyguier) either sweep the pipe length or solve with
 two different port-plane conditions and combine them.
 """
+import json
+import os
+
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -67,7 +70,11 @@ import scipy.sparse.linalg as spla
 from ngsolve import (GridFunction, IfPos, TaskManager, curl,  # type: ignore
                      grad, y as _y)
 
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import AXIS_EPS, NGSolveMEVP, mesh_h_metres
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import (AXIS_EPS, NGSolveMEVP, SIGMA_COPPER,
+                                                    mesh_h_metres,
+                                                    parse_boundary_conditions,
+                                                    parse_polarisations)
+from cavsim2d.solvers.eigenmode_result import pol_name
 from cavsim2d.solvers.NGSolve.ports import (C0, port_planes, projection_vectors,
                                             propagation_constant)
 from cavsim2d.utils.printing import info, warning
@@ -157,8 +164,8 @@ class PortEigenSolver:
             B[np.ix_(nz, nz)] += (-1j / beta) * np.outer(pj[nz], pj[nz])
         return B.tocsr()
 
-    def _mode_qois(self, mesh, fes, idx, vec_free, f_mhz, cav):
-        """R/Q and friends for one port mode, via the project's own evaluator.
+    def _mode_fields(self, fes, idx, vec_free, f_mhz):
+        """``(gfu_E, (H_inplane, H_phi))`` for one port mode.
 
         The eigenvector comes back on the free dofs only; it is scattered into a
         product-space GridFunction and the H fields are rebuilt the way the lossy
@@ -175,6 +182,11 @@ class PortEigenSolver:
         inv_r = IfPos(_y - AXIS_EPS, 1 / _y, 0)
         gH = (inv_r / (MU0_ * w) * (self.m * u_gf + grad(uphi_gf)),
               1 / (MU0_ * w) * curl(u_gf))
+        return gfu, gH
+
+    def _mode_qois(self, mesh, fes, idx, vec_free, f_mhz, cav):
+        """R/Q and friends for one port mode, via the project's own evaluator."""
+        gfu, gH = self._mode_fields(fes, idx, vec_free, f_mhz)
         try:
             q = NGSolveMEVP.evaluate_qois(mesh, [gfu], [gH], [f_mhz], m=self.m,
                                           mode_idx=0, n_cells=getattr(cav, 'n_cells', 1),
@@ -204,6 +216,31 @@ class PortEigenSolver:
         ``passes`` and ``converged``.
         """
         max_passes = int(self.MAX_PASSES if passes is None else passes)
+        mesh, fes, idx, rows, vecs = self._solve_raw(cav, n_modes, mesh_h, mesh_p,
+                                                     beampipe_length, f_min_mhz,
+                                                     max_passes)
+        if with_qois:
+            for row, vec in zip(rows, vecs):
+                if vec is not None:
+                    row.update(self._mode_qois(mesh, fes, idx, vec, row['freq [MHz]'], cav))
+
+        df = pd.DataFrame(rows)
+        if max_passes > 1:
+            bad = int((~df['converged']).sum()) if len(df) else 0
+            if bad:
+                warning(f'{bad} of {len(df)} modes did not reach the fixed point in '
+                        f'{max_passes} passes. Iterating is not recommended — see '
+                        f'PortEigenSolver.MAX_PASSES.')
+        return df
+
+    def _solve_raw(self, cav, n_modes, mesh_h, mesh_p, beampipe_length,
+                   f_min_mhz=1.0, max_passes=1):
+        """The port eigenproblem, keeping the eigenvectors.
+
+        Returns ``(mesh, fes, idx, rows, vecs)``: one row of frequency, ``Q_ext`` and
+        convergence data per mode, sorted by frequency, and its free-dof
+        eigenvector alongside (``None`` if that mode's solve failed).
+        """
         mesh, fes, K, M, P, kcs, idx = self._assemble(cav, mesh_h, mesh_p,
                                                       beampipe_length)
         n_free = K.shape[0]
@@ -219,7 +256,7 @@ class PortEigenSolver:
         # converge -- the kernel swamps any shift placed near the physical modes.
         f_seed_mhz, _, _ = NGSolveMEVP()._solve_modes(mesh, int(mesh_p), self.m,
                                                       int(n_modes))
-        rows = []
+        rows, vecs = [], []
         for f_seed in np.sort(np.asarray(f_seed_mhz, dtype=float)):
             if f_seed < f_min_mhz:
                 continue
@@ -237,11 +274,11 @@ class PortEigenSolver:
             for k in range(1, max_passes + 1):
                 Bw = M + self._port_block(P, kcs, np.sqrt(lam), n_free)
                 try:
-                    vals, vecs = spla.eigs(K, k=1, M=Bw, sigma=lam, which='LM')
+                    vals, evecs = spla.eigs(K, k=1, M=Bw, sigma=lam, which='LM')
                 except Exception as exc:
                     warning(f'{f_seed:.1f} MHz: port eigensolve failed ({exc})')
                     break
-                lam_new, vec = complex(vals[0]), vecs[:, 0]
+                lam_new, vec = complex(vals[0]), evecs[:, 0]
                 rel = abs(lam_new - lam) / max(abs(lam), 1e-30)
                 lam = lam_new
                 if rel < self.TOL:
@@ -264,21 +301,94 @@ class PortEigenSolver:
             w = C0 * np.sqrt(lam)
             f = w.real / (2 * np.pi) * 1e-6
             q = abs(w.real) / (2 * abs(w.imag)) if w.imag else np.inf
-            row = {'freq [MHz]': f, 'Im(f) [MHz]': w.imag / (2 * np.pi) * 1e-6,
-                   'Q_ext []': q, 'passes': k, 'converged': converged,
-                   'f_closed [MHz]': f_seed}
-            if with_qois and vec is not None:
-                row.update(self._mode_qois(mesh, fes, idx, vec, f, cav))
-            rows.append(row)
+            rows.append({'freq [MHz]': f, 'Im(f) [MHz]': w.imag / (2 * np.pi) * 1e-6,
+                         'Q_ext []': q, 'passes': k, 'converged': converged,
+                         'f_closed [MHz]': f_seed})
+            vecs.append(vec)
 
-        df = pd.DataFrame(rows).sort_values('freq [MHz]').reset_index(drop=True)
-        if max_passes > 1:
-            bad = int((~df['converged']).sum()) if len(df) else 0
-            if bad:
-                warning(f'{bad} of {len(df)} modes did not reach the fixed point in '
-                        f'{max_passes} passes. Iterating is not recommended — see '
-                        f'PortEigenSolver.MAX_PASSES.')
-        return df
+        order = np.argsort([r['freq [MHz]'] for r in rows])
+        return mesh, fes, idx, [rows[i] for i in order], [vecs[i] for i in order]
+
+    # -- boundary_conditions='port' -----------------------------------------
+    def run(self, cav, eigenmode_config=None):
+        """Solve *cav* with a waveguide port on each pipe end and write the results
+        where every eigenmode run writes them.
+
+        This is what ``cav.eigenmode.run({'boundary_conditions': 'port'})`` calls, so
+        the modes land in ``cav.eigenmode.qois_df`` like any other solve. Each mode
+        carries ``'Q_ext []'`` (from the complex eigenvalue, also reported as
+        ``'Q_eig []'``), ``'Q_wall []'`` and their combination ``'Q []'``.
+
+        Monopole only: the port profiles are implemented for the TM_0n pipe modes.
+        """
+        cfg = eigenmode_config or {}
+        pols = parse_polarisations(cfg.get('polarisation', 0))
+        if pols != [0]:
+            raise NotImplementedError(
+                "boundary_conditions='port' solves the monopole only (the port "
+                f"profiles are the TM_0n pipe modes); asked for polarisations {pols}. "
+                "Use boundary_conditions='oo' (PML) for m >= 1.")
+        ends = parse_boundary_conditions(cfg.get('boundary_conditions', 'port'))
+        if ends != ('port', 'port'):
+            raise ValueError(
+                f"waveguide ports go on both pipe ends ('pp' or 'port'); got {ends}.")
+        if getattr(cav, 'dielectrics', None):
+            raise NotImplementedError(
+                f"cavity {cav.name!r} has dielectric regions, which the port solve "
+                "does not model yet. Use boundary_conditions='oo' (PML) or remove them.")
+
+        mesh_config = cfg.get('mesh_config') or {}
+        if mesh_config.get('adaptive'):
+            warning("adaptive refinement is not applied with waveguide ports; solving "
+                    "on the mesh as built. Use mesh_config['h'] to control resolution.")
+        mesh_h, mesh_p = mesh_config.get('h', 20), int(mesh_config.get('p', 3))
+        n_modes = NGSolveMEVP.requested_n_modes(cav, cfg)
+        self.n_port_modes = int(cfg.get('n_port_modes') or self.n_port_modes)
+
+        mesh, fes, idx, rows, vecs = self._solve_raw(
+            cav, n_modes, mesh_h, mesh_p, cfg.get('beampipe_length'))
+        # The requested modes only: the closed-cavity seeds include two padding modes.
+        keep = [i for i, v in enumerate(vecs) if v is not None][:n_modes]
+        rows, vecs = [rows[i] for i in keep], [vecs[i] for i in keep]
+        freqs = [float(r['freq [MHz]']) for r in rows]
+        q_ext = [float(r['Q_ext []']) for r in rows]
+        fields = [self._mode_fields(fes, idx, v, f) for v, f in zip(vecs, freqs)]
+        gfu_E = [f[0] for f in fields]
+        gfu_H = [f[1] for f in fields]
+
+        solver = NGSolveMEVP()
+        pol_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(0))
+        os.makedirs(pol_dir, exist_ok=True)
+        solver.save_fields(pol_dir, gfu_E, gfu_H, mesh_p, 0, freqs)
+
+        L_norm = cav.parameters.get('L_m', None)
+        if L_norm is None:
+            L_norm = cfg.get('normalization_length', None)
+
+        def qois(i, write_axis=False):
+            q = NGSolveMEVP.evaluate_qois(
+                mesh, gfu_E, gfu_H, freqs, 0, mode_idx=i, n_cells=cav.n_cells,
+                L=L_norm, save_dir=pol_dir, write_axis=write_axis,
+                conductivity=cfg.get('conductivity', SIGMA_COPPER),
+                surface_resistance_ohm=cfg.get('surface_resistance'), q_diel=q_ext)
+            q['Q_ext []'] = q_ext[i]
+            return q
+
+        moi = NGSolveMEVP.modes_of_interest(cav, 0, cfg, len(freqs))
+        qois_moi = {}
+        for i in moi:
+            q = qois(i, write_axis=(i == moi[0]))
+            q['mode_of_interest'] = str(i + 1)
+            q['No of DOFs'] = int(fes.ndof)
+            qois_moi[str(i + 1)] = q
+        with open(os.path.join(pol_dir, 'qois_moi.json'), 'w') as f:
+            json.dump(qois_moi, f, indent=4, separators=(',', ': '))
+        with open(os.path.join(pol_dir, 'qois.json'), 'w') as f:
+            json.dump(qois_moi[str(moi[0] + 1)], f, indent=4, separators=(',', ': '))
+        with open(os.path.join(pol_dir, 'qois_all_modes.json'), 'w') as f:
+            json.dump({i: qois(i) for i in range(len(freqs))}, f, indent=4,
+                      separators=(',', ': '))
+        return True
 
 
 # ---------------------------------------------------------------------------

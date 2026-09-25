@@ -7,6 +7,7 @@ from scipy.stats import qmc
 from numpy.polynomial.legendre import leggauss
 
 from cavsim2d.constants import *
+from cavsim2d.utils.printing import error
 
 #: pandas separator for whitespace-delimited node files.
 SEP_WHITESPACE = r"\s+"
@@ -507,7 +508,9 @@ def weighted_kurtosis(var, wts, mean, std):
 
 
 def normal_dist(x, mean, sd):
-    prob_density = (np.pi * sd) * np.exp(-0.5 * ((x - mean) / sd) ** 2)
+    """Normal probability density. The prefactor used to read ``pi * sd``, which
+    is neither normalised nor dimensionally a density; it is 1/(sd sqrt(2 pi))."""
+    prob_density = np.exp(-0.5 * ((x - mean) / sd) ** 2) / (sd * np.sqrt(2 * np.pi))
     return prob_density
 
 

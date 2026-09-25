@@ -808,3 +808,45 @@ def test_chain_dict_bundles_count_and_spacing():
                             spacing=999).spacing == 60
     with pytest.raises(ValueError):
         EllipticalCavity(1, mid, mid, mid, chain={'count': 4, 'spacng': 60})
+
+
+def test_tangency_vertical_wall_is_not_degenerate():
+    """a + A == L gives an exactly vertical wall, a valid design. The old Newton
+    solve divided by (y1 - k), which is zero there, and never converged."""
+    from cavsim2d.geometry import tangent_coords
+    df = tangent_coords(45.7, 42, 12, 19, 35, 57.7, 103.3, 0.0)
+    assert df[-2] == 1
+    assert np.allclose(df[0], [12.0, 54.0, 12.0, 61.3], atol=1e-9)
+
+
+def test_tangency_matches_reference_cells_and_rejects_overlap():
+    """Real cells reproduce the published tangent points; overlapping ellipses
+    are flagged instead of returning a point that is not a tangent."""
+    from cavsim2d.geometry import tangent_coords, wall_tangent
+    # TESLA mid cell
+    x = wall_tangent(42.0, 42.0, 12.0, 19.0, 35.0, 57.652, 103.3536)
+    assert np.allclose(x, [11.252618, 47.39946, 16.756541, 70.922374], atol=1e-5)
+    # a re-entrant cell (Shemelin et al., delta_e = +50 %): the wall leans back
+    L = 299_792_458.0 / 1.3e9 / 4 * 1e3
+    x = wall_tangent(56.56, 37.12, 6.50, 7.34, 35.0, L, 97.76)
+    assert x[2] < x[0] and x[3] > x[1]
+    # iris and equator ellipses overlap: no tangent exists
+    assert wall_tangent(58.78, 25.86, 21.29, 26.6, 35.63, 55.68, 104.84) is None
+    assert tangent_coords(58.78, 25.86, 21.29, 26.6, 35.63, 55.68, 104.84, 0.0)[-2] != 1
+
+
+def test_beam_line_radius_ignores_plates_across_the_bore():
+    """The m >= 1 beam line sits at half the aperture. A wall edge reaching the
+    axis (an end plate) used to set it at half the first mesh node's radius."""
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import beam_line_radius
+    # pillbox-with-pipe outline whose right end is a metal plate down to the axis
+    p = (Profile()
+         .start(0, 0)
+         .line_to(0, 0.03, 'PMC')
+         .line_to(0.05, 0.03, 'PEC')      # pipe, radius 30 mm
+         .line_to(0.05, 0.1, 'PEC')
+         .line_to(0.15, 0.1, 'PEC')
+         .line_to(0.15, 0, 'PEC')         # plate across the bore
+         .close('AXI'))
+    mesh = p.mesh(maxh=0.01, order=1)
+    assert beam_line_radius(mesh) == pytest.approx(0.015)
