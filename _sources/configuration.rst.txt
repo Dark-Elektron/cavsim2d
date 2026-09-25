@@ -67,7 +67,12 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    reported. ``None`` → the accelerating pi-mode (monopole) / the lowest deflecting
    mode (``m >= 1``).
 ``boundary_conditions``
-   *(str, default* ``'mm'`` *)* The electric/magnetic condition on the two end planes.
+   *(str, default* ``'mm'`` *)* One letter per beam-pipe end, left then right: ``'m'``
+   magnetic wall, ``'e'`` electric wall, ``'o'`` open (PML), ``'p'`` waveguide port
+   (``'pp'`` only, monopole only). ``'open'`` and ``'port'`` are aliases for ``'oo'``
+   and ``'pp'``.
+``n_port_modes``
+   *(int, default 3)* TM\ :sub:`0n` pipe modes kept per port with ``boundary_conditions='port'``.
 ``conductivity``
    *(float, default 5.96e7)* Wall conductivity [S/m] for the loss-based Q / G.
 ``surface_resistance``
@@ -111,16 +116,20 @@ Wakefield — ``cav.wakefield.run`` / ``study.run_wakefield``
    bunch lengths) to fold into loss/kick-factor and HOM-power tables.
 ``solver``
    *(str, default* ``'abci'`` *)* The wakefield backend.
-``MT``, ``NFS``, ``DDR_SIG``, ``DDZ_SIG``
-   ABCI meshing / sampling controls (mesh density, number of frequency samples,
-   radial and longitudinal mesh ratios). Defaults ``10``, ``10000``, ``0.1``, ``0.1``.
+``MT``
+   *(int, default 10)* ABCI time steps per mesh cell. Values above 19, ABCI's limit,
+   are clamped to 19.
+``DDR_SIG``, ``DDZ_SIG``
+   *(float, default 0.1)* Radial / axial mesh step as a fraction of the bunch length,
+   capped at 1.25 mm, so a short bunch is always resolved. An explicit
+   ``mesh_config={'DDR': ..., 'DDZ': ...}`` (metres) overrides them.
 
 .. note::
 
    Adaptive refinement does not apply to wakefield. ``mesh_config['adaptive']``
    drives the NGSolve eigenmode backend (and, through it, multipacting, which reads
    the eigenmode field). Wakefield uses the ABCI backend, which builds and meshes its
-   own deck from ``cav.profile()`` and is controlled by ``MT``/``NFS``/``DDR_SIG``/
+   own deck from ``cav.profile()`` and is controlled by ``MT``/``DDR_SIG``/
    ``DDZ_SIG`` above — it has no NGSolve mesh to refine, so the eigenmode ``adaptive`` /
    ``h`` / ``p`` keys are ignored there. This is a backend boundary, not a limitation of a
    particular geometry.

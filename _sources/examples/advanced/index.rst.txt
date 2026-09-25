@@ -17,13 +17,18 @@ standard deviation) instead of a single number. The same pattern turns:
 
 These examples deliberately span several cavity types — spline, RF gun,
 flat-top, elliptical — a good stress test of the model-agnostic
-machinery.
+machinery. Each analysis is shown on a single cell first and then, where there
+is one, on a multicell cavity whose cells vary independently: the eigenmode
+sensitivity study reproduces a published result, and needs the tuning examples
+as well.
 
 .. toctree::
    :maxdepth: 1
    :titlesonly:
 
    eigenmode_uq
+   ../eigenmode/multicell_uq_sa
    robust_tuning
    wakefield_uq
+   ../wakefield/multicell_uq
    robust_optimisation

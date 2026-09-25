@@ -69,10 +69,23 @@ Operating points describe the beam parameters at a given machine energy. Each en
             "freq [MHz]": 400.79,
             "E [GeV]": 45.6,
             "I0 [mA]": 1280,
-            "sigma_SR [mm]": 4.32,
+            "sigma [mm]": 4.32,
             "Nb [1e11]": 2.76
         }
     }
+
+``sigma [mm]`` is the RMS bunch length. When one operating point runs with more than
+one bunch length, give them as a dictionary with a label for each. A collider
+quoted with and without beamstrahlung, for example:
+
+.. code-block:: python
+
+    "sigma [mm]": {"SR": 4.32, "BS": 15.2}
+
+Each bunch length gets its own wakefield run, filed as ``<operating point>_<label>_<sigma>mm``
+(``Z_SR_4.32mm``), or ``<operating point>_<sigma>mm`` for a single unlabelled one. The first
+bunch length listed is the primary one that the comparison plots and tables show. The older
+spelling with one key per length, ``sigma_SR [mm]`` and ``sigma_BS [mm]``, is still read.
 
 Multiple operating points can be included in the dictionary to compare HOM power across different machine configurations.
 

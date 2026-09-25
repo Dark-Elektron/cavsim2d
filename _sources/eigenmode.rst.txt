@@ -162,9 +162,19 @@ beam-pipe end (left, then right):
      - open (PML)
      - The pipe is extended by a perfectly matched layer that absorbs whatever
        reaches it, so a propagating mode leaves and does not return.
+   * - ``'p'``
+     - waveguide port
+     - The pipe is terminated in its own modal impedance (the TM\ :sub:`0n` pipe
+       modes, ``n_port_modes`` of them, default 3). Exact below the pipe cutoff, where
+       it adds only a reactance. Both ends at once (``'pp'``), monopole only.
 
 So ``'mm'`` (the default) closes both ends and ``'oo'`` opens both;
-``'open'`` is accepted as an alias for ``'oo'``.
+``'open'`` is accepted as an alias for ``'oo'`` and ``'port'`` for ``'pp'``. A port
+run reports the external :math:`Q` as ``'Q_ext []'``.
+
+The PML is the default open boundary and works for every polarisation. The ports and a
+lossy absorber in the pipe are two independent ways to check it; the three are compared
+on the same cavity in :doc:`examples/eigenmode/external_q_methods`.
 
 Why open ends
 -------------
@@ -227,8 +237,9 @@ Impedance needs an open end
 :meth:`~cavsim2d.solvers.solver_objects.EigenmodeSolver.impedance` refuses to build a
 spectrum from a fully closed solve. Above the cutoff those :math:`Q` values are the wall's,
 not the mode's, and the resulting :math:`|Z|` is wrong by orders of magnitude rather than
-merely imprecise. Solve with at least one open end, use ``cav.wakefield`` for the
-broadband answer, or pass an explicit ``Q=`` to state the loaded :math:`Q` yourself.
+merely imprecise. Solve with at least one open end (PML) or with waveguide ports, use
+``cav.wakefield`` for the broadband answer, or pass an explicit ``Q=`` to state the
+loaded :math:`Q` yourself.
 
 .. code-block:: python
 
