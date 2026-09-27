@@ -28,27 +28,41 @@ Azimuthal order
 The 2D formulation solves one azimuthal order ``m`` at a time and the orders do not
 couple, so a port basis is per-``m`` as well:
 
-- ``m = 0`` (monopole): TM_0n and TE_0n, and at m = 0 those two blocks decouple from
-  each other, so a longitudinal (TM) problem needs **only TM_0n**. TE_11 does not
-  appear at all -- it is an m = 1 mode. This is the piece that surprises people
-  coming from 3D, where TE_11 is the lowest pipe mode of all.
+- ``m = 0`` (monopole): TM_0n and TE_0n. At m = 0 those two blocks decouple from
+  each other: a TM (accelerating) mode radiates only into TM_0n, a TE mode only into
+  TE_0n, whose cutoff is higher. TE_11 does not appear at all -- it is an m = 1 mode.
+  This is the piece that surprises people coming from 3D, where TE_11 is the lowest
+  pipe mode of all.
 - ``m >= 1``: TE_mn and TM_mn both couple. The two polarisations of a given mode
   (the "H" and "V" of TE_11) are the *same* 2D solution rotated by 90 degrees, so
   they contribute **one** port mode here, not two -- the degeneracy is already
   factored out by the ``cos(m phi)/sin(m phi)`` ansatz. Adding both would
   double-count.
+
+Transverse profiles
+-------------------
+With ``E_r ~ cos(m phi)`` and ``E_phi ~ sin(m phi)``, the transverse field of a pipe
+mode of cutoff ``k`` is
+
+    TM_mn:  e_r = k J_m'(k r),       e_phi = -m J_m(k r) / r
+    TE_mn:  e_r = -m J_m(k r) / r,   e_phi = k J_m'(k r)
+
+normalised so ``integral (e_r^2 + e_phi^2) r dr = 1`` over the pipe. The wave
+admittances are ``y_TM = w eps0 / beta`` and ``y_TE = beta / (w mu0)``.
 """
 import math
 
 import numpy as np
-from scipy.special import j1, jn_zeros, jnp_zeros
+from scipy.integrate import quad
+from scipy.special import jn_zeros, jnp_zeros, jv, jvp
 
 from ngsolve import CoefficientFunction, IfPos, LinearForm, ds, x, y  # type: ignore
 
+from cavsim2d.constants import c0, mu0
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import get_boundary_nodes
 
-C0 = 299792458.0
-MU0 = 4e-7 * np.pi
+C0 = c0
+MU0 = mu0
 EPS0 = 1.0 / (MU0 * C0 ** 2)
 Z0 = MU0 * C0
 
@@ -83,12 +97,78 @@ def j1_cf(k_c, r=None):
     return (u / 2.0) * acc
 
 
+def _series_cf(n, u, terms=_J1_TERMS):
+    """``sum_s (-1)^s / (s! (s+n)!) (u^2/4)^s`` by Horner, as a CoefficientFunction."""
+    q = u * u / 4.0
+    coeffs = [((-1.0) ** s) / (float(math.factorial(s)) * float(math.factorial(s + n)))
+              for s in range(terms)]
+    acc = CoefficientFunction(coeffs[-1])
+    for a in reversed(coeffs[:-1]):
+        acc = a + q * acc
+    return acc
+
+
+def _power_cf(base, n):
+    out = CoefficientFunction(1.0)
+    for _ in range(int(n)):
+        out = out * base
+    return out
+
+
+def jn_cf(n, k, r=None):
+    """``J_n(k r)`` as a CoefficientFunction, by its ascending series (see
+    :func:`j1_cf`, of which this is the general order)."""
+    r = y if r is None else r
+    u = k * r
+    return _power_cf(u / 2.0, n) * _series_cf(n, u)
+
+
+def jn_over_u_cf(n, k, r=None):
+    """``J_n(u) / u`` at ``u = k r``, for ``n >= 1``: regular on the axis, where a
+    literal division would be 0/0."""
+    if int(n) < 1:
+        raise ValueError('J_0(u)/u is singular on the axis; n must be >= 1.')
+    r = y if r is None else r
+    u = k * r
+    return _power_cf(u / 2.0, int(n) - 1) * _series_cf(n, u) / 2.0
+
+
+def jn_prime_cf(n, k, r=None):
+    """``J_n'(k r)``, the derivative with respect to the argument."""
+    if int(n) == 0:
+        return -jn_cf(1, k, r)
+    return 0.5 * (jn_cf(int(n) - 1, k, r) - jn_cf(int(n) + 1, k, r))
+
+
+def mode_profile(m, k_c, kind, radius):
+    """``(e_r, e_phi)`` of the TE/TM mode ``m`` with cutoff *k_c*, normalised so
+    ``integral (e_r^2 + e_phi^2) r dr = 1`` over ``[0, radius]``. See the module
+    docstring for the profiles. Returns CoefficientFunctions in ``r = y`` (``e_phi``
+    is ``None`` for TM_0n and ``e_r`` for TE_0n, which have no such component)."""
+    m, kind = int(m), str(kind).upper()
+
+    def np_profile(r):
+        u = k_c * r
+        d = k_c * jvp(m, u)
+        s = (m * k_c * (jv(m, u) / u if u > 1e-12 else (0.5 if m == 1 else 0.0))
+             if m else 0.0)
+        return (d, -s) if kind == 'TM' else (-s, d)
+
+    norm2, _ = quad(lambda r: r * sum(v * v for v in np_profile(r)), 0.0, float(radius),
+                    limit=200, epsabs=0.0, epsrel=1e-12)
+    norm = np.sqrt(norm2)
+    d = k_c * jn_prime_cf(m, k_c) / norm
+    s = m * k_c * jn_over_u_cf(m, k_c) / norm if m else None
+    if kind == 'TM':
+        return d, (None if s is None else -s)
+    return (None if s is None else -s), d
+
+
 def cutoffs(radius, n_modes, m=0, kind='TM'):
     """Cutoff wavenumbers of the first *n_modes* pipe modes of order *m*.
 
     ``TM_mn`` sits at the n-th zero of ``J_m``; ``TE_mn`` at the n-th zero of
-    ``J_m'``. Only ``TM`` is supported for now -- see the module docstring for why
-    that is the complete basis at ``m = 0``, and what ``m >= 1`` would need.
+    ``J_m'`` (for ``m = 0`` that excludes the trivial zero at the origin).
     """
     kind = str(kind).upper()
     if kind == 'TM':
@@ -155,32 +235,31 @@ def port_planes(mesh, bnd='PMC'):
 def projection_vectors(mesh, fes, n_port_modes=3, m=0, kind='TM', bnd='PMC'):
     """``(vectors, cutoffs)`` -- one projection vector and cutoff per port mode.
 
-    ``P_n[i] = integral r (v_i)_r e_n(r) dr`` over that end, with ``e_n`` normalised
-    so ``integral r e_n^2 dr = 1``. That normalisation is what makes the modal
-    coefficient exactly ``y_n``, with no leftover factor.
+    ``P_n[i] = integral (r (v_i)_r e_r + (v_i)_phi e_phi) dr`` over that end, the
+    overlap of test function ``i`` with the mode's transverse profile (the azimuthal
+    unknown is ``u_phi = r E_phi``, so its term carries no extra ``r``). With the
+    profile normalised to ``integral (e_r^2 + e_phi^2) r dr = 1`` the modal
+    coefficient is exactly the wave admittance, with no leftover factor.
+
+    *kind* is ``'TM'`` or ``'TE'``; call it once per family. Any ``m``.
     """
-    if int(m) != 0 or str(kind).upper() != 'TM':
-        raise NotImplementedError(
-            f"port profiles are implemented for TM_0n only (m=0, the longitudinal "
-            f"problem); asked for {kind}_{m}n. For m >= 1 the transverse profile has "
-            "both E_r and E_phi and the TE and TM families both couple — the cutoffs "
-            "are already available from cutoffs(), the profiles are not.")
-    v, _v_phi = fes.TestFunction()
+    v, v_phi = fes.TestFunction()
     planes = port_planes(mesh, bnd)
     z_mid = 0.5 * (planes[0][0] + planes[1][0])
     vecs, kcs = [], []
     for _z_port, radius, sign in planes:
         side = IfPos(sign * (x - z_mid), 1.0, 0.0)
         for k_c in cutoffs(radius, n_port_modes, m=m, kind=kind):
-            x0n = k_c * radius
-            # integral_0^R J1(k_c r)^2 r dr = R^2 J1(x0n)^2 / 2
-            norm = radius * abs(j1(x0n)) / np.sqrt(2.0)
-            lf = LinearForm(fes)
+            e_r, e_phi = mode_profile(m, float(k_c), kind, radius)
+            integrand = CoefficientFunction(0.0)
             # .Trace(): an HCurl test function has no volume value on a boundary
-            # form. On the port plane that trace IS the radial component, which is
-            # the transverse E the TM_0n profile pairs with.
-            lf += (y * v.Trace()[1] * j1_cf(k_c) / norm * side) * ds(
-                definedon=mesh.Boundaries(bnd))
+            # form. On the port plane that trace IS the radial component.
+            if e_r is not None:
+                integrand = integrand + y * v.Trace()[1] * e_r
+            if e_phi is not None:
+                integrand = integrand + v_phi * e_phi
+            lf = LinearForm(fes)
+            lf += (integrand * side) * ds(definedon=mesh.Boundaries(bnd))
             lf.Assemble()
             vecs.append(np.array(lf.vec.FV().NumPy(), dtype=complex).copy())
             kcs.append(float(k_c))

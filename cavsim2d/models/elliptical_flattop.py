@@ -90,13 +90,8 @@ class EllipticalCavityFlatTop(Cavity):
         (self.A_er, self.B_er, self.a_er, self.b_er,
          self.Ri_er, self.L_er, self.Req_er, self.l_er) = self.end_cell_right[:8]
 
-        # Active length & cavity length
-        self.l_active = (
-                                2 * (self.n_cells - 1) * self.L +
-                                (self.n_cells - 2) * self.l +
-                                self.L_el + self.l_el +
-                                self.L_er + self.l_er
-                        ) * 1e-3
+        # Cavity length for the static heat load; the active length is the
+        # active_length() hook, shared with the eigenmode Eacc.
         self.l_cavity = self.l_active + 8 * (self.L + self.l) * 1e-3
 
         # Build self.shape dictionary
@@ -703,6 +698,18 @@ class EllipticalCavityFlatTop(Cavity):
             return ax
 
 
+    def active_length(self):
+        """``n_cells * (2 L_m + l_m)`` [mm]: each cell's two half-cells and its flat.
+        The eigenmode ``Eacc`` used to be normalised to ``2 * n_cells * L_m``,
+        leaving the flats out, which overstated ``Eacc`` (and understated
+        ``Epk/Eacc`` and ``Bpk/Eacc``) by the flat's share of the cell."""
+        p = getattr(self, 'parameters', None) or {}
+        L_m = p.get('L_m', getattr(self, 'L', None))
+        l_m = p.get('l_m', getattr(self, 'l', 0.0))
+        if L_m is None:
+            return None
+        return self.n_cells * (2 * float(L_m) + float(l_m or 0.0))
+
     def _cell_length_m(self):
         """Mid-cell axial length, metres: the half-cell plus the flat top,
         ``2*L_m + l_m``."""
@@ -726,6 +733,10 @@ class EllipticalCavityFlatTop(Cavity):
                      for suf in ('m', 'el', 'er')}
         except (KeyError, TypeError, ValueError):
             return None
+        if beampipe_length is None:
+            # like EllipticalCavity.profile: an explicit length wins, then the
+            # cavity's own, then the builder's 2 * L_m default
+            beampipe_length = getattr(self, 'beampipe_length', None)
         try:
             prof = elliptical_profile(cells['m'], cells['el'], cells['er'],
                                       self.n_cells, self.beampipe,

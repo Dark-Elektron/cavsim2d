@@ -10,6 +10,7 @@ counter function ``c20/c0`` is the fraction that survives to 20 impacts. The
 sweep is embarrassingly parallel over field levels (one worker per chunk).
 """
 import itertools
+from collections import defaultdict
 import multiprocessing as mp
 import os
 import pickle
@@ -25,24 +26,77 @@ from ngsolve import Norm
 from tqdm.auto import tqdm
 
 from cavsim2d.analysis.multipacting.fields import build_emfield, load_eigenmode_fields
+from cavsim2d.constants import c0, m0, q0  # noqa: F401  (re-exported to the workers)
 from cavsim2d.analysis.multipacting.integrators import Integrators
 from cavsim2d.analysis.multipacting.metrics import distance_function
 from cavsim2d.analysis.multipacting.particles import Particles
 from cavsim2d.utils.run_log import RunTimer
 
-q0 = 1.60217663e-19
-m0 = 9.1093837e-31
-c0 = 299792458
+
+
+def _surface_polyline(mesh, bc='PEC'):
+    """Wall (PEC) vertices in CONTOUR order, with a chain id per vertex.
+
+    The wall is walked along its boundary elements, so consecutive points are
+    neighbours on the wall, and each chain is oriented with the vacuum on its right:
+    the collision code takes a segment's right-hand normal as the inward normal.
+    Separate pieces of wall (chains) get separate ids and are never joined.
+
+    The points used to be sorted by z. That orders a wall correctly only while z
+    increases along it. A wall that turns back in z (a re-entrant iris, an RF gun's
+    funnel) or runs down a vertical face (a pillbox's right-hand plate) was then
+    joined out of order, into segments that cross the vacuum, and the normals of
+    an overhanging wall pointed into the metal.
+    """
+    adj = defaultdict(set)
+    for el in mesh.Boundaries(bc).Elements():
+        vs = [v.nr for v in el.vertices]
+        if len(vs) >= 2 and vs[0] != vs[-1]:
+            adj[vs[0]].add(vs[-1])
+            adj[vs[-1]].add(vs[0])
+    pos = {v: tuple(mesh.vertices[v].point) for v in adj}
+    unseen = set(adj)
+    chains = []
+    while unseen:
+        ends = [v for v in unseen if len(adj[v] & unseen) <= 1]
+        cur = min(ends or unseen, key=lambda v: pos[v])
+        chain = [cur]
+        unseen.discard(cur)
+        while True:
+            nxt = sorted((w for w in adj[cur] if w in unseen), key=lambda w: pos[w])
+            if not nxt:
+                break
+            cur = nxt[0]
+            chain.append(cur)
+            unseen.discard(cur)
+        pts = np.array([pos[v] for v in chain], dtype=float)
+        if len(pts) >= 2 and not _vacuum_on_right(mesh, pts):
+            pts = pts[::-1]
+        chains.append(pts)
+    chains.sort(key=lambda c: (c[:, 0].min(), c[:, 1].min()))
+    points = np.vstack(chains) if chains else np.empty((0, 2))
+    chain_id = np.concatenate([np.full(len(c), i) for i, c in enumerate(chains)]) \
+        if chains else np.empty(0, dtype=int)
+    return points, chain_id
+
+
+def _vacuum_on_right(mesh, pts):
+    """True if the meshed region lies to the right of the polyline *pts*, tested a
+    fraction of a segment length off the longest segment's midpoint."""
+    d = np.diff(pts, axis=0)
+    k = int(np.argmax(np.hypot(d[:, 0], d[:, 1])))
+    mid = 0.5 * (pts[k] + pts[k + 1])
+    length = float(np.hypot(*d[k]))
+    right = np.array([d[k][1], -d[k][0]]) / length
+    probe = mid + 0.05 * length * right
+    return mesh(float(probe[0]), float(probe[1])).nr >= 0
 
 
 def _surface_points(mesh, bc='PEC'):
-    """Sorted wall (PEC) vertices of the eigenmode mesh -- the emission sites and
-    the collision polyline. cavsim2d names the cavity wall 'PEC' (PyMultipact
-    used 'default')."""
-    pec = mesh.Boundaries(bc)
-    bel = [el.vertices for el in pec.Elements()]
-    bel_unique = list(set(itertools.chain(*bel)))
-    return np.array(sorted([mesh.vertices[v.nr].point for v in bel_unique]))
+    """Wall (PEC) vertices in contour order -- the emission sites and the collision
+    polyline (see :func:`_surface_polyline`). cavsim2d names the cavity wall 'PEC'
+    (PyMultipact used 'default')."""
+    return _surface_polyline(mesh, bc)[0]
 
 
 def _bounding_rect(xsurf):
@@ -62,7 +116,7 @@ def default_xrange(xsurf):
     return [z_eq - half, z_eq + half]
 
 
-def densify_wall(xsurf, xrange, n_points):
+def densify_wall(xsurf, xrange, n_points, chain=None):
     """Insert extra vertices along the wall polyline inside *xrange* so the band
     carries about ``n_points`` emission sites — WITHOUT refining the mesh.
 
@@ -74,33 +128,38 @@ def densify_wall(xsurf, xrange, n_points):
     unchanged, there are simply more places to launch from. Cheaper and far more
     local than shrinking ``pec_maxh`` over the whole cavity.
 
-    Returns the wall points with the in-band stretch resampled to ``n_points``
-    equally spaced (by arclength) vertices; out-of-band points are untouched.
-    ``n_points`` at or below the number already present is a no-op.
+    *xsurf* is in contour order (see :func:`_surface_polyline`), and each stretch
+    of wall crossing the band is resampled along its own arclength, in place, so
+    the order survives. *chain* is the chain id per point; when given, the result
+    is ``(points, chain)``, otherwise just the points. ``n_points`` at or below the
+    number already present is a no-op.
     """
     xsurf = np.asarray(xsurf, dtype=float)
+    ids = np.zeros(len(xsurf), dtype=int) if chain is None else np.asarray(chain)
+
+    def done(pts, cid):
+        return pts if chain is None else (pts, cid)
+
     n_points = int(n_points or 0)
     if n_points <= 0 or len(xsurf) < 2:
-        return xsurf
+        return done(xsurf, ids)
     lo, hi = float(xrange[0]), float(xrange[1])
-    inb = (xsurf[:, 0] >= lo) & (xsurf[:, 0] <= hi)
+    z = xsurf[:, 0]
+    inb = (z >= lo) & (z <= hi)
     if n_points <= int(inb.sum()):
-        return xsurf                      # already at least that many sites
+        return done(xsurf, ids)            # already at least that many sites
 
-    # Interpolate along the wall spanning the band, INCLUDING one vertex either
-    # side: a narrow band may hold 0 or 1 vertices, which on their own give no
-    # segment to walk along (that is exactly the coarse-mesh case this is for).
-    idx = np.nonzero(inb)[0]
-    if len(idx):
-        i0, i1 = int(idx[0]), int(idx[-1])
-    else:
-        i1 = int(np.searchsorted(xsurf[:, 0], lo))
-        i0 = i1 - 1
-    i0 = max(i0 - 1, 0)
-    i1 = min(i1 + 1, len(xsurf) - 1)
-    seg = xsurf[i0:i1 + 1]
-    if len(seg) < 2:
-        return xsurf
+    # segments (i, i+1) of one chain whose z-span meets the band, grouped into runs
+    seg = [i for i in range(len(xsurf) - 1)
+           if ids[i] == ids[i + 1] and min(z[i], z[i + 1]) <= hi and max(z[i], z[i + 1]) >= lo]
+    runs = []
+    for i in seg:
+        if runs and runs[-1][-1] == i - 1:
+            runs[-1].append(i)
+        else:
+            runs.append([i])
+    if not runs:
+        return done(xsurf, ids)
 
     def _resample(pts, n):
         d = np.r_[0.0, np.cumsum(np.hypot(*np.diff(pts, axis=0).T))]
@@ -110,17 +169,30 @@ def densify_wall(xsurf, xrange, n_points):
         return np.column_stack([np.interp(t, d, pts[:, 0]),
                                 np.interp(t, d, pts[:, 1])])
 
-    # walk the bracketed stretch finely, keep what lands in the band, then space
-    # exactly n_points along that
-    fine = _resample(seg, max(n_points * 8, 64))
-    if fine is None:
-        return xsurf
-    cand = fine[(fine[:, 0] >= lo) & (fine[:, 0] <= hi)]
-    dense = _resample(cand, n_points) if len(cand) >= 2 else None
-    if dense is None:
-        return xsurf
-    out = np.vstack([xsurf[~inb], dense])
-    return out[np.lexsort((out[:, 1], out[:, 0]))]
+    out_pts, out_ids, cursor = [], [], 0
+    for run in runs:
+        a, b = run[0], run[-1] + 1                     # points a..b span the run
+        stretch = xsurf[a:b + 1]
+        fine = _resample(stretch, max(n_points * 8, 64))
+        cand = None if fine is None else fine[(fine[:, 0] >= lo) & (fine[:, 0] <= hi)]
+        dense = _resample(cand, n_points) if cand is not None and len(cand) >= 2 else None
+        if dense is None:
+            continue
+        keep = ~inb[a:b + 1]
+        first_in = int(np.argmax(~keep)) if (~keep).any() else None
+        before = [p for j, p in enumerate(stretch) if keep[j] and (first_in is None or j < first_in)]
+        after = [p for j, p in enumerate(stretch) if keep[j] and first_in is not None and j > first_in]
+        if first_in is None:                            # no vertex inside: split by arclength
+            before, after = [stretch[0]], [stretch[-1]]
+        out_pts.append(xsurf[cursor:a])
+        out_ids.append(ids[cursor:a])
+        new = np.vstack([np.array(before).reshape(-1, 2), dense, np.array(after).reshape(-1, 2)])
+        out_pts.append(new)
+        out_ids.append(np.full(len(new), ids[a]))
+        cursor = b + 1
+    out_pts.append(xsurf[cursor:])
+    out_ids.append(ids[cursor:])
+    return done(np.vstack(out_pts), np.concatenate(out_ids))
 
 
 def _peak_surface_field(em, mesh, xsurf):
@@ -160,7 +232,8 @@ def _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epk
     em = build_emfield(gfu_E, mode, freq_mode)
     # Same wall the parent measured Epk on: densified in-band when n_points asks
     # for more launch sites than the mesh vertices provide (geometry unchanged).
-    xsurf = densify_wall(_surface_points(mesh), xrange, n_points)
+    wall, chain = _surface_polyline(mesh)
+    xsurf, chain = densify_wall(wall, xrange, n_points, chain=chain)
 
     dt = 1 / (freq_mode * 1e6 * 20 * 6)
     w = 2 * np.pi * freq_mode * 1e6
@@ -173,7 +246,8 @@ def _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epk
     for epk in procs_epks:
         sub_start = time.time()
         t = 0.0
-        particles = Particles(xrange, v_init, xsurf, phis, cmap='jet', step=step)
+        particles = Particles(xrange, v_init, xsurf, phis, cmap='jet', step=step,
+                              chain=chain)
         n_init_particles = len(particles.x)
 
         scale = epk

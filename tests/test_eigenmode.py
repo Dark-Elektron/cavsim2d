@@ -12,6 +12,13 @@ pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
 from cavsim2d import Study, EllipticalCavity
+from cavsim2d.solvers.NGSolve import eigen_ngsolve
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import (DEFAULT_PINVIT_MAXIT, DEFAULT_PINVIT_TOL,
+                                                    NGSolveMEVP, default_direct_solver,
+                                                    direct_solver_available, geometry_order)
+from cavsim2d.solvers.solver_objects import DEFAULT_EIGENMODE_CONFIG
+
+TESLA_MID = [42, 42, 12, 19, 35, 57.652, 103.3536]
 
 
 def _run(project_dir, name='CAV', n_cells=1, config=None):
@@ -588,23 +595,98 @@ def test_mode_of_interest_is_metadata_not_a_qoi(project_dir):
 
 
 def test_direct_solver_probe_and_default():
-    """The default backend is whatever this NGSolve build actually provides:
-    pardiso on Windows, umfpack on mac/linux, sparsecholesky as the fallback."""
-    import platform
-    from cavsim2d.solvers.NGSolve.eigen_ngsolve import (default_direct_solver,
-                                                        direct_solver_available)
+    """The default backend is sparsecholesky on every platform and for both the real
+    and the complex path: the eigen matrices are symmetric on every path, it is
+    always built in, and PARDISO is ~60x slower on the MultiVector blocks PINVIT
+    applies its preconditioner to."""
     assert direct_solver_available('sparsecholesky')      # always built in
+    assert direct_solver_available('sparsecholesky', complex_matrix=True)
     assert direct_solver_available('a-backend-that-does-not-exist') is False
 
-    chosen = default_direct_solver()
-    assert direct_solver_available(chosen)
-    preferred = ('pardiso', 'umfpack') if platform.system() == 'Windows' else ('umfpack', 'pardiso')
-    for name in preferred:
-        if direct_solver_available(name):
-            assert chosen == name
-            break
-    else:
-        assert chosen == 'sparsecholesky'
+    assert default_direct_solver() == 'sparsecholesky'
+    assert default_direct_solver(complex_matrix=True) == 'sparsecholesky'
+    assert DEFAULT_EIGENMODE_CONFIG['direct_solver'] == 'sparsecholesky'
+    assert DEFAULT_EIGENMODE_CONFIG['pinvit_tol'] == DEFAULT_PINVIT_TOL
+    assert DEFAULT_EIGENMODE_CONFIG['pinvit_maxit'] == DEFAULT_PINVIT_MAXIT
+    assert DEFAULT_EIGENMODE_CONFIG['pinvit_converge_modes'] is None
+
+
+def _tesla_cell_mesh(solver, n_cells=1):
+    cav = EllipticalCavity(n_cells, TESLA_MID, TESLA_MID, TESLA_MID, beampipe='both')
+    return cav, solver._build_mesh(cav, 20e-3, geometry_order(3), boundary_conditions='mm')
+
+
+def test_pinvit_stops_once_the_checked_modes_converge():
+    """PINVIT stops on the residual, not after a fixed count: a TESLA cell is
+    converged to the default tolerance in ~20 iterations (the cap is 1000). A looser
+    tolerance, or checking fewer modes, stops it sooner."""
+    solver = NGSolveMEVP()
+    _, mesh = _tesla_cell_mesh(solver)
+    its = {}
+    for key, kw in (('default', {}), ('loose', {'pinvit_tol': 1e-4}),
+                    ('first mode', {'converge_modes': 1})):
+        solver._solve_modes(mesh, 3, 0, 3, **kw)
+        assert solver._last_pinvit['converged'], key
+        its[key] = solver._last_pinvit['iterations']
+    assert its['default'] < 60
+    assert its['loose'] < its['default']
+    assert its['first mode'] <= its['default']
+
+
+def test_pinvit_warns_when_the_cap_stops_it():
+    solver = NGSolveMEVP()
+    _, mesh = _tesla_cell_mesh(solver)
+    with pytest.warns(UserWarning, match='PINVIT stopped'):
+        solver._solve_modes(mesh, 3, 0, 3, pinvit_maxit=2)
+    assert solver._last_pinvit['converged'] is False
+
+
+def test_field_figures_of_merit_repeat_between_identical_solves():
+    """Round-off left a ~2e-7 gradient-kernel component in every eigenvector. It
+    moves the frequency only at second order but the fields at first, and it differs
+    from run to run, so R/Q repeated to only ~1e-5 between identical solves. The
+    kernel part is projected out, and R/Q now repeats to round-off."""
+    solver = NGSolveMEVP()
+    cav, mesh = _tesla_cell_mesh(solver)
+    L = eigen_ngsolve.eigenmode_normalisation(cav, {})
+    rq = []
+    for _ in range(2):
+        f, g_e, g_h = solver._solve_modes(mesh, 3, 0, 3)
+        rq.append(solver.evaluate_qois(mesh, g_e, g_h, f, 0, mode_idx=0, n_cells=1,
+                                       L=L)['R/Q [Ohm]'])
+    assert rq[1] == pytest.approx(rq[0], rel=1e-8)
+
+
+def test_benchmark_times_and_scores_solver_settings(project_dir):
+    cav = EllipticalCavity(1, TESLA_MID, TESLA_MID, TESLA_MID, beampipe='both',
+                           name='bench')
+    Study(project_dir).add_cavity([cav], ['bench'])
+    df = cav.eigenmode.benchmark(variants={'direct': {}}, sweep={'pinvit_tol': [1e-4, 1e-8]},
+                                 n_repeats=1)
+    assert list(df['pinvit_tol']) == [1e-4, 1e-8]
+    assert (df['total [s]'] > 0).all() and df['converged'].all()
+    # the tighter tolerance is at least as accurate, and far below the discretisation
+    assert df['freq (all modes)'].iloc[1] < 1e-9
+    assert df['R/Q'].iloc[1] < 1e-6
+    table = cav.eigenmode.benchmark_table()
+    assert 'time per simulation [s]' in table and 'ff' not in table   # single cell
+    fig, _ = cav.eigenmode.plot_benchmark(show=False)
+    assert fig is not None
+
+
+def test_eigenmode_mesh_is_curved_one_order_above_the_space():
+    """The eigenmode mesh is curved to p+1, the H1 block's order. Curved only to p,
+    the boundary was the dominant error on the default mesh: the TESLA cell's
+    12 x 19 mm iris ellipse spans one or two cubic edges at h=20 mm, and the
+    fundamental came out 2.1e-5 low. The reference is converged to ~1e-10 (HCurl
+    2nd kind p=5 and 1st kind p=6 at h=2.5 mm agree to 8.5e-11)."""
+    assert geometry_order(3) == 4
+
+    solver = NGSolveMEVP()
+    cav = EllipticalCavity(1, TESLA_MID, TESLA_MID, TESLA_MID, beampipe='both')
+    mesh = solver._build_mesh(cav, 20e-3, geometry_order(3), boundary_conditions='mm')
+    freqs, _, _ = solver._solve_modes(mesh, 3, 0, 3)
+    assert freqs[0] == pytest.approx(1287.176193, rel=2e-6)
 
 
 def test_compare_scatter_marker_colours_match_the_legend(project_dir):
@@ -721,6 +803,18 @@ def test_study_mesh_convergence_is_adaptive_in_h(project_dir):
     assert sub['max_err'].iloc[-1] < sub['max_err'].iloc[0]
 
 
+def test_study_mesh_convergence_theta_zero_refines_uniformly(project_dir):
+    """theta=0 refines every element, so each level is a uniform subdivision of the
+    one before: every triangle splits into four."""
+    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both')
+    Study(project_dir).add_cavity([cav], ['UNI'])
+    cav.study_mesh_convergence(h=60, p=2, p_passes=1, n_modes=2, polarisation=('monopole',),
+                               tol=1e-15, max_refinements=1, theta=0)
+    df = cav.convergence_df_data
+    elements = df.groupby('h_pass')['No of Mesh Elements'].first().tolist()
+    assert elements[1] == 4 * elements[0]
+
+
 def test_no_mode_stalls_when_many_modes_share_a_mesh():
     """A low mode must not freeze while the mesh is refined for the loud ones.
 
@@ -751,7 +845,7 @@ def test_no_mode_stalls_when_many_modes_share_a_mesh():
 
     m0_errs = []
     for _ in range(4):
-        _, gfu_E, _ = solver._solve_system(system, n_modes, 20)
+        _, gfu_E, _ = solver._solve_system(system, n_modes)
         fields = solver._error_fields(mesh, system['fes_rz'], gfu_E)
         m0_errs.append(float(fields[0].max()))
         driver = solver._refinement_driver(fields[:n_modes])
@@ -1003,12 +1097,57 @@ def test_port_boundary_condition_runs_like_any_other(tmp_path):
     assert (radiating['Q_ext []'] < 1e3).all() and len(radiating)
     # total Q combines the wall and the port
     assert np.allclose(1 / df['Q []'], 1 / df['Q_wall []'] + 1 / df['Q_ext []'], rtol=1e-6)
+    # the native external-Q plot picks the port column
+    import matplotlib
+    matplotlib.use('Agg')
+    ax = cav.eigenmode.plot_q_ext(cutoff=[f_cut], wall_q=True, show=False)
+    assert len(ax.collections) >= 1
 
 
-def test_port_boundary_condition_refuses_mpoles(tmp_path):
+def test_port_boundary_condition_solves_dipoles(tmp_path):
+    """Ports carry the TE_1n and TM_1n pipe modes for m = 1: a dipole mode below the
+    TE_11 cutoff is trapped (effectively infinite Q_ext), one above it radiates."""
     from conftest import MIDCELL
-    from cavsim2d.solvers.NGSolve.eigen_ports import PortEigenSolver
-    cav = EllipticalCavity(1, MIDCELL, MIDCELL, MIDCELL, beampipe='both', name='port_m1')
+    end = [40.34, 40.34, 10.0, 13.5, 39.0, 55.7251, 103.3536]
+    cav = EllipticalCavity(1, MIDCELL, end, end, beampipe='both', name='port_m1')
     cav.set_workspace(str(tmp_path / 'port_m1'))
-    with pytest.raises(NotImplementedError):
-        PortEigenSolver().run(cav, {'boundary_conditions': 'port', 'polarisation': 'dipole'})
+    cav.eigenmode.run({'boundary_conditions': 'port', 'polarisation': 'dipole',
+                       'n_modes': 4, 'beampipe_length': 0.2,
+                       'mesh_config': {'h': 15, 'p': 3}})
+    df = cav.eigenmode.qois_df.sort_values('freq [MHz]')
+    assert len(df) == 4 and (df['m'] == 1).all()
+    f_te11 = 1.8412 * 299792458.0 / (2 * np.pi * 39e-3) * 1e-6
+    assert (df.loc[df['freq [MHz]'] < f_te11, 'Q_ext []'] > 1e15).all()
+    assert (df.loc[df['freq [MHz]'] > f_te11, 'Q_ext []'] < 1e3).all()
+
+
+def test_quarter_cell_matches_the_full_cell_pi_mode(tmp_path):
+    """A mid cup's quarter cell (magnetic iris plane, electric equator plane) is half
+    of the symmetric cell's pi-mode, so the frequencies agree. The pi-mode's electric
+    field peaks on the equator plane; a magnetic wall there picks another family."""
+    f_quarter = NGSolveMEVP().cavity_quarter(TESLA_MID + [0.0], save_dir=str(tmp_path / 'q'),
+                                             mesh_h=12, mesh_p=3)
+    cav = EllipticalCavity(1, TESLA_MID, TESLA_MID, TESLA_MID, beampipe='none')
+    Study(str(tmp_path / 'sim')).add_cavity(cav, 'full')
+    cav.eigenmode.run({'polarisation': 'monopole', 'boundary_conditions': 'mm', 'n_modes': 2,
+                       'mesh_config': {'h': TESLA_MID[5] / 12, 'p': 3}}, force=True)
+    assert f_quarter == pytest.approx(cav.eigenmode.qois['freq [MHz]'], abs=2e-3)
+
+
+def test_quarter_cell_needs_no_gmsh(tmp_path, monkeypatch):
+    """Regression: the quarter went .geo -> gmsh -> STEP -> netgen, and a process that
+    did that a few hundred times died with an access violation in the STEP read (the
+    multicell UQ re-tune, about 100 half-cells into every worker). It is meshed
+    natively now; gmsh is made unusable to keep it that way."""
+    def refuse(*args, **kwargs):
+        raise AssertionError('cavity_quarter called gmsh')
+    monkeypatch.setattr(eigen_ngsolve.gmsh, 'initialize', refuse)
+    f = NGSolveMEVP().cavity_quarter(TESLA_MID + [0.0], bp=True, save_dir=str(tmp_path / 'q'))
+    assert 1250 < f < 1320
+    assert not (tmp_path / 'q' / 'geometry' / 'mesh.step').exists()
+
+
+def test_quarter_cell_reports_degenerate_geometry(tmp_path):
+    """A half-cell too short for a tangent line between its ellipses is not solved."""
+    cell = [42, 42, 12, 19, 35, 20.0, 103.35, 0.0]
+    assert NGSolveMEVP().cavity_quarter(cell, save_dir=str(tmp_path / 'q')) is None

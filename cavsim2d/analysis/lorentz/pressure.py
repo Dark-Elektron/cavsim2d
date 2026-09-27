@@ -48,13 +48,14 @@ import numpy as np
 from ngsolve import (Conj, GridFunction, H1, Integrate, InnerProduct, Norm,
                      VectorH1, specialcf, y)
 
+from cavsim2d.constants import eps0, mu0
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import get_boundary_nodes
 
 __all__ = ['MU0', 'EPS0', 'pressure_cf', 'wall_pressure', 'stored_energy',
            'slater_shift', 'wall_force', 'detuning_coefficient']
 
-MU0 = 4e-7 * np.pi
-EPS0 = 8.8541878128e-12
+MU0 = mu0
+EPS0 = eps0
 
 
 def _projected_fields(mesh, gfu_E, gfu_H, mode, order):

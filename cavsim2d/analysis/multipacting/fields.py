@@ -20,10 +20,10 @@ import os
 import numpy as np
 from ngsolve import curl
 
+from cavsim2d.constants import mu0
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, mesh_h_metres
 from cavsim2d.solvers.eigenmode_result import pol_number
 
-mu0 = 4 * np.pi * 1e-7
 
 
 class EMField:

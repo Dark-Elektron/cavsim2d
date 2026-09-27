@@ -21,7 +21,7 @@ from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT
 from cavsim2d.analysis.impedance import (NATIVE_Z_UNIT, convert_impedance_frame,
                                          frame_unit, impedance_frame,
                                          impedance_unit, prefix_factor,
-                                         pml_stable_modes, reconstruct_impedance,
+                                         classify_modes, pml_stable_modes, reconstruct_impedance,
                                          reconstruct_impedance_qnm)
 from cavsim2d.analysis.multipacting.sey import SEY
 from cavsim2d.analysis.multipacting import metrics as mp_metrics
@@ -30,9 +30,12 @@ from cavsim2d.solvers.eigenmode_result import (EigenmodeResult, MPOLE_NAMES, pol
 from cavsim2d.utils.printing import done, error, info, suppress_errors
 from cavsim2d.utils.style import house_style, WARM, polarisation_color, shades
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import (DEFAULT_PINVIT_MAXIT, DEFAULT_PINVIT_TOL,
+                                                    NGSolveMEVP, default_direct_solver,
+                                                    direct_solver_available)
 from cavsim2d.processes.wakefield import run_wakefield_parallel, run_wakefield_s
 from cavsim2d.solvers.wakefield import get_backend
-from itertools import combinations
+from itertools import combinations, product
 from cavsim2d.utils.printing import warning
 
 DEFAULT_TUNE_CONFIG = {
@@ -69,6 +72,11 @@ DEFAULT_EIGENMODE_CONFIG = {
     'pml_alpha': 1j,                 # PML complex stretch (only with boundary_conditions='oo')
     'n_port_modes': 3,               # TM_0n pipe modes per port (boundary_conditions='port')
     'mesh_config': {'h': 20, 'p': 3, 'adaptive': None},
+    'direct_solver': default_direct_solver(),   # every factorisation of the eigensolve
+    'preconditioner': 'direct',      # PINVIT preconditioner: 'direct' or 'bddc'
+    'pinvit_tol': DEFAULT_PINVIT_TOL,    # stop once every checked mode's residual is below
+    'pinvit_converge_modes': None,   # modes that must converge; None -> all n_modes
+    'pinvit_maxit': DEFAULT_PINVIT_MAXIT,    # iteration cap
 }
 
 
@@ -917,6 +925,7 @@ class EigenmodeSolver:
         self._config = None
         self._modes = None
         self._qois = None
+        self.benchmark_df = None
 
     @property
     def folder(self):
@@ -1083,6 +1092,222 @@ class EigenmodeSolver:
             fig.suptitle(f'Adaptive convergence — {self.cavity.name} '
                          f'({pol_name(pol_number(pol))})')
             plt.tight_layout()
+        _maybe_show(show)
+        return fig, axes
+
+    # -- Solver benchmark ---------------------------------------------------
+
+    BENCHMARK_ERRORS = ('freq (mode of interest)', 'freq (passband)', 'freq (all modes)',
+                        'R/Q', 'Epk/Eacc', 'Bpk/Eacc', 'G', 'ff')
+
+    def benchmark(self, variants=None, sweep=None, n_repeats=5, reference=None,
+                  eigenmode_config=None, **kwargs):
+        """Time and score eigenmode solver settings on this cavity.
+
+        Each variant is a set of eigenmode-config overrides. With *sweep* (config
+        key -> list of values), every variant runs at every combination of the
+        swept values. Each point is simulated *n_repeats* times (mesh, solve and
+        figures of merit, timed stage by stage) and scored against a reference
+        solve on the same mesh, converged far beyond any setting being compared.
+        Nothing is written to the cavity's results.
+
+        >>> cav.eigenmode.benchmark(
+        ...     variants={'direct': {}, 'bddc': {'preconditioner': 'bddc'}},
+        ...     sweep={'pinvit_tol': [1e-4, 1e-6, 1e-8]})
+        >>> cav.eigenmode.benchmark_table()
+        >>> cav.eigenmode.plot_benchmark()
+
+        Parameters
+        ----------
+        variants : dict, optional
+            Label -> eigenmode-config overrides. Default: the defaults alone. A
+            variant asking for a ``direct_solver`` this NGSolve build does not
+            provide is skipped with a warning, so one benchmark runs on every
+            platform.
+        sweep : dict, optional
+            Config key -> list of values, applied on top of every variant.
+        n_repeats : int
+            Runs per point (default 5). The eigensolver starts from random vectors,
+            so times and errors are reported as a mean and a spread.
+        reference : dict, optional
+            Overrides for the reference solve. Default: the direct preconditioner
+            converged to ``pinvit_tol=1e-10``.
+        eigenmode_config : dict, optional
+            The config every variant is merged over (with ``**kwargs``), itself
+            merged over the defaults. One polarisation at a time.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per run: ``variant``, the swept keys, ``repeat``,
+            ``No of DOFs``, ``PINVIT iterations``, ``converged``, the stage times
+            ``mesh [s]``, ``solve [s]`` and ``QOIs [s]``, the time per simulation
+            ``total [s]``, the worst relative error against the reference of
+            ``freq (mode of interest)``, ``freq (passband)`` (the lowest ``n_cells``
+            modes), ``freq (all modes)``, ``R/Q``, ``Epk/Eacc``, ``Bpk/Eacc``, ``G``
+            and ``ff``, and ``freq per mode``. The voltage-derived quantities are
+            scored on the modes that carry a voltage. Also kept as
+            :attr:`benchmark_df`.
+        """
+        cfg = merge_config(DEFAULT_EIGENMODE_CONFIG, eigenmode_config, kwargs)
+        keys = list(sweep or {})
+        runs = []
+        for label, over in (variants or {'default': {}}).items():
+            backend = (over or {}).get('direct_solver')
+            if backend and not direct_solver_available(backend):
+                warnings.warn(f"benchmark: skipping {label!r}, this NGSolve build has no "
+                              f"{backend!r} direct solver.", UserWarning, stacklevel=2)
+                continue
+            for combo in (product(*(sweep[k] for k in keys)) if keys else [()]):
+                tags = dict(zip(keys, combo))
+                runs.append((label, {**(over or {}), **tags}, tags))
+        self.cavity._ensure_workspace()
+        self.cavity.create()
+        rows, references = NGSolveMEVP().solve_benchmark(self.cavity, cfg, runs,
+                                                         n_repeats, reference)
+        df = pd.DataFrame(rows)
+        df.attrs['sweep'] = keys
+        df.attrs['references'] = references
+        self.benchmark_df = df
+        return df
+
+    def _benchmark_stats(self, df=None):
+        """Per (variant, swept value): time mean and std, and the mean and std of
+        log10(error) for every error column that applies."""
+        df = self.benchmark_df if df is None else df
+        if df is None or df.empty:
+            raise ValueError("no benchmark results: run cav.eigenmode.benchmark() first.")
+        keys = ['variant'] + list(df.attrs.get('sweep', []))
+        by = [df[k] for k in keys]
+        stats = pd.DataFrame({
+            'time mean': df.groupby(by, sort=False)['total [s]'].mean(),
+            'time std': df.groupby(by, sort=False)['total [s]'].std(),
+            'solve mean': df.groupby(by, sort=False)['solve [s]'].mean(),
+            'iterations': pd.to_numeric(df['PINVIT iterations'], errors='coerce')
+                            .groupby(by, sort=False).mean()})
+        errors = [e for e in self.BENCHMARK_ERRORS if e in df and df[e].notna().any()]
+        for e in errors:
+            lg = np.log10(pd.to_numeric(df[e], errors='coerce').clip(lower=1e-16))
+            stats[f'{e} log mean'] = lg.groupby(by, sort=False).mean()
+            stats[f'{e} log std'] = lg.groupby(by, sort=False).std()
+        return stats.reset_index(), keys, errors
+
+    def benchmark_table(self, df=None):
+        """The benchmark summarised per (variant, swept value).
+
+        Time per simulation is the mean and standard deviation of ``total [s]``
+        over the repeats; ``solve [s]`` and ``PINVIT iterations`` are means. The
+        errors vary over orders of magnitude between runs, so each is the
+        geometric mean (the mean of log10) of its worst relative error. Error
+        columns that do not apply to the cavity (ff of a single cell) are left out.
+        """
+        stats, keys, errors = self._benchmark_stats(df)
+        out = stats[keys].copy()
+        out['time per simulation [s]'] = stats['time mean']
+        out['std [s]'] = stats['time std']
+        out['solve [s]'] = stats['solve mean']
+        out['PINVIT iterations'] = stats['iterations']
+        for e in errors:
+            out[e] = 10 ** stats[f'{e} log mean']
+        return out.set_index(keys)
+
+    def plot_benchmark(self, df=None, kind='accuracy', errors=None, show=True):
+        """Plot a benchmark from :meth:`benchmark`.
+
+        ``kind='accuracy'`` (default): one panel per error quantity, the error
+        against the time per simulation, one line per variant through its swept
+        values (labelled). ``kind='time'``: the time per simulation against the
+        swept value. ``kind='modes'``: the frequency error of every mode.
+
+        Every point is a mean over the repeats with its spread as error bars: the
+        standard deviation of the time, and ``10**(mu +- sigma)`` of the error,
+        whose mean and standard deviation are taken of log10.
+        """
+        stats, keys, available = self._benchmark_stats(df)
+        df = self.benchmark_df if df is None else df
+        sweep = keys[1:]
+        variants = list(dict.fromkeys(stats['variant']))
+
+        def fmt(v):
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                return f'{v:.0e}' if v and (abs(v) < 1e-3 or abs(v) >= 1e4) else f'{v:g}'
+            return str(v)
+
+        def point_label(row):
+            return ', '.join(fmt(row[k]) for k in sweep)
+
+        with house_style():
+            if kind == 'accuracy':
+                errors = [e for e in (errors or available) if e in available]
+                ncols = min(4, len(errors))
+                nrows = int(np.ceil(len(errors) / ncols))
+                fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3.4 * nrows),
+                                         squeeze=False, layout='constrained')
+                for ax, e in zip(axes.flat, errors):
+                    for i, v in enumerate(variants):
+                        s = stats[stats['variant'] == v]
+                        mu, sd = s[f'{e} log mean'].values, s[f'{e} log std'].fillna(0).values
+                        y = 10 ** mu
+                        ax.errorbar(s['time mean'], y, xerr=s['time std'].fillna(0),
+                                    yerr=[y - 10 ** (mu - sd), 10 ** (mu + sd) - y],
+                                    fmt='o-', ms=4, lw=0.8, capsize=2,
+                                    color=WARM[i % len(WARM)], label=v)
+                        if sweep:
+                            for (_, row), xx, yy in zip(s.iterrows(), s['time mean'], y):
+                                ax.annotate(point_label(row), (xx, yy), fontsize=7,
+                                            textcoords='offset points', xytext=(3, 3),
+                                            color=WARM[i % len(WARM)])
+                    ax.set_xscale('log')
+                    ax.set_yscale('log')
+                    ax.set_title(e, fontsize=10)
+                    ax.set_xlabel('time per simulation [s]')
+                for row in axes:
+                    row[0].set_ylabel('worst relative error')
+                for ax in axes.flat[len(errors):]:
+                    ax.set_visible(False)
+                axes.flat[0].legend(fontsize=8)
+            elif kind == 'time':
+                fig, ax = plt.subplots(figsize=(7, 4.2), layout='constrained')
+                numeric = (len(sweep) == 1
+                           and pd.api.types.is_numeric_dtype(stats[sweep[0]]))
+                for i, v in enumerate(variants):
+                    s = stats[stats['variant'] == v]
+                    x = s[sweep[0]] if numeric else np.full(len(s), i)
+                    ax.errorbar(x, s['time mean'], yerr=s['time std'].fillna(0), fmt='o-',
+                                ms=5, capsize=3, color=WARM[i % len(WARM)], label=v)
+                if numeric:
+                    vals = stats[sweep[0]].astype(float)
+                    if (vals > 0).all() and vals.max() / vals.min() >= 100:
+                        ax.set_xscale('log')
+                    ax.set_xlabel(sweep[0])
+                else:
+                    ax.set_xticks(range(len(variants)), variants)
+                ax.set_yscale('log')
+                ax.set_ylabel('time per simulation [s]')
+                ax.legend(fontsize=8)
+                axes = ax
+            elif kind == 'modes':
+                fig, ax = plt.subplots(figsize=(8, 4.4), layout='constrained')
+                groups = df.groupby(keys, sort=False)
+                for i, (key, g) in enumerate(groups):
+                    per = np.log10(np.clip(np.vstack(g['freq per mode'].values), 1e-16, None))
+                    mu, sd = per.mean(axis=0), per.std(axis=0, ddof=1) if len(per) > 1 else 0 * per[0]
+                    idx = np.arange(1, per.shape[1] + 1)
+                    y = 10 ** mu
+                    label = ', '.join(f'{k}' if not isinstance(k, float) else f'{k:g}'
+                                      for k in (key if isinstance(key, tuple) else (key,)))
+                    ax.errorbar(idx, y, yerr=[y - 10 ** (mu - sd), 10 ** (mu + sd) - y],
+                                fmt='o-', ms=4, lw=0.8, capsize=2, color=WARM[i % len(WARM)],
+                                label=label)
+                    ax.set_xticks(idx)
+                ax.set_yscale('log')
+                ax.set_xlabel('mode number')
+                ax.set_ylabel('relative frequency error')
+                ax.legend(fontsize=7)
+                axes = ax
+            else:
+                raise ValueError(f"kind must be 'accuracy', 'time' or 'modes', not {kind!r}")
+            fig.suptitle(f'{self.cavity.name}: solver benchmark')
         _maybe_show(show)
         return fig, axes
 
@@ -1372,23 +1597,107 @@ class EigenmodeSolver:
             z = reconstruct_impedance(f0, roq, q, f_span, transverse=transverse)
         return impedance_frame(f_span * 1e-6, z, unit=unit, transverse=transverse)
 
-    def stable_modes(self, other, rtol_f=1e-3, rtol_q=0.15):
-        """Which of this solve's modes survive a change of PML settings.
+    def stable_modes(self, other, **kwargs):
+        """The cavity modes of this open solve, judged against a second solve of the
+        same cavity with a different ``beampipe_length`` or ``pml_length``.
 
-        Re-solve the same cavity with a different ``pml_length`` (or ``pml_alpha``,
-        or mesh) and pass the second namespace or its ``qois_df``. Returns the
-        subset of this solve's ``qois_df`` that *other* also found, at the same
-        frequency and Q — the modes that are properties of the cavity rather than
-        of the absorbing layer. See
-        :func:`~cavsim2d.analysis.impedance.pml_stable_modes`.
+        A cavity mode keeps its frequency when the pipe changes; a mode of the pipe
+        or of the absorbing layer moves. Pass the second run's namespace or its
+        ``qois_df``. Returns the subset of this solve's ``qois_df`` judged to be
+        cavity modes; :meth:`classify_modes` returns the evidence for every mode.
+        The rule is the best discriminant found so far, and it is not perfect:
+        see :func:`~cavsim2d.analysis.impedance.classify_modes`.
 
             trusted = cav_a.eigenmode.stable_modes(cav_b.eigenmode)
         """
         df = self.qois_df
         other_df = getattr(other, 'qois_df', other)
         if df.empty or other_df is None or len(other_df) == 0:
-            return df
-        return df[pml_stable_modes(df, other_df, rtol_f=rtol_f, rtol_q=rtol_q)]
+            return df.iloc[0:0]
+        return df[pml_stable_modes(df, other_df, **kwargs)]
+
+    def classify_modes(self, other, **kwargs):
+        """Every mode of this solve with its verdict (``'cavity mode'``) and the
+        evidence behind it, against a second solve with a different pipe or PML
+        length. See :func:`~cavsim2d.analysis.impedance.classify_modes`."""
+        df = self.qois_df
+        other_df = getattr(other, 'qois_df', other)
+        return df.join(classify_modes(df, other_df, **kwargs))
+
+    #: External-Q column by solve type, first present wins: a port solve reports
+    #: Q_ext directly, an open (PML) or lossy solve through the complex eigenvalue,
+    #: and a perturbative dielectric run through its loss integral.
+    Q_EXT_COLUMNS = ('Q_ext []', 'Q_eig []', 'Q_diel []')
+
+    def plot_q_ext(self, ax=None, keep=None, label=None, color=None, marker='o',
+                   polarisation=None, cutoff=None, wall_q=False, show=True, **kwargs):
+        """External Q against frequency, one marker per computed mode.
+
+        The column is whichever this solve produced (see :data:`Q_EXT_COLUMNS`):
+        ``'Q_ext []'`` for waveguide ports, ``'Q_eig []'`` for a PML or a lossy
+        material, ``'Q_diel []'`` otherwise. Call it once per solve on the same
+        axes to compare methods.
+
+        Parameters
+        ----------
+        keep : array of bool or pandas.DataFrame, optional
+            Modes to draw filled; the rest are drawn hollow and labelled as
+            artefacts. A boolean mask aligned with ``qois_df``, or a filtered frame
+            (e.g. :meth:`stable_modes`), whose index is used.
+        polarisation : str or int, optional
+            Only this azimuthal order.
+        cutoff : float or sequence of float, optional
+            Beam-pipe cutoff frequencies [MHz], drawn as dotted vertical lines.
+        wall_q : bool
+            Also draw the median wall Q0 as a dashed horizontal line: an external
+            Q far above it no longer matters for the total.
+        """
+        df = self.qois_df
+        if df is None or df.empty:
+            info("No eigenmode data available.")
+            return ax
+        if polarisation is not None:
+            df = df[df['m'] == pol_number(polarisation)]
+        col = next((c for c in self.Q_EXT_COLUMNS if c in df.columns), None)
+        if col is None:
+            error("This solve has no external-Q column: it needs an open ('oo'), port "
+                  "('port') or lossy boundary. See Q_EXT_COLUMNS.")
+            return ax
+        if keep is None:
+            real = np.ones(len(df), dtype=bool)
+        elif isinstance(keep, pd.DataFrame):
+            real = df.index.isin(keep.index)
+        else:
+            real = np.asarray(pd.Series(keep, index=self.qois_df.index).loc[df.index],
+                              dtype=bool)
+        label = label or self.cavity.name
+        with house_style():
+            if ax is None:
+                _, ax = plt.subplots(figsize=(9, 4.5))
+            if color is None:
+                # one house-palette colour per call, so methods overlaid on the
+                # same axes stay apart
+                calls = getattr(ax, '_q_ext_calls', 0)
+                ax._q_ext_calls = calls + 1
+                color = WARM[(2 * calls) % len(WARM)]
+            f, q = df['freq [MHz]'].to_numpy(), df[col].to_numpy(dtype=float)
+            ax.scatter(f[real], q[real], marker=marker, s=46, color=color,
+                       edgecolor='k', linewidth=0.5, zorder=3, label=label, **kwargs)
+            if (~real).any():
+                ax.scatter(f[~real], q[~real], marker=marker, s=46, facecolor='none',
+                           edgecolor=color, linewidth=1.2, zorder=2,
+                           label=f'{label}, artefacts')
+            for fc in np.atleast_1d(cutoff if cutoff is not None else []):
+                ax.axvline(float(fc), ls=':', color='k', lw=1.1, zorder=1)
+            if wall_q and 'Q_wall []' in df.columns:
+                q0 = float(np.nanmedian(df['Q_wall []']))
+                ax.axhline(q0, ls='--', color='0.55', lw=1.0, zorder=1,
+                           label=f'wall $Q_0$ ({q0:.1e})')
+            ax.set_yscale('log')
+            ax.set_xlabel('f [MHz]')
+            ax.set_ylabel(r'$Q_\mathrm{ext}$')
+        _maybe_show(show)
+        return ax
 
     def plot_impedance(self, kind='longitudinal', ax=None, span=None,
                        n_points=8001, Q=None, unit='k', model='rlc', modes=None,

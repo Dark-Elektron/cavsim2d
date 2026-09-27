@@ -146,12 +146,8 @@ class EllipticalCavity(Cavity):
          self.b_er, self.Ri_er, self.L_er,
          self.Req_er) = self.end_cell_right[:7]
 
-        # Active length & cavity length
-        self.l_active = (
-                        2 * (self.n_cells - 1) * self.L +
-                        self.L_el +
-                        self.L_er
-                        ) * 1e-3
+        # Cavity length for the static heat load; the active length is the
+        # active_length() hook, shared with the eigenmode Eacc.
         self.l_cavity = self.l_active + 8 * self.L * 1e-3
 
         # Build self.shape dictionary
@@ -1449,6 +1445,15 @@ class EllipticalCavity(Cavity):
     def _cell_length_m(self):
         """Mid-cell axial length (iris to iris), metres: twice the half-cell L."""
         return 2 * self.parameters['L_m'] * 1e-3
+
+    def active_length(self):
+        """``2 * n_cells * L_m`` [mm]: n cells of half a wavelength each, the
+        convention published gradients use (TESLA: 9 x 115.3 mm = 1.0377 m). The
+        power budget used the iris-to-iris length with the end-cell ``L`` instead,
+        so its gradient and the eigenmode ``Eacc`` differed by the end-cell
+        detuning (0.26 % for TESLA)."""
+        L_m = (getattr(self, 'parameters', None) or {}).get('L_m', getattr(self, 'L', None))
+        return None if L_m is None else 2 * self.n_cells * float(L_m)
 
     def profile(self, beampipe_length=None):
         """Meridian boundary as a unified :class:`Profile` (metres) — the native

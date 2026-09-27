@@ -8,7 +8,7 @@ import multiprocessing as mp
 import scipy.signal as sps
 import numpy as np
 
-from cavsim2d.constants import MROT_DICT
+from cavsim2d.constants import MROT_DICT, c0
 from cavsim2d.utils.printing import info, error, done
 
 
@@ -353,7 +353,7 @@ class ABCIData:
             R_Q = [2*zz*1e3/q for zz, q in zip(self.y_peaks, self.Q)]
             # print_(f'R/Q: {R_Q}')
         else:
-            c = 299792458 # m / s
+            c = c0
             k = [2*np.pi*f0*1e9/c for f0 in self.x_peaks]
             R_Q_m = [2*zz*1e3/q for zz, q in zip(self.y_peaks, self.Q)]
             R_Q = [r_q_m/kk for r_q_m, kk in zip(R_Q_m, k)]

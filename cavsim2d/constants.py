@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from scipy import constants as _codata
 
 SOFTWARE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))  # str(Path().parents[0])
 CUSTOM_COLORS = ['#4b8f63', '#fc6d2d', '#6a7bbf', '#e567a7', '#8cd839', '#ff5f00', '#d1a67a', '#a3a3a3']
@@ -108,8 +109,11 @@ TUNE_CONFIG = {
     'rerun': True
 }
 
-m0 = 9.1093879e-31
-q0 = 1.6021773e-19
-c0 = 2.99792458e8
-mu0 = 4 * np.pi * 1e-7
-eps0 = 8.85418782e-12
+# Physical constants, SI, from scipy's CODATA table. The single source for the
+# package: every module imports these rather than keeping its own copy (there used
+# to be three different vintages of q0 and m0 in circulation).
+m0 = _codata.m_e            # electron mass [kg]
+q0 = _codata.e              # elementary charge [C]
+c0 = _codata.c              # speed of light [m/s]
+mu0 = _codata.mu_0          # vacuum permeability [H/m]
+eps0 = _codata.epsilon_0    # vacuum permittivity [F/m]

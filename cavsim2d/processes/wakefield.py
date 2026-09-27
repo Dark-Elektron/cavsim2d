@@ -10,7 +10,6 @@ import shutil
 import time
 import numpy as np
 import pandas as pd
-import scipy.signal as sps
 from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.solvers.wakefield import get_backend
 from cavsim2d.constants import *
@@ -223,78 +222,38 @@ def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir,
         return (sub['f [MHz]'].to_numpy() / 1e3,
                 sub[re_col].to_numpy(), sub[im_col].to_numpy())
 
-    def get_Zmax_L(mon_interval=None):
-        if mon_interval is None:
-            mon_interval = [0.0, 2e10]
+    def _window_maxima(key, longitudinal, intervals, out, processed):
+        """max |Z| over each frequency window, for one key.
 
-        for key, value in d.items():
-            try:
-                imp = _impedance(key, longitudinal=True)
-                if imp is None:
-                    raise ValueError('no longitudinal impedance')
-                xr_mon, yr_mon, yi_mon = imp
+        The maximum over every sample inside the window, not over the local peaks
+        found in it. The peak-based version reported 0 for a window holding no
+        interior peak, however large |Z| was there (the shoulder of a resonance
+        just outside it), so the objective jumped to 0 as a resonance drifted
+        across a window edge: a discontinuity UQ and the optimiser then chase.
+        """
+        imp = _impedance(key, longitudinal=longitudinal)
+        if imp is None or len(imp[0]) == 0:
+            info(f"skipped {key}: no {'longitudinal' if longitudinal else 'transverse'} "
+                 f"impedance")
+            return
+        f, z_re, z_im = imp
+        z_mag = np.hypot(z_re, z_im)
+        values = []
+        for lo, hi in intervals:
+            inside = (f > lo) & (f < hi)
+            values.append(float(z_mag[inside].max()) if inside.any() else 0.0)
+        for i, v in enumerate(values):          # all windows or none for this key
+            out[i].append(v)
+        processed.append(key)
 
-                if mon_interval is None:
-                    mon_interval = [[0.0, 10]]
-
-                ymag_mon = np.hypot(yr_mon, yi_mon)
-
-                peaks_mon, _ = sps.find_peaks(ymag_mon, height=0)
-                xp_mon, yp_mon = np.asarray(xr_mon)[peaks_mon], np.asarray(ymag_mon)[peaks_mon]
-
-                for i, z_bound in enumerate(mon_interval):
-                    msk_mon = [(z_bound[0] < x < z_bound[1]) for x in xp_mon]
-
-                    if len(yp_mon[msk_mon]) != 0:
-                        Zmax_mon = max(yp_mon[msk_mon])
-                        Zmax_mon_list[i].append(Zmax_mon)
-                    elif len(yp_mon) != 0:
-                        Zmax_mon_list[i].append(0)
-                    else:
-                        error("skipped, yp_mon = [], raise exception")
-                        raise Exception()
-
-                processed_keys_mon.append(key)
-            except:
-                info("skipped, yp_mon = []")
-
+    def get_Zmax_L(mon_interval):
+        for key in d:
+            _window_maxima(key, True, mon_interval, Zmax_mon_list, processed_keys_mon)
         return Zmax_mon_list
 
-    def get_Zmax_T(dip_interval=None):
-        if dip_interval is None:
-            dip_interval = [0.0, 2e10]
-
-        for key, value in d.items():
-            try:
-                imp = _impedance(key, longitudinal=False)
-                if imp is None:
-                    raise ValueError('no transverse impedance')
-                xr_dip, yr_dip, yi_dip = imp
-
-                if dip_interval is None:
-                    dip_interval = [[0.0, 10]]
-
-                ymag_dip = np.hypot(yr_dip, yi_dip)
-
-                peaks_dip, _ = sps.find_peaks(ymag_dip, height=0)
-                xp_dip, yp_dip = np.asarray(xr_dip)[peaks_dip], np.asarray(ymag_dip)[peaks_dip]
-
-                for i, z_bound in enumerate(dip_interval):
-                    msk_dip = [(z_bound[0] < x < z_bound[1]) for x in xp_dip]
-
-                    if len(yp_dip[msk_dip]) != 0:
-                        Zmax_dip = max(yp_dip[msk_dip])
-                        Zmax_dip_list[i].append(Zmax_dip)
-                    elif len(yp_dip) != 0:
-                        Zmax_dip_list[i].append(0)
-                    else:
-                        error("skipped, yp_dip = [], raise exception")
-                        raise Exception()
-
-                processed_keys_dip.append(key)
-            except:
-                error("skipped, yp_dip = []")
-
+    def get_Zmax_T(dip_interval):
+        for key in d:
+            _window_maxima(key, False, dip_interval, Zmax_dip_list, processed_keys_dip)
         return Zmax_dip_list
 
     ZL, ZT = [], []
@@ -361,9 +320,9 @@ def process_interval(interval_list):
 
 
 def get_qois_value(f_fm, R_Q, k_loss, k_kick, sigma_z, I0, Nb, n_cell):
-    c = 299792458
+    c = c0
     w_fm = 2 * np.pi * f_fm * 1e6
-    e = 1.602e-19
+    e = q0
 
     k_fm = (w_fm / 4) * R_Q * np.exp(-(w_fm * sigma_z * 1e-3 / c) ** 2) * 1e-12
     k_hom = k_loss - k_fm

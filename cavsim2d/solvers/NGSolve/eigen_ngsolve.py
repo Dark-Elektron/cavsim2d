@@ -13,9 +13,11 @@ from cavsim2d.utils.shared_functions import *
 from ngsolve import *
 from ngsolve import (x, y, dx, pi, Mesh, exp, BND, # type: ignore
                      GridFunction, BilinearForm, InnerProduct, curl, grad, Conj, # type: ignore
-                     Integrate, TaskManager, HCurl, H1, Preconditioner, solvers, Norm, # type: ignore
-                     IdentityMatrix, ArnoldiSolver) # type: ignore
+                     Integrate, TaskManager, HCurl, H1, Preconditioner, Norm, # type: ignore
+                     IdentityMatrix, ArnoldiSolver, MultiVector, Vector, Matrix, # type: ignore
+                     BoundaryFromVolumeCF) # type: ignore
 from ngsolve.la import Embedding # type: ignore
+from cavsim2d.constants import c0, eps0, mu0
 from ngsolve.webgui import Draw
 from ngsolve.comp import VorB # type: ignore
 from netgen.occ import *
@@ -25,15 +27,13 @@ from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT, BC_DIGIT
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.linalg
 from scipy.signal import find_peaks
 from cavsim2d.utils.printing import *
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
+from cavsim2d.geometry.contours import quarter_cell_profile, DegenerateGeometry
 import gmsh
-import platform
 
-mu0 = 4 * pi * 1e-7
-eps0 = 8.85418782e-12
-c0 = 299792458
 SIGMA_COPPER = 5.96e7  # electrical conductivity of copper [S/m]
 DEFAULT_N_MODES = 10
 # Loss tangent above which perturbation theory stops being trustworthy and the
@@ -65,6 +65,26 @@ ARNOLDI_MAX_PASSES = 3
 # every integral that uses it).
 AXIS_EPS = 1e-9
 
+# Geometric curve order of an eigenmode mesh, above the HCurl order p. The product
+# space is HCurl(p) x H1(p+1), so p+1 is the highest polynomial order in the
+# discretisation; curving only to p left the boundary as the dominant error on the
+# production mesh. At h = 20 mm, p = 3 an elliptical iris (12 x 19 mm on TESLA) is
+# spanned by one or two cubic edges and the 9-cell pi-mode came out 28 kHz low
+# (2.1e-5); curved to p+1 it is 0.5 kHz (3.8e-7), for the same DOFs and no
+# measurable time. Going higher than p+1 buys nothing further at that mesh.
+GEOMETRY_ORDER_OFFSET = 1
+
+# PINVIT stopping. The solve stops once every checked mode's relative residual is
+# below DEFAULT_PINVIT_TOL (see pinvit), with DEFAULT_PINVIT_MAXIT as a cap. A fixed
+# count cannot serve every cavity: a TESLA 1-cell converges to 1e-8 in ~20
+# iterations, but the two second-band modes a 9-cell reports by default
+# (n_modes = n_cells + 2) need ~250, and a 9-cell dipole passband ~170. At 1e-8 the
+# eigenvectors, and so the field figures of merit, are within ~3e-7 of converged and
+# the frequency within ~1e-13: well below the discretisation error of any practical
+# mesh, so the solver is never the error that shows.
+DEFAULT_PINVIT_TOL = 1e-8
+DEFAULT_PINVIT_MAXIT = 1000
+
 # numpy renamed trapz -> trapezoid; resolve once, at import.
 _TRAPZ = getattr(np, 'trapezoid', None) or np.trapz
 
@@ -76,6 +96,12 @@ DIRICHLET_E = "PEC|PML_WALL"
 DIRICHLET_PHI = "PEC|AXI|PML_WALL|PML_AXIS"
 
 
+def geometry_order(mesh_p):
+    """Curve order of the eigenmode mesh for HCurl order *mesh_p* (see
+    ``GEOMETRY_ORDER_OFFSET``)."""
+    return int(mesh_p) + GEOMETRY_ORDER_OFFSET
+
+
 def parse_boundary_conditions(bc):
     """Parse 2-digit integer or string BC into (left_bc, right_bc) where each is 'open', 'pec', or 'pmc'."""
     if isinstance(bc, str):
@@ -83,6 +109,24 @@ def parse_boundary_conditions(bc):
     bc_str = f"{int(bc):02d}"
     left_digit, right_digit = int(bc_str[0]), int(bc_str[1])
     return BC_DIGIT.get(left_digit, 'pmc'), BC_DIGIT.get(right_digit, 'pmc')
+
+
+def eigenmode_normalisation(cav, eigenmode_config=None):
+    """Half-cell length ``L`` [mm] that :meth:`NGSolveMEVP.evaluate_qois` turns into
+    the active length ``2 * L * n_cells``, or ``None`` for the on-axis field extent.
+
+    An explicit ``eigenmode_config['normalization_length']`` wins; otherwise the
+    cavity's own :meth:`~cavsim2d.models.base.Cavity.active_length`, which the RF
+    power budget uses too, so the two gradients are the same number.
+    """
+    explicit = (eigenmode_config or {}).get('normalization_length')
+    if explicit is not None:
+        return float(explicit)
+    active = getattr(cav, 'active_length', None)
+    length = active() if callable(active) else None
+    if length is None:
+        return None
+    return float(length) / (2 * max(int(getattr(cav, 'n_cells', 1) or 1), 1))
 
 
 def mesh_h_metres(mesh_config, default=20):
@@ -350,35 +394,24 @@ def direct_solver_available(name, complex_matrix=False):
 
 
 def default_direct_solver(complex_matrix=False):
-    """Name of the sparse direct-solver backend for the monopole eigenproblem.
+    """Name of the sparse direct-solver backend for the eigensolve's factorisations:
+    ``sparsecholesky`` on every platform, for the real and the complex path alike
+    (*complex_matrix* is accepted for either and changes nothing).
 
-    Preference order by platform, filtered by what the build actually provides:
+    The eigen matrices are symmetric on every path — real symmetric when lossless,
+    complex symmetric (not Hermitian) with loss or a PML — and ``sparsecholesky`` is
+    NGSolve's built-in symmetric LDL^T factorisation, compiled into every build.
 
-    - Windows: ``pardiso`` (Intel MKL, shipped with the Windows NGSolve build).
-    - macOS / Linux: ``umfpack`` (SuiteSparse) first — it is the fast option on
-      those platforms, where PARDISO usually is not compiled in.
+    It is also the fastest. PINVIT applies its preconditioner to a whole block of
+    vectors (a MultiVector), and under TaskManager PARDISO is ~60x slower on a block
+    than on the same vectors one at a time. Measured on TESLA with the Windows pip
+    build, same eigenvalues: 1-cell h=20 mm 2.8 s -> 0.14 s, 9-cell h=20 mm 8.9 s ->
+    0.69 s, 9-cell h=4 mm 25 s -> 15 s. The shift-and-invert Arnoldi of the lossy/PML
+    path is 1.5-8.5x faster, with frequencies identical to 1e-14.
 
-    Falls back to ``sparsecholesky``, which is always built in. Override per run
-    with ``eigenmode_config['direct_solver']``.
-
-    Pass *complex_matrix* for the lossy path, whose shifted matrix is complex
-    symmetric and indefinite; a backend that cannot factorise that is skipped
-    here rather than failing inside Arnoldi.
+    Override per run with ``eigenmode_config['direct_solver']``: any backend this
+    NGSolve build provides (see :func:`direct_solver_available`).
     """
-    if platform.system() == 'Windows':
-        preferred = ('pardiso', 'umfpack')
-    else:
-        preferred = ('umfpack', 'pardiso')
-    for name in preferred:
-        if direct_solver_available(name, complex_matrix):
-            return name
-    if complex_matrix and not direct_solver_available('sparsecholesky', True):
-        raise RuntimeError(
-            "the lossy (complex) eigenproblem needs a sparse direct solver that can "
-            "factorise a complex symmetric indefinite matrix, and this NGSolve build "
-            f"provides none of {preferred + ('sparsecholesky',)}. Use "
-            "eigenmode_config['loss_model']='lossless' for the perturbative Q, or "
-            "install an NGSolve build with UMFPACK or PARDISO.")
     return 'sparsecholesky'
 
 
@@ -391,6 +424,89 @@ def parse_polarisations(value):
     if not isinstance(value, (list, tuple, set)):
         value = [value]
     return sorted({pol_number(v) for v in value})
+
+
+def pinvit_settings(eigenmode_config=None):
+    """The PINVIT stopping settings of an eigenmode config, defaults filled in, as
+    keyword arguments for ``NGSolveMEVP._solve_system`` / ``_solve_modes``."""
+    cfg = eigenmode_config or {}
+    return {'pinvit_maxit': int(cfg.get('pinvit_maxit') or DEFAULT_PINVIT_MAXIT),
+            'pinvit_tol': float(cfg.get('pinvit_tol') or DEFAULT_PINVIT_TOL),
+            'converge_modes': cfg.get('pinvit_converge_modes')}
+
+
+def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_TOL,
+           n_check=None, shift=0.0):
+    """Preconditioned inverse iteration that stops once it has converged.
+
+    The algorithm is NGSolve's ``solvers.PINVIT`` line for line (block of *num*
+    vectors, preconditioned residuals, B-orthogonalised Rayleigh-Ritz on the
+    2*num-dimensional search space). NGSolve's runs a fixed *maxit* iterations
+    whatever the state; this one also measures each Ritz pair's relative residual
+    in the preconditioner's norm,
+
+        rho_i = sqrt(|r_i . P r_i|) * sqrt(|lambda_i + 1|) / |lambda_i + shift|,
+        r_i   = A u_i - lambda_i B u_i,
+
+    and stops once the lowest *n_check* physical pairs (None: all of them) are all
+    below *tol*, with *maxit* as a cap. For a B-normalised eigenvector the scale
+    ``|lambda|/sqrt(lambda + 1)`` is the same norm of ``lambda B u``, so rho is
+    relative. *shift* is the spectral shift folded into A (so ``lambda + shift`` is
+    the unshifted eigenvalue).
+
+    The preconditioner's norm matters. Round-off in ``A u`` scales with the largest
+    eigenvalue of A, ~1e9 times the ones sought, so the Euclidean relative residual
+    of a converged pair floors at 1e-8 to 1e-6 and a tolerance below that is never
+    met. P damps exactly those components: rho floors at 1e-13 to 1e-10. Measured
+    on TESLA 1- and 9-cells, the eigenvector error (which the field figures of merit
+    follow) is 6-30x rho and the relative frequency error ~rho^2.
+
+    ``P r`` is the preconditioned residual PINVIT forms anyway, so the check costs
+    one inner product per mode. The iteration count a problem needs varies by an
+    order of magnitude: a single cell converges in ~20, while the two second-band
+    modes a 9-cell reports by default need ~250.
+
+    Physical pairs are those above 1e-6 of the largest Ritz value, the same
+    relative threshold that separates gradient-kernel remnants downstream.
+
+    Returns ``(lams, uvecs, info)``: the Ritz values (ascending), the Ritz vectors
+    (a MultiVector) and ``{'iterations', 'converged', 'residual'}``, the residual
+    being the largest checked rho_i at exit.
+    """
+    r = mata.CreateRowVector()
+    uvecs = MultiVector(r, num)
+    vecs = MultiVector(r, 2 * num)
+    for v in vecs[0:num]:
+        v.SetRandom()
+    uvecs[:] = pre * vecs[0:num]
+    lams = Vector(num * [1])
+
+    rho, converged, it = np.inf, False, 0
+    for it in range(maxit + 1):
+        vecs[0:num] = mata * uvecs - (matm * uvecs).Scale(lams)
+        vecs[num:2 * num] = pre * vecs[0:num]
+        if it > 0:
+            # vecs[0:num] holds the residuals of the current Ritz pairs and
+            # vecs[num:] their preconditioned images.
+            lam = np.array(lams)
+            lam_true = lam + shift
+            phys = np.flatnonzero(lam_true > 1e-6 * lam_true.max())
+            check = phys if n_check is None else phys[:max(int(n_check), 1)]
+            rho = max((np.sqrt(abs(InnerProduct(vecs[i], vecs[num + i])))
+                       * np.sqrt(abs(lam[i] + 1)) / abs(lam_true[i]) for i in check),
+                      default=np.inf)
+            converged = rho < tol
+            if converged or it == maxit:
+                break
+        vecs[0:num] = uvecs
+        vecs.Orthogonalize(matm)
+        asmall = InnerProduct(vecs, mata * vecs)
+        msmall = InnerProduct(vecs, matm * vecs)
+        ev, evec = scipy.linalg.eigh(a=asmall, b=msmall)
+        lams = Vector(ev[0:num])
+        uvecs[:] = vecs * Matrix(evec[:, 0:num])
+    return lams, uvecs, {'iterations': it, 'converged': bool(converged),
+                         'residual': float(rho)}
 
 
 class NGSolveMEVP:
@@ -736,9 +852,10 @@ class NGSolveMEVP:
         IMAGINARY part. Using Re here silently returns the reactive power instead, which
         is near zero for a travelling wave and would make every mode look trapped.
 
-        *Hin_gf* / *Hphi_gf* are the H1-projected H fields the wall-loss integral
-        already builds: a GridFunction ``curl`` cannot be SIMD-evaluated on a boundary,
-        so the raw coefficient functions cannot be integrated over an edge.
+        *Hin_gf* / *Hphi_gf* are H1 projections of H onto the physical region, which
+        :meth:`evaluate_qois` builds only when a mouth exists. A mouth is an interface
+        between the physical region and the PML, so the volume trace used for the
+        wall loss would not say which side it came from.
 
         Returns 0.0 when the mesh has no open mouth, so a closed run costs nothing.
         """
@@ -810,7 +927,10 @@ class NGSolveMEVP:
 
     def _build_mesh(self, cav, maxh, order, boundary_conditions=33,
                     eigenmode_config=None):
-        """Return a boundary-tagged, curved NGSolve mesh for *cav*.
+        """Return a boundary-tagged NGSolve mesh for *cav*, curved to *order*.
+
+        *order* is the geometric curve order, not the FES order: eigenmode solves
+        pass :func:`geometry_order` of theirs.
 
         Three backends behind one call:
         - Open (PML): if *boundary_conditions* marks an end open, the profile's OCC
@@ -950,10 +1070,12 @@ class NGSolveMEVP:
         # Opt-in adaptive (error-driven) h-refinement — applied to EVERY
         # requested polarisation (the recovery-error estimator is m-agnostic).
         adaptive = self._parse_adaptive(mesh_config)
-        # Preconditioner for the eigen-solve. Default 'direct'; 'bddc' is ~1.4-1.9x faster
-        # on tune-sized monopole solves (same eigenvalue) but is an approximate
-        # preconditioner -- unsafe with adaptive refinement (goes stale as the mesh
-        # changes) and can stall when many modes share a mesh -- so fall back there.
+        # Preconditioner for the eigen-solve. Default 'direct'; 'bddc' is an approximate
+        # preconditioner. Each iteration is cheaper but PINVIT needs several times more
+        # of them (TESLA 1-cell to pinvit_tol=1e-8: 18 direct, ~110 BDDC), and at equal
+        # accuracy direct has been the faster of the two on every TESLA case measured
+        # (docs: Convergence, timing and accuracy). It is also unsafe with adaptive
+        # refinement (goes stale as the mesh changes) -- so fall back there.
         self._pre_kind = (eigenmode_config or {}).get('preconditioner', 'direct')
         if self._pre_kind == 'bddc' and adaptive:
             self._pre_kind = 'direct'
@@ -1000,20 +1122,16 @@ class NGSolveMEVP:
         # Q is never ambiguous about how it was obtained.
         loss_model = resolve_loss_model(materials, eigenmode_config)
 
-        # Active-length normalisation, the same for every polarisation. Elliptical
-        # cavities store the half-cell length as 'L_m'; otherwise take an explicit
-        # 'normalization_length' and finally let evaluate_qois fall back to the
-        # on-axis field extent (L=None). The m >= 1 branch used to fall back to
-        # L = 1 mm, i.e. a 2 mm active length, which inflated Et and deflated
-        # Epk/Et and Bpk/Et by the ratio of the real length to 2 mm.
-        L_norm = cav.parameters.get('L_m', None)
-        if L_norm is None:
-            L_norm = (eigenmode_config or {}).get('normalization_length', None)
+        # Active-length normalisation, the same for every polarisation (see
+        # eigenmode_normalisation). The m >= 1 branch used to fall back to L = 1 mm,
+        # i.e. a 2 mm active length, which inflated Et and deflated Epk/Et and
+        # Bpk/Et by the ratio of the real length to 2 mm.
+        L_norm = eigenmode_normalisation(cav, eigenmode_config)
 
         # Solve on this polarisation's own mesh; adaptive refines it in place to
         # resolve *this* polarisation's modes (adaptive=None -> single solve).
         bc = (eigenmode_config or {}).get('boundary_conditions', 33)
-        mesh = self._build_mesh(cav, mesh_h, mesh_p, boundary_conditions=bc,
+        mesh = self._build_mesh(cav, mesh_h, geometry_order(mesh_p), boundary_conditions=bc,
                                 eigenmode_config=eigenmode_config)
         freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(cav, pol_dir, mesh, mesh_p,
                                                           n_modes, m=m, adaptive=adaptive,
@@ -1139,7 +1257,7 @@ class NGSolveMEVP:
             ngmesh.SetBCName(key - 1, bc_name)
 
         mesh = Mesh(ngmesh)
-        mesh.Curve(mesh_p)
+        mesh.Curve(geometry_order(mesh_p))
         self.save_mesh(run_save_directory, mesh)
 
         n_modes = self.requested_n_modes(n_modes=n_modes if n_modes is not None else no_of_cells + 2)
@@ -1175,15 +1293,22 @@ class NGSolveMEVP:
         quarter-cell resonance that maps to the assembled cavity's pi-mode.
 
         The quarter cell is a small cavity in its own right, so ``save_dir`` is laid
-        out like a normal cavity: the ``.geo`` + ``mesh.step`` go in
-        ``save_dir/geometry/``, the solved fields + ``qois.json`` in
-        ``save_dir/eigenmode/`` — a caller (the tuner) adds a ``tune/`` sibling for
-        the tuning record. ``mesh_h=12`` (a quarter cell is over-resolved at 20 —
-        the frequency is identical to 3 significant figures but ~30 % faster).
+        out like a normal cavity: the ``.geo`` (a readable record, not what is
+        meshed) and the mesh go in ``save_dir/geometry/``, the solved fields +
+        ``qois.json`` in ``save_dir/eigenmode/`` — a caller (the tuner) adds a
+        ``tune/`` sibling for the tuning record. ``mesh_h=12`` (a quarter cell is
+        over-resolved at 20 — the frequency is identical to 3 significant figures
+        but ~30 % faster).
+
+        The mesh is built natively from :func:`quarter_cell_profile`, like every
+        other cavity. It used to go ``.geo`` -> gmsh -> STEP file -> netgen, and a
+        process that did that a few hundred times crashed with an access violation
+        inside the STEP read, at a point set by its history rather than by any one
+        geometry: the multicell UQ re-tune died about 100 half-cells into every
+        worker. The native quarter gives the same frequency to ~1e-6 MHz.
 
         Returns the selected mode's frequency [MHz], or ``None`` on degenerate
-        geometry. Mirrors :meth:`cavity_multicell` but writes the quarter geometry
-        via the model's :meth:`EllipticalCavity.write_quarter_geometry`."""
+        geometry (no tangent line from the iris to the equator ellipse)."""
         # Deferred: the geometry writer lives on the model (models <-> solvers cycle).
         from cavsim2d.models.elliptical import EllipticalCavity
         names = ['A', 'B', 'a', 'b', 'Ri', 'L', 'Req']
@@ -1195,33 +1320,20 @@ class NGSolveMEVP:
         eigen_dir = os.path.join(save_dir, 'eigenmode')
         os.makedirs(geo_dir, exist_ok=True)
         os.makedirs(eigen_dir, exist_ok=True)
-        geo_stub = os.path.join(geo_dir, 'geodata.n')
-        # write_quarter_geometry does not touch instance state, so call it unbound.
-        EllipticalCavity.write_quarter_geometry(None, params, bp=bp_str,
-                                                write=geo_stub, ignore_degenerate=True)
-        geo_path = geo_stub.replace('.n', '.geo')
-        if not os.path.exists(geo_path):
-            return None
 
         L = float(cell[5])
-        maxh = L / mesh_h * 1e-3
+        cell_m = [float(v) * 1e-3 for v in cell[:7]]
+        try:
+            # The same 2 L pipe the .geo writer puts on an end cup.
+            profile = quarter_cell_profile(cell_m, beampipe_length=2 * cell_m[5] if bp else 0.0)
+        except DegenerateGeometry:
+            return None
+        # write_quarter_geometry does not touch instance state, so call it unbound.
+        EllipticalCavity.write_quarter_geometry(None, params, bp=bp_str,
+                                                write=os.path.join(geo_dir, 'geodata.n'),
+                                                ignore_degenerate=True)
 
-        gmsh.initialize()
-        gmsh.option.setNumber("General.Verbosity", 0)
-        gmsh.option.setNumber("General.Terminal", 0)
-        gmsh.open(geo_path)
-        gmsh.model.mesh.generate(2)
-        with suppress_c_stdout_stderr():
-            gmsh.write(os.path.join(geo_dir, "mesh.step"))
-        step_geo = OCCGeometry(os.path.join(geo_dir, "mesh.step"), dim=2)
-        ngmesh = step_geo.GenerateMesh(maxh=maxh)
-        bcs = self._get_boundaries_from_gmsh()
-        gmsh.finalize()
-        for key, bc_name in bcs.items():
-            ngmesh.SetBCName(key - 1, bc_name)
-
-        mesh = Mesh(ngmesh)
-        mesh.Curve(mesh_p)
+        mesh = profile.mesh(maxh=L / mesh_h * 1e-3, order=geometry_order(mesh_p))
         self.save_mesh(geo_dir, mesh)
 
         want = self.requested_n_modes(n_modes=max(int(n_modes), int(mode_index) + 1))
@@ -1354,11 +1466,10 @@ class NGSolveMEVP:
 
         # Preconditioner choice for the eigen-solve's `pre` operator. 'direct' (default)
         # factorises (stiff + mass); 'bddc' registers an iterative BDDC preconditioner
-        # (~1.4-1.9x faster on tune-sized monopole solves, same eigenvalue). BDDC must be
-        # registered on its form before assembly, so build (stiff + mass) here where the
-        # expression lives. BDDC is an APPROXIMATE preconditioner: safe for the tune's
-        # single monopole solves, but not for adaptive refinement or many shared-mesh
-        # modes, so it stays opt-in (`eigenmode_config['preconditioner'] = 'bddc'`).
+        # (cheaper per iteration, several times more iterations to the same residual --
+        # see solve()). BDDC must be registered on its form before assembly, so build
+        # (stiff + mass) here where the expression lives. It stays opt-in
+        # (`eigenmode_config['preconditioner'] = 'bddc'`).
         pre_kind = getattr(self, '_pre_kind', 'direct')
         ab_form = pre_reg = None
         if pre_kind == 'bddc':
@@ -1371,13 +1482,19 @@ class NGSolveMEVP:
                 'complex_fes': bool(complex_fes),
                 'ab_form': ab_form, 'pre_reg': pre_reg, 'pre_kind': pre_kind}
 
-    def _solve_system(self, system, n_modes, pinvit_maxit=20):
+    def _solve_system(self, system, n_modes, pinvit_maxit=DEFAULT_PINVIT_MAXIT,
+                      pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None):
         """Update, assemble and solve the reusable *system* on its (possibly
         just-refined) mesh. Returns ``(freq_fes, gfu_E, gfu_H)`` where each
         ``gfu_E`` entry is a product-space GridFunction (components: in-plane
         (E_z, E_r), u_phi = r*E_phi) and each ``gfu_H`` entry is a pair
         ``(H_inplane_cf, H_phi_cf)`` of azimuthal envelope coefficient
-        functions. The representation is the same for every m."""
+        functions. The representation is the same for every m.
+
+        PINVIT stops once the lowest *converge_modes* modes (None: all *n_modes*)
+        are converged to *pinvit_tol*, or after *pinvit_maxit* iterations; see
+        :func:`pinvit`. The iteration count and final residual are left on
+        ``self._last_pinvit``."""
         fes, fes_rz = system['fes'], system['fes_rz']
         a, b, m_pol = system['a'], system['b'], system['m']
         f_shift, direct_solver = system['f_shift'], system['direct_solver']
@@ -1392,7 +1509,11 @@ class NGSolveMEVP:
                 system['ab_form'].Assemble()          # builds the BDDC preconditioner
                 pre = system['pre_reg']
             else:
-                pre = (a.mat + b.mat).CreateSparseMatrix().Inverse(fes.FreeDofs())
+                # The same backend as the kernel projector below. Without the
+                # `inverse=` this took NGSolve's build default (PARDISO on the
+                # Windows wheel) whatever eigenmode_config['direct_solver'] said.
+                pre = (a.mat + b.mat).CreateSparseMatrix().Inverse(
+                    fes.FreeDofs(), inverse=direct_solver)
 
             # Remove the gradient kernel (u, u_phi) = (grad psi, m psi). The
             # potential space comes from CreateGradient (PEC-only dirichlet);
@@ -1405,9 +1526,36 @@ class NGSolveMEVP:
                                              freedofs=fes_pot.FreeDofs())
             projpre = (IdentityMatrix(fes.ndof) - G @ invh1 @ GT @ b.mat) @ pre
 
-            evals_, evecs_ = solvers.PINVIT(a.mat, b.mat, pre=projpre,
-                                            num=self.pinvit_n_modes(n_modes),
-                                            maxit=pinvit_maxit, printrates=False)
+            n_check = n_modes if converge_modes is None else min(int(converge_modes), n_modes)
+            shift = ((2 * pi * f_shift * 1e6 / c0)**2
+                     if f_shift and f_shift != 'default' else 0.0)
+            evals_, evecs_, info_ = pinvit(a.mat, b.mat, projpre,
+                                           num=self.pinvit_n_modes(n_modes),
+                                           maxit=int(pinvit_maxit), tol=float(pinvit_tol),
+                                           n_check=n_check, shift=shift)
+            self._last_pinvit = info_
+            if not info_['converged']:
+                # warnings.warn, not the verbosity-gated warning(): modes that did not
+                # converge are a correctness problem, and a silent one reads as a result.
+                warnings.warn(
+                    f"PINVIT stopped at pinvit_maxit={int(pinvit_maxit)} with a relative "
+                    f"residual of {info_['residual']:.1e} against pinvit_tol="
+                    f"{float(pinvit_tol):.0e}, so the highest checked modes are not "
+                    f"converged. Raise eigenmode_config['pinvit_maxit'], loosen "
+                    f"'pinvit_tol', or check fewer modes with 'pinvit_converge_modes'.",
+                    UserWarning, stacklevel=2)
+
+            # Project the gradient kernel out of every Ritz vector. The preconditioner
+            # is projected, but round-off leaves a ~2e-7 (B-norm) kernel component in
+            # each converged vector. It changes the eigenvalue only at second order,
+            # so the frequency cannot see it, but the fields at first order, and it
+            # differs from run to run: R/Q repeated to ~1e-5 between identical solves,
+            # to ~1e-11 with the projection.
+            kern = evecs_[0].CreateVector()
+            for vec in evecs_:
+                kern.data = G * (invh1 * (GT * (b.mat * vec)))
+                vec.data -= kern
+
             # Drop any residual gradient-kernel mode. The threshold is RELATIVE:
             # kernel eigenvalues sit at ~1e-10 while physical ones are ~1e3, so
             # this selects identically to the old absolute `> 1` on every vacuum
@@ -1738,8 +1886,9 @@ class NGSolveMEVP:
         return freq_fes, gfu_E, gfu_H, q_diel
 
     def _solve_modes(self, mesh, mesh_p, m_pol, n_modes, save_dir=None,
-                     f_shift=0, direct_solver=None, pinvit_maxit=20, materials=None,
-                     loss_model='lossless', n_arnoldi=None):
+                     f_shift=0, direct_solver=None, pinvit_maxit=DEFAULT_PINVIT_MAXIT,
+                     materials=None, loss_model='lossless', n_arnoldi=None,
+                     pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None):
         """Solve the Maxwell eigenproblem for a single azimuthal order *m_pol*.
 
         The one entry point for every polarisation (m = 0 monopole included);
@@ -1759,7 +1908,8 @@ class NGSolveMEVP:
         """
         n_modes = self.requested_n_modes(n_modes=n_modes)
         system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver, materials)
-        freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+        freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit,
+                                                    pinvit_tol, converge_modes)
         self._last_dielectric_q = None
         if loss_model == 'lossy':
             freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
@@ -1855,9 +2005,10 @@ class NGSolveMEVP:
             driver = fn if driver is None else np.maximum(driver, fn)
         return driver
 
-    def _adaptive_refine_hcurl(self, mesh, mesh_p, n_modes, pinvit_maxit,
+    def _adaptive_refine_hcurl(self, mesh, mesh_p, n_modes, pinvit,
                                system, adaptive, first, save_dir=None):
-        """Error-driven h-refinement of *mesh* (refined in place).
+        """Error-driven h-refinement of *mesh* (refined in place). *pinvit* is the
+        PINVIT stopping settings (see :func:`pinvit_settings`).
 
         Reuses the *system* (space + forms) built by :meth:`_build_system`
         so only one space is ever registered on the mesh. Starting from the
@@ -1902,12 +2053,13 @@ class NGSolveMEVP:
                 break
             # driver is normalised to peak 1 per mode, so theta is a fraction of
             # each mode's own peak — no mode can be crowded out of the marking.
-            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta)
+            # theta <= 0 refines every element: uniform, nested refinement.
+            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta) if theta > 0 else True
             del gfu_E, gfu_H, fields, driver
             gc.collect()
             mesh.Refine()
-            mesh.Curve(mesh_p)
-            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+            mesh.Curve(geometry_order(mesh_p))
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, **pinvit)
 
         self._last_adaptive_history = history
         if save_dir:
@@ -1926,12 +2078,12 @@ class NGSolveMEVP:
             loss_model = 'lossy'
         n_modes = self.requested_n_modes(cav, eigenmode_config, n_modes=n_modes)
 
-        direct_solver = default_direct_solver()
-        pinvit_maxit = 20            # PINVIT iterations (P3-4: exposed via config)
         cfg = eigenmode_config or getattr(cav, 'eigenmode_config', None) or {}
         f_shift = cfg.get('f_shift', 0)
-        direct_solver = cfg.get('direct_solver', direct_solver)
-        pinvit_maxit = int(cfg.get('pinvit_maxit', pinvit_maxit))
+        # One backend for every factorisation of this solve: PINVIT's preconditioner
+        # and kernel projector, and the lossy/PML shift-and-invert Arnoldi.
+        direct_solver = cfg.get('direct_solver') or default_direct_solver()
+        pinvit = pinvit_settings(cfg)
         n_arnoldi = cfg.get('arnoldi_vectors', None)
 
         self._last_adaptive_history = None
@@ -1953,9 +2105,10 @@ class NGSolveMEVP:
             # ones are pulled off the real axis by the layer -- so it is solved on a mesh
             # built from the SAME mesh_config, not a hard-coded size.
             mesh_h = mesh_h_metres(cfg.get('mesh_config', {}))
-            mesh_seed = self._build_mesh(cav, mesh_h, mesh_p, boundary_conditions=33)
+            mesh_seed = self._build_mesh(cav, mesh_h, geometry_order(mesh_p),
+                                         boundary_conditions=33)
             system_seed = self._build_system(mesh_seed, mesh_p, m, f_shift, direct_solver, materials)
-            freq_seed, _, _ = self._solve_system(system_seed, n_modes, pinvit_maxit)
+            freq_seed, _, _ = self._solve_system(system_seed, n_modes, **pinvit)
             del system_seed, mesh_seed
             gc.collect()
 
@@ -1966,14 +2119,14 @@ class NGSolveMEVP:
             n_arn_pml = int(n_arnoldi if n_arnoldi is not None else max(20, n_modes + 6))
             freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
                 mesh, mesh_p, m, materials, freq_seed, n_modes,
-                direct_solver=None, n_arnoldi=n_arn_pml)
+                direct_solver=direct_solver, n_arnoldi=n_arn_pml)
         else:
             system = self._build_system(mesh, mesh_p, m, f_shift, direct_solver, materials)
-            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, **pinvit)
 
             if adaptive:
                 freq_fes, gfu_E, gfu_H = self._adaptive_refine_hcurl(
-                    mesh, mesh_p, n_modes, pinvit_maxit, system,
+                    mesh, mesh_p, n_modes, pinvit, system,
                     adaptive, first=(freq_fes, gfu_E, gfu_H), save_dir=save_dir)
 
             if loss_model == 'lossy':
@@ -1981,7 +2134,7 @@ class NGSolveMEVP:
                 gc.collect()
                 freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
                     mesh, mesh_p, m, materials, freq_fes, n_modes,
-                    direct_solver=None, n_arnoldi=n_arnoldi)
+                    direct_solver=direct_solver, n_arnoldi=n_arnoldi)
 
         # Report the modes that were asked for, and no more. PINVIT iterates on
         # n_modes + 2 vectors because the extra two speed up the convergence of the
@@ -2032,21 +2185,19 @@ class NGSolveMEVP:
         rs_ohm = eigenmode_config.get('surface_resistance', None)
         materials = self.resolve_materials(cav, eigenmode_config)
         # One active length for every polarisation (see _solve_pol).
-        L_norm = cav.parameters.get('L_m', None)
-        if L_norm is None:
-            L_norm = eigenmode_config.get('normalization_length', None)
+        L_norm = eigenmode_normalisation(cav, eigenmode_config)
 
         f_shift = eigenmode_config.get('f_shift', 0)
-        direct_solver = eigenmode_config.get('direct_solver', default_direct_solver())
-        pinvit_maxit = int(eigenmode_config.get('pinvit_maxit', 20))
+        direct_solver = eigenmode_config.get('direct_solver') or default_direct_solver()
+        pinvit = pinvit_settings(eigenmode_config)
 
-        mesh = self._build_mesh(cav, mesh_h, mesh_p)
+        mesh = self._build_mesh(cav, mesh_h, geometry_order(mesh_p))
         system = self._build_system(mesh, mesh_p, 0, f_shift, direct_solver, materials)
 
         rows = []
         for level in range(max_ref + 1):
             t0 = time.perf_counter()
-            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit)
+            freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, **pinvit)
             # the requested modes only, as in _solve_eigenproblem
             freq_fes, gfu_E, gfu_H = freq_fes[:n_modes], gfu_E[:n_modes], gfu_H[:n_modes]
             ndof_level = int(system['fes'].ndof)
@@ -2077,7 +2228,7 @@ class NGSolveMEVP:
             mpole_spaces = []
             for m_pol in [pp for pp in pols if pp > 0]:
                 fr_m, gE_m, gH_m = self._solve_modes(mesh, mesh_p, m_pol, n_modes,
-                                                     materials=materials)
+                                                     materials=materials, **pinvit)
                 fr_m, gE_m, gH_m = fr_m[:n_modes], gE_m[:n_modes], gH_m[:n_modes]
                 m_err = self._error_fields(mesh, gE_m[0].components[0].space, gE_m) if gE_m else []
                 for ii in range(len(fr_m)):
@@ -2105,15 +2256,142 @@ class NGSolveMEVP:
                 break
             # driver is normalised to peak 1 per mode, so theta is a fraction of
             # each mode's own peak — no mode can be crowded out of the marking.
-            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta)
+            # theta <= 0 refines every element: uniform, nested refinement.
+            mesh.ngmesh.Elements2D().NumPy()["refine"] = (driver > theta) if theta > 0 else True
             # Release this level's fresh (m-pole + monopole) grid functions so no
             # stale space is updated onto freed memory by Refine().
             del gfu_E, gfu_H, mpole_spaces, level_rows, mono_err, driver
             gc.collect()
             mesh.Refine()
-            mesh.Curve(mesh_p)
+            mesh.Curve(geometry_order(mesh_p))
 
         return rows
+
+    # Figures of merit scored by solve_benchmark. The voltage-derived ones are only
+    # defined for modes that carry a voltage (a TE mode has R/Q ~ 0 and Eacc ~ 0).
+    BENCHMARK_FOM = {'R/Q': 'R/Q [Ohm]', 'Epk/Eacc': 'Epk/Eacc []',
+                     'Bpk/Eacc': 'Bpk/Eacc [mT/MV/m]', 'G': 'G [Ohm]', 'ff': 'ff [%]'}
+    BENCHMARK_VOLTAGE_FOM = ('R/Q', 'Epk/Eacc', 'Bpk/Eacc', 'ff')
+
+    def _benchmark_solve(self, cav, cfg, m):
+        """One timed eigenmode simulation of *cav* for polarisation *m*: mesh, solve
+        and figures of merit, the same path :meth:`_solve_pol` takes, with nothing
+        written to disk. Returns ``(times, freqs, qois, ndof, pinvit_info)``."""
+        mesh_config = cfg.get('mesh_config') or {}
+        if mesh_config.get('adaptive'):
+            raise ValueError("benchmark variants must use a fixed mesh: adaptive "
+                             "refinement changes the mesh between runs, so their "
+                             "errors against one reference would not be comparable.")
+        mesh_h = mesh_h_metres(mesh_config)
+        mesh_p = mesh_config.get('p', 3)
+        bc = cfg.get('boundary_conditions', 33)
+        self._pre_kind = cfg.get('preconditioner') or 'direct'
+        materials = self.resolve_materials(cav, cfg)
+        loss_model = resolve_loss_model(materials, cfg)
+        n_modes = self.requested_n_modes(cav, cfg)
+        self._last_pinvit = None
+        try:
+            t0 = time.perf_counter()
+            mesh = self._build_mesh(cav, mesh_h, geometry_order(mesh_p), boundary_conditions=bc,
+                                    eigenmode_config=cfg)
+            t1 = time.perf_counter()
+            freqs, gfu_E, gfu_H = self._solve_eigenproblem(
+                cav, None, mesh, mesh_p, n_modes, m=m, materials=materials,
+                loss_model=loss_model, boundary_conditions=bc, eigenmode_config=cfg)
+            t2 = time.perf_counter()
+            L_norm = eigenmode_normalisation(cav, cfg)
+            qois = [self.evaluate_qois(mesh, gfu_E, gfu_H, freqs, m, mode_idx=i,
+                                       n_cells=cav.n_cells, L=L_norm,
+                                       conductivity=cfg.get('conductivity', SIGMA_COPPER),
+                                       surface_resistance_ohm=cfg.get('surface_resistance'),
+                                       materials=materials, loss_model=loss_model,
+                                       q_diel=self._last_dielectric_q)
+                    for i in range(len(freqs))]
+            t3 = time.perf_counter()
+        finally:
+            self._pre_kind = 'direct'
+        ndof = int(gfu_E[0].space.ndof) if gfu_E else 0
+        times = {'mesh [s]': t1 - t0, 'solve [s]': t2 - t1, 'QOIs [s]': t3 - t2,
+                 'total [s]': t3 - t0}
+        return times, np.array(freqs, dtype=float), qois, ndof, self._last_pinvit
+
+    def _benchmark_errors(self, cav, m, cfg, freqs, qois, ref_freqs, ref_qois):
+        """Worst relative error of every scored quantity against the reference.
+
+        Modes are compared by index, as a user reads them. The frequency error is
+        reported three ways: the mode of interest, the passband (the lowest
+        ``n_cells`` modes) and every reported mode. R/Q, Epk/Eacc, Bpk/Eacc and ff
+        are scored on the modes that carry a voltage (R/Q above 1e-3 of the
+        largest), G on every mode; ff only for a multicell monopole."""
+        n_cells = int(getattr(cav, 'n_cells', 1) or 1)
+        names = (['freq (mode of interest)', 'freq (passband)', 'freq (all modes)']
+                 + list(self.BENCHMARK_FOM))
+        if len(freqs) != len(ref_freqs):
+            return {**{k: np.inf for k in names}, 'freq per mode': [np.nan] * len(ref_freqs)}
+        moi = self.modes_of_interest(cav, m, cfg, len(ref_freqs))[0]
+        per_mode = np.abs(freqs / ref_freqs - 1)
+        rq = np.abs([q.get('R/Q [Ohm]', 0.0) for q in ref_qois])
+        volt = rq > 1e-3 * rq.max() if rq.max() > 0 else np.zeros(len(rq), bool)
+        out = {'freq (mode of interest)': float(per_mode[moi]),
+               'freq (passband)': float(per_mode[:n_cells].max()),
+               'freq (all modes)': float(per_mode.max())}
+        for name, key in self.BENCHMARK_FOM.items():
+            sel = volt if name in self.BENCHMARK_VOLTAGE_FOM else np.ones(len(rq), bool)
+            if name == 'ff' and not (m == 0 and n_cells > 1):
+                sel = np.zeros(len(rq), bool)
+            errs = [abs(a[key] / b[key] - 1) for a, b, s in zip(qois, ref_qois, sel)
+                    if s and key in b and b[key]]
+            out[name] = float(max(errs)) if errs else np.nan
+        out['freq per mode'] = per_mode.tolist()
+        return out
+
+    def solve_benchmark(self, cav, eigenmode_config, variants, n_repeats=5, reference=None):
+        """Time and score solver settings against a converged reference.
+
+        Every entry of *variants*, a list of ``(label, overrides, tags)`` with the
+        overrides merged over *eigenmode_config* and the tags copied into its rows,
+        is solved *n_repeats* times on the cavity; each run is
+        a complete simulation (mesh, solve, figures of merit) timed stage by stage
+        and scored against a *reference* solve (overrides merged the same way) on
+        the same mesh. One reference is solved per distinct mesh, so variants may
+        change the mesh too; their errors then measure the solver on that mesh.
+
+        Returns ``(rows, references)``: one dict per run, and per reference the mesh
+        it was solved on, its DOF count and its frequencies.
+        """
+        base = dict(eigenmode_config or {})
+        m = parse_polarisations(base.get('polarisation', 0))
+        if len(m) != 1:
+            raise ValueError("a benchmark scores one polarisation at a time; pass a "
+                             f"single 'polarisation', not {base.get('polarisation')!r}.")
+        m = m[0]
+        ref_over = {'preconditioner': 'direct', 'pinvit_tol': 1e-10, 'pinvit_maxit': 2000,
+                    'pinvit_converge_modes': None, **(reference or {})}
+
+        refs, rows = {}, []
+        for label, over, tags in variants:
+            cfg = {**base, **(over or {})}
+            mesh_key = json.dumps(cfg.get('mesh_config') or {}, sort_keys=True, default=str)
+            if mesh_key not in refs:
+                ref_cfg = {**cfg, **ref_over}
+                _, f_ref, q_ref, ndof, info = self._benchmark_solve(cav, ref_cfg, m)
+                refs[mesh_key] = {'mesh_config': cfg.get('mesh_config'), 'No of DOFs': ndof,
+                                  'freqs': f_ref, 'qois': q_ref,
+                                  'residual': (info or {}).get('residual')}
+            ref = refs[mesh_key]
+            for rep in range(int(n_repeats)):
+                times, f, q, ndof, info = self._benchmark_solve(cav, cfg, m)
+                rows.append({'variant': label, **(tags or {}), 'repeat': rep,
+                             'No of DOFs': ndof,
+                             'PINVIT iterations': (info or {}).get('iterations'),
+                             'converged': (info or {}).get('converged'),
+                             **times,
+                             **self._benchmark_errors(cav, m, cfg, f, q,
+                                                      ref['freqs'], ref['qois'])})
+        references = [{'mesh_config': r['mesh_config'], 'No of DOFs': r['No of DOFs'],
+                       'freq [MHz]': r['freqs'].tolist(), 'residual': r['residual']}
+                      for r in refs.values()]
+        return rows, references
 
     # ──────────────────────────────────────────────────────────────────────
     # QOI evaluation
@@ -2341,30 +2619,36 @@ class NGSolveMEVP:
         Epk = float(np.max(np.maximum(_at(norm_u), e_phi_surf)))
         Hpk = float(np.max(np.maximum(_at(norm_H_in), _at_slow(norm_H_phi))))
 
-        # --- Surface power loss: H1-projected boundary integral (all m) --------
-        # H = curl(E)/(mu0 w) cannot be SIMD-evaluated as a GridFunction curl on
-        # a boundary, so it is projected into continuous H1 fields whose traces
-        # integrate cleanly — mesh-convergent and higher-order than sampling |H|
-        # at the element endpoints. 0.5 = time averaging, az = azimuth.
+        # --- Surface power loss: the wall trace of the solved H (all m) --------
+        # BoundaryFromVolumeCF evaluates H on each wall element from the volume
+        # element it belongs to: the exact trace of the discrete field. This used to
+        # project H into continuous H1 fields first, which averages the element-wise
+        # discontinuous H between neighbours and adds a mesh-dependent error of its
+        # own: on a TESLA 2-cell, G zig-zagged in sign from one mesh to the next
+        # (dipole, p = 3: -1.7e-3, +1.7e-3, +3.3e-4, +1.8e-3) and was 5-100x less
+        # accurate than the trace on the same mesh. A PEC edge borders exactly one
+        # volume element, so the trace is unambiguous, and on a PML mesh it is always
+        # the physical one. 0.5 = time averaging, az = azimuth.
         Rs = surface_resistance(w, conductivity, surface_resistance_ohm)
-        order_ = u_gf.space.globalorder
-        # Project on the PHYSICAL region only. H1 is continuous, so a projection taken
-        # over the whole mesh averages the two sides of every shared vertex -- and on a
-        # PML mesh the other side is the complex-stretched layer, whose H is a different
-        # (decaying, coordinate-stretched) field. That contamination lands exactly on the
-        # pipe mouth and the pipe wall next to it, which is where both the radiated flux
-        # and the wall loss are integrated.
-        # On a closed mesh there is no second region, so the restriction is skipped
-        # entirely and the projection is bit-for-bit what it always was.
-        proj_kw = ({'definedon': mesh.Materials('phys')}
-                   if 'pml' in mesh.GetMaterials() else {})
-        Hphi_gf = GridFunction(H1(mesh, order=order_, complex=True))
-        Hphi_gf.Set(H_phi, **proj_kw)
-        Hin_gf = GridFunction(VectorH1(mesh, order=order_, complex=True))
-        Hin_gf.Set(H_inplane, **proj_kw)
+        h_phi_wall = BoundaryFromVolumeCF(H_phi)
+        h_in_wall = BoundaryFromVolumeCF(H_inplane)
         Ploss = az * 0.5 * Rs * Integrate(
-            y * (Hphi_gf * Conj(Hphi_gf) + InnerProduct(Hin_gf, Hin_gf)), mesh,
+            y * (h_phi_wall * Conj(h_phi_wall) + InnerProduct(h_in_wall, h_in_wall)), mesh,
             definedon=mesh.Boundaries('PEC')).real
+
+        # The Poynting flux through an open pipe mouth still needs H1-projected fields:
+        # a mouth is an interface between the physical region and the PML, so a
+        # volume trace there would not say which side it came from. Project on the
+        # PHYSICAL region only: H1 is continuous, so a projection over the whole mesh
+        # would average in the complex-stretched layer's H at the mouth. Only built
+        # when there is a mouth.
+        Hin_gf = Hphi_gf = None
+        if {'PML_IF_L', 'PML_IF_R'} & set(mesh.GetBoundaries()):
+            order_ = u_gf.space.globalorder
+            Hphi_gf = GridFunction(H1(mesh, order=order_, complex=True))
+            Hphi_gf.Set(H_phi, definedon=mesh.Materials('phys'))
+            Hin_gf = GridFunction(VectorH1(mesh, order=order_, complex=True))
+            Hin_gf.Set(H_inplane, definedon=mesh.Materials('phys'))
 
         # Cell-to-cell coupling: mode vs the lowest passband mode (index 0).
         if len(freq_fes) > 1:
@@ -2519,6 +2803,14 @@ class NGSolveMEVP:
             # matters for breakdown in a dielectric-loaded structure.
             qois.update(NGSolveMEVP._peak_field_per_material(mesh, u_gf, uphi_gf,
                                                              materials))
+            # Share of the stored electric energy inside each material region,
+            # integrated from the field itself. A mode that lives in a region (a
+            # resonance of an absorber, say) is read off directly, with no
+            # small-loss assumption; for small loss 1/Q_diel ~= fraction * tan_delta.
+            total = Integrate(energy_density, integ_domain).real
+            for mat in sorted(set(materials)):
+                part = Integrate(energy_density, mesh.Materials(mat)).real
+                qois[f'U_frac_{mat} []'] = part / total if total > 0 else np.nan
         if m >= 1:
             # Transverse-specific keys (the shared Vacc/Eacc/R-Q above already
             # hold the transverse analogues for m>=1).
@@ -2565,12 +2857,13 @@ class NGSolveMEVP:
         (see :meth:`load_fields`).
 
         *geom_order* is the mesh's **geometric curve order**, kept distinct from the
-        field's FES order ``mesh_p``: the eigenmode solve curves to ``mesh_p`` (so it
-        defaults there), but multipacting's own-field mesh is deliberately **straight**
+        field's FES order ``mesh_p``: the eigenmode solve curves to
+        ``geometry_order(mesh_p)`` (so it defaults there), but multipacting's own-field
+        mesh is deliberately **straight**
         (``geom_order=1``) so the tracker's collision polyline coincides with the
         element edges — reload must not curve it (see ``solve_multipacting_field``)."""
         n = len(gfu_E)
-        geom_order = int(mesh_p if geom_order is None else geom_order)
+        geom_order = int(geometry_order(mesh_p) if geom_order is None else geom_order)
         # 'materials' records what the fields were solved in. At mu_r = 1 the H
         # envelopes reload correctly without it (H = curl(E)/(mu0 w) is exact), so
         # this is provenance plus the hook a future mu_r would need. Absent in old
@@ -2641,8 +2934,9 @@ class NGSolveMEVP:
         with open(meta_path) as f:
             meta = json.load(f)
         mesh = self.load_mesh(folder)
-        # Curve to the SAVED geometric order (mesh_p for the eigenmode mesh; 1 —
-        # i.e. no curving — for multipacting's deliberately straight own-field mesh).
+        # Curve to the SAVED geometric order (geometry_order(mesh_p) for the eigenmode
+        # mesh; 1 — i.e. no curving — for multipacting's deliberately straight own-field
+        # mesh). A cache without the key predates it and was curved to mesh_p.
         geom_order = int(meta.get('geom_order', meta['mesh_p']))
         if geom_order > 1:
             try:

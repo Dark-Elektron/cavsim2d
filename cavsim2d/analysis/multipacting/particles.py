@@ -10,21 +10,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 
-q0 = 1.60217663e-19
-m0 = 9.1093837e-31
-mu0 = 4 * np.pi * 1e-7
-eps0 = 8.85418782e-12
-c0 = 299792458
+from cavsim2d.constants import c0, eps0, m0, mu0, q0  # noqa: F401
+
 
 
 class Particles:
-    def __init__(self, xrange, init_v, bounds, phi, cmap='jet', step=None):
+    def __init__(self, xrange, init_v, bounds, phi, cmap='jet', step=None, chain=None):
         # self.fig, self.ax = plt.subplots()
 
         self.cmap = cmap
         M = len(phi)
 
         self.bounds = np.array(bounds)
+        # links[i]: bounds[i] and bounds[i+1] are neighbours on the same piece of
+        # wall, so the segment between them is wall (see driver._surface_polyline)
+        chain = np.zeros(len(self.bounds), dtype=int) if chain is None else np.asarray(chain)
+        self.links = chain[:-1] == chain[1:]
         # KD-tree over the fixed surface points; nearest-surface queries used to
         # be an O(N_particles x N_surf) distance matrix + full argsort per call.
         self._bounds_tree = cKDTree(self.bounds)
@@ -189,19 +190,17 @@ class Particles:
         self.colors = np.array([cmap(i) for i in range(len(self.x))])
 
     def get_point_normal(self, idx):
-        # calculate normal as average of connecting edge normals
-        # assumpution is that the surface points are ordered in increasing x
-        x0, y0 = self.bounds[idx[0] - 1]
-        x1, y1 = self.bounds[idx[0]]
-        x2, y2 = self.bounds[idx[0] + 1]
-
-        dx1, dy1 = x1 - x0, y1 - y0
-        dx2, dy2 = x2 - x1, y2 - y1
-
-        n1 = -np.array([-dy1, dx1])
-        n2 = -np.array([-dy2, dx2])
-        n12 = n1 + n2
-
+        """Inward normal at wall point ``idx[0]``: the average of the right-hand
+        normals of the wall segments meeting there. The wall is in contour order
+        with the vacuum on its right, so a segment (a, b) has inward normal
+        ``(b_r - a_r, -(b_z - a_z))``. Only segments that are wall are used, so the
+        end of a piece of wall takes its one segment."""
+        i = int(idx[0])
+        n12 = np.zeros(2)
+        for a, b in ((i - 1, i), (i, i + 1)):
+            if 0 <= a and b < len(self.bounds) and self.links[a]:
+                (x0, y0), (x1, y1) = self.bounds[a], self.bounds[b]
+                n12 += np.array([y1 - y0, -(x1 - x0)])
         return n12 / np.linalg.norm(n12)
 
     def update_record(self):

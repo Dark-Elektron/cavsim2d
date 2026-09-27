@@ -385,3 +385,39 @@ def test_impedance_rejects_unknown_model(project_dir):
     cav = _solved(project_dir)
     with pytest.raises(ValueError, match="model must be"):
         cav.eigenmode.impedance('longitudinal', model='banana')
+
+
+def test_classify_modes_keeps_what_stays_put_and_drops_pipe_pairs():
+    """Frequency is the primary test (mutual nearest neighbour, linewidth-scaled);
+    Q is only a tie-breaker, used against near-degenerate same-m pairs."""
+    import pandas as pd
+    from cavsim2d.analysis.impedance import classify_modes
+    a = pd.DataFrame({'m': [0] * 6,
+                      'freq [MHz]': [1300.0, 2400.0, 3000.0, 3000.05, 3400.0, 3600.0],
+                      'Q []': [3e4, 3e4, 300.0, 300.0, 20.0, 15.0]})
+    b = pd.DataFrame({'m': [0] * 5,
+                      'freq [MHz]': [1300.0001, 2400.0002, 3010.0, 3400.3, 3900.0],
+                      # the 3400 mode kept its frequency but its Q drifted: still kept
+                      'Q []': [3e4, 3e4, 600.0, 35.0, 9.0]})
+    v = classify_modes(a, b)
+    assert v['cavity mode'].tolist() == [True, True, False, False, True, False]
+    assert not v.loc[2, 'Q ok'] and v.loc[2, 'paired']          # the pipe pair
+    assert v.loc[4, 'f ok'] and not v.loc[4, 'Q ok']            # Q unconverged, kept
+    assert not v.loc[5, 'mutual']                                # 3600's partner is 3400's
+
+
+def test_active_length_is_shared_by_eigenmode_and_power_budget():
+    """One active length feeds both Eacc normalisations. TESLA: 9 x 115.3 mm; a
+    flat-top cell counts its flat."""
+    from cavsim2d import EllipticalCavity, EllipticalCavityFlatTop
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import eigenmode_normalisation
+    mid = [42.0, 42.0, 12.0, 19.0, 35.0, 57.652, 103.3536]
+    end = [40.34, 40.34, 10.0, 13.5, 39.0, 55.7251, 103.3536]
+    cav = EllipticalCavity(9, mid, end, end, beampipe='both')
+    assert cav.active_length() == pytest.approx(9 * 2 * 57.652)
+    assert cav.l_active == pytest.approx(cav.active_length() * 1e-3)
+    assert eigenmode_normalisation(cav) == pytest.approx(57.652)
+    assert eigenmode_normalisation(cav, {'normalization_length': 50}) == 50
+    ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
+    flat = EllipticalCavityFlatTop(2, ft, ft, ft, beampipe='both')
+    assert flat.active_length() == pytest.approx(2 * (2 * 93.5 + 20))

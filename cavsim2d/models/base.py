@@ -1251,7 +1251,7 @@ class Cavity(ABC):
 
     def study_mesh_convergence(self, eigenmode_config=None, h=10, p=2, p_passes=3, p_step=1,
                                n_modes=10, polarisation=('monopole', 'dipole'),
-                               tol=1e-12, max_refinements=8, max_ndof=100000):
+                               tol=1e-12, max_refinements=8, max_ndof=100000, theta=None):
         """Mesh-convergence sweep: adaptive h-refinement at each polynomial order.
 
         For every polynomial order ``p`` (``p_passes`` of them, stepping by
@@ -1283,6 +1283,10 @@ class Cavity(ABC):
             (default 1e-12).
         max_refinements, max_ndof : int
             Hard caps: stop once either is reached even if ``tol`` is not met.
+        theta : float, optional
+            Fraction of each mode's largest element error above which an element is
+            refined (default 0.25). ``theta=0`` refines every element: uniform,
+            nested refinement, each level a subdivision of the one before.
         """
         self._ensure_workspace()      # standalone: provision ./<name>/ if needed
         self.create()                 # write the geometry the mesher reads
@@ -1298,6 +1302,8 @@ class Cavity(ABC):
                                   'adaptive': {'tol': tol,
                                                'max_refinements': max_refinements,
                                                'max_ndof': max_ndof}}
+            if theta is not None:
+                cfg['mesh_config']['adaptive']['theta'] = float(theta)
 
             rows = ngsolve_mevp.solve_convergence(self, cfg)
             for row in rows:
@@ -1431,6 +1437,23 @@ class Cavity(ABC):
             self.get_wakefield_qois(config)
         except FileNotFoundError:
             error("Could not find the wakefield results. Please rerun wakefield analysis.")
+
+    def active_length(self):
+        """Accelerating length [mm] that ``Eacc`` is normalised to.
+
+        One definition shared by the eigenmode figures of merit (``Eacc``,
+        ``Epk/Eacc``, ``Bpk/Eacc``) and the RF power budget (:attr:`l_active`), so
+        the two can no longer disagree. ``None`` for a model with no cell structure
+        to define it; the eigenmode solver then uses the on-axis field extent, or
+        ``eigenmode_config['normalization_length']`` when given.
+        """
+        return None
+
+    @property
+    def l_active(self):
+        """Active length [m] for the RF power budget: :meth:`active_length`."""
+        length = self.active_length()
+        return None if length is None else float(length) * 1e-3
 
     def calc_op_freq(self):
         """

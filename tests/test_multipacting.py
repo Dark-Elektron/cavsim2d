@@ -627,3 +627,23 @@ def test_densify_wall_handles_bands_with_under_two_vertices():
     # wall extent is never altered
     d = densify_wall(wall, [0.0, 0.01], n_points=25)
     assert d[:, 0].min() == pytest.approx(0.0) and d[:, 0].max() == pytest.approx(0.05)
+
+
+def test_wall_polyline_follows_the_contour_with_inward_normals():
+    """The collision polyline joins contour neighbours only, oriented with the
+    vacuum on its right. z-sorting joined a pillbox's barrel to the foot of its
+    end plate (a segment through the vacuum) and flipped normals on any wall
+    running backwards in z."""
+    from cavsim2d import Pillbox
+    from cavsim2d.analysis.multipacting.driver import _surface_polyline
+    from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+    mesh = NGSolveMEVP()._build_mesh(Pillbox(1, [100, 100, 20, 0, 50], beampipe='both'),
+                                     8e-3, 1, boundary_conditions=33)
+    pts, chain = _surface_polyline(mesh)
+    links = chain[:-1] == chain[1:]
+    d = np.diff(pts, axis=0)[links]
+    assert np.hypot(d[:, 0], d[:, 1]).max() < 2 * 8e-3          # element-sized segments
+    for a, b in zip(pts[:-1][links], pts[1:][links]):
+        n = np.array([b[1] - a[1], -(b[0] - a[0])])
+        probe = 0.5 * (a + b) + 0.05 * n
+        assert mesh(float(probe[0]), float(probe[1])).nr >= 0   # inward normal

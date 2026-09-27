@@ -146,6 +146,39 @@ def elliptical_profile_from_half_cells(half_cells, beampipe, L_bp, flats=None,
     return p
 
 
+def quarter_cell_profile(cell, beampipe_length=0.0, name='quarter'):
+    """Contour of one half-cell closed at its equator: the quarter-cell model the
+    per-half-cell tune solves.
+
+    ``cell`` is ``(A, B, a, b, Ri, L, Req)`` in **metres**. The contour runs from the
+    iris plane (``'PMC'``, or the pipe mouth when ``beampipe_length`` > 0) along the
+    wall to the equator and down the equator plane, which is ``'PEC'``: the pi-mode
+    has its electric maximum there, so the plane is an electric wall. The wall is the
+    same iris arc, tangent line and equator arc as the forward half of
+    :func:`elliptical_profile_from_half_cells`.
+
+    Raises :class:`DegenerateGeometry` if the half-cell has no tangent solution.
+    """
+    A, B, a, b, Ri, L, Req = (float(v) for v in cell[:7])
+    L_bp = float(beampipe_length or 0.0)
+    dx1, y1, dx2, y2 = tangent_offsets((A, B, a, b, Ri, L, Req), Req)
+
+    p = Profile(name)
+    z = -(L_bp + L) / 2.0
+    p.start(z, 0.0)
+    p.line_to(z, Ri, 'PMC')                             # iris plane / pipe mouth
+    if L_bp > 0:
+        z += L_bp
+        p.line_to(z, Ri, 'PEC')                         # beampipe
+    p.ellipse_arc_to(z + dx1, y1, center=(z, Ri + b), semi_z=a, semi_r=b, boundary='PEC')
+    p.line_to(z + dx2, y2, 'PEC')
+    z_eq = z + L
+    p.ellipse_arc_to(z_eq, Req, center=(z_eq, Req - B), semi_z=A, semi_r=B, boundary='PEC')
+    p.line_to(z_eq, 0.0, 'PEC')                         # equator plane: electric wall
+    p.close('AXI')
+    return p
+
+
 def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
                        flattop=False, name='elliptical', beampipe_length=None):
     """Build the meridian :class:`Profile` of an elliptical (or flat-top) cavity.
@@ -159,7 +192,10 @@ def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
     three cell types into the ``2 * n_cells`` half-cells.
 
     ``beampipe_length`` (**metres**) overrides the pipe carried at each open end;
-    ``None`` keeps the default ``4 * L_m``.
+    ``None`` keeps the default ``2 * L_m``, the same as
+    :meth:`~cavsim2d.models.elliptical.EllipticalCavity.profile`. It used to be
+    ``4 * L_m`` here, so a flat-top cavity (which builds through this wrapper) carried
+    pipes twice as long as the elliptical cavity it reduces to at zero flat length.
 
     Raises :class:`DegenerateGeometry` if any half-cell has no tangent solution.
     """
@@ -168,6 +204,6 @@ def elliptical_profile(mid, end_l, end_r, n_cells, beampipe,
         h[6] = mid[6]                                   # writers force Req = Req_m
     flat_map = _flat_lengths(mid, end_l, end_r, n_cells, flattop)
     flats = [flat_map[k] for k in range(1, n_cells + 1)]
-    L_bp = float(beampipe_length) if beampipe_length is not None else 4 * mid[5]
+    L_bp = float(beampipe_length) if beampipe_length is not None else 2 * mid[5]
     return elliptical_profile_from_half_cells(halves, beampipe, L_bp,
                                               flats=flats, name=name)

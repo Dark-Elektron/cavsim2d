@@ -60,6 +60,10 @@ def test_tuned_cavity_actually_sits_on_target_frequency(project_dir):
     end-cell as canonical for a single cell — wiped it back to the start. A
     1300 MHz tune then re-solved to 1236.9 MHz. Guard the invariant the
     tuner exists to provide: the tuned geometry sits on the target.
+
+    Tightly: the secant steps also ignored the tune's ``mesh_config`` and ran on
+    the default mesh, so the re-solve on the mesh asked for landed about
+    0.04 MHz off -- inside the old 1 MHz tolerance.
     """
     target = 1300.0
     start = [42, 42, 12, 19, 35, 57.7, 108.0]  # Req far below target
@@ -81,7 +85,7 @@ def test_tuned_cavity_actually_sits_on_target_frequency(project_dir):
                              'boundary_conditions': 'mm',
                              'mesh_config': {'h': 6, 'p': 2}})
     resolved = cav.tuned.eigenmode.qois['freq [MHz]']
-    assert abs(resolved - target) < 1.0, (
+    assert abs(resolved - target) < 1e-3, (
         f"tuned cavity re-solved to {resolved} MHz, not {target}")
 
 
@@ -207,10 +211,11 @@ def test_rebuild_is_the_single_per_type_hook():
     """Tuning, UQ and optimisation all reconstruct a cavity from a parameter dict.
     Every model provides `rebuild`; the base machinery is generic."""
     from cavsim2d import (EllipticalCavity, EllipticalCavityFlatTop, Pillbox,
-                                 RFGun, SplineCavity, CircularWaveguide)
+                                 RFGun, SplineCavity, Beampipe)
     from cavsim2d.models.base import Cavity
+    # Beampipe, not its deprecated alias CircularWaveguide, which inherits rebuild.
     for cls in (EllipticalCavity, EllipticalCavityFlatTop, Pillbox, RFGun,
-                SplineCavity, CircularWaveguide):
+                SplineCavity, Beampipe):
         assert 'rebuild' in cls.__dict__, f'{cls.__name__} must implement rebuild()'
         # the generic machinery is inherited, not duplicated per type
         assert 'clone_for_tuning' not in cls.__dict__

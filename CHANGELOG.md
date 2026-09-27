@@ -6,6 +6,17 @@ follow [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- `cav.eigenmode.benchmark(variants, sweep, n_repeats)` times and scores
+  eigenmode solver settings on a cavity. Each variant is a set of config overrides,
+  and a sweep crosses it with a list of values. Every point is a complete
+  simulation, repeated, and scored against a tightly converged reference on the
+  same mesh. `cav.eigenmode.benchmark_table()` gives the time per simulation and
+  the error of every frequency and figure of merit. `cav.eigenmode.plot_benchmark()`
+  plots error against time. Re-running it after a solver change shows what the
+  change bought and what it cost.
+- Documentation: a Convergence, timing and accuracy section. It holds the two mesh
+  convergence examples, moved from Eigenmode and re-run on the current solver, and a
+  new example comparing solver settings by time per simulation and accuracy.
 - Operating points take their bunch length as `'sigma [mm]'`: one value, or several
   under labels of your choice (`{'SR': 4.32, 'BS': 15.2}`). Each gets its own
   wakefield run, and the first is the primary one the plots and tables show. The
@@ -18,9 +29,21 @@ follow [Semantic Versioning](https://semver.org).
 - `boundary_conditions='port'` (or `'pp'`) terminates both beam pipes in waveguide
   ports, the exact modal impedance of the pipe, and reports the external Q as
   `'Q_ext []'`. It is selected like `'oo'` and its results land in
-  `cav.eigenmode.qois_df` like any other run. Monopole only; `n_port_modes` (default
-  3) sets the TM0n pipe modes per port. The port solver was previously a standalone
-  class nothing else called.
+  `cav.eigenmode.qois_df` like any other run. Every polarisation is supported: the
+  ports carry both TE and TM pipe modes of the right azimuthal order (`n_port_modes`
+  of each, default 3), so a monopole TE mode radiates through TE01 and a dipole
+  through TE11 and TM11. Below a cutoff the port is exact. Above one the solve is a
+  single linearised pass, an estimate that also produces spurious resonances, and
+  the run warns about every mode it affects. The port solver was previously a
+  standalone, monopole-TM-only class nothing else called.
+- `cav.eigenmode.classify_modes(other)` and the rewritten `stable_modes`: cavity mode
+  or pipe/termination artefact, judged against a second solve with a longer pipe, by
+  mutual nearest-neighbour frequency matching with a linewidth-scaled tolerance, and
+  Q as a tie-breaker only. It returns the evidence behind each verdict.
+- `U_frac_<region> []`: the share of each mode's stored electric energy in every
+  material region, from the field. It identifies resonances of an absorber directly.
+- `cav.eigenmode.plot_q_ext()`: external Q against frequency, picking the column the
+  solve produced, with artefacts drawn hollow.
 - Example: `Three ways to compute the external Q`
   (`docs/source/examples/eigenmode/external_q_methods.ipynb`) compares a PML, waveguide
   ports and a lossy absorber cone on the same cavity.
@@ -88,6 +111,52 @@ follow [Semantic Versioning](https://semver.org).
 - Portable `pytest` suite under `tests/`; a `pyproject.toml`-based install.
 
 ### Fixed
+- Multipacting collision surface. The wall vertices were sorted by z and joined in
+  that order, which is the wall only while z increases along it. A pillbox's
+  right-hand plate, a re-entrant iris and an RF gun's funnel were joined out of order
+  into segments crossing the vacuum (up to 80 mm on a pillbox, 400 mm on the gun),
+  and 17-30 % of their wall normals pointed into the metal, so secondaries were
+  launched into the wall. The wall is now walked along its boundary elements, with
+  the vacuum on its right, and segments join contour neighbours only. Monotone walls
+  (a TESLA cell) are unchanged; the re-entrant, pillbox and RF gun results change.
+  In the examples the re-entrant counter keeps its onset (about 47 MV/m) and rises
+  about 15 %; the RF gun, which showed none up to 50 MV/m, now starts near 47 MV/m.
+- Multicell UQ with a `tune_config` crashed with a Windows access violation after about
+  100 half-cells in each process (18 min into the docs example, however many workers).
+  The per-half-cell tune meshed each quarter cell as `.geo` -> gmsh -> STEP file ->
+  netgen, and a few hundred of those in one process corrupted the heap. Where it
+  showed was set by the process's history, not by any one geometry. The quarter cell
+  is now built as a `Profile` (`geometry.contours.quarter_cell_profile`) and meshed
+  natively, like every other cavity: the same frequency to about 1e-6 MHz, and the
+  3,472-geometry sequence that crashed the old path at geometry 233 runs clean. A
+  half-cell with no tangent line is now reported as degenerate instead of solved.
+- Tuning ignored `tune_config['eigenmode_config']['mesh_config']`. Every secant step,
+  and every UQ-tune quadrature node, ran on the solver's default mesh (h = 20 mm,
+  p = 3), and the eigenmode run `Study.run_tune` does afterwards used the mesh asked
+  for, so a cavity tuned to 1300 MHz on `{'h': 6, 'p': 2}` came out about 0.04 MHz off.
+  The steps now use the caller's mesh. The stage keeps its own boundary conditions.
+- Tuning could stall within 1e-3 MHz of the target and return nothing. The steps use
+  the BDDC preconditioner, and PINVIT stops after 20 iterations whether or not it has
+  converged, which leaves a few 1e-4 MHz of scatter that changes from call to call,
+  larger than the default 1e-4 MHz tolerance. Within 100 tolerances of the target a
+  step is now solved with the direct preconditioner. A tune that runs out of steps
+  also says so, instead of failing silently.
+- Flat-top cavities normalised `Eacc` to `2 * n_cells * L_m`, leaving out the flat, so
+  `Eacc` was overstated and `Epk/Eacc`, `Bpk/Eacc` understated by the flat's share of
+  the cell (about 10 % for a 20 mm flat on a 187 mm cell). Every model now declares
+  `active_length()`, used by both the eigenmode normalisation and the RF power budget,
+  which also moves the elliptical power budget onto the eigenmode convention
+  (`2 * n_cells * L_m`, the published TESLA 1.0377 m).
+- The flat-top model built beam pipes twice as long as the elliptical one (a stale
+  `4 * L_m` default in the contour builder), so the two disagreed at zero flat length.
+- ZL/ZT window objectives took the largest *peak* inside the window and reported 0
+  when none lay inside, however large `|Z|` was there, so the objective jumped as a
+  resonance crossed a window edge. They now take the maximum `|Z|` over the window.
+- Physical constants came from three different CODATA vintages in 14 places; they now
+  come from `cavsim2d.constants`, which takes them from `scipy.constants`.
+- Five tests failed on a clean checkout (stale expectations after the 2 L_m beam pipe,
+  the centred geometry plot and the `CircularWaveguide` rename; an `assert` used for
+  user input; three nested imports without a rationale). All pass.
 - Operating-point wakefield runs used the wrong bunch length. Each `SR`/`BS`
   sub-run was handed the main run's config unchanged, so ABCI ran every one at the
   main `bunch_length` (25 mm by default), both bunch lengths returned the same
@@ -215,6 +284,46 @@ follow [Semantic Versioning](https://semver.org).
   bookkeeping keys.
 
 ### Changed
+- The eigenmode solver factorises with `sparsecholesky` by default, on every
+  platform and on both the lossless (PINVIT) and the lossy/PML (Arnoldi) paths.
+  The eigen matrices are symmetric on every path, and PARDISO, the previous
+  Windows default, is about 60x slower on the blocks of vectors PINVIT works with.
+  The eigenvalues are unchanged; a TESLA 9-cell solve at the default mesh drops
+  from 8.9 s to under 2 s, and the lossy/PML path is 1.5 to 8.5x faster.
+  `eigenmode_config['direct_solver']` now selects the backend for every
+  factorisation of the solve; previously it reached only the gradient-kernel
+  projector, and PINVIT's preconditioner always used NGSolve's build default.
+- Eigenmode meshes are curved one order above the field order (`p + 1`, the order
+  of the azimuthal H1 block). Curved only to `p`, the wall was the dominant error
+  on the default mesh: at `h = 20` mm, `p = 3` the TESLA pi-mode came out 28 kHz
+  low (2.1e-5). It is now 0.5 kHz low, for the same DOF count and no measurable
+  cost. Results move by that amount, so a cavity tuned before this change lands
+  about 28 kHz high when re-solved. The waveguide-port and driven solvers follow.
+- The eigensolver stops when it has converged rather than after a fixed 20
+  iterations. It measures every mode's relative residual and stops once all
+  `n_modes` are below `eigenmode_config['pinvit_tol']` (default 1e-8: frequencies to
+  about 1e-13, fields and figures of merit to about 3e-7).
+  `pinvit_converge_modes` checks only the lowest few, and `pinvit_maxit` (default
+  1000) is now a cap that warns when reached. A fixed count could not serve every
+  cavity. A single cell converges in about 20 iterations. The two second-band modes
+  a 9-cell reports by default were still 2e-3 off at 20 and need about 250. A
+  9-cell monopole solve with the default modes therefore takes longer than before
+  (about 7 s instead of 1.6 s at the default mesh). Setting
+  `pinvit_converge_modes=n_cells` converges the passband alone in about 11
+  iterations.
+- The wall loss, and with it Q, G and Rsh, is integrated from the exact wall trace of
+  the solved magnetic field. It used to be projected onto a continuous field first.
+  The projection averaged the element-wise field between neighbours and added a
+  mesh-dependent error of its own. G zig-zagged in sign from one mesh to the next
+  instead of converging steadily, and was 5 to 100x less accurate on the same mesh
+  (TESLA 2-cell). The closed-pillbox Q now matches the analytic value to 1.7e-8 at
+  `h = 40` mm, `p = 5` (9.2e-8 before).
+- Field figures of merit repeat between identical runs. Every eigenvector carried
+  a small, run-dependent gradient-kernel component (about 2e-7) that the frequency
+  cannot see, so R/Q, Epk, Bpk, G and ff repeated only to about 1e-5. The
+  component is now projected out, and R/Q repeats to 1e-11. This matters for
+  uncertainty and sensitivity studies, where that run-to-run noise was noise in the
+  result.
 - The examples are reordered so each one builds only on what came before:
   Eigenmode, Studies, Wakefield, Tuning, Multipacting, Optimisation, Beam lines,
   Custom geometry, then uncertainty quantification. The two multicell UQ studies

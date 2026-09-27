@@ -14,12 +14,10 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm
 
 from cavsim2d.analysis.multipacting.metrics import distance_function
+from cavsim2d.constants import c0, m0, q0  # noqa: F401
 from cavsim2d.utils.printing import info
 from cavsim2d.utils.style import house_style
 
-c0 = 299792458
-q0 = 1.60217663e-19
-m0 = 9.1093837e-31
 
 #: Continuous colormap for velocity/energy-coded trajectories.
 TRAJ_CMAP = 'inferno'

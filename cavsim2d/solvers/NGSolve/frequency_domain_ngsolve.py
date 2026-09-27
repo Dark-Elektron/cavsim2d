@@ -75,7 +75,8 @@ from ngsolve import (BND, CoefficientFunction, GridFunction,  # type: ignore
 
 import pandas as pd
 
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, mesh_h_metres
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import (NGSolveMEVP, geometry_order,
+                                                    mesh_h_metres)
 from cavsim2d.solvers.NGSolve.ports import (C0, EPS0, MU0, Z0, cutoffs,
                                             port_planes, projection_vectors,
                                             propagation_constant)
@@ -148,7 +149,7 @@ class DrivenPortSolver:
         cfg = {'mesh_config': {'h': mesh_h, 'p': mesh_p}}
         if beampipe_length is not None:
             cfg['beampipe_length'] = beampipe_length
-        mesh = solver._build_mesh(cav, h_m, int(mesh_p),
+        mesh = solver._build_mesh(cav, h_m, geometry_order(mesh_p),
                                   boundary_conditions=33, eigenmode_config=cfg)
 
         # The eigen weak form, unchanged, in complex arithmetic. Only 'stiff' and

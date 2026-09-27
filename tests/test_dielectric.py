@@ -776,3 +776,15 @@ def test_dielectric_colour_survives_state_round_trip():
                        color=(0.9, 0.2, 0.1))
     back = type(cav)._reconstruct_from_state(cav._reconstruct_state())
     assert back.dielectrics[0]['color'] == (0.9, 0.2, 0.1)
+
+
+def test_energy_fraction_per_material_matches_the_loss_integral():
+    """U_frac_<region> is the share of the stored electric energy in that region,
+    from the field. For a perturbative loss 1/Q_diel = tan_delta * U_frac exactly,
+    since both are the same eps'-weighted integral."""
+    mesh = _split_pillbox(0.075)
+    mats = {'ceramic': {'eps_r': 4.0, 'tan_delta': 1e-4}}
+    for q in _qois(mesh, mats, 'perturbation', n=2):
+        frac = q['U_frac_ceramic []']
+        assert 0.0 < frac < 1.0
+        assert frac == pytest.approx(1.0 / (q['Q_diel []'] * 1e-4), rel=1e-6)

@@ -61,6 +61,7 @@ two different port-plane conditions and combine them.
 """
 import json
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -70,8 +71,10 @@ import scipy.sparse.linalg as spla
 from ngsolve import (GridFunction, IfPos, TaskManager, curl,  # type: ignore
                      grad, y as _y)
 
+from cavsim2d.constants import mu0
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import (AXIS_EPS, NGSolveMEVP, SIGMA_COPPER,
-                                                    mesh_h_metres,
+                                                    eigenmode_normalisation,
+                                                    geometry_order, mesh_h_metres,
                                                     parse_boundary_conditions,
                                                     parse_polarisations)
 from cavsim2d.solvers.eigenmode_result import pol_name
@@ -112,10 +115,14 @@ class PortEigenSolver:
     #: iteration is drawn toward the cutoff, where ``beta -> 0`` and ``Y -> inf``.
     MAX_PASSES = 1
 
-    def __init__(self, n_port_modes=3, m=0, kind='TM'):
+    def __init__(self, n_port_modes=3, m=0, kind='both'):
+        # n_port_modes per family and end. kind: 'TM', 'TE' or 'both' (the default).
+        # A monopole TM mode radiates only into TM_0n and a TE mode only into
+        # TE_0n; at m >= 1 the two families couple, so both are needed there.
         self.n_port_modes = int(n_port_modes)
         self.m = int(m)
         self.kind = str(kind).upper()
+        self._port_kinds = np.array([], dtype=object)
 
     # -- assembly ---------------------------------------------------------
     def _assemble(self, cav, mesh_h, mesh_p, beampipe_length):
@@ -123,7 +130,7 @@ class PortEigenSolver:
         cfg = {'mesh_config': {'h': mesh_h, 'p': mesh_p}}
         if beampipe_length is not None:
             cfg['beampipe_length'] = beampipe_length
-        mesh = solver._build_mesh(cav, mesh_h_metres({'h': mesh_h}), int(mesh_p),
+        mesh = solver._build_mesh(cav, mesh_h_metres({'h': mesh_h}), geometry_order(mesh_p),
                                   boundary_conditions=33, eigenmode_config=cfg)
 
         # The eigen weak form, unchanged, in complex arithmetic. Assembled ONCE:
@@ -139,21 +146,36 @@ class PortEigenSolver:
         free = np.array([bool(d) for d in fes.FreeDofs()])
         idx = np.where(free)[0]
 
-        p_vecs, kcs = projection_vectors(mesh, fes, self.n_port_modes,
-                                         m=self.m, kind=self.kind)
+        families = ('TM', 'TE') if self.kind == 'BOTH' else (self.kind,)
+        p_vecs, kcs, kinds = [], [], []
+        for family in families:
+            vecs, cuts = projection_vectors(mesh, fes, self.n_port_modes,
+                                            m=self.m, kind=family)
+            p_vecs += vecs
+            kcs += list(cuts)
+            kinds += [family] * len(cuts)
+        self._port_kinds = np.array(kinds, dtype=object)
+        self._port_cutoffs_mhz = np.array(kcs) * C0 / (2 * np.pi) * 1e-6
         P = np.column_stack([p[idx] for p in p_vecs])
-        return mesh, fes, K[idx][:, idx], M[idx][:, idx], P, kcs, idx
+        return mesh, fes, K[idx][:, idx], M[idx][:, idx], P, np.array(kcs), idx
 
     @staticmethod
-    def _port_block(P, kcs, k0, n_free):
-        """``- i sum_n P_n P_n^T / beta_n(k0)`` as a sparse matrix.
+    def _port_block(P, kcs, k0, n_free, kinds=None):
+        """The port term of ``B(w)`` in ``(K - k0^2 B(w)) E = 0``, as a sparse matrix:
+        ``- i P_n P_n^T / beta_n`` for a TM mode and ``- i beta_n P_n P_n^T / k0^2``
+        for a TE mode.
 
-        This is the whole w-dependence. Below a mode's cutoff ``beta`` is
-        negative-imaginary so the term is REAL -- a reactance, no damping. Above it,
-        the term is imaginary and the eigenvalue picks up its imaginary part.
+        This is the whole w-dependence. The two families differ through their wave
+        admittance, ``y_TM = w eps0 / beta`` and ``y_TE = beta / (w mu0)``. Below a
+        mode's cutoff ``beta`` is negative-imaginary, so both terms are REAL -- a
+        reactance, no damping. Above it they are imaginary, with the same sign, and
+        the eigenvalue picks up its imaginary part.
         """
+        if kinds is None or len(kinds) != len(kcs):
+            kinds = ['TM'] * len(kcs)
+        k0 = complex(k0)
         B = sp.lil_matrix((n_free, n_free), dtype=complex)
-        for j, k_c in enumerate(kcs):
+        for j, (k_c, kind) in enumerate(zip(kcs, kinds)):
             beta = propagation_constant(k0, k_c)
             if beta == 0:
                 continue
@@ -161,7 +183,8 @@ class PortEigenSolver:
             nz = np.where(np.abs(pj) > 0)[0]
             if nz.size == 0:
                 continue
-            B[np.ix_(nz, nz)] += (-1j / beta) * np.outer(pj[nz], pj[nz])
+            coeff = (-1j / beta) if kind == 'TM' else (-1j * beta / (k0 * k0))
+            B[np.ix_(nz, nz)] += coeff * np.outer(pj[nz], pj[nz])
         return B.tocsr()
 
     def _mode_fields(self, fes, idx, vec_free, f_mhz):
@@ -172,7 +195,7 @@ class PortEigenSolver:
         path does (H stored with the ``i`` dropped), so ``evaluate_qois`` sees
         exactly what it sees for every other solver.
         """
-        MU0_ = 4e-7 * np.pi
+        MU0_ = mu0
         gfu = GridFunction(fes)
         full = np.zeros(fes.ndof, dtype=complex)
         full[idx] = vec_free
@@ -190,7 +213,7 @@ class PortEigenSolver:
         try:
             q = NGSolveMEVP.evaluate_qois(mesh, [gfu], [gH], [f_mhz], m=self.m,
                                           mode_idx=0, n_cells=getattr(cav, 'n_cells', 1),
-                                          L=cav.parameters.get('L_m', None))
+                                          L=eigenmode_normalisation(cav))
         except Exception as exc:                      # a QOI must never kill a solve
             warning(f'{f_mhz:.1f} MHz: evaluate_qois failed ({exc})')
             return {}
@@ -272,7 +295,7 @@ class PortEigenSolver:
             vec = None
             hist = []
             for k in range(1, max_passes + 1):
-                Bw = M + self._port_block(P, kcs, np.sqrt(lam), n_free)
+                Bw = M + self._port_block(P, kcs, np.sqrt(lam), n_free, self._port_kinds)
                 try:
                     vals, evecs = spla.eigs(K, k=1, M=Bw, sigma=lam, which='LM')
                 except Exception as exc:
@@ -319,15 +342,18 @@ class PortEigenSolver:
         carries ``'Q_ext []'`` (from the complex eigenvalue, also reported as
         ``'Q_eig []'``), ``'Q_wall []'`` and their combination ``'Q []'``.
 
-        Monopole only: the port profiles are implemented for the TM_0n pipe modes.
+        Every polarisation in ``eigenmode_config['polarisation']`` is solved, each
+        with the TE and TM pipe modes of its own azimuthal order as ports.
         """
         cfg = eigenmode_config or {}
         pols = parse_polarisations(cfg.get('polarisation', 0))
-        if pols != [0]:
-            raise NotImplementedError(
-                "boundary_conditions='port' solves the monopole only (the port "
-                f"profiles are the TM_0n pipe modes); asked for polarisations {pols}. "
-                "Use boundary_conditions='oo' (PML) for m >= 1.")
+        for m in pols:
+            self.m = int(m)
+            self._run_pol(cav, cfg)
+        return True
+
+    def _run_pol(self, cav, cfg):
+        """One azimuthal order (``self.m``) of :meth:`run`."""
         ends = parse_boundary_conditions(cfg.get('boundary_conditions', 'port'))
         if ends != ('port', 'port'):
             raise ValueError(
@@ -356,25 +382,43 @@ class PortEigenSolver:
         gfu_E = [f[0] for f in fields]
         gfu_H = [f[1] for f in fields]
 
-        solver = NGSolveMEVP()
-        pol_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(0))
-        os.makedirs(pol_dir, exist_ok=True)
-        solver.save_fields(pol_dir, gfu_E, gfu_H, mesh_p, 0, freqs)
+        # Above the lowest pipe cutoff the port Q_ext comes from ONE linearised pass:
+        # the pipe impedance frozen at the closed-cavity frequency. That is exact for
+        # a trapped mode, which does not move, but only an estimate for a radiating
+        # one, and the same pass finds spurious resonances with Q up to ~150 in a
+        # straight, perfectly matched pipe. The exact nonlinear problem is not
+        # solved yet. Say so on every run that reports such modes.
+        f_cut = float(np.min(self._port_cutoffs_mhz))
+        above = sum(f > f_cut for f in freqs)
+        if above:
+            warnings.warn(
+                f"{above} of {len(freqs)} port modes ({pol_name(self.m)}) lie above the "
+                f"lowest pipe cutoff, {f_cut:.0f} MHz. Their Q_ext is a single-pass "
+                "estimate, with the pipe impedance frozen at the closed-cavity frequency, "
+                "and that pass also produces spurious resonances (Q up to ~150 in a "
+                "straight, matched pipe). Below the cutoff the port result is exact. For "
+                "radiating modes use boundary_conditions='oo' and keep the modes that "
+                "survive a change of pipe length (cav.eigenmode.stable_modes).",
+                UserWarning, stacklevel=4)
 
-        L_norm = cav.parameters.get('L_m', None)
-        if L_norm is None:
-            L_norm = cfg.get('normalization_length', None)
+        solver = NGSolveMEVP()
+        pol_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(self.m))
+        os.makedirs(pol_dir, exist_ok=True)
+        solver.save_fields(pol_dir, gfu_E, gfu_H, mesh_p, self.m, freqs)
+
+        L_norm = eigenmode_normalisation(cav, cfg)
 
         def qois(i, write_axis=False):
             q = NGSolveMEVP.evaluate_qois(
-                mesh, gfu_E, gfu_H, freqs, 0, mode_idx=i, n_cells=cav.n_cells,
+                mesh, gfu_E, gfu_H, freqs, self.m, mode_idx=i, n_cells=cav.n_cells,
                 L=L_norm, save_dir=pol_dir, write_axis=write_axis,
                 conductivity=cfg.get('conductivity', SIGMA_COPPER),
                 surface_resistance_ohm=cfg.get('surface_resistance'), q_diel=q_ext)
             q['Q_ext []'] = q_ext[i]
+            q['port cutoff [MHz]'] = f_cut
             return q
 
-        moi = NGSolveMEVP.modes_of_interest(cav, 0, cfg, len(freqs))
+        moi = NGSolveMEVP.modes_of_interest(cav, self.m, cfg, len(freqs))
         qois_moi = {}
         for i in moi:
             q = qois(i, write_axis=(i == moi[0]))
@@ -388,7 +432,6 @@ class PortEigenSolver:
         with open(os.path.join(pol_dir, 'qois_all_modes.json'), 'w') as f:
             json.dump({i: qois(i) for i in range(len(freqs))}, f, indent=4,
                       separators=(',', ': '))
-        return True
 
 
 # ---------------------------------------------------------------------------
@@ -542,7 +585,8 @@ def _add_solve_beyn():
                     f"split the band either side of {f_cut:.1f} MHz.")
 
         def T(z):
-            return K - z * (M + self._port_block(P, kcs, np.sqrt(complex(z)), n_free))
+            return K - z * (M + self._port_block(P, kcs, np.sqrt(complex(z)), n_free,
+                                                 self._port_kinds))
 
         info(f'beyn: {n_free} dofs, contour centre {centre:.4g} radius {radius:.4g}, '
              f'{n_quad} quadrature points x {n_probe} probes')

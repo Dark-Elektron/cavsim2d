@@ -41,6 +41,23 @@ TUNE_DEFECTS = (NotImplementedError, TypeError, AttributeError, KeyError,
                 ImportError, UnicodeError, IndexError)
 
 
+def _step_eigenmode_config(tune_config, **extra):
+    """The eigenmode config for one tuning solve: the caller's mesh, plus *extra*.
+
+    Only the mesh comes from ``tune_config['eigenmode_config']``. The boundary
+    conditions and polarisation belong to the stage (a mid cell is solved between
+    two PMC planes, for its pi-mode), and the rest of that config is for the
+    eigenmode run on the tuned cavity afterwards. Without the mesh the steps ran on
+    the solver's default, and a cavity tuned "with" ``{'h': 6, 'p': 2}`` came out
+    several 1e-2 MHz off target when that run re-solved it on the mesh asked for.
+    """
+    cfg = dict(extra)
+    mesh = (tune_config.get('eigenmode_config') or {}).get('mesh_config')
+    if mesh:
+        cfg['mesh_config'] = dict(mesh)
+    return cfg or None
+
+
 VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
 TUNE_VAR_STEP_DIRECTION_DICT = {'A': -1, 'B': 1, 'a': -1, 'b': 1, 'Ri': 1, 'L': 1, 'Req': -1, 'l': 1}
 MAX_TUNE_ITERATION = 10
@@ -84,6 +101,14 @@ def _resolve_cell_type(cell_type, shape, perturbed=None):
 
 
 class PyTuneNGSolve:
+    # Within this many tolerances of the target, a step is solved with the direct
+    # preconditioner instead of BDDC. BDDC is approximate and PINVIT stops after a
+    # fixed number of iterations, so a BDDC frequency carries an error of a few
+    # 1e-4 MHz on a fine mesh, different on every call (PINVIT starts from random
+    # vectors). Far from the target that is noise under the step; near it, it kept
+    # the secant from ever meeting the default 1e-4 MHz tolerance.
+    DIRECT_WITHIN_TOLS = 100
+
     def __init__(self):
         self.plot = None
         self.beampipe = None
@@ -147,6 +172,7 @@ class PyTuneNGSolve:
         # degenerate geometry." error so only the final stage result is
         # reported. A terminal degeneracy still surfaces via the
         # ValueError branch below.
+        aborted = False
         try:
             with suppress_errors('Parameter set leads to degenerate geometry'):
                 res = root_scalar(
@@ -170,6 +196,7 @@ class PyTuneNGSolve:
             # Tuning aborted mid-iteration (e.g., repeated degeneracy).
             error(f'Tune aborted: {e}')
             converged = False
+            aborted = True
             # Best-effort: pick the tv with smallest |diff| from the valid points collected.
             root_val = self._best_valid_tv_or_zero()
 
@@ -221,6 +248,14 @@ class PyTuneNGSolve:
                 idx = int(np.argmin(np.abs(np.array(self.tv_list) - root_val)))
             return root_val, self.freq_list[idx], self.conv_dict, self.abs_err_list
         else:
+            # An abort has already said why; running out of steps close to the
+            # target used to return nothing without a word.
+            if not aborted and self._valid_freqs():
+                _, best_diff = self._best_valid_result()
+                error(f"Tune did not converge in {maxiter} secant steps: the closest "
+                      f"step was {abs(best_diff):.2e} MHz from {self.target_freq} MHz, "
+                      f"outside the {tol:.2e} MHz tolerance. Raise "
+                      f"tune_config['maxiter'] or loosen tune_config['tol'].")
             return 0, 0, self.conv_dict, self.abs_err_list
 
     def _valid_freqs(self):
@@ -277,78 +312,32 @@ class PyTuneNGSolve:
         except Exception:
             degenerate = True
 
+        # UQ tuning reads its own uq.json, so it keeps the full default solve.
+        # Otherwise the secant needs only the frequency: defer the QOIs and fields
+        # to the solve on the tuned cavity, and use BDDC until the step is close
+        # enough for its error to matter.
+        uq = bool(self.tune_config.get('uq_config'))
+        pre = None if uq else self._preconditioner()
         if not degenerate:
-            orig_n_cells = self.cav.n_cells
-            orig_beampipe = getattr(self.cav, 'beampipe', None)
-            self.cav.n_cells = 1
-            # The eigensolver meshes cav.profile(), which reads cav.beampipe /
-            # cav.n_cells — NOT the reduced .geo that create(mode=...) just
-            # wrote. Without this override a mid-cell tune on a cavity built
-            # with beampipe='both' would solve a single cell WITH both
-            # beampipes (a different, beampipe-loaded frequency) instead of the
-            # bare periodic mid-cell, converging on the wrong Req. Pin the
-            # cavity's geometry context to this stage's intended beampipe for
-            # the duration of the solve.
-            if orig_beampipe is not None:
-                self.cav.beampipe = bp
-
-            # ...and pin the OPPOSITE end cell to the mid cell for the same
-            # reason. profile() reads self.parameters live, and for n_cells=1
-            # half_cells() returns [end_l, end_r] -- so without this the end-cell
-            # stage solves end+end (the end cell mirrored onto itself) and never
-            # sees the mid cup it actually adjoins. That is the model
-            # write_endcell_tune_geometry was written to avoid, and its
-            # substitution was being discarded because the solver meshes
-            # profile() rather than the .geo create() just wrote.
-            #
-            # The result is cell 1 of the real cavity in isolation:
-            #   beampipe | end-cup | equator | mid-cup | iris
-            # with PMC at the outer iris plane -- both cut planes are genuine
-            # pi-mode symmetry planes.
-            orig_end_params = None
-            if endcell_tune:
-                other = '_er' if bp == 'left' else '_el'
-                keys = [f'{n}{other}' for n in
-                        ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')]
-                orig_end_params = {k: self.cav.parameters[k]
-                                   for k in keys if k in self.cav.parameters}
-                for k in orig_end_params:
-                    self.cav.parameters[k] = self.cav.parameters[
-                        f'{k[:-len(other)]}_m']
-            try:
-                # Frequency-only inner solve with the faster BDDC preconditioner: the
-                # secant needs only the frequency, so defer the QOIs/field output to the
-                # final full solve once tuning is complete, and BDDC (~1.4-1.9x faster,
-                # same eigenvalue) is safe for these single monopole solves. (UQ tuning
-                # reads its own uq.json, so keep the full direct solve there.)
-                _eig_cfg = (None if self.tune_config.get('uq_config')
-                            else {'freq_only': True, 'preconditioner': 'bddc'})
-                res = ngsolve_mevp.solve(self.cav, eigenmode_config=_eig_cfg)
-            except Exception:
-                res = False
-            finally:
-                self.cav.n_cells = orig_n_cells
-                if orig_beampipe is not None:
-                    self.cav.beampipe = orig_beampipe
-                if orig_end_params:
-                    self.cav.parameters.update(orig_end_params)
-            if not res:
-                degenerate = True
+            degenerate = not self._solve_step(bp, endcell_tune, pre)
 
         if degenerate:
             return self._degenerate_penalty(x_val)
 
-        if 'uq_config' in self.tune_config and self.tune_config['uq_config']:
+        if uq:
             run_tune_uq(self.cav, self.tune_config)
 
             with open(os.path.join(self.cav.self_dir, 'eigenmode', 'uq.json')) as json_file:
                 eigenmode_qois = json.load(json_file)
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
-            mono_dir = monopole_dir(os.path.join(self.cav.self_dir, 'eigenmode'))
-            with open(os.path.join(mono_dir, 'qois.json')) as json_file:
-                eigenmode_qois = json.load(json_file)
-            freq = eigenmode_qois['freq [MHz]']
+            freq = self._read_frequency()
+            # A BDDC step that lands near the target is solved again exactly, so no
+            # step is accepted on the preconditioner's error.
+            if (pre == 'bddc' and abs(freq - self.target_freq)
+                    <= self.DIRECT_WITHIN_TOLS * self.tol
+                    and self._solve_step(bp, endcell_tune, 'direct')):
+                freq = self._read_frequency()
 
         self.freq_list.append(freq)
         self._valid_mask.append(True)
@@ -364,6 +353,77 @@ class PyTuneNGSolve:
             raise _TargetFreqReached()
 
         return diff
+
+    def _preconditioner(self):
+        """'direct' once the last valid step is within DIRECT_WITHIN_TOLS tolerances."""
+        last = [e for e, ok in zip(self.abs_err_list, self._valid_mask) if ok]
+        near = bool(last) and last[-1] <= self.DIRECT_WITHIN_TOLS * self.tol
+        return 'direct' if near else 'bddc'
+
+    def _read_frequency(self):
+        mono_dir = monopole_dir(os.path.join(self.cav.self_dir, 'eigenmode'))
+        with open(os.path.join(mono_dir, 'qois.json')) as json_file:
+            return json.load(json_file)['freq [MHz]']
+
+    def _solve_step(self, bp, endcell_tune, preconditioner):
+        """Solve the stage geometry once, on the caller's mesh. True on success.
+
+        *preconditioner* None is the full default solve (QOIs and fields);
+        otherwise a frequency-only solve with that preconditioner.
+        """
+        orig_n_cells = self.cav.n_cells
+        orig_beampipe = getattr(self.cav, 'beampipe', None)
+        self.cav.n_cells = 1
+        # The eigensolver meshes cav.profile(), which reads cav.beampipe /
+        # cav.n_cells — NOT the reduced .geo that create(mode=...) just
+        # wrote. Without this override a mid-cell tune on a cavity built
+        # with beampipe='both' would solve a single cell WITH both
+        # beampipes (a different, beampipe-loaded frequency) instead of the
+        # bare periodic mid-cell, converging on the wrong Req. Pin the
+        # cavity's geometry context to this stage's intended beampipe for
+        # the duration of the solve.
+        if orig_beampipe is not None:
+            self.cav.beampipe = bp
+
+        # ...and pin the OPPOSITE end cell to the mid cell for the same
+        # reason. profile() reads self.parameters live, and for n_cells=1
+        # half_cells() returns [end_l, end_r] -- so without this the end-cell
+        # stage solves end+end (the end cell mirrored onto itself) and never
+        # sees the mid cup it actually adjoins. That is the model
+        # write_endcell_tune_geometry was written to avoid, and its
+        # substitution was being discarded because the solver meshes
+        # profile() rather than the .geo create() just wrote.
+        #
+        # The result is cell 1 of the real cavity in isolation:
+        #   beampipe | end-cup | equator | mid-cup | iris
+        # with PMC at the outer iris plane -- both cut planes are genuine
+        # pi-mode symmetry planes.
+        orig_end_params = None
+        if endcell_tune:
+            other = '_er' if bp == 'left' else '_el'
+            keys = [f'{n}{other}' for n in
+                    ('A', 'B', 'a', 'b', 'Ri', 'L', 'Req')]
+            orig_end_params = {k: self.cav.parameters[k]
+                               for k in keys if k in self.cav.parameters}
+            for k in orig_end_params:
+                self.cav.parameters[k] = self.cav.parameters[
+                    f'{k[:-len(other)]}_m']
+        try:
+            if preconditioner is None:
+                cfg = _step_eigenmode_config(self.tune_config)
+            else:
+                cfg = _step_eigenmode_config(self.tune_config, freq_only=True,
+                                             preconditioner=preconditioner)
+            res = ngsolve_mevp.solve(self.cav, eigenmode_config=cfg)
+        except Exception:
+            res = False
+        finally:
+            self.cav.n_cells = orig_n_cells
+            if orig_beampipe is not None:
+                self.cav.beampipe = orig_beampipe
+            if orig_end_params:
+                self.cav.parameters.update(orig_end_params)
+        return bool(res)
 
     def _degenerate_penalty(self, x_val):
         """Handle degenerate geometry step by returning a penalty that
@@ -629,7 +689,8 @@ def run_tune_uq(cav, tune_config):
             uq_tune_mode = 'tune-endcell' if bp in ('left', 'right') else 'tune'
             try:
                 cav.create(1, bp, mode=uq_tune_mode)
-                ok = bool(ngsolve_mevp.solve(cav))
+                ok = bool(ngsolve_mevp.solve(
+                    cav, eigenmode_config=_step_eigenmode_config(tune_config)))
             except Exception as e:
                 info(f'UQ node {j} failed to solve ({e!r}); dropping from quadrature.')
                 ok = False

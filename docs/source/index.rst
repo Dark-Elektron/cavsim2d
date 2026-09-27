@@ -48,6 +48,7 @@ cavsim2d documentation!
    :caption: Examples
 
    examples/eigenmode/index
+   examples/convergence/index
    examples/studies/index
    examples/wakefield/index
    examples/tuning/index

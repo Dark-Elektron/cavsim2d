@@ -12,11 +12,8 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-q0 = 1.60217663e-19
-m0 = 9.1093837e-31
-mu0 = 4 * np.pi * 1e-7
-eps0 = 8.85418782e-12
-c0 = 299792458
+from cavsim2d.constants import c0, eps0, m0, mu0, q0  # noqa: F401
+
 
 # Number of nearest surface points fetched per boundary-check to reconstruct
 # the local wall segments. The paper code used 1000 (nearly the whole surface);
@@ -41,13 +38,14 @@ class _ParticleDummy:
     """
 
     __slots__ = ['x', 'u', 'phi', 'x_old', 'u_old', 'phi_old',
-                 'x_temp', 'u_temp', 'phi_temp', 'bounds', '_bounds_tree']
+                 'x_temp', 'u_temp', 'phi_temp', 'bounds', 'links', '_bounds_tree']
 
     def __init__(self, particles):
         self.x = particles.x.copy()
         self.u = particles.u.copy()
         self.phi = particles.phi.copy()
         self.bounds = particles.bounds
+        self.links = particles.links
         self._bounds_tree = particles._bounds_tree  # shared, read-only
 
     def save_old(self):
@@ -603,7 +601,9 @@ class Integrators:
             if r < c0 * dt and mask[ind]:  # point at boundary, calculate new field value
                 # check if point is inside or outside of region
                 # get surface points neighbours
-                surf_pts_neigs = self.get_neighbours(xsurf, idx)
+                starts, ends = self.get_segments(xsurf, particles_dummy.links, idx)
+                if not len(starts):
+                    continue
 
                 # check for intersection
                 # get intersection with old point. loop through points again.
@@ -612,7 +612,7 @@ class Integrators:
 
                 line11 = (particles_dummy.x[ind],
                           particles_dummy.x_old[ind])  # <- straight line btw current and previous points
-                line22 = surf_pts_neigs[1:], surf_pts_neigs[:-1]
+                line22 = ends, starts
 
                 bool_intc_p, x_intc_p, intc_indx = self.segment_intersection(line11, line22)
                 # self.ax.plot(np.array(line11).T[0], np.array(line11).T[1], c='b', marker='o', zorder=2000)
@@ -639,9 +639,13 @@ class Integrators:
                     b = mu0 * scale * np.array([em.h(mip)]) * _phase
 
                     # check if the e-field surface normal is close to zero indicating a possible change in field
-                    line22 = np.array(line22)[:, intc_indx]
-                    line22 = line22[line22[:, 0].argsort()]
-                    line22_normal = -np.array([-(line22[1][1] - line22[0][1]), line22[1][0] - line22[0][0]])
+                    # the hit segment, in contour order (start, end): the wall runs
+                    # with the vacuum on its right, so its right-hand normal points
+                    # inward. (Sorting the two ends by z instead flipped the normal
+                    # on any wall that runs backwards in z.)
+                    seg_end, seg_start = np.array(line22)[:, intc_indx]
+                    line22_normal = np.array([seg_end[1] - seg_start[1],
+                                              -(seg_end[0] - seg_start[0])])
                     line22_normal = line22_normal / np.linalg.norm(line22_normal)
                     # self.ax.plot(np.array(line11).T[0], np.array(line11).T[1], c='k', marker='o', zorder=2000)
                     # self.ax.plot(np.array(line22).T[0], np.array(line22).T[1], c='g', marker='o', zorder=20000)
@@ -657,7 +661,7 @@ class Integrators:
                                                                      particles_dummy.u_old[ind])) * dt * dt_frac)
                     umag = np.linalg.norm(particles_dummy.u_temp[ind])
                     gamma = 1 / (np.sqrt(1 - (umag / c0) ** 2))
-                    Eq = (gamma - 1) * m0 * c0 ** 2 * 6.241509e18  # 6.241509e18 Joules to eV factor
+                    Eq = (gamma - 1) * m0 * c0 ** 2 / q0          # kinetic energy, joules -> eV
 
                     if e_dot_surf_norm >= 0:
                         # favourable surface field: secondary leaves the wall.
@@ -763,9 +767,22 @@ class Integrators:
             return False, np.array([0, 0]), 0
 
     @staticmethod
-    def get_neighbours(surf_pts, idx):
-        surf_pts_neigs = np.array(surf_pts[idx])
-        return surf_pts_neigs[surf_pts_neigs[:, 0].argsort()]
+    def get_segments(surf_pts, links, idx):
+        """``(starts, ends)`` of the wall segments touching the nearest wall points
+        *idx*: each point's segments to its contour neighbours, where those are on
+        the same piece of wall. Only contour neighbours are joined, so no segment
+        crosses the vacuum however the wall folds."""
+        seg = set()
+        n = len(surf_pts)
+        for i in np.asarray(idx, dtype=int).ravel():
+            if i - 1 >= 0 and links[i - 1]:
+                seg.add(i - 1)
+            if i + 1 < n and links[i]:
+                seg.add(i)
+        seg = np.array(sorted(seg), dtype=int)
+        if not len(seg):
+            return np.empty((0, 2)), np.empty((0, 2))
+        return np.asarray(surf_pts)[seg], np.asarray(surf_pts)[seg + 1]
 
     def collision(self, active_interval):
         pass

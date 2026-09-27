@@ -7,6 +7,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("netgen")
 
 from cavsim2d.geometry import Profile
+from cavsim2d.geometry.contours import quarter_cell_profile, DegenerateGeometry
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import get_boundary_nodes
 
 
@@ -346,7 +347,10 @@ def test_plot_geometry_overlays_spline_control_points():
     wz = ax.lines[0].get_data()[0]
     cz = cps[0].get_data()[0]
     assert wz.min() <= cz.min() and cz.max() <= wz.max()
-    assert cz.min() == pytest.approx(40.0)                   # after the 40 mm left pipe
+    plt.close('all')
+    # left-aligned frame: the first control point sits after the 40 mm left pipe
+    ax = cav.plot('geometry', show=False, center=False)
+    assert _cp_lines(ax)[0].get_data()[0].min() == pytest.approx(40.0)
     plt.close('all')
 
     ax = cav.plot('geometry', show=False, control_points=False)
@@ -750,7 +754,7 @@ def test_chain_spacing_controls_the_drift():
         z = np.array(cav.profile().contour_points(1e-3, skip=()))[:, 0]
         return z.max() - z.min()
 
-    L_bp = 4 * 57.7e-3                        # elliptical beam pipe = 4 * L_cell (m)
+    L_bp = 2 * 57.7e-3                        # elliptical beam pipe = 2 * L_cell (m)
     single = EllipticalCavity(1, mid, mid, mid, beampipe='both')
     core = zspan(single) - 2 * L_bp          # single-cavity body length (m)
     N = 3
@@ -770,7 +774,7 @@ def test_chain_spacing_controls_the_drift():
     assert zspan(per_gap) == pytest.approx(2 * L_bp + N * core + (20.0 + 80.0) * 1e-3, rel=1e-9)
 
     # a multi-value list must have exactly chain-1 entries
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="spacing list"):
         EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=N,
                          spacing=[1.0, 2.0, 3.0]).profile()
 
@@ -850,3 +854,23 @@ def test_beam_line_radius_ignores_plates_across_the_bore():
          .close('AXI'))
     mesh = p.mesh(maxh=0.01, order=1)
     assert beam_line_radius(mesh) == pytest.approx(0.015)
+
+
+def test_quarter_cell_profile_is_a_half_cell_closed_by_an_electric_equator():
+    """The per-half-cell tune's model: iris plane (or pipe mouth) magnetic, equator
+    plane electric, so only ONE aperture touches the axis."""
+    cell = [v * 1e-3 for v in (42, 42, 12, 19, 35, 57.652, 103.3536)]
+    for pipe in (0.0, 2 * cell[5]):
+        p = quarter_cell_profile(cell, beampipe_length=pipe)
+        z, r = np.asarray(p.points).T
+        assert z.max() - z.min() == pytest.approx(cell[5] + pipe)
+        assert r.max() == pytest.approx(cell[6])
+        assert p.boundary_names() == ['AXI', 'PEC', 'PMC']
+        left, right = p.end_aperture_segments()
+        assert left is not None and right is None
+
+
+def test_quarter_cell_profile_refuses_a_half_cell_with_no_tangent():
+    cell = [v * 1e-3 for v in (42, 42, 12, 19, 35, 20.0, 103.35)]   # A + a > L
+    with pytest.raises(DegenerateGeometry):
+        quarter_cell_profile(cell)

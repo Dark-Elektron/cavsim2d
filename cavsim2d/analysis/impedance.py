@@ -23,7 +23,9 @@ import re
 import numpy as np
 import pandas as pd
 
-C0 = 299792458.0        # speed of light [m/s]
+from cavsim2d.constants import c0
+
+C0 = c0                 # speed of light [m/s]
 
 # Impedance is quoted in kOhm as often as Ohm, so the unit is an argument rather
 # than a convention to memorise: '' = Ohm, 'k' = kOhm, 'M' = MOhm, 'G' = GOhm
@@ -250,63 +252,115 @@ def reconstruct_impedance_qnm(freqs, r_over_q_complex, q_factors, f_span,
     return z
 
 
-def pml_stable_modes(modes, other, rtol_f=1e-3, rtol_q=0.15):
-    """Boolean mask over *modes*: which ones survive a change of PML settings.
+def classify_modes(modes, other, rtol_f=2e-4, linewidth_frac=0.02, rtol_q=0.25,
+                   pair_frac=0.1, runner_up=3.0):
+    """Cavity mode or artefact, for each mode of an open solve, from a second solve.
 
-    An open (PML) solve returns two kinds of eigenpair above the beam-pipe cutoff,
-    and they look alike in the results table:
+    An open (PML) solve returns genuine resonances of the cavity mixed with modes of
+    the beam pipe and of the absorbing block, and they look alike in the results.
+    Re-solving with a different ``beampipe_length`` (or ``pml_length``) separates
+    them: a cavity mode does not care how long the pipe is, a pipe mode moves. This
+    is the best discriminant found so far, and it is not perfect. On pillbox and
+    TESLA test cases it miscounts a few per cent of the modes, in both directions.
 
-    - genuine resonance poles of the open cavity, fixed by the geometry. Lengthening
-      the absorbing layer or changing its stretch moves them by ~1e-6;
-    - modes of the finite PML *block* itself. These shift by whole percent, appear and
-      disappear between runs, and — because the layer damps them — carry a plausible
-      low Q. They can also carry a LARGE R/Q, so they dominate a reconstructed
-      impedance while being an artifact of the truncation.
+    Each mode of *modes* is judged against *other*, per azimuthal order ``m``:
 
-    ``'Q balance []'`` does not separate them: a PML-block mode decays into the layer
-    and radiates through the mouth at the same rate, so its balance sits at 1.00 like
-    everything else. The only reliable discriminator is re-solving with a different
-    layer and keeping what does not move, which is what this does.
+    1. Frequency, the primary test. Its partner must be its mutual nearest neighbour
+       (each is the other's closest mode), within ``max(rtol_f, linewidth_frac / Q)``
+       relative. The tolerance scales with the linewidth ``f/Q``: a broad radiating
+       mode moves by a larger fraction than a narrow one for the same physical
+       change. A partner is ambiguous, and rejected, when a runner-up sits within
+       the tolerance and less than ``runner_up`` times further away.
+    2. Q, a tie-breaker only. A mode whose Q moved by more than ``rtol_q`` is still
+       kept, since the Q of a mode near the cutoff converges slowly with pipe length
+       (the layer keeps reaching its evanescent tail). It is dropped only when it
+       also has a near-degenerate partner of the same ``m``, closer than
+       ``pair_frac`` of the typical spacing. At fixed ``m`` an axisymmetric cavity
+       has no degeneracy, so such a pair is the left and right pipe, not one mode.
 
     Parameters
     ----------
     modes, other : pandas.DataFrame
-        Two ``cav.eigenmode.qois_df`` frames for the same cavity, solved with
-        different ``pml_length`` (or ``pml_alpha``, or mesh).
-    rtol_f, rtol_q : float
-        A mode in *modes* is kept when *other* holds a mode within ``rtol_f``
-        in relative frequency and ``rtol_q`` in relative Q.
+        Two ``cav.eigenmode.qois_df`` frames of the same cavity, solved with a
+        different pipe (or PML) length. Needs ``'freq [MHz]'`` and ``'Q []'``;
+        ``'m'`` is used when present.
 
     Returns
     -------
-    ndarray of bool
-        Aligned with ``modes.index``.
+    pandas.DataFrame
+        Indexed like *modes*: ``'cavity mode'`` (the verdict), and the evidence behind
+        it, ``'shift [ppm]'``, ``'tolerance [ppm]'``, ``'mutual'``, ``'f ok'``,
+        ``'Q ok'``, ``'paired'`` and ``'reached'``.
 
     Notes
     -----
-    **Compare only where both runs reach.** Each solve returns its lowest ``n_modes``,
-    and two runs need not stop at the same frequency. A mode above *other*'s highest has
-    no partner to be matched against and comes back False -- unverified, not disproved.
-    Restrict the judgement to
-    ``min(modes['freq [MHz]'].max(), other['freq [MHz]'].max())`` before quoting a
-    fraction, or raise ``n_modes`` until both runs cover the band of interest.
+    Compare only where both runs reach. Each solve returns its lowest ``n_modes``,
+    and a mode above *other*'s highest has nothing to be matched against: it comes
+    back ``'reached' == False`` and is not called a cavity mode (unverified, not
+    disproved). Raise ``n_modes`` until both runs cover the band of interest.
+    """
+    out = pd.DataFrame(index=modes.index)
+    for col, default in (('shift [ppm]', np.nan), ('tolerance [ppm]', np.nan),
+                         ('mutual', False), ('f ok', False), ('Q ok', False),
+                         ('paired', False), ('reached', False)):
+        out[col] = default
 
-    Examples
-    --------
+    def groups(df):
+        if 'm' in df.columns:
+            return {m: g for m, g in df.groupby('m')}
+        return {0: df}
+
+    other_groups = groups(other)
+    for m, a in groups(modes).items():
+        b = other_groups.get(m)
+        f_a = a['freq [MHz]'].to_numpy(dtype=float)
+        q_a = a['Q []'].to_numpy(dtype=float)
+        if b is None or len(b) == 0:
+            continue
+        f_b = b['freq [MHz]'].to_numpy(dtype=float)
+        q_b = b['Q []'].to_numpy(dtype=float)
+
+        rel = np.abs(f_a[:, None] - f_b[None, :]) / f_a[:, None]
+        j = rel.argmin(axis=1)
+        d1 = rel[np.arange(len(f_a)), j]
+        d2 = (np.partition(rel, 1, axis=1)[:, 1] if rel.shape[1] > 1
+              else np.full(len(f_a), np.inf))
+        back = (np.abs(f_b[:, None] - f_a[None, :]) / f_b[:, None]).argmin(axis=1)
+        mutual = back[j] == np.arange(len(f_a))
+        tol = np.maximum(rtol_f, linewidth_frac / np.maximum(np.abs(q_a), 1e-30))
+        ambiguous = (d2 <= tol) & (d2 < runner_up * d1)
+        f_ok = mutual & (d1 <= tol) & ~ambiguous
+        q_ok = np.abs(q_b[j] - q_a) <= rtol_q * np.maximum(np.abs(q_a), 1e-30)
+
+        # near-degenerate partner of the same m, relative to the typical spacing
+        if len(f_a) > 1:
+            gaps = np.abs(f_a[:, None] - f_a[None, :]) / f_a[:, None]
+            np.fill_diagonal(gaps, np.inf)
+            nearest = gaps.min(axis=1)
+            paired = nearest < pair_frac * np.median(nearest)
+        else:
+            paired = np.zeros(len(f_a), dtype=bool)
+
+        idx = a.index
+        out.loc[idx, 'shift [ppm]'] = d1 * 1e6
+        out.loc[idx, 'tolerance [ppm]'] = tol * 1e6
+        out.loc[idx, 'mutual'] = mutual
+        out.loc[idx, 'f ok'] = f_ok
+        out.loc[idx, 'Q ok'] = q_ok
+        out.loc[idx, 'paired'] = paired
+        out.loc[idx, 'reached'] = f_a <= f_b.max() * (1 + rtol_f)
+
+    out['cavity mode'] = (out['f ok'] & ~(~out['Q ok'] & out['paired'])
+                          & out['reached']).astype(bool)
+    return out
+
+
+def pml_stable_modes(modes, other, **kwargs):
+    """Boolean mask over *modes*: the cavity modes, judged against a second solve
+    with a different pipe or PML length. See :func:`classify_modes`, which returns
+    the same verdict with the evidence behind it.
+
     >>> keep = pml_stable_modes(cav_a.eigenmode.qois_df, cav_b.eigenmode.qois_df)
     >>> trusted = cav_a.eigenmode.qois_df[keep]
     """
-    f_a = np.asarray(modes['freq [MHz]'], dtype=float)
-    q_a = np.asarray(modes['Q []'], dtype=float)
-    f_b = np.asarray(other['freq [MHz]'], dtype=float)
-    q_b = np.asarray(other['Q []'], dtype=float)
-    if f_b.size == 0:
-        return np.zeros(f_a.shape, dtype=bool)
-
-    keep = np.zeros(f_a.shape, dtype=bool)
-    for i, (f, q) in enumerate(zip(f_a, q_a)):
-        j = int(np.argmin(np.abs(f_b - f)))
-        near_f = abs(f_b[j] - f) <= rtol_f * abs(f)
-        near_q = abs(q_b[j] - q) <= rtol_q * max(abs(q), 1e-30)
-        keep[i] = bool(near_f and near_q)
-    return keep
+    return classify_modes(modes, other, **kwargs)['cavity mode'].to_numpy(dtype=bool)

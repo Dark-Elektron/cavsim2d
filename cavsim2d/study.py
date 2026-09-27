@@ -2965,7 +2965,7 @@ class Study:
             N = int(data["param"].to_numpy()[4])  # number of impacts
             U = flevel
             Efl = flevel
-            q = 1.6021773e-19
+            q = q0
             Efq = Ef / q
 
             e1 = np.min(np.where(secy1[:, 1] >= 1))  # lower threshold
@@ -4200,7 +4200,7 @@ class Study:
 
     @staticmethod
     def calculate_beampipe_cutoff(Ri_list, which):
-        c = 299792458
+        c = c0
         mode_list = {}
         f_list = {}
 
@@ -4232,7 +4232,7 @@ class Study:
     def calc_cutoff(Ri, mode):
         # calculate frequency from Ri
         p_TM01, p_TE11 = 2.405, 1.841
-        c = 299792458  # m/s
+        c = c0
 
         if mode == 'TM01':
             freq = (c * p_TM01) / (2 * np.pi * Ri * 1e9) * 1e3
