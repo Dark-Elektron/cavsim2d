@@ -53,10 +53,10 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    *(dict, default* ``{'h': 20, 'p': 3, 'adaptive': None}`` *)* ``h`` maximum element
    size in mm; ``p`` polynomial order (>= 2); ``adaptive`` opt-in error-driven
    h-refinement. Pass ``adaptive: True`` for the defaults, or a dict to tune it:
-   ``{'tol': 1e-12, 'max_refinements': 8, 'max_ndof': 100000, 'theta': 0.5}`` — refine
-   (Dörfler-marking the elements carrying the top ``theta`` fraction of the recovery
-   error) until every requested mode's error is below ``tol`` or a DOF/refinement cap is
-   hit. Adaptivity is a mode of the eigenmode solve, not a separate object: the
+   ``{'tol': 1e-12, 'max_refinements': 8, 'max_ndof': 100000, 'theta': 0.25}`` — refine
+   the elements whose recovery error exceeds ``theta`` of each mode's largest, until
+   every requested mode's error is below ``tol`` or a DOF/refinement cap is hit.
+   ``theta: 0`` refines every element: uniform, nested refinement. Adaptivity is a mode of the eigenmode solve, not a separate object: the
    refined mesh *is* the eigenmode result, so ``cav.show_fields``, ``cav.show_mesh`` and
    ``cav.multipacting`` all use it directly, and ``cav.eigenmode.plot_convergence()`` plots
    the error/frequency-vs-DOF history the refinement records.
@@ -93,6 +93,28 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    *(int, default 6)* Krylov vectors per shift in the lossy eigensolve.
 ``f_shift``
    *(float, default 0)* Spectral shift for the eigensolver.
+``pinvit_tol``
+   *(float, default 1e-8)* The eigensolver stops once the relative residual of every
+   checked mode is below this. At 1e-8 frequencies are converged to about 1e-13 and
+   the fields, and every figure of merit computed from them, to about 3e-7: below the
+   discretisation error of any practical mesh. A looser value is faster; see
+   :doc:`examples/convergence/index` for what each value buys.
+``pinvit_converge_modes``
+   *(int, default None)* How many of the lowest modes must meet ``pinvit_tol``. ``None``
+   checks all ``n_modes``. Modes above the checked ones are still reported, but are
+   not converged: check fewer modes only when you will not use the rest.
+``pinvit_maxit``
+   *(int, default 1000)* Iteration cap. A solve that reaches it before converging
+   warns.
+``preconditioner``
+   *(str, default* ``'direct'`` *)* The eigensolver's preconditioner: ``'direct'``, an
+   exact factorisation, or ``'bddc'``, an approximate one that is cheaper per iteration
+   but needs more iterations to reach the same tolerance.
+``direct_solver``
+   *(str, default* ``'sparsecholesky'`` *)* The sparse direct solver used for every
+   factorisation in the eigensolve. Any backend your NGSolve build provides:
+   ``'sparsecholesky'`` is always available; ``'pardiso'`` and ``'umfpack'`` depend on
+   how NGSolve was built.
 ``normalization_length``
    *(float, default None)* Active length for the accelerating-voltage normalisation;
    elliptical cavities take it from ``L_m`` automatically.

@@ -20,10 +20,10 @@
    "id": "50639233",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T17:04:40.606490Z",
-     "iopub.status.busy": "2026-07-18T17:04:40.606360Z",
-     "iopub.status.idle": "2026-07-18T17:04:42.147277Z",
-     "shell.execute_reply": "2026-07-18T17:04:42.146647Z"
+     "iopub.execute_input": "2026-09-25T19:41:34.507947Z",
+     "iopub.status.busy": "2026-09-25T19:41:34.507789Z",
+     "iopub.status.idle": "2026-09-25T19:41:36.499899Z",
+     "shell.execute_reply": "2026-09-25T19:41:36.498599Z"
     }
    },
    "outputs": [],
@@ -56,10 +56,10 @@
    "id": "15b0084b",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T17:04:42.149173Z",
-     "iopub.status.busy": "2026-07-18T17:04:42.148947Z",
-     "iopub.status.idle": "2026-07-18T17:05:01.948242Z",
-     "shell.execute_reply": "2026-07-18T17:05:01.947763Z"
+     "iopub.execute_input": "2026-09-25T19:41:36.502549Z",
+     "iopub.status.busy": "2026-09-25T19:41:36.502195Z",
+     "iopub.status.idle": "2026-09-25T19:41:53.460029Z",
+     "shell.execute_reply": "2026-09-25T19:41:53.458595Z"
     }
    },
    "outputs": [
@@ -67,7 +67,7 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "tuned Req = 172.376 mm at 790.000 MHz\n"
+      "tuned Req = 172.377 mm at 790.000 MHz\n"
      ]
     }
    ],
@@ -102,10 +102,10 @@
    "id": "14bd2b1c",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T17:05:01.950576Z",
-     "iopub.status.busy": "2026-07-18T17:05:01.950422Z",
-     "iopub.status.idle": "2026-07-18T17:06:24.731296Z",
-     "shell.execute_reply": "2026-07-18T17:06:24.730722Z"
+     "iopub.execute_input": "2026-09-25T19:41:53.462242Z",
+     "iopub.status.busy": "2026-09-25T19:41:53.461993Z",
+     "iopub.status.idle": "2026-09-25T19:43:28.661980Z",
+     "shell.execute_reply": "2026-09-25T19:43:28.661133Z"
     }
    },
    "outputs": [],
@@ -144,10 +144,10 @@
    "id": "37a3c680",
    "metadata": {
     "execution": {
-     "iopub.execute_input": "2026-07-18T17:06:24.733068Z",
-     "iopub.status.busy": "2026-07-18T17:06:24.732854Z",
-     "iopub.status.idle": "2026-07-18T17:06:24.746572Z",
-     "shell.execute_reply": "2026-07-18T17:06:24.745927Z"
+     "iopub.execute_input": "2026-09-25T19:43:28.665019Z",
+     "iopub.status.busy": "2026-09-25T19:43:28.664784Z",
+     "iopub.status.idle": "2026-09-25T19:43:28.684938Z",
+     "shell.execute_reply": "2026-09-25T19:43:28.684334Z"
     }
    },
    "outputs": [
