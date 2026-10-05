@@ -42,7 +42,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.00eab0615caa71f42.min.css?v=8d75d14a" />
         <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -2781,10 +2781,13 @@ with a spread of <span class="math notranslate nohighlight">\(10^{\mu\pm\sigma}\
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pinvit_converge_modes</span></code></p></td>
 <td><p>how many of the lowest modes must converge (default: all <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">preconditioner</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pinvit_padding</span></code></p></td>
+<td><p>extra vectors the eigensolver iterates on beyond <code class="docutils literal notranslate"><span class="pre">n_modes</span></code> (default: twice <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>, at most 30)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">preconditioner</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">'direct'</span></code> (default), an exact factorisation, or <code class="docutils literal notranslate"><span class="pre">'bddc'</span></code>, an approximate one</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct_solver</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">direct_solver</span></code></p></td>
 <td><p>the sparse direct solver for every factorisation (default <code class="docutils literal notranslate"><span class="pre">'sparsecholesky'</span></code>)</p></td>
 </tr>
 </tbody>
@@ -2845,22 +2848,22 @@ are each run at four tolerances.</p>
 <div class="cell_output docutils container">
 <div class="output text_html"><style type="text/css">
 </style>
-<table id="T_db0a7">
+<table id="T_5b274">
   <thead>
     <tr>
       <th class="blank" >&nbsp;</th>
       <th class="blank level0" >&nbsp;</th>
-      <th id="T_db0a7_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
-      <th id="T_db0a7_level0_col1" class="col_heading level0 col1" >std [s]</th>
-      <th id="T_db0a7_level0_col2" class="col_heading level0 col2" >solve [s]</th>
-      <th id="T_db0a7_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
-      <th id="T_db0a7_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
-      <th id="T_db0a7_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
-      <th id="T_db0a7_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
-      <th id="T_db0a7_level0_col7" class="col_heading level0 col7" >R/Q</th>
-      <th id="T_db0a7_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
-      <th id="T_db0a7_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
-      <th id="T_db0a7_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_5b274_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_5b274_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_5b274_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_5b274_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_5b274_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_5b274_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_5b274_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_5b274_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_5b274_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_5b274_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_5b274_level0_col10" class="col_heading level0 col10" >G</th>
     </tr>
     <tr>
       <th class="index_name level0" >variant</th>
@@ -2880,118 +2883,118 @@ are each run at four tolerances.</p>
   </thead>
   <tbody>
     <tr>
-      <th id="T_db0a7_level0_row0" class="row_heading level0 row0" rowspan="4">direct</th>
-      <th id="T_db0a7_level1_row0" class="row_heading level1 row0" >1e-04</th>
-      <td id="T_db0a7_row0_col0" class="data row0 col0" >0.26</td>
-      <td id="T_db0a7_row0_col1" class="data row0 col1" >0.02</td>
-      <td id="T_db0a7_row0_col2" class="data row0 col2" >0.18</td>
-      <td id="T_db0a7_row0_col3" class="data row0 col3" >9</td>
-      <td id="T_db0a7_row0_col4" class="data row0 col4" >8.9e-15</td>
-      <td id="T_db0a7_row0_col5" class="data row0 col5" >8.9e-15</td>
-      <td id="T_db0a7_row0_col6" class="data row0 col6" >1.7e-09</td>
-      <td id="T_db0a7_row0_col7" class="data row0 col7" >3.6e-05</td>
-      <td id="T_db0a7_row0_col8" class="data row0 col8" >1.2e-05</td>
-      <td id="T_db0a7_row0_col9" class="data row0 col9" >1.3e-05</td>
-      <td id="T_db0a7_row0_col10" class="data row0 col10" >1.2e-05</td>
+      <th id="T_5b274_level0_row0" class="row_heading level0 row0" rowspan="4">direct</th>
+      <th id="T_5b274_level1_row0" class="row_heading level1 row0" >1e-04</th>
+      <td id="T_5b274_row0_col0" class="data row0 col0" >0.26</td>
+      <td id="T_5b274_row0_col1" class="data row0 col1" >0.04</td>
+      <td id="T_5b274_row0_col2" class="data row0 col2" >0.19</td>
+      <td id="T_5b274_row0_col3" class="data row0 col3" >7</td>
+      <td id="T_5b274_row0_col4" class="data row0 col4" >2.4e-15</td>
+      <td id="T_5b274_row0_col5" class="data row0 col5" >2.4e-15</td>
+      <td id="T_5b274_row0_col6" class="data row0 col6" >1.5e-09</td>
+      <td id="T_5b274_row0_col7" class="data row0 col7" >5.0e-05</td>
+      <td id="T_5b274_row0_col8" class="data row0 col8" >3.4e-05</td>
+      <td id="T_5b274_row0_col9" class="data row0 col9" >2.7e-05</td>
+      <td id="T_5b274_row0_col10" class="data row0 col10" >1.4e-05</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row1" class="row_heading level1 row1" >1e-06</th>
-      <td id="T_db0a7_row1_col0" class="data row1 col0" >0.23</td>
-      <td id="T_db0a7_row1_col1" class="data row1 col1" >0.02</td>
-      <td id="T_db0a7_row1_col2" class="data row1 col2" >0.16</td>
-      <td id="T_db0a7_row1_col3" class="data row1 col3" >13</td>
-      <td id="T_db0a7_row1_col4" class="data row1 col4" >3.8e-15</td>
-      <td id="T_db0a7_row1_col5" class="data row1 col5" >3.8e-15</td>
-      <td id="T_db0a7_row1_col6" class="data row1 col6" >3.6e-13</td>
-      <td id="T_db0a7_row1_col7" class="data row1 col7" >4.1e-07</td>
-      <td id="T_db0a7_row1_col8" class="data row1 col8" >2.5e-07</td>
-      <td id="T_db0a7_row1_col9" class="data row1 col9" >1.9e-07</td>
-      <td id="T_db0a7_row1_col10" class="data row1 col10" >1.5e-07</td>
+      <th id="T_5b274_level1_row1" class="row_heading level1 row1" >1e-06</th>
+      <td id="T_5b274_row1_col0" class="data row1 col0" >0.25</td>
+      <td id="T_5b274_row1_col1" class="data row1 col1" >0.03</td>
+      <td id="T_5b274_row1_col2" class="data row1 col2" >0.18</td>
+      <td id="T_5b274_row1_col3" class="data row1 col3" >11</td>
+      <td id="T_5b274_row1_col4" class="data row1 col4" >3.4e-15</td>
+      <td id="T_5b274_row1_col5" class="data row1 col5" >3.4e-15</td>
+      <td id="T_5b274_row1_col6" class="data row1 col6" >1.9e-13</td>
+      <td id="T_5b274_row1_col7" class="data row1 col7" >5.8e-07</td>
+      <td id="T_5b274_row1_col8" class="data row1 col8" >1.6e-07</td>
+      <td id="T_5b274_row1_col9" class="data row1 col9" >1.9e-07</td>
+      <td id="T_5b274_row1_col10" class="data row1 col10" >1.1e-07</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row2" class="row_heading level1 row2" >1e-08</th>
-      <td id="T_db0a7_row2_col0" class="data row2 col0" >0.24</td>
-      <td id="T_db0a7_row2_col1" class="data row2 col1" >0.05</td>
-      <td id="T_db0a7_row2_col2" class="data row2 col2" >0.17</td>
-      <td id="T_db0a7_row2_col3" class="data row2 col3" >18</td>
-      <td id="T_db0a7_row2_col4" class="data row2 col4" >6.0e-15</td>
-      <td id="T_db0a7_row2_col5" class="data row2 col5" >6.0e-15</td>
-      <td id="T_db0a7_row2_col6" class="data row2 col6" >9.8e-14</td>
-      <td id="T_db0a7_row2_col7" class="data row2 col7" >4.4e-10</td>
-      <td id="T_db0a7_row2_col8" class="data row2 col8" >9.8e-10</td>
-      <td id="T_db0a7_row2_col9" class="data row2 col9" >4.3e-10</td>
-      <td id="T_db0a7_row2_col10" class="data row2 col10" >9.4e-10</td>
+      <th id="T_5b274_level1_row2" class="row_heading level1 row2" >1e-08</th>
+      <td id="T_5b274_row2_col0" class="data row2 col0" >0.27</td>
+      <td id="T_5b274_row2_col1" class="data row2 col1" >0.03</td>
+      <td id="T_5b274_row2_col2" class="data row2 col2" >0.20</td>
+      <td id="T_5b274_row2_col3" class="data row2 col3" >14</td>
+      <td id="T_5b274_row2_col4" class="data row2 col4" >2.2e-15</td>
+      <td id="T_5b274_row2_col5" class="data row2 col5" >2.2e-15</td>
+      <td id="T_5b274_row2_col6" class="data row2 col6" >1.2e-13</td>
+      <td id="T_5b274_row2_col7" class="data row2 col7" >1.6e-09</td>
+      <td id="T_5b274_row2_col8" class="data row2 col8" >3.4e-10</td>
+      <td id="T_5b274_row2_col9" class="data row2 col9" >8.9e-10</td>
+      <td id="T_5b274_row2_col10" class="data row2 col10" >3.2e-10</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row3" class="row_heading level1 row3" >1e-10</th>
-      <td id="T_db0a7_row3_col0" class="data row3 col0" >0.25</td>
-      <td id="T_db0a7_row3_col1" class="data row3 col1" >0.05</td>
-      <td id="T_db0a7_row3_col2" class="data row3 col2" >0.18</td>
-      <td id="T_db0a7_row3_col3" class="data row3 col3" >22</td>
-      <td id="T_db0a7_row3_col4" class="data row3 col4" >6.9e-15</td>
-      <td id="T_db0a7_row3_col5" class="data row3 col5" >6.9e-15</td>
-      <td id="T_db0a7_row3_col6" class="data row3 col6" >1.3e-13</td>
-      <td id="T_db0a7_row3_col7" class="data row3 col7" >1.0e-11</td>
-      <td id="T_db0a7_row3_col8" class="data row3 col8" >1.1e-11</td>
-      <td id="T_db0a7_row3_col9" class="data row3 col9" >3.2e-12</td>
-      <td id="T_db0a7_row3_col10" class="data row3 col10" >1.2e-11</td>
+      <th id="T_5b274_level1_row3" class="row_heading level1 row3" >1e-10</th>
+      <td id="T_5b274_row3_col0" class="data row3 col0" >0.28</td>
+      <td id="T_5b274_row3_col1" class="data row3 col1" >0.02</td>
+      <td id="T_5b274_row3_col2" class="data row3 col2" >0.21</td>
+      <td id="T_5b274_row3_col3" class="data row3 col3" >17</td>
+      <td id="T_5b274_row3_col4" class="data row3 col4" >3.8e-15</td>
+      <td id="T_5b274_row3_col5" class="data row3 col5" >3.8e-15</td>
+      <td id="T_5b274_row3_col6" class="data row3 col6" >9.9e-14</td>
+      <td id="T_5b274_row3_col7" class="data row3 col7" >3.1e-12</td>
+      <td id="T_5b274_row3_col8" class="data row3 col8" >1.5e-11</td>
+      <td id="T_5b274_row3_col9" class="data row3 col9" >2.5e-11</td>
+      <td id="T_5b274_row3_col10" class="data row3 col10" >3.3e-11</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level0_row4" class="row_heading level0 row4" rowspan="4">bddc</th>
-      <th id="T_db0a7_level1_row4" class="row_heading level1 row4" >1e-04</th>
-      <td id="T_db0a7_row4_col0" class="data row4 col0" >0.38</td>
-      <td id="T_db0a7_row4_col1" class="data row4 col1" >0.06</td>
-      <td id="T_db0a7_row4_col2" class="data row4 col2" >0.30</td>
-      <td id="T_db0a7_row4_col3" class="data row4 col3" >52</td>
-      <td id="T_db0a7_row4_col4" class="data row4 col4" >1.2e-13</td>
-      <td id="T_db0a7_row4_col5" class="data row4 col5" >1.2e-13</td>
-      <td id="T_db0a7_row4_col6" class="data row4 col6" >4.0e-09</td>
-      <td id="T_db0a7_row4_col7" class="data row4 col7" >9.9e-05</td>
-      <td id="T_db0a7_row4_col8" class="data row4 col8" >4.0e-05</td>
-      <td id="T_db0a7_row4_col9" class="data row4 col9" >5.2e-05</td>
-      <td id="T_db0a7_row4_col10" class="data row4 col10" >3.1e-05</td>
+      <th id="T_5b274_level0_row4" class="row_heading level0 row4" rowspan="4">bddc</th>
+      <th id="T_5b274_level1_row4" class="row_heading level1 row4" >1e-04</th>
+      <td id="T_5b274_row4_col0" class="data row4 col0" >0.41</td>
+      <td id="T_5b274_row4_col1" class="data row4 col1" >0.07</td>
+      <td id="T_5b274_row4_col2" class="data row4 col2" >0.34</td>
+      <td id="T_5b274_row4_col3" class="data row4 col3" >40</td>
+      <td id="T_5b274_row4_col4" class="data row4 col4" >4.8e-12</td>
+      <td id="T_5b274_row4_col5" class="data row4 col5" >4.8e-12</td>
+      <td id="T_5b274_row4_col6" class="data row4 col6" >3.4e-09</td>
+      <td id="T_5b274_row4_col7" class="data row4 col7" >6.6e-05</td>
+      <td id="T_5b274_row4_col8" class="data row4 col8" >3.5e-05</td>
+      <td id="T_5b274_row4_col9" class="data row4 col9" >7.8e-05</td>
+      <td id="T_5b274_row4_col10" class="data row4 col10" >9.6e-06</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row5" class="row_heading level1 row5" >1e-06</th>
-      <td id="T_db0a7_row5_col0" class="data row5 col0" >0.39</td>
-      <td id="T_db0a7_row5_col1" class="data row5 col1" >0.06</td>
-      <td id="T_db0a7_row5_col2" class="data row5 col2" >0.32</td>
-      <td id="T_db0a7_row5_col3" class="data row5 col3" >77</td>
-      <td id="T_db0a7_row5_col4" class="data row5 col4" >2.2e-14</td>
-      <td id="T_db0a7_row5_col5" class="data row5 col5" >2.2e-14</td>
-      <td id="T_db0a7_row5_col6" class="data row5 col6" >5.8e-13</td>
-      <td id="T_db0a7_row5_col7" class="data row5 col7" >8.3e-07</td>
-      <td id="T_db0a7_row5_col8" class="data row5 col8" >5.3e-07</td>
-      <td id="T_db0a7_row5_col9" class="data row5 col9" >4.3e-07</td>
-      <td id="T_db0a7_row5_col10" class="data row5 col10" >1.7e-07</td>
+      <th id="T_5b274_level1_row5" class="row_heading level1 row5" >1e-06</th>
+      <td id="T_5b274_row5_col0" class="data row5 col0" >0.56</td>
+      <td id="T_5b274_row5_col1" class="data row5 col1" >0.12</td>
+      <td id="T_5b274_row5_col2" class="data row5 col2" >0.49</td>
+      <td id="T_5b274_row5_col3" class="data row5 col3" >63</td>
+      <td id="T_5b274_row5_col4" class="data row5 col4" >1.0e-14</td>
+      <td id="T_5b274_row5_col5" class="data row5 col5" >1.0e-14</td>
+      <td id="T_5b274_row5_col6" class="data row5 col6" >6.2e-13</td>
+      <td id="T_5b274_row5_col7" class="data row5 col7" >1.4e-06</td>
+      <td id="T_5b274_row5_col8" class="data row5 col8" >2.0e-07</td>
+      <td id="T_5b274_row5_col9" class="data row5 col9" >3.1e-07</td>
+      <td id="T_5b274_row5_col10" class="data row5 col10" >1.3e-07</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row6" class="row_heading level1 row6" >1e-08</th>
-      <td id="T_db0a7_row6_col0" class="data row6 col0" >0.52</td>
-      <td id="T_db0a7_row6_col1" class="data row6 col1" >0.11</td>
-      <td id="T_db0a7_row6_col2" class="data row6 col2" >0.44</td>
-      <td id="T_db0a7_row6_col3" class="data row6 col3" >108</td>
-      <td id="T_db0a7_row6_col4" class="data row6 col4" >2.2e-14</td>
-      <td id="T_db0a7_row6_col5" class="data row6 col5" >2.2e-14</td>
-      <td id="T_db0a7_row6_col6" class="data row6 col6" >4.4e-13</td>
-      <td id="T_db0a7_row6_col7" class="data row6 col7" >6.8e-09</td>
-      <td id="T_db0a7_row6_col8" class="data row6 col8" >5.6e-09</td>
-      <td id="T_db0a7_row6_col9" class="data row6 col9" >5.5e-09</td>
-      <td id="T_db0a7_row6_col10" class="data row6 col10" >1.7e-09</td>
+      <th id="T_5b274_level1_row6" class="row_heading level1 row6" >1e-08</th>
+      <td id="T_5b274_row6_col0" class="data row6 col0" >0.57</td>
+      <td id="T_5b274_row6_col1" class="data row6 col1" >0.07</td>
+      <td id="T_5b274_row6_col2" class="data row6 col2" >0.50</td>
+      <td id="T_5b274_row6_col3" class="data row6 col3" >86</td>
+      <td id="T_5b274_row6_col4" class="data row6 col4" >1.0e-14</td>
+      <td id="T_5b274_row6_col5" class="data row6 col5" >1.0e-14</td>
+      <td id="T_5b274_row6_col6" class="data row6 col6" >4.1e-13</td>
+      <td id="T_5b274_row6_col7" class="data row6 col7" >5.3e-09</td>
+      <td id="T_5b274_row6_col8" class="data row6 col8" >3.4e-09</td>
+      <td id="T_5b274_row6_col9" class="data row6 col9" >3.1e-09</td>
+      <td id="T_5b274_row6_col10" class="data row6 col10" >9.2e-10</td>
     </tr>
     <tr>
-      <th id="T_db0a7_level1_row7" class="row_heading level1 row7" >1e-10</th>
-      <td id="T_db0a7_row7_col0" class="data row7 col0" >0.58</td>
-      <td id="T_db0a7_row7_col1" class="data row7 col1" >0.11</td>
-      <td id="T_db0a7_row7_col2" class="data row7 col2" >0.50</td>
-      <td id="T_db0a7_row7_col3" class="data row7 col3" >138</td>
-      <td id="T_db0a7_row7_col4" class="data row7 col4" >2.2e-14</td>
-      <td id="T_db0a7_row7_col5" class="data row7 col5" >2.2e-14</td>
-      <td id="T_db0a7_row7_col6" class="data row7 col6" >4.4e-13</td>
-      <td id="T_db0a7_row7_col7" class="data row7 col7" >8.6e-11</td>
-      <td id="T_db0a7_row7_col8" class="data row7 col8" >5.8e-11</td>
-      <td id="T_db0a7_row7_col9" class="data row7 col9" >4.2e-11</td>
-      <td id="T_db0a7_row7_col10" class="data row7 col10" >2.0e-11</td>
+      <th id="T_5b274_level1_row7" class="row_heading level1 row7" >1e-10</th>
+      <td id="T_5b274_row7_col0" class="data row7 col0" >0.70</td>
+      <td id="T_5b274_row7_col1" class="data row7 col1" >0.08</td>
+      <td id="T_5b274_row7_col2" class="data row7 col2" >0.63</td>
+      <td id="T_5b274_row7_col3" class="data row7 col3" >108</td>
+      <td id="T_5b274_row7_col4" class="data row7 col4" >1.0e-14</td>
+      <td id="T_5b274_row7_col5" class="data row7 col5" >1.0e-14</td>
+      <td id="T_5b274_row7_col6" class="data row7 col6" >4.0e-13</td>
+      <td id="T_5b274_row7_col7" class="data row7 col7" >9.3e-11</td>
+      <td id="T_5b274_row7_col8" class="data row7 col8" >6.6e-11</td>
+      <td id="T_5b274_row7_col9" class="data row7 col9" >5.5e-11</td>
+      <td id="T_5b274_row7_col10" class="data row7 col10" >3.3e-11</td>
     </tr>
   </tbody>
 </table>
@@ -3009,18 +3012,18 @@ every mode.</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/52623ee9073227fd2378124396341467c2f49ef4821419d6a5fe24cfd1ffefde.png" src="../../_images/52623ee9073227fd2378124396341467c2f49ef4821419d6a5fe24cfd1ffefde.png" />
+<img alt="../../_images/f612536c32621094336ad17f5602e2ccbe51cd6f73366ad3ff927de30464b6d6.png" src="../../_images/f612536c32621094336ad17f5602e2ccbe51cd6f73366ad3ff927de30464b6d6.png" />
 </div>
 </div>
 <p>On a single cell the direct preconditioner is the faster of the two at every tolerance:
-0.23 to 0.26 s per simulation against 0.38 to 0.58 s for BDDC. BDDC needs about six times as
-many iterations (52 to 138 against 9 to 22), and each one is not correspondingly cheaper.
+0.25 to 0.28 s per simulation against 0.41 to 0.70 s for BDDC. BDDC needs six times as
+many iterations (40 to 108 against 7 to 17), and each one is not correspondingly cheaper.
 Direct iterations are so cheap here that tightening the tolerance from <span class="math notranslate nohighlight">\(10^{-4}\)</span> to
-<span class="math notranslate nohighlight">\(10^{-10}\)</span> costs nothing measurable: meshing and the figures of merit take most of the time.</p>
+<span class="math notranslate nohighlight">\(10^{-10}\)</span> costs almost nothing: meshing and the figures of merit take most of the time.</p>
 <p>The tolerance buys accuracy in the fields, close to one decade for one decade. At the
-default <code class="docutils literal notranslate"><span class="pre">1e-8</span></code> every figure of merit is within <span class="math notranslate nohighlight">\(10^{-9}\)</span> of the reference; at <code class="docutils literal notranslate"><span class="pre">1e-4</span></code>, R/Q is
-within <span class="math notranslate nohighlight">\(4\times10^{-5}\)</span>. The frequencies converge far faster than the fields: at <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> the
-accelerating mode’s frequency is already exact to round-off.</p>
+default <code class="docutils literal notranslate"><span class="pre">1e-8</span></code> every figure of merit is within <span class="math notranslate nohighlight">\(2\times10^{-9}\)</span> of the reference; at
+<code class="docutils literal notranslate"><span class="pre">1e-4</span></code>, R/Q is within <span class="math notranslate nohighlight">\(5\times10^{-5}\)</span>. The frequencies converge far faster than the
+fields: at <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> the accelerating mode’s frequency is already exact to round-off.</p>
 <h2 id="nine-cells-a-passband-and-the-modes-above-it">2. Nine cells: a passband, and the modes above it<a class="headerlink" href="#nine-cells-a-passband-and-the-modes-above-it" title="Link to this heading">¶</a></h2>
 <p>A 9-cell reports <code class="docutils literal notranslate"><span class="pre">n_cells</span> <span class="pre">+</span> <span class="pre">2</span> <span class="pre">=</span> <span class="pre">11</span></code> modes by default: the nine of the accelerating passband
 and the lowest two of the next band. The eigensolver converges a group of closely spaced
@@ -3036,29 +3039,25 @@ modes more slowly, and those two, at the bottom of a dense band, slowest of all.
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\Documents\git_projects\cavsim2d\cavsim2d\solvers\NGSolve\eigen_ngsolve.py:2125: UserWarning: PINVIT stopped at pinvit_maxit=2000 with a relative residual of 5.3e-10 against pinvit_tol=1e-10, so the highest checked modes are not converged. Raise eigenmode_config['pinvit_maxit'], loosen 'pinvit_tol', or check fewer modes with 'pinvit_converge_modes'.
-  freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, **pinvit)
-</code></pre></div>
-</div>
 <div class="output text_html"><style type="text/css">
 </style>
-<table id="T_62f4d">
+<table id="T_71b39">
   <thead>
     <tr>
       <th class="blank" >&nbsp;</th>
       <th class="blank level0" >&nbsp;</th>
-      <th id="T_62f4d_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
-      <th id="T_62f4d_level0_col1" class="col_heading level0 col1" >std [s]</th>
-      <th id="T_62f4d_level0_col2" class="col_heading level0 col2" >solve [s]</th>
-      <th id="T_62f4d_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
-      <th id="T_62f4d_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
-      <th id="T_62f4d_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
-      <th id="T_62f4d_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
-      <th id="T_62f4d_level0_col7" class="col_heading level0 col7" >R/Q</th>
-      <th id="T_62f4d_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
-      <th id="T_62f4d_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
-      <th id="T_62f4d_level0_col10" class="col_heading level0 col10" >G</th>
-      <th id="T_62f4d_level0_col11" class="col_heading level0 col11" >ff</th>
+      <th id="T_71b39_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_71b39_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_71b39_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_71b39_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_71b39_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_71b39_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_71b39_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_71b39_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_71b39_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_71b39_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_71b39_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_71b39_level0_col11" class="col_heading level0 col11" >ff</th>
     </tr>
     <tr>
       <th class="index_name level0" >variant</th>
@@ -3079,126 +3078,126 @@ modes more slowly, and those two, at the bottom of a dense band, slowest of all.
   </thead>
   <tbody>
     <tr>
-      <th id="T_62f4d_level0_row0" class="row_heading level0 row0" rowspan="4">direct</th>
-      <th id="T_62f4d_level1_row0" class="row_heading level1 row0" >1e-04</th>
-      <td id="T_62f4d_row0_col0" class="data row0 col0" >4.92</td>
-      <td id="T_62f4d_row0_col1" class="data row0 col1" >0.78</td>
-      <td id="T_62f4d_row0_col2" class="data row0 col2" >3.74</td>
-      <td id="T_62f4d_row0_col3" class="data row0 col3" >83</td>
-      <td id="T_62f4d_row0_col4" class="data row0 col4" >6.7e-15</td>
-      <td id="T_62f4d_row0_col5" class="data row0 col5" >5.4e-14</td>
-      <td id="T_62f4d_row0_col6" class="data row0 col6" >6.3e-08</td>
-      <td id="T_62f4d_row0_col7" class="data row0 col7" >1.3e-11</td>
-      <td id="T_62f4d_row0_col8" class="data row0 col8" >8.9e-12</td>
-      <td id="T_62f4d_row0_col9" class="data row0 col9" >8.8e-12</td>
-      <td id="T_62f4d_row0_col10" class="data row0 col10" >9.7e-06</td>
-      <td id="T_62f4d_row0_col11" class="data row0 col11" >9.8e-12</td>
+      <th id="T_71b39_level0_row0" class="row_heading level0 row0" rowspan="4">direct</th>
+      <th id="T_71b39_level1_row0" class="row_heading level1 row0" >1e-04</th>
+      <td id="T_71b39_row0_col0" class="data row0 col0" >3.03</td>
+      <td id="T_71b39_row0_col1" class="data row0 col1" >0.21</td>
+      <td id="T_71b39_row0_col2" class="data row0 col2" >1.88</td>
+      <td id="T_71b39_row0_col3" class="data row0 col3" >15</td>
+      <td id="T_71b39_row0_col4" class="data row0 col4" >5.2e-14</td>
+      <td id="T_71b39_row0_col5" class="data row0 col5" >1.2e-13</td>
+      <td id="T_71b39_row0_col6" class="data row0 col6" >7.4e-09</td>
+      <td id="T_71b39_row0_col7" class="data row0 col7" >1.1e-10</td>
+      <td id="T_71b39_row0_col8" class="data row0 col8" >8.3e-11</td>
+      <td id="T_71b39_row0_col9" class="data row0 col9" >8.3e-11</td>
+      <td id="T_71b39_row0_col10" class="data row0 col10" >3.7e-06</td>
+      <td id="T_71b39_row0_col11" class="data row0 col11" >3.3e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row1" class="row_heading level1 row1" >1e-06</th>
-      <td id="T_62f4d_row1_col0" class="data row1 col0" >8.27</td>
-      <td id="T_62f4d_row1_col1" class="data row1 col1" >1.47</td>
-      <td id="T_62f4d_row1_col2" class="data row1 col2" >7.07</td>
-      <td id="T_62f4d_row1_col3" class="data row1 col3" >156</td>
-      <td id="T_62f4d_row1_col4" class="data row1 col4" >9.6e-15</td>
-      <td id="T_62f4d_row1_col5" class="data row1 col5" >6.3e-14</td>
-      <td id="T_62f4d_row1_col6" class="data row1 col6" >1.0e-10</td>
-      <td id="T_62f4d_row1_col7" class="data row1 col7" >1.1e-11</td>
-      <td id="T_62f4d_row1_col8" class="data row1 col8" >5.9e-12</td>
-      <td id="T_62f4d_row1_col9" class="data row1 col9" >6.3e-12</td>
-      <td id="T_62f4d_row1_col10" class="data row1 col10" >3.9e-08</td>
-      <td id="T_62f4d_row1_col11" class="data row1 col11" >1.1e-11</td>
+      <th id="T_71b39_level1_row1" class="row_heading level1 row1" >1e-06</th>
+      <td id="T_71b39_row1_col0" class="data row1 col0" >3.60</td>
+      <td id="T_71b39_row1_col1" class="data row1 col1" >0.16</td>
+      <td id="T_71b39_row1_col2" class="data row1 col2" >2.45</td>
+      <td id="T_71b39_row1_col3" class="data row1 col3" >24</td>
+      <td id="T_71b39_row1_col4" class="data row1 col4" >5.8e-14</td>
+      <td id="T_71b39_row1_col5" class="data row1 col5" >1.1e-13</td>
+      <td id="T_71b39_row1_col6" class="data row1 col6" >7.7e-13</td>
+      <td id="T_71b39_row1_col7" class="data row1 col7" >1.1e-10</td>
+      <td id="T_71b39_row1_col8" class="data row1 col8" >8.3e-11</td>
+      <td id="T_71b39_row1_col9" class="data row1 col9" >8.4e-11</td>
+      <td id="T_71b39_row1_col10" class="data row1 col10" >7.1e-08</td>
+      <td id="T_71b39_row1_col11" class="data row1 col11" >4.0e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row2" class="row_heading level1 row2" >1e-08</th>
-      <td id="T_62f4d_row2_col0" class="data row2 col0" >10.41</td>
-      <td id="T_62f4d_row2_col1" class="data row2 col1" >1.92</td>
-      <td id="T_62f4d_row2_col2" class="data row2 col2" >9.26</td>
-      <td id="T_62f4d_row2_col3" class="data row2 col3" >216</td>
-      <td id="T_62f4d_row2_col4" class="data row2 col4" >9.9e-15</td>
-      <td id="T_62f4d_row2_col5" class="data row2 col5" >5.9e-14</td>
-      <td id="T_62f4d_row2_col6" class="data row2 col6" >9.9e-11</td>
-      <td id="T_62f4d_row2_col7" class="data row2 col7" >1.3e-11</td>
-      <td id="T_62f4d_row2_col8" class="data row2 col8" >9.2e-12</td>
-      <td id="T_62f4d_row2_col9" class="data row2 col9" >9.4e-12</td>
-      <td id="T_62f4d_row2_col10" class="data row2 col10" >3.8e-10</td>
-      <td id="T_62f4d_row2_col11" class="data row2 col11" >1.7e-11</td>
+      <th id="T_71b39_level1_row2" class="row_heading level1 row2" >1e-08</th>
+      <td id="T_71b39_row2_col0" class="data row2 col0" >4.29</td>
+      <td id="T_71b39_row2_col1" class="data row2 col1" >0.27</td>
+      <td id="T_71b39_row2_col2" class="data row2 col2" >3.14</td>
+      <td id="T_71b39_row2_col3" class="data row2 col3" >31</td>
+      <td id="T_71b39_row2_col4" class="data row2 col4" >6.0e-14</td>
+      <td id="T_71b39_row2_col5" class="data row2 col5" >1.2e-13</td>
+      <td id="T_71b39_row2_col6" class="data row2 col6" >1.2e-13</td>
+      <td id="T_71b39_row2_col7" class="data row2 col7" >9.7e-11</td>
+      <td id="T_71b39_row2_col8" class="data row2 col8" >7.8e-11</td>
+      <td id="T_71b39_row2_col9" class="data row2 col9" >7.9e-11</td>
+      <td id="T_71b39_row2_col10" class="data row2 col10" >3.1e-10</td>
+      <td id="T_71b39_row2_col11" class="data row2 col11" >4.7e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row3" class="row_heading level1 row3" >1e-10</th>
-      <td id="T_62f4d_row3_col0" class="data row3 col0" >13.77</td>
-      <td id="T_62f4d_row3_col1" class="data row3 col1" >2.59</td>
-      <td id="T_62f4d_row3_col2" class="data row3 col2" >12.60</td>
-      <td id="T_62f4d_row3_col3" class="data row3 col3" >283</td>
-      <td id="T_62f4d_row3_col4" class="data row3 col4" >7.2e-15</td>
-      <td id="T_62f4d_row3_col5" class="data row3 col5" >7.8e-14</td>
-      <td id="T_62f4d_row3_col6" class="data row3 col6" >1.0e-10</td>
-      <td id="T_62f4d_row3_col7" class="data row3 col7" >1.5e-11</td>
-      <td id="T_62f4d_row3_col8" class="data row3 col8" >9.4e-12</td>
-      <td id="T_62f4d_row3_col9" class="data row3 col9" >9.4e-12</td>
-      <td id="T_62f4d_row3_col10" class="data row3 col10" >2.4e-10</td>
-      <td id="T_62f4d_row3_col11" class="data row3 col11" >1.5e-11</td>
+      <th id="T_71b39_level1_row3" class="row_heading level1 row3" >1e-10</th>
+      <td id="T_71b39_row3_col0" class="data row3 col0" >5.17</td>
+      <td id="T_71b39_row3_col1" class="data row3 col1" >0.33</td>
+      <td id="T_71b39_row3_col2" class="data row3 col2" >4.03</td>
+      <td id="T_71b39_row3_col3" class="data row3 col3" >40</td>
+      <td id="T_71b39_row3_col4" class="data row3 col4" >4.5e-14</td>
+      <td id="T_71b39_row3_col5" class="data row3 col5" >1.0e-13</td>
+      <td id="T_71b39_row3_col6" class="data row3 col6" >1.0e-13</td>
+      <td id="T_71b39_row3_col7" class="data row3 col7" >1.0e-10</td>
+      <td id="T_71b39_row3_col8" class="data row3 col8" >8.0e-11</td>
+      <td id="T_71b39_row3_col9" class="data row3 col9" >8.0e-11</td>
+      <td id="T_71b39_row3_col10" class="data row3 col10" >3.4e-12</td>
+      <td id="T_71b39_row3_col11" class="data row3 col11" >3.6e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level0_row4" class="row_heading level0 row4" rowspan="4">bddc</th>
-      <th id="T_62f4d_level1_row4" class="row_heading level1 row4" >1e-04</th>
-      <td id="T_62f4d_row4_col0" class="data row4 col0" >11.79</td>
-      <td id="T_62f4d_row4_col1" class="data row4 col1" >2.97</td>
-      <td id="T_62f4d_row4_col2" class="data row4 col2" >10.66</td>
-      <td id="T_62f4d_row4_col3" class="data row4 col3" >303</td>
-      <td id="T_62f4d_row4_col4" class="data row4 col4" >3.1e-14</td>
-      <td id="T_62f4d_row4_col5" class="data row4 col5" >7.2e-14</td>
-      <td id="T_62f4d_row4_col6" class="data row4 col6" >4.5e-08</td>
-      <td id="T_62f4d_row4_col7" class="data row4 col7" >1.1e-11</td>
-      <td id="T_62f4d_row4_col8" class="data row4 col8" >5.2e-12</td>
-      <td id="T_62f4d_row4_col9" class="data row4 col9" >5.4e-12</td>
-      <td id="T_62f4d_row4_col10" class="data row4 col10" >4.9e-06</td>
-      <td id="T_62f4d_row4_col11" class="data row4 col11" >9.3e-12</td>
+      <th id="T_71b39_level0_row4" class="row_heading level0 row4" rowspan="4">bddc</th>
+      <th id="T_71b39_level1_row4" class="row_heading level1 row4" >1e-04</th>
+      <td id="T_71b39_row4_col0" class="data row4 col0" >9.12</td>
+      <td id="T_71b39_row4_col1" class="data row4 col1" >1.35</td>
+      <td id="T_71b39_row4_col2" class="data row4 col2" >7.99</td>
+      <td id="T_71b39_row4_col3" class="data row4 col3" >89</td>
+      <td id="T_71b39_row4_col4" class="data row4 col4" >3.4e-14</td>
+      <td id="T_71b39_row4_col5" class="data row4 col5" >1.4e-13</td>
+      <td id="T_71b39_row4_col6" class="data row4 col6" >8.8e-09</td>
+      <td id="T_71b39_row4_col7" class="data row4 col7" >1.1e-10</td>
+      <td id="T_71b39_row4_col8" class="data row4 col8" >7.8e-11</td>
+      <td id="T_71b39_row4_col9" class="data row4 col9" >7.6e-11</td>
+      <td id="T_71b39_row4_col10" class="data row4 col10" >4.2e-06</td>
+      <td id="T_71b39_row4_col11" class="data row4 col11" >4.7e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row5" class="row_heading level1 row5" >1e-06</th>
-      <td id="T_62f4d_row5_col0" class="data row5 col0" >17.24</td>
-      <td id="T_62f4d_row5_col1" class="data row5 col1" >1.67</td>
-      <td id="T_62f4d_row5_col2" class="data row5 col2" >16.12</td>
-      <td id="T_62f4d_row5_col3" class="data row5 col3" >485</td>
-      <td id="T_62f4d_row5_col4" class="data row5 col4" >3.0e-14</td>
-      <td id="T_62f4d_row5_col5" class="data row5 col5" >6.3e-14</td>
-      <td id="T_62f4d_row5_col6" class="data row5 col6" >1.1e-10</td>
-      <td id="T_62f4d_row5_col7" class="data row5 col7" >1.4e-11</td>
-      <td id="T_62f4d_row5_col8" class="data row5 col8" >6.3e-12</td>
-      <td id="T_62f4d_row5_col9" class="data row5 col9" >6.7e-12</td>
-      <td id="T_62f4d_row5_col10" class="data row5 col10" >2.4e-08</td>
-      <td id="T_62f4d_row5_col11" class="data row5 col11" >9.3e-12</td>
+      <th id="T_71b39_level1_row5" class="row_heading level1 row5" >1e-06</th>
+      <td id="T_71b39_row5_col0" class="data row5 col0" >13.66</td>
+      <td id="T_71b39_row5_col1" class="data row5 col1" >0.63</td>
+      <td id="T_71b39_row5_col2" class="data row5 col2" >12.54</td>
+      <td id="T_71b39_row5_col3" class="data row5 col3" >129</td>
+      <td id="T_71b39_row5_col4" class="data row5 col4" >1.8e-14</td>
+      <td id="T_71b39_row5_col5" class="data row5 col5" >1.4e-13</td>
+      <td id="T_71b39_row5_col6" class="data row5 col6" >7.9e-13</td>
+      <td id="T_71b39_row5_col7" class="data row5 col7" >1.2e-10</td>
+      <td id="T_71b39_row5_col8" class="data row5 col8" >9.2e-11</td>
+      <td id="T_71b39_row5_col9" class="data row5 col9" >9.2e-11</td>
+      <td id="T_71b39_row5_col10" class="data row5 col10" >5.7e-08</td>
+      <td id="T_71b39_row5_col11" class="data row5 col11" >2.9e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row6" class="row_heading level1 row6" >1e-08</th>
-      <td id="T_62f4d_row6_col0" class="data row6 col0" >23.39</td>
-      <td id="T_62f4d_row6_col1" class="data row6 col1" >1.93</td>
-      <td id="T_62f4d_row6_col2" class="data row6 col2" >22.21</td>
-      <td id="T_62f4d_row6_col3" class="data row6 col3" >673</td>
-      <td id="T_62f4d_row6_col4" class="data row6 col4" >3.2e-14</td>
-      <td id="T_62f4d_row6_col5" class="data row6 col5" >6.8e-14</td>
-      <td id="T_62f4d_row6_col6" class="data row6 col6" >1.0e-10</td>
-      <td id="T_62f4d_row6_col7" class="data row6 col7" >1.2e-11</td>
-      <td id="T_62f4d_row6_col8" class="data row6 col8" >6.0e-12</td>
-      <td id="T_62f4d_row6_col9" class="data row6 col9" >6.0e-12</td>
-      <td id="T_62f4d_row6_col10" class="data row6 col10" >4.5e-10</td>
-      <td id="T_62f4d_row6_col11" class="data row6 col11" >1.0e-11</td>
+      <th id="T_71b39_level1_row6" class="row_heading level1 row6" >1e-08</th>
+      <td id="T_71b39_row6_col0" class="data row6 col0" >16.23</td>
+      <td id="T_71b39_row6_col1" class="data row6 col1" >0.43</td>
+      <td id="T_71b39_row6_col2" class="data row6 col2" >15.14</td>
+      <td id="T_71b39_row6_col3" class="data row6 col3" >156</td>
+      <td id="T_71b39_row6_col4" class="data row6 col4" >2.3e-14</td>
+      <td id="T_71b39_row6_col5" class="data row6 col5" >1.6e-13</td>
+      <td id="T_71b39_row6_col6" class="data row6 col6" >1.6e-13</td>
+      <td id="T_71b39_row6_col7" class="data row6 col7" >1.1e-10</td>
+      <td id="T_71b39_row6_col8" class="data row6 col8" >8.5e-11</td>
+      <td id="T_71b39_row6_col9" class="data row6 col9" >8.5e-11</td>
+      <td id="T_71b39_row6_col10" class="data row6 col10" >9.2e-10</td>
+      <td id="T_71b39_row6_col11" class="data row6 col11" >4.2e-11</td>
     </tr>
     <tr>
-      <th id="T_62f4d_level1_row7" class="row_heading level1 row7" >1e-10</th>
-      <td id="T_62f4d_row7_col0" class="data row7 col0" >28.75</td>
-      <td id="T_62f4d_row7_col1" class="data row7 col1" >1.78</td>
-      <td id="T_62f4d_row7_col2" class="data row7 col2" >27.56</td>
-      <td id="T_62f4d_row7_col3" class="data row7 col3" >798</td>
-      <td id="T_62f4d_row7_col4" class="data row7 col4" >4.5e-14</td>
-      <td id="T_62f4d_row7_col5" class="data row7 col5" >6.8e-14</td>
-      <td id="T_62f4d_row7_col6" class="data row7 col6" >1.0e-10</td>
-      <td id="T_62f4d_row7_col7" class="data row7 col7" >1.3e-11</td>
-      <td id="T_62f4d_row7_col8" class="data row7 col8" >6.2e-12</td>
-      <td id="T_62f4d_row7_col9" class="data row7 col9" >5.2e-12</td>
-      <td id="T_62f4d_row7_col10" class="data row7 col10" >2.4e-10</td>
-      <td id="T_62f4d_row7_col11" class="data row7 col11" >9.9e-12</td>
+      <th id="T_71b39_level1_row7" class="row_heading level1 row7" >1e-10</th>
+      <td id="T_71b39_row7_col0" class="data row7 col0" >19.11</td>
+      <td id="T_71b39_row7_col1" class="data row7 col1" >0.63</td>
+      <td id="T_71b39_row7_col2" class="data row7 col2" >17.98</td>
+      <td id="T_71b39_row7_col3" class="data row7 col3" >185</td>
+      <td id="T_71b39_row7_col4" class="data row7 col4" >1.3e-14</td>
+      <td id="T_71b39_row7_col5" class="data row7 col5" >1.5e-13</td>
+      <td id="T_71b39_row7_col6" class="data row7 col6" >1.5e-13</td>
+      <td id="T_71b39_row7_col7" class="data row7 col7" >1.1e-10</td>
+      <td id="T_71b39_row7_col8" class="data row7 col8" >8.4e-11</td>
+      <td id="T_71b39_row7_col9" class="data row7 col9" >8.4e-11</td>
+      <td id="T_71b39_row7_col10" class="data row7 col10" >6.8e-12</td>
+      <td id="T_71b39_row7_col11" class="data row7 col11" >3.9e-11</td>
     </tr>
   </tbody>
 </table>
@@ -3212,7 +3211,7 @@ modes more slowly, and those two, at the bottom of a dense band, slowest of all.
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/9ffd8b3fb419061e3a43f74af8e0d5e7ef683f1640bfa0da1c8d8f4d1f403416.png" src="../../_images/9ffd8b3fb419061e3a43f74af8e0d5e7ef683f1640bfa0da1c8d8f4d1f403416.png" />
+<img alt="../../_images/df27947a02a1a5301e37b52ba799a9c416c74a2cf4bc72c58437594862eb6458.png" src="../../_images/df27947a02a1a5301e37b52ba799a9c416c74a2cf4bc72c58437594862eb6458.png" />
 </div>
 </div>
 <p>The frequency error of every mode, for the direct preconditioner at each tolerance: modes 1
@@ -3226,17 +3225,17 @@ to 9 are the passband, 10 and 11 the next band.</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/287144f4f5be6475ee37e43bcb4641cfbeb2625691ec15ccaaaff1ac137659be.png" src="../../_images/287144f4f5be6475ee37e43bcb4641cfbeb2625691ec15ccaaaff1ac137659be.png" />
+<img alt="../../_images/c290c995fcc6fae5da8bd7f97edc4def30f089d07f67f5f3d9af6bf5f16b6e1f.png" src="../../_images/c290c995fcc6fae5da8bd7f97edc4def30f089d07f67f5f3d9af6bf5f16b6e1f.png" />
 </div>
 </div>
-<p>On nine cells the solve dominates the time, and both settings show. Direct takes 4.9 s at
-<code class="docutils literal notranslate"><span class="pre">1e-4</span></code> and 10.4 s at the default <code class="docutils literal notranslate"><span class="pre">1e-8</span></code>. BDDC takes more than twice as long at every
-tolerance, 11.8 to 28.8 s, with about three times the iterations.</p>
-<p>Almost all of those iterations go to the two modes above the passband. The per-mode plot
-shows it: the nine passband modes are converged to round-off at every tolerance, <code class="docutils literal notranslate"><span class="pre">1e-4</span></code>
-included, while modes 10 and 11 follow the tolerance. So the passband’s figures of merit
-are converged to about <span class="math notranslate nohighlight">\(10^{-11}\)</span> whatever the tolerance, and only the all-modes frequency
-and G, which is scored over every reported mode, respond to it.</p>
+<p>On nine cells the solve takes most of the time, and both settings show. Direct takes 3.0 s
+at <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> and 4.3 s at the default <code class="docutils literal notranslate"><span class="pre">1e-8</span></code>. BDDC takes three to four times as long at every
+tolerance, 9.1 to 19.1 s, with five times the iterations.</p>
+<p>Most of those iterations go to the two modes above the passband. The per-mode plot shows it:
+the nine passband modes are converged to round-off at every tolerance, <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> included,
+while modes 10 and 11 follow the tolerance. So the passband’s figures of merit are converged
+to about <span class="math notranslate nohighlight">\(10^{-10}\)</span> whatever the tolerance, and only the all-modes frequency and G, which is
+scored over every reported mode, respond to it.</p>
 <h2 id="converging-the-passband-only">3. Converging the passband only<a class="headerlink" href="#converging-the-passband-only" title="Link to this heading">¶</a></h2>
 <p>If only the passband will be used, <code class="docutils literal notranslate"><span class="pre">pinvit_converge_modes=9</span></code> stops the solve once those nine
 have converged. The two modes above are still reported, but not converged.</p>
@@ -3253,23 +3252,23 @@ have converged. The two modes above are still reported, but not converged.</p>
 <div class="cell_output docutils container">
 <div class="output text_html"><style type="text/css">
 </style>
-<table id="T_aea8c">
+<table id="T_b029e">
   <thead>
     <tr>
       <th class="blank" >&nbsp;</th>
       <th class="blank level0" >&nbsp;</th>
-      <th id="T_aea8c_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
-      <th id="T_aea8c_level0_col1" class="col_heading level0 col1" >std [s]</th>
-      <th id="T_aea8c_level0_col2" class="col_heading level0 col2" >solve [s]</th>
-      <th id="T_aea8c_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
-      <th id="T_aea8c_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
-      <th id="T_aea8c_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
-      <th id="T_aea8c_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
-      <th id="T_aea8c_level0_col7" class="col_heading level0 col7" >R/Q</th>
-      <th id="T_aea8c_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
-      <th id="T_aea8c_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
-      <th id="T_aea8c_level0_col10" class="col_heading level0 col10" >G</th>
-      <th id="T_aea8c_level0_col11" class="col_heading level0 col11" >ff</th>
+      <th id="T_b029e_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_b029e_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_b029e_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_b029e_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_b029e_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_b029e_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_b029e_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_b029e_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_b029e_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_b029e_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_b029e_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_b029e_level0_col11" class="col_heading level0 col11" >ff</th>
     </tr>
     <tr>
       <th class="index_name level0" >variant</th>
@@ -3290,78 +3289,331 @@ have converged. The two modes above are still reported, but not converged.</p>
   </thead>
   <tbody>
     <tr>
-      <th id="T_aea8c_level0_row0" class="row_heading level0 row0" rowspan="2">every mode (default)</th>
-      <th id="T_aea8c_level1_row0" class="row_heading level1 row0" >1e-06</th>
-      <td id="T_aea8c_row0_col0" class="data row0 col0" >7.88</td>
-      <td id="T_aea8c_row0_col1" class="data row0 col1" >1.05</td>
-      <td id="T_aea8c_row0_col2" class="data row0 col2" >6.58</td>
-      <td id="T_aea8c_row0_col3" class="data row0 col3" >149</td>
-      <td id="T_aea8c_row0_col4" class="data row0 col4" >6.5e-15</td>
-      <td id="T_aea8c_row0_col5" class="data row0 col5" >4.8e-14</td>
-      <td id="T_aea8c_row0_col6" class="data row0 col6" >8.2e-12</td>
-      <td id="T_aea8c_row0_col7" class="data row0 col7" >1.3e-11</td>
-      <td id="T_aea8c_row0_col8" class="data row0 col8" >8.8e-12</td>
-      <td id="T_aea8c_row0_col9" class="data row0 col9" >9.3e-12</td>
-      <td id="T_aea8c_row0_col10" class="data row0 col10" >2.0e-08</td>
-      <td id="T_aea8c_row0_col11" class="data row0 col11" >1.1e-11</td>
+      <th id="T_b029e_level0_row0" class="row_heading level0 row0" rowspan="2">every mode (default)</th>
+      <th id="T_b029e_level1_row0" class="row_heading level1 row0" >1e-06</th>
+      <td id="T_b029e_row0_col0" class="data row0 col0" >3.95</td>
+      <td id="T_b029e_row0_col1" class="data row0 col1" >0.13</td>
+      <td id="T_b029e_row0_col2" class="data row0 col2" >2.84</td>
+      <td id="T_b029e_row0_col3" class="data row0 col3" >23</td>
+      <td id="T_b029e_row0_col4" class="data row0 col4" >2.0e-14</td>
+      <td id="T_b029e_row0_col5" class="data row0 col5" >6.9e-14</td>
+      <td id="T_b029e_row0_col6" class="data row0 col6" >5.6e-13</td>
+      <td id="T_b029e_row0_col7" class="data row0 col7" >1.9e-11</td>
+      <td id="T_b029e_row0_col8" class="data row0 col8" >1.3e-11</td>
+      <td id="T_b029e_row0_col9" class="data row0 col9" >1.3e-11</td>
+      <td id="T_b029e_row0_col10" class="data row0 col10" >3.1e-08</td>
+      <td id="T_b029e_row0_col11" class="data row0 col11" >3.2e-11</td>
     </tr>
     <tr>
-      <th id="T_aea8c_level1_row1" class="row_heading level1 row1" >1e-08</th>
-      <td id="T_aea8c_row1_col0" class="data row1 col0" >11.57</td>
-      <td id="T_aea8c_row1_col1" class="data row1 col1" >2.72</td>
-      <td id="T_aea8c_row1_col2" class="data row1 col2" >10.35</td>
-      <td id="T_aea8c_row1_col3" class="data row1 col3" >228</td>
-      <td id="T_aea8c_row1_col4" class="data row1 col4" >4.1e-15</td>
-      <td id="T_aea8c_row1_col5" class="data row1 col5" >4.9e-14</td>
-      <td id="T_aea8c_row1_col6" class="data row1 col6" >5.6e-12</td>
-      <td id="T_aea8c_row1_col7" class="data row1 col7" >1.3e-11</td>
-      <td id="T_aea8c_row1_col8" class="data row1 col8" >1.2e-11</td>
-      <td id="T_aea8c_row1_col9" class="data row1 col9" >1.2e-11</td>
-      <td id="T_aea8c_row1_col10" class="data row1 col10" >9.0e-10</td>
-      <td id="T_aea8c_row1_col11" class="data row1 col11" >1.5e-11</td>
+      <th id="T_b029e_level1_row1" class="row_heading level1 row1" >1e-08</th>
+      <td id="T_b029e_row1_col0" class="data row1 col0" >5.03</td>
+      <td id="T_b029e_row1_col1" class="data row1 col1" >0.14</td>
+      <td id="T_b029e_row1_col2" class="data row1 col2" >3.91</td>
+      <td id="T_b029e_row1_col3" class="data row1 col3" >32</td>
+      <td id="T_b029e_row1_col4" class="data row1 col4" >2.8e-14</td>
+      <td id="T_b029e_row1_col5" class="data row1 col5" >7.3e-14</td>
+      <td id="T_b029e_row1_col6" class="data row1 col6" >7.3e-14</td>
+      <td id="T_b029e_row1_col7" class="data row1 col7" >2.4e-11</td>
+      <td id="T_b029e_row1_col8" class="data row1 col8" >1.4e-11</td>
+      <td id="T_b029e_row1_col9" class="data row1 col9" >1.4e-11</td>
+      <td id="T_b029e_row1_col10" class="data row1 col10" >2.9e-10</td>
+      <td id="T_b029e_row1_col11" class="data row1 col11" >3.2e-11</td>
     </tr>
     <tr>
-      <th id="T_aea8c_level0_row2" class="row_heading level0 row2" rowspan="2">passband only</th>
-      <th id="T_aea8c_level1_row2" class="row_heading level1 row2" >1e-06</th>
-      <td id="T_aea8c_row2_col0" class="data row2 col0" >1.84</td>
-      <td id="T_aea8c_row2_col1" class="data row2 col1" >0.07</td>
-      <td id="T_aea8c_row2_col2" class="data row2 col2" >0.67</td>
-      <td id="T_aea8c_row2_col3" class="data row2 col3" >9</td>
-      <td id="T_aea8c_row2_col4" class="data row2 col4" >1.0e-14</td>
-      <td id="T_aea8c_row2_col5" class="data row2 col5" >7.6e-14</td>
-      <td id="T_aea8c_row2_col6" class="data row2 col6" >1.1e-02</td>
-      <td id="T_aea8c_row2_col7" class="data row2 col7" >3.6e-08</td>
-      <td id="T_aea8c_row2_col8" class="data row2 col8" >4.6e-08</td>
-      <td id="T_aea8c_row2_col9" class="data row2 col9" >8.7e-08</td>
-      <td id="T_aea8c_row2_col10" class="data row2 col10" >6.2e-02</td>
-      <td id="T_aea8c_row2_col11" class="data row2 col11" >5.0e-08</td>
+      <th id="T_b029e_level0_row2" class="row_heading level0 row2" rowspan="2">passband only</th>
+      <th id="T_b029e_level1_row2" class="row_heading level1 row2" >1e-06</th>
+      <td id="T_b029e_row2_col0" class="data row2 col0" >2.24</td>
+      <td id="T_b029e_row2_col1" class="data row2 col1" >0.11</td>
+      <td id="T_b029e_row2_col2" class="data row2 col2" >1.13</td>
+      <td id="T_b029e_row2_col3" class="data row2 col3" >7</td>
+      <td id="T_b029e_row2_col4" class="data row2 col4" >5.1e-14</td>
+      <td id="T_b029e_row2_col5" class="data row2 col5" >7.4e-14</td>
+      <td id="T_b029e_row2_col6" class="data row2 col6" >8.0e-05</td>
+      <td id="T_b029e_row2_col7" class="data row2 col7" >9.7e-07</td>
+      <td id="T_b029e_row2_col8" class="data row2 col8" >4.9e-07</td>
+      <td id="T_b029e_row2_col9" class="data row2 col9" >4.6e-07</td>
+      <td id="T_b029e_row2_col10" class="data row2 col10" >3.2e-04</td>
+      <td id="T_b029e_row2_col11" class="data row2 col11" >4.1e-07</td>
     </tr>
     <tr>
-      <th id="T_aea8c_level1_row3" class="row_heading level1 row3" >1e-08</th>
-      <td id="T_aea8c_row3_col0" class="data row3 col0" >1.83</td>
-      <td id="T_aea8c_row3_col1" class="data row3 col1" >0.18</td>
-      <td id="T_aea8c_row3_col2" class="data row3 col2" >0.64</td>
-      <td id="T_aea8c_row3_col3" class="data row3 col3" >11</td>
-      <td id="T_aea8c_row3_col4" class="data row3 col4" >1.1e-14</td>
-      <td id="T_aea8c_row3_col5" class="data row3 col5" >2.5e-14</td>
-      <td id="T_aea8c_row3_col6" class="data row3 col6" >6.7e-03</td>
-      <td id="T_aea8c_row3_col7" class="data row3 col7" >6.6e-10</td>
-      <td id="T_aea8c_row3_col8" class="data row3 col8" >1.4e-09</td>
-      <td id="T_aea8c_row3_col9" class="data row3 col9" >2.4e-09</td>
-      <td id="T_aea8c_row3_col10" class="data row3 col10" >2.6e-02</td>
-      <td id="T_aea8c_row3_col11" class="data row3 col11" >1.4e-09</td>
+      <th id="T_b029e_level1_row3" class="row_heading level1 row3" >1e-08</th>
+      <td id="T_b029e_row3_col0" class="data row3 col0" >2.30</td>
+      <td id="T_b029e_row3_col1" class="data row3 col1" >0.11</td>
+      <td id="T_b029e_row3_col2" class="data row3 col2" >1.19</td>
+      <td id="T_b029e_row3_col3" class="data row3 col3" >9</td>
+      <td id="T_b029e_row3_col4" class="data row3 col4" >2.8e-14</td>
+      <td id="T_b029e_row3_col5" class="data row3 col5" >5.8e-14</td>
+      <td id="T_b029e_row3_col6" class="data row3 col6" >5.0e-06</td>
+      <td id="T_b029e_row3_col7" class="data row3 col7" >1.1e-08</td>
+      <td id="T_b029e_row3_col8" class="data row3 col8" >5.6e-09</td>
+      <td id="T_b029e_row3_col9" class="data row3 col9" >6.0e-09</td>
+      <td id="T_b029e_row3_col10" class="data row3 col10" >8.6e-05</td>
+      <td id="T_b029e_row3_col11" class="data row3 col11" >5.2e-09</td>
     </tr>
   </tbody>
 </table>
 </div></div>
 </div>
-<p>Converging the passband alone takes 9 to 11 iterations and 1.8 s per simulation, instead of
-7.9 to 11.6 s: four to six times faster, with the passband exactly as accurate (R/Q to
-<span class="math notranslate nohighlight">\(4\times10^{-8}\)</span> at a tolerance of <code class="docutils literal notranslate"><span class="pre">1e-6</span></code>, <span class="math notranslate nohighlight">\(7\times10^{-10}\)</span> at <code class="docutils literal notranslate"><span class="pre">1e-8</span></code>). The price is the two
-modes above. Nothing converged them, so their frequencies are up to 1 % off and their G
-several per cent. Use it when those modes will not be read. Setting <code class="docutils literal notranslate"><span class="pre">n_modes=n_cells</span></code> does
-the same without reporting them at all.</p>
-<h2 id="the-sparse-direct-solver">4. The sparse direct solver<a class="headerlink" href="#the-sparse-direct-solver" title="Link to this heading">¶</a></h2>
+<p>Converging the passband alone takes 7 to 9 iterations and 2.3 s per simulation, instead of
+4.0 to 5.0 s: the solve itself is about three times faster, and the passband is
+converged to the tolerance asked for (R/Q to <span class="math notranslate nohighlight">\(10^{-6}\)</span> at <code class="docutils literal notranslate"><span class="pre">1e-6</span></code>, <span class="math notranslate nohighlight">\(10^{-8}\)</span> at <code class="docutils literal notranslate"><span class="pre">1e-8</span></code>). The
+price is the two modes above. Nothing converged them, so their frequencies are up to <span class="math notranslate nohighlight">\(10^{-4}\)</span>
+off and their G up to <span class="math notranslate nohighlight">\(3\times10^{-4}\)</span>. Use it when those modes will not be read.
+Setting <code class="docutils literal notranslate"><span class="pre">n_modes=n_cells</span></code> does the same without reporting them at all.</p>
+<h2 id="padding">4. Padding<a class="headerlink" href="#padding" title="Link to this heading">¶</a></h2>
+<p>The eigensolver iterates on more vectors than it reports. The extra ones, <code class="docutils literal notranslate"><span class="pre">pinvit_padding</span></code>,
+are never returned, but they decide how fast the highest requested modes converge: those
+converge at a rate set by the gap to the first eigenvalue outside the block of vectors. The
+default is twice <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>, at most 30: 6 for the single cell and 22 for nine cells.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">cav</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">nine</span><span class="p">):</span>
+    <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">benchmark</span><span class="p">(</span><span class="n">sweep</span><span class="o">=</span><span class="p">{</span><span class="s1">'pinvit_padding'</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">30</span><span class="p">]},</span> <span class="n">n_repeats</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                            <span class="n">eigenmode_config</span><span class="o">=</span><span class="n">CONFIG</span><span class="p">)</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">show</span><span class="p">(</span><span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">benchmark_table</span><span class="p">()))</span>
+    <span class="n">cav</span><span class="o">.</span><span class="n">eigenmode</span><span class="o">.</span><span class="n">plot_benchmark</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">'time'</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><style type="text/css">
+</style>
+<table id="T_abe05">
+  <thead>
+    <tr>
+      <th class="blank" >&nbsp;</th>
+      <th class="blank level0" >&nbsp;</th>
+      <th id="T_abe05_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_abe05_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_abe05_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_abe05_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_abe05_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_abe05_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_abe05_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_abe05_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_abe05_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_abe05_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_abe05_level0_col10" class="col_heading level0 col10" >G</th>
+    </tr>
+    <tr>
+      <th class="index_name level0" >variant</th>
+      <th class="index_name level1" >pinvit_padding</th>
+      <th class="blank col0" >&nbsp;</th>
+      <th class="blank col1" >&nbsp;</th>
+      <th class="blank col2" >&nbsp;</th>
+      <th class="blank col3" >&nbsp;</th>
+      <th class="blank col4" >&nbsp;</th>
+      <th class="blank col5" >&nbsp;</th>
+      <th class="blank col6" >&nbsp;</th>
+      <th class="blank col7" >&nbsp;</th>
+      <th class="blank col8" >&nbsp;</th>
+      <th class="blank col9" >&nbsp;</th>
+      <th class="blank col10" >&nbsp;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="T_abe05_level0_row0" class="row_heading level0 row0" rowspan="5">default</th>
+      <th id="T_abe05_level1_row0" class="row_heading level1 row0" >2</th>
+      <td id="T_abe05_row0_col0" class="data row0 col0" >0.27</td>
+      <td id="T_abe05_row0_col1" class="data row0 col1" >0.06</td>
+      <td id="T_abe05_row0_col2" class="data row0 col2" >0.19</td>
+      <td id="T_abe05_row0_col3" class="data row0 col3" >18</td>
+      <td id="T_abe05_row0_col4" class="data row0 col4" >5.5e-15</td>
+      <td id="T_abe05_row0_col5" class="data row0 col5" >5.5e-15</td>
+      <td id="T_abe05_row0_col6" class="data row0 col6" >1.5e-13</td>
+      <td id="T_abe05_row0_col7" class="data row0 col7" >8.4e-10</td>
+      <td id="T_abe05_row0_col8" class="data row0 col8" >5.0e-10</td>
+      <td id="T_abe05_row0_col9" class="data row0 col9" >1.8e-10</td>
+      <td id="T_abe05_row0_col10" class="data row0 col10" >7.4e-10</td>
+    </tr>
+    <tr>
+      <th id="T_abe05_level1_row1" class="row_heading level1 row1" >6</th>
+      <td id="T_abe05_row1_col0" class="data row1 col0" >0.28</td>
+      <td id="T_abe05_row1_col1" class="data row1 col1" >0.02</td>
+      <td id="T_abe05_row1_col2" class="data row1 col2" >0.20</td>
+      <td id="T_abe05_row1_col3" class="data row1 col3" >14</td>
+      <td id="T_abe05_row1_col4" class="data row1 col4" >7.5e-15</td>
+      <td id="T_abe05_row1_col5" class="data row1 col5" >7.5e-15</td>
+      <td id="T_abe05_row1_col6" class="data row1 col6" >1.4e-13</td>
+      <td id="T_abe05_row1_col7" class="data row1 col7" >1.3e-09</td>
+      <td id="T_abe05_row1_col8" class="data row1 col8" >7.2e-10</td>
+      <td id="T_abe05_row1_col9" class="data row1 col9" >6.1e-10</td>
+      <td id="T_abe05_row1_col10" class="data row1 col10" >9.4e-10</td>
+    </tr>
+    <tr>
+      <th id="T_abe05_level1_row2" class="row_heading level1 row2" >11</th>
+      <td id="T_abe05_row2_col0" class="data row2 col0" >0.34</td>
+      <td id="T_abe05_row2_col1" class="data row2 col1" >0.04</td>
+      <td id="T_abe05_row2_col2" class="data row2 col2" >0.26</td>
+      <td id="T_abe05_row2_col3" class="data row2 col3" >11</td>
+      <td id="T_abe05_row2_col4" class="data row2 col4" >8.9e-15</td>
+      <td id="T_abe05_row2_col5" class="data row2 col5" >8.9e-15</td>
+      <td id="T_abe05_row2_col6" class="data row2 col6" >7.1e-14</td>
+      <td id="T_abe05_row2_col7" class="data row2 col7" >1.1e-09</td>
+      <td id="T_abe05_row2_col8" class="data row2 col8" >1.5e-09</td>
+      <td id="T_abe05_row2_col9" class="data row2 col9" >1.8e-09</td>
+      <td id="T_abe05_row2_col10" class="data row2 col10" >8.3e-10</td>
+    </tr>
+    <tr>
+      <th id="T_abe05_level1_row3" class="row_heading level1 row3" >22</th>
+      <td id="T_abe05_row3_col0" class="data row3 col0" >0.38</td>
+      <td id="T_abe05_row3_col1" class="data row3 col1" >0.07</td>
+      <td id="T_abe05_row3_col2" class="data row3 col2" >0.31</td>
+      <td id="T_abe05_row3_col3" class="data row3 col3" >9</td>
+      <td id="T_abe05_row3_col4" class="data row3 col4" >9.4e-15</td>
+      <td id="T_abe05_row3_col5" class="data row3 col5" >9.4e-15</td>
+      <td id="T_abe05_row3_col6" class="data row3 col6" >2.3e-13</td>
+      <td id="T_abe05_row3_col7" class="data row3 col7" >4.0e-10</td>
+      <td id="T_abe05_row3_col8" class="data row3 col8" >4.5e-10</td>
+      <td id="T_abe05_row3_col9" class="data row3 col9" >3.1e-10</td>
+      <td id="T_abe05_row3_col10" class="data row3 col10" >1.0e-09</td>
+    </tr>
+    <tr>
+      <th id="T_abe05_level1_row4" class="row_heading level1 row4" >30</th>
+      <td id="T_abe05_row4_col0" class="data row4 col0" >0.50</td>
+      <td id="T_abe05_row4_col1" class="data row4 col1" >0.03</td>
+      <td id="T_abe05_row4_col2" class="data row4 col2" >0.42</td>
+      <td id="T_abe05_row4_col3" class="data row4 col3" >8</td>
+      <td id="T_abe05_row4_col4" class="data row4 col4" >1.2e-14</td>
+      <td id="T_abe05_row4_col5" class="data row4 col5" >1.2e-14</td>
+      <td id="T_abe05_row4_col6" class="data row4 col6" >1.5e-13</td>
+      <td id="T_abe05_row4_col7" class="data row4 col7" >9.3e-10</td>
+      <td id="T_abe05_row4_col8" class="data row4 col8" >3.7e-10</td>
+      <td id="T_abe05_row4_col9" class="data row4 col9" >6.6e-10</td>
+      <td id="T_abe05_row4_col10" class="data row4 col10" >1.1e-09</td>
+    </tr>
+  </tbody>
+</table>
+</div><img alt="../../_images/743986cf2b426bf93a7629d13839fb17d3eb503919afc44e2941e5a5e1413b6f.png" src="../../_images/743986cf2b426bf93a7629d13839fb17d3eb503919afc44e2941e5a5e1413b6f.png" />
+<div class="output text_html"><style type="text/css">
+</style>
+<table id="T_b6a17">
+  <thead>
+    <tr>
+      <th class="blank" >&nbsp;</th>
+      <th class="blank level0" >&nbsp;</th>
+      <th id="T_b6a17_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_b6a17_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_b6a17_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_b6a17_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_b6a17_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_b6a17_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_b6a17_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_b6a17_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_b6a17_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_b6a17_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_b6a17_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_b6a17_level0_col11" class="col_heading level0 col11" >ff</th>
+    </tr>
+    <tr>
+      <th class="index_name level0" >variant</th>
+      <th class="index_name level1" >pinvit_padding</th>
+      <th class="blank col0" >&nbsp;</th>
+      <th class="blank col1" >&nbsp;</th>
+      <th class="blank col2" >&nbsp;</th>
+      <th class="blank col3" >&nbsp;</th>
+      <th class="blank col4" >&nbsp;</th>
+      <th class="blank col5" >&nbsp;</th>
+      <th class="blank col6" >&nbsp;</th>
+      <th class="blank col7" >&nbsp;</th>
+      <th class="blank col8" >&nbsp;</th>
+      <th class="blank col9" >&nbsp;</th>
+      <th class="blank col10" >&nbsp;</th>
+      <th class="blank col11" >&nbsp;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="T_b6a17_level0_row0" class="row_heading level0 row0" rowspan="5">default</th>
+      <th id="T_b6a17_level1_row0" class="row_heading level1 row0" >2</th>
+      <td id="T_b6a17_row0_col0" class="data row0 col0" >9.89</td>
+      <td id="T_b6a17_row0_col1" class="data row0 col1" >1.27</td>
+      <td id="T_b6a17_row0_col2" class="data row0 col2" >8.79</td>
+      <td id="T_b6a17_row0_col3" class="data row0 col3" >209</td>
+      <td id="T_b6a17_row0_col4" class="data row0 col4" >4.0e-15</td>
+      <td id="T_b6a17_row0_col5" class="data row0 col5" >1.7e-13</td>
+      <td id="T_b6a17_row0_col6" class="data row0 col6" >3.7e-12</td>
+      <td id="T_b6a17_row0_col7" class="data row0 col7" >1.9e-11</td>
+      <td id="T_b6a17_row0_col8" class="data row0 col8" >8.2e-12</td>
+      <td id="T_b6a17_row0_col9" class="data row0 col9" >8.6e-12</td>
+      <td id="T_b6a17_row0_col10" class="data row0 col10" >2.8e-10</td>
+      <td id="T_b6a17_row0_col11" class="data row0 col11" >2.3e-11</td>
+    </tr>
+    <tr>
+      <th id="T_b6a17_level1_row1" class="row_heading level1 row1" >6</th>
+      <td id="T_b6a17_row1_col0" class="data row1 col0" >6.83</td>
+      <td id="T_b6a17_row1_col1" class="data row1 col1" >0.60</td>
+      <td id="T_b6a17_row1_col2" class="data row1 col2" >5.73</td>
+      <td id="T_b6a17_row1_col3" class="data row1 col3" >101</td>
+      <td id="T_b6a17_row1_col4" class="data row1 col4" >2.2e-14</td>
+      <td id="T_b6a17_row1_col5" class="data row1 col5" >1.8e-13</td>
+      <td id="T_b6a17_row1_col6" class="data row1 col6" >5.2e-12</td>
+      <td id="T_b6a17_row1_col7" class="data row1 col7" >4.1e-11</td>
+      <td id="T_b6a17_row1_col8" class="data row1 col8" >2.1e-11</td>
+      <td id="T_b6a17_row1_col9" class="data row1 col9" >2.5e-11</td>
+      <td id="T_b6a17_row1_col10" class="data row1 col10" >3.3e-10</td>
+      <td id="T_b6a17_row1_col11" class="data row1 col11" >3.9e-11</td>
+    </tr>
+    <tr>
+      <th id="T_b6a17_level1_row2" class="row_heading level1 row2" >11</th>
+      <td id="T_b6a17_row2_col0" class="data row2 col0" >6.96</td>
+      <td id="T_b6a17_row2_col1" class="data row2 col1" >0.52</td>
+      <td id="T_b6a17_row2_col2" class="data row2 col2" >5.86</td>
+      <td id="T_b6a17_row2_col3" class="data row2 col3" >78</td>
+      <td id="T_b6a17_row2_col4" class="data row2 col4" >1.5e-14</td>
+      <td id="T_b6a17_row2_col5" class="data row2 col5" >1.8e-13</td>
+      <td id="T_b6a17_row2_col6" class="data row2 col6" >5.6e-12</td>
+      <td id="T_b6a17_row2_col7" class="data row2 col7" >2.8e-11</td>
+      <td id="T_b6a17_row2_col8" class="data row2 col8" >2.0e-11</td>
+      <td id="T_b6a17_row2_col9" class="data row2 col9" >1.5e-11</td>
+      <td id="T_b6a17_row2_col10" class="data row2 col10" >4.8e-10</td>
+      <td id="T_b6a17_row2_col11" class="data row2 col11" >3.3e-11</td>
+    </tr>
+    <tr>
+      <th id="T_b6a17_level1_row3" class="row_heading level1 row3" >22</th>
+      <td id="T_b6a17_row3_col0" class="data row3 col0" >4.72</td>
+      <td id="T_b6a17_row3_col1" class="data row3 col1" >0.46</td>
+      <td id="T_b6a17_row3_col2" class="data row3 col2" >3.61</td>
+      <td id="T_b6a17_row3_col3" class="data row3 col3" >32</td>
+      <td id="T_b6a17_row3_col4" class="data row3 col4" >2.3e-14</td>
+      <td id="T_b6a17_row3_col5" class="data row3 col5" >1.8e-13</td>
+      <td id="T_b6a17_row3_col6" class="data row3 col6" >5.7e-12</td>
+      <td id="T_b6a17_row3_col7" class="data row3 col7" >2.2e-11</td>
+      <td id="T_b6a17_row3_col8" class="data row3 col8" >1.7e-11</td>
+      <td id="T_b6a17_row3_col9" class="data row3 col9" >1.4e-11</td>
+      <td id="T_b6a17_row3_col10" class="data row3 col10" >5.1e-10</td>
+      <td id="T_b6a17_row3_col11" class="data row3 col11" >3.2e-11</td>
+    </tr>
+    <tr>
+      <th id="T_b6a17_level1_row4" class="row_heading level1 row4" >30</th>
+      <td id="T_b6a17_row4_col0" class="data row4 col0" >3.88</td>
+      <td id="T_b6a17_row4_col1" class="data row4 col1" >0.12</td>
+      <td id="T_b6a17_row4_col2" class="data row4 col2" >2.75</td>
+      <td id="T_b6a17_row4_col3" class="data row4 col3" >16</td>
+      <td id="T_b6a17_row4_col4" class="data row4 col4" >1.9e-14</td>
+      <td id="T_b6a17_row4_col5" class="data row4 col5" >1.8e-13</td>
+      <td id="T_b6a17_row4_col6" class="data row4 col6" >5.7e-12</td>
+      <td id="T_b6a17_row4_col7" class="data row4 col7" >1.5e-11</td>
+      <td id="T_b6a17_row4_col8" class="data row4 col8" >7.8e-12</td>
+      <td id="T_b6a17_row4_col9" class="data row4 col9" >1.0e-11</td>
+      <td id="T_b6a17_row4_col10" class="data row4 col10" >8.3e-10</td>
+      <td id="T_b6a17_row4_col11" class="data row4 col11" >2.5e-11</td>
+    </tr>
+  </tbody>
+</table>
+</div><img alt="../../_images/9a865203e4d88a30b7256d946c7cff206ea905e2c6cb2e3d0ca412783700a1c9.png" src="../../_images/9a865203e4d88a30b7256d946c7cff206ea905e2c6cb2e3d0ca412783700a1c9.png" />
+</div>
+</div>
+<p>On the single cell padding changes little: 0.27 to 0.28 s up to 6 extra vectors, rising to
+0.5 s at 30 as every iteration carries more vectors. On nine cells it is decisive: 209
+iterations and 9.9 s with 2 extra vectors, 32 and 4.7 s at the default 22, 16 and 3.9 s at
+30. The two modes above the passband open the next band. With few extra vectors the first
+eigenvalue outside the block sits inside that band, so the gap that sets their convergence
+is small; with 22 or more the block reaches past it. The default is close to the best on a
+multicell cavity and nearly free on a single cell. <code class="docutils literal notranslate"><span class="pre">pinvit_padding</span></code> sets it directly.</p>
+<h2 id="the-sparse-direct-solver">5. The sparse direct solver<a class="headerlink" href="#the-sparse-direct-solver" title="Link to this heading">¶</a></h2>
 <p>Which sparse direct solvers are available depends on how NGSolve was built:
 <code class="docutils literal notranslate"><span class="pre">sparsecholesky</span></code> always is, <code class="docutils literal notranslate"><span class="pre">pardiso</span></code> and <code class="docutils literal notranslate"><span class="pre">umfpack</span></code> depend on the build. A variant asking
 for one this build lacks is skipped with a warning.</p>
@@ -3376,27 +3628,27 @@ for one this build lacks is skipped with a warning.</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\AppData\Local\Temp\ipykernel_40572\2965386525.py:4: UserWarning: benchmark: skipping 'umfpack', this NGSolve build has no 'umfpack' direct solver.
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\AppData\Local\Temp\ipykernel_39804\2965386525.py:4: UserWarning: benchmark: skipping 'umfpack', this NGSolve build has no 'umfpack' direct solver.
   cav.eigenmode.benchmark(variants=backends, n_repeats=3, eigenmode_config=CONFIG)
 </code></pre></div>
 </div>
 <div class="output text_html"><style type="text/css">
 </style>
-<table id="T_8131e">
+<table id="T_f9152">
   <thead>
     <tr>
       <th class="blank level0" >&nbsp;</th>
-      <th id="T_8131e_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
-      <th id="T_8131e_level0_col1" class="col_heading level0 col1" >std [s]</th>
-      <th id="T_8131e_level0_col2" class="col_heading level0 col2" >solve [s]</th>
-      <th id="T_8131e_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
-      <th id="T_8131e_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
-      <th id="T_8131e_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
-      <th id="T_8131e_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
-      <th id="T_8131e_level0_col7" class="col_heading level0 col7" >R/Q</th>
-      <th id="T_8131e_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
-      <th id="T_8131e_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
-      <th id="T_8131e_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_f9152_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_f9152_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_f9152_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_f9152_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_f9152_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_f9152_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_f9152_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_f9152_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_f9152_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_f9152_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_f9152_level0_col10" class="col_heading level0 col10" >G</th>
     </tr>
     <tr>
       <th class="index_name level0" >variant</th>
@@ -3415,57 +3667,57 @@ for one this build lacks is skipped with a warning.</p>
   </thead>
   <tbody>
     <tr>
-      <th id="T_8131e_level0_row0" class="row_heading level0 row0" >sparsecholesky</th>
-      <td id="T_8131e_row0_col0" class="data row0 col0" >0.26</td>
-      <td id="T_8131e_row0_col1" class="data row0 col1" >0.02</td>
-      <td id="T_8131e_row0_col2" class="data row0 col2" >0.18</td>
-      <td id="T_8131e_row0_col3" class="data row0 col3" >17</td>
-      <td id="T_8131e_row0_col4" class="data row0 col4" >5.0e-15</td>
-      <td id="T_8131e_row0_col5" class="data row0 col5" >5.0e-15</td>
-      <td id="T_8131e_row0_col6" class="data row0 col6" >1.2e-13</td>
-      <td id="T_8131e_row0_col7" class="data row0 col7" >7.7e-10</td>
-      <td id="T_8131e_row0_col8" class="data row0 col8" >3.4e-10</td>
-      <td id="T_8131e_row0_col9" class="data row0 col9" >4.4e-10</td>
-      <td id="T_8131e_row0_col10" class="data row0 col10" >1.9e-09</td>
+      <th id="T_f9152_level0_row0" class="row_heading level0 row0" >sparsecholesky</th>
+      <td id="T_f9152_row0_col0" class="data row0 col0" >0.30</td>
+      <td id="T_f9152_row0_col1" class="data row0 col1" >0.03</td>
+      <td id="T_f9152_row0_col2" class="data row0 col2" >0.22</td>
+      <td id="T_f9152_row0_col3" class="data row0 col3" >14</td>
+      <td id="T_f9152_row0_col4" class="data row0 col4" >2.0e-15</td>
+      <td id="T_f9152_row0_col5" class="data row0 col5" >2.0e-15</td>
+      <td id="T_f9152_row0_col6" class="data row0 col6" >1.1e-13</td>
+      <td id="T_f9152_row0_col7" class="data row0 col7" >1.1e-09</td>
+      <td id="T_f9152_row0_col8" class="data row0 col8" >1.2e-09</td>
+      <td id="T_f9152_row0_col9" class="data row0 col9" >2.4e-09</td>
+      <td id="T_f9152_row0_col10" class="data row0 col10" >4.6e-10</td>
     </tr>
     <tr>
-      <th id="T_8131e_level0_row1" class="row_heading level0 row1" >pardiso</th>
-      <td id="T_8131e_row1_col0" class="data row1 col0" >2.71</td>
-      <td id="T_8131e_row1_col1" class="data row1 col1" >0.18</td>
-      <td id="T_8131e_row1_col2" class="data row1 col2" >2.63</td>
-      <td id="T_8131e_row1_col3" class="data row1 col3" >17</td>
-      <td id="T_8131e_row1_col4" class="data row1 col4" >1.2e-14</td>
-      <td id="T_8131e_row1_col5" class="data row1 col5" >1.2e-14</td>
-      <td id="T_8131e_row1_col6" class="data row1 col6" >1.2e-13</td>
-      <td id="T_8131e_row1_col7" class="data row1 col7" >2.1e-09</td>
-      <td id="T_8131e_row1_col8" class="data row1 col8" >6.5e-10</td>
-      <td id="T_8131e_row1_col9" class="data row1 col9" >1.1e-09</td>
-      <td id="T_8131e_row1_col10" class="data row1 col10" >7.6e-10</td>
+      <th id="T_f9152_level0_row1" class="row_heading level0 row1" >pardiso</th>
+      <td id="T_f9152_row1_col0" class="data row1 col0" >4.10</td>
+      <td id="T_f9152_row1_col1" class="data row1 col1" >0.03</td>
+      <td id="T_f9152_row1_col2" class="data row1 col2" >4.03</td>
+      <td id="T_f9152_row1_col3" class="data row1 col3" >14</td>
+      <td id="T_f9152_row1_col4" class="data row1 col4" >4.7e-15</td>
+      <td id="T_f9152_row1_col5" class="data row1 col5" >4.7e-15</td>
+      <td id="T_f9152_row1_col6" class="data row1 col6" >7.9e-14</td>
+      <td id="T_f9152_row1_col7" class="data row1 col7" >1.8e-09</td>
+      <td id="T_f9152_row1_col8" class="data row1 col8" >1.8e-09</td>
+      <td id="T_f9152_row1_col9" class="data row1 col9" >5.6e-09</td>
+      <td id="T_f9152_row1_col10" class="data row1 col10" >1.4e-09</td>
     </tr>
   </tbody>
 </table>
-</div><div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\AppData\Local\Temp\ipykernel_40572\2965386525.py:4: UserWarning: benchmark: skipping 'umfpack', this NGSolve build has no 'umfpack' direct solver.
+</div><div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>C:\Users\Soske\AppData\Local\Temp\ipykernel_39804\2965386525.py:4: UserWarning: benchmark: skipping 'umfpack', this NGSolve build has no 'umfpack' direct solver.
   cav.eigenmode.benchmark(variants=backends, n_repeats=3, eigenmode_config=CONFIG)
 </code></pre></div>
 </div>
 <div class="output text_html"><style type="text/css">
 </style>
-<table id="T_86cc1">
+<table id="T_5bce3">
   <thead>
     <tr>
       <th class="blank level0" >&nbsp;</th>
-      <th id="T_86cc1_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
-      <th id="T_86cc1_level0_col1" class="col_heading level0 col1" >std [s]</th>
-      <th id="T_86cc1_level0_col2" class="col_heading level0 col2" >solve [s]</th>
-      <th id="T_86cc1_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
-      <th id="T_86cc1_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
-      <th id="T_86cc1_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
-      <th id="T_86cc1_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
-      <th id="T_86cc1_level0_col7" class="col_heading level0 col7" >R/Q</th>
-      <th id="T_86cc1_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
-      <th id="T_86cc1_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
-      <th id="T_86cc1_level0_col10" class="col_heading level0 col10" >G</th>
-      <th id="T_86cc1_level0_col11" class="col_heading level0 col11" >ff</th>
+      <th id="T_5bce3_level0_col0" class="col_heading level0 col0" >time per simulation [s]</th>
+      <th id="T_5bce3_level0_col1" class="col_heading level0 col1" >std [s]</th>
+      <th id="T_5bce3_level0_col2" class="col_heading level0 col2" >solve [s]</th>
+      <th id="T_5bce3_level0_col3" class="col_heading level0 col3" >PINVIT iterations</th>
+      <th id="T_5bce3_level0_col4" class="col_heading level0 col4" >freq (mode of interest)</th>
+      <th id="T_5bce3_level0_col5" class="col_heading level0 col5" >freq (passband)</th>
+      <th id="T_5bce3_level0_col6" class="col_heading level0 col6" >freq (all modes)</th>
+      <th id="T_5bce3_level0_col7" class="col_heading level0 col7" >R/Q</th>
+      <th id="T_5bce3_level0_col8" class="col_heading level0 col8" >Epk/Eacc</th>
+      <th id="T_5bce3_level0_col9" class="col_heading level0 col9" >Bpk/Eacc</th>
+      <th id="T_5bce3_level0_col10" class="col_heading level0 col10" >G</th>
+      <th id="T_5bce3_level0_col11" class="col_heading level0 col11" >ff</th>
     </tr>
     <tr>
       <th class="index_name level0" >variant</th>
@@ -3485,53 +3737,53 @@ for one this build lacks is skipped with a warning.</p>
   </thead>
   <tbody>
     <tr>
-      <th id="T_86cc1_level0_row0" class="row_heading level0 row0" >sparsecholesky</th>
-      <td id="T_86cc1_row0_col0" class="data row0 col0" >13.85</td>
-      <td id="T_86cc1_row0_col1" class="data row0 col1" >1.50</td>
-      <td id="T_86cc1_row0_col2" class="data row0 col2" >12.31</td>
-      <td id="T_86cc1_row0_col3" class="data row0 col3" >206</td>
-      <td id="T_86cc1_row0_col4" class="data row0 col4" >5.2e-15</td>
-      <td id="T_86cc1_row0_col5" class="data row0 col5" >6.4e-14</td>
-      <td id="T_86cc1_row0_col6" class="data row0 col6" >5.9e-12</td>
-      <td id="T_86cc1_row0_col7" class="data row0 col7" >1.9e-11</td>
-      <td id="T_86cc1_row0_col8" class="data row0 col8" >9.6e-12</td>
-      <td id="T_86cc1_row0_col9" class="data row0 col9" >1.2e-11</td>
-      <td id="T_86cc1_row0_col10" class="data row0 col10" >3.6e-10</td>
-      <td id="T_86cc1_row0_col11" class="data row0 col11" >1.1e-11</td>
+      <th id="T_5bce3_level0_row0" class="row_heading level0 row0" >sparsecholesky</th>
+      <td id="T_5bce3_row0_col0" class="data row0 col0" >4.50</td>
+      <td id="T_5bce3_row0_col1" class="data row0 col1" >0.43</td>
+      <td id="T_5bce3_row0_col2" class="data row0 col2" >3.36</td>
+      <td id="T_5bce3_row0_col3" class="data row0 col3" >32</td>
+      <td id="T_5bce3_row0_col4" class="data row0 col4" >2.3e-14</td>
+      <td id="T_5bce3_row0_col5" class="data row0 col5" >7.3e-14</td>
+      <td id="T_5bce3_row0_col6" class="data row0 col6" >7.3e-14</td>
+      <td id="T_5bce3_row0_col7" class="data row0 col7" >3.8e-11</td>
+      <td id="T_5bce3_row0_col8" class="data row0 col8" >2.6e-11</td>
+      <td id="T_5bce3_row0_col9" class="data row0 col9" >2.8e-11</td>
+      <td id="T_5bce3_row0_col10" class="data row0 col10" >3.4e-10</td>
+      <td id="T_5bce3_row0_col11" class="data row0 col11" >4.4e-11</td>
     </tr>
     <tr>
-      <th id="T_86cc1_level0_row1" class="row_heading level0 row1" >pardiso</th>
-      <td id="T_86cc1_row1_col0" class="data row1 col0" >105.16</td>
-      <td id="T_86cc1_row1_col1" class="data row1 col1" >2.53</td>
-      <td id="T_86cc1_row1_col2" class="data row1 col2" >103.99</td>
-      <td id="T_86cc1_row1_col3" class="data row1 col3" >250</td>
-      <td id="T_86cc1_row1_col4" class="data row1 col4" >1.8e-14</td>
-      <td id="T_86cc1_row1_col5" class="data row1 col5" >5.1e-14</td>
-      <td id="T_86cc1_row1_col6" class="data row1 col6" >4.5e-12</td>
-      <td id="T_86cc1_row1_col7" class="data row1 col7" >1.5e-11</td>
-      <td id="T_86cc1_row1_col8" class="data row1 col8" >9.7e-12</td>
-      <td id="T_86cc1_row1_col9" class="data row1 col9" >1.0e-11</td>
-      <td id="T_86cc1_row1_col10" class="data row1 col10" >3.7e-10</td>
-      <td id="T_86cc1_row1_col11" class="data row1 col11" >1.6e-11</td>
+      <th id="T_5bce3_level0_row1" class="row_heading level0 row1" >pardiso</th>
+      <td id="T_5bce3_row1_col0" class="data row1 col0" >36.94</td>
+      <td id="T_5bce3_row1_col1" class="data row1 col1" >1.21</td>
+      <td id="T_5bce3_row1_col2" class="data row1 col2" >35.88</td>
+      <td id="T_5bce3_row1_col3" class="data row1 col3" >31</td>
+      <td id="T_5bce3_row1_col4" class="data row1 col4" >1.1e-15</td>
+      <td id="T_5bce3_row1_col5" class="data row1 col5" >7.7e-14</td>
+      <td id="T_5bce3_row1_col6" class="data row1 col6" >8.1e-14</td>
+      <td id="T_5bce3_row1_col7" class="data row1 col7" >2.9e-11</td>
+      <td id="T_5bce3_row1_col8" class="data row1 col8" >1.8e-11</td>
+      <td id="T_5bce3_row1_col9" class="data row1 col9" >1.5e-11</td>
+      <td id="T_5bce3_row1_col10" class="data row1 col10" >4.0e-10</td>
+      <td id="T_5bce3_row1_col11" class="data row1 col11" >3.9e-11</td>
     </tr>
   </tbody>
 </table>
 </div></div>
 </div>
-<p>Both backends give the same answer, and <code class="docutils literal notranslate"><span class="pre">sparsecholesky</span></code> is the faster: ten times on the
-single cell (0.26 s against 2.7 s) and almost eight times on nine cells (14 s against
-105 s). This build has no <code class="docutils literal notranslate"><span class="pre">umfpack</span></code>, so that variant was skipped. On a build that has it,
-the same cell compares all three.</p>
-<h2 id="what-to-use">5. What to use<a class="headerlink" href="#what-to-use" title="Link to this heading">¶</a></h2>
+<p>Both backends give the same answer, and <code class="docutils literal notranslate"><span class="pre">sparsecholesky</span></code> is the faster: 14 times on the
+single cell (0.30 s against 4.1 s) and 8 times on nine cells (4.5 s against 37 s). This
+build has no <code class="docutils literal notranslate"><span class="pre">umfpack</span></code>, so that variant was skipped. On a build that has it, the same cell
+compares all three.</p>
+<h2 id="what-to-use">6. What to use<a class="headerlink" href="#what-to-use" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>The defaults (the direct preconditioner, <code class="docutils literal notranslate"><span class="pre">sparsecholesky</span></code>, <code class="docutils literal notranslate"><span class="pre">pinvit_tol=1e-8</span></code>) keep the
-solver’s error far below any practical mesh’s: figures of merit to about <span class="math notranslate nohighlight">\(10^{-9}\)</span>,
-frequencies to round-off.</p></li>
-<li><p>BDDC did not win anywhere here. On both cavities it was 1.5 to 2.4 times slower, at
+<li><p>The defaults (the direct preconditioner, <code class="docutils literal notranslate"><span class="pre">sparsecholesky</span></code>, <code class="docutils literal notranslate"><span class="pre">pinvit_tol=1e-8</span></code>, padding of
+twice <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>) keep the solver’s error far below any practical mesh’s: figures of merit
+to about <span class="math notranslate nohighlight">\(10^{-9}\)</span>, frequencies to round-off.</p></li>
+<li><p>BDDC did not win anywhere here. It was 1.6 to 3.8 times slower, on both cavities and at
 every tolerance.</p></li>
 <li><p>The tolerance is a free knob on small problems and a real one on large ones. On nine
-cells <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> halves the default’s time and still leaves the passband at round-off, with
-G and the modes above the passband at <span class="math notranslate nohighlight">\(10^{-5}\)</span> and <span class="math notranslate nohighlight">\(10^{-7}\)</span>.</p></li>
+cells <code class="docutils literal notranslate"><span class="pre">1e-4</span></code> takes 3.0 s against the default’s 4.3 s and still leaves the passband at
+round-off, with G at <span class="math notranslate nohighlight">\(4\times10^{-6}\)</span> and the modes above the passband at <span class="math notranslate nohighlight">\(10^{-8}\)</span>.</p></li>
 <li><p>On a multicell cavity the largest saving is to converge only the modes you will use:
 <code class="docutils literal notranslate"><span class="pre">pinvit_converge_modes=n_cells</span></code>, or <code class="docutils literal notranslate"><span class="pre">n_modes=n_cells</span></code>.</p></li>
 <li><p>Keep <code class="docutils literal notranslate"><span class="pre">direct_solver='sparsecholesky'</span></code> unless a benchmark on your own machine says

@@ -42,7 +42,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.74c816e3f9967dd6e.min.css?v=6cfe2491" />
+        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.00eab0615caa71f42.min.css?v=8d75d14a" />
         <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -2845,14 +2845,21 @@ is honoured, with a warning. Q is tagged <code class="docutils literal notransla
 checked mode is below this. At 1e-8 frequencies are converged to about 1e-13 and
 the fields, and every figure of merit computed from them, to about 3e-7: below the
 discretisation error of any practical mesh. A looser value is faster; see
-<a class="reference internal" href="examples/convergence/index.html"><span class="doc">Convergence, timing and accuracy</span></a> for what each value buys.</p>
+<a class="reference internal" href="examples/convergence/index.html"><span class="doc">Convergence, timing and accuracy</span></a> for what each value buys. Round-off sets a floor
+under the residual, and on meshes with very small elements near the axis that floor
+can lie above 1e-8. The eigensolver then stops once the residual stops falling. It
+warns only if the floor is above 1e-5.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">pinvit_converge_modes</span></code></dt><dd><p><em>(int, default None)</em> How many of the lowest modes must meet <code class="docutils literal notranslate"><span class="pre">pinvit_tol</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code>
 checks all <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>. Modes above the checked ones are still reported, but are
 not converged: check fewer modes only when you will not use the rest.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">pinvit_maxit</span></code></dt><dd><p><em>(int, default 1000)</em> Iteration cap. A solve that reaches it before converging
-warns.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">pinvit_padding</span></code></dt><dd><p><em>(int, default None)</em> Extra vectors the eigensolver iterates on beyond <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>.
+They are never reported, but they make the highest requested modes converge in far
+fewer iterations. <code class="docutils literal notranslate"><span class="pre">None</span></code> uses twice <code class="docutils literal notranslate"><span class="pre">n_modes</span></code>, at least 2 and at most 30.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pinvit_maxit</span></code></dt><dd><p><em>(int, default 1000)</em> Iteration cap. A solve that reaches it while the residual is
+still falling warns.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">preconditioner</span></code></dt><dd><p><em>(str, default</em> <code class="docutils literal notranslate"><span class="pre">'direct'</span></code> <em>)</em> The eigensolver’s preconditioner: <code class="docutils literal notranslate"><span class="pre">'direct'</span></code>, an
 exact factorisation, or <code class="docutils literal notranslate"><span class="pre">'bddc'</span></code>, an approximate one that is cheaper per iteration
