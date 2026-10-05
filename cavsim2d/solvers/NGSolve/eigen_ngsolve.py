@@ -76,14 +76,29 @@ GEOMETRY_ORDER_OFFSET = 1
 
 # PINVIT stopping. The solve stops once every checked mode's relative residual is
 # below DEFAULT_PINVIT_TOL (see pinvit), with DEFAULT_PINVIT_MAXIT as a cap. A fixed
-# count cannot serve every cavity: a TESLA 1-cell converges to 1e-8 in ~20
-# iterations, but the two second-band modes a 9-cell reports by default
-# (n_modes = n_cells + 2) need ~250, and a 9-cell dipole passband ~170. At 1e-8 the
-# eigenvectors, and so the field figures of merit, are within ~3e-7 of converged and
-# the frequency within ~1e-13: well below the discretisation error of any practical
-# mesh, so the solver is never the error that shows.
+# count cannot serve every cavity. With two padding vectors a TESLA 1-cell converged
+# to 1e-8 in ~20 iterations, but the two second-band modes a 9-cell reports by default
+# (n_modes = n_cells + 2) needed ~250. With the default padding (pinvit_n_modes) they
+# need ~30. At 1e-8 the eigenvectors, and so the field figures of merit, are within
+# ~3e-7 of converged and the frequency within ~1e-13: well below the discretisation
+# error of any practical mesh, so the solver is never the error that shows.
 DEFAULT_PINVIT_TOL = 1e-8
 DEFAULT_PINVIT_MAXIT = 1000
+# The residual cannot fall below a round-off floor, and the floor depends on the mesh:
+# 1e-13 to 1e-10 on TESLA cells, but 1e-8 to 1e-6 where small elements sit near the
+# axis (a pillbox with a 2.5 mm aperture, a thin dielectric tube at r = 2 mm), where
+# the r-weighted mass matrix is tiny and (A + B)^-1 amplifies round-off in the
+# residual. Such a solve reaches its floor in ~20 iterations and would spin to the
+# cap. A residual that has not halved in PINVIT_STALL_ITERATIONS iterations is taken
+# as the floor. That window cannot cut off genuine convergence: halving once per 50
+# iterations, 8 decades would take ~1300, beyond the cap anyway. On the pillbox,
+# stopping at the floor (rho ~2e-7) left frequency, R/Q, Epk/Eacc and G within 1e-8
+# of the 1000-iteration result, the same scatter as two random starts.
+PINVIT_STALL_ITERATIONS = 50
+# A floor below this is accurate for every purpose; above it, the solve warns.
+PINVIT_STALL_WARN = 1e-5
+# Most extra vectors PINVIT iterates on beyond the requested modes (see pinvit_n_modes).
+PINVIT_PADDING_CAP = 30
 
 # numpy renamed trapz -> trapezoid; resolve once, at import.
 _TRAPZ = getattr(np, 'trapezoid', None) or np.trapz
@@ -430,13 +445,15 @@ def pinvit_settings(eigenmode_config=None):
     """The PINVIT stopping settings of an eigenmode config, defaults filled in, as
     keyword arguments for ``NGSolveMEVP._solve_system`` / ``_solve_modes``."""
     cfg = eigenmode_config or {}
+    padding = cfg.get('pinvit_padding')
     return {'pinvit_maxit': int(cfg.get('pinvit_maxit') or DEFAULT_PINVIT_MAXIT),
             'pinvit_tol': float(cfg.get('pinvit_tol') or DEFAULT_PINVIT_TOL),
-            'converge_modes': cfg.get('pinvit_converge_modes')}
+            'converge_modes': cfg.get('pinvit_converge_modes'),
+            'padding': None if padding is None else int(padding)}
 
 
 def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_TOL,
-           n_check=None, shift=0.0):
+           n_check=None, shift=0.0, stall=PINVIT_STALL_ITERATIONS):
     """Preconditioned inverse iteration that stops once it has converged.
 
     The algorithm is NGSolve's ``solvers.PINVIT`` line for line (block of *num*
@@ -461,6 +478,10 @@ def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_
     on TESLA 1- and 9-cells, the eigenvector error (which the field figures of merit
     follow) is 6-30x rho and the relative frequency error ~rho^2.
 
+    The floor of rho is not always below *tol*: with small elements near the axis it
+    sits at 1e-8 to 1e-6 (see PINVIT_STALL_ITERATIONS). Once rho has not halved in
+    *stall* iterations it has reached that floor, and the iteration stops there too.
+
     ``P r`` is the preconditioned residual PINVIT forms anyway, so the check costs
     one inner product per mode. The iteration count a problem needs varies by an
     order of magnitude: a single cell converges in ~20, while the two second-band
@@ -470,8 +491,9 @@ def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_
     relative threshold that separates gradient-kernel remnants downstream.
 
     Returns ``(lams, uvecs, info)``: the Ritz values (ascending), the Ritz vectors
-    (a MultiVector) and ``{'iterations', 'converged', 'residual'}``, the residual
-    being the largest checked rho_i at exit.
+    (a MultiVector) and ``{'iterations', 'converged', 'stalled', 'residual'}``, the
+    residual being the largest checked rho_i at exit and ``stalled`` whether the
+    iteration stopped at the floor rather than at *tol*.
     """
     r = mata.CreateRowVector()
     uvecs = MultiVector(r, num)
@@ -481,7 +503,8 @@ def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_
     uvecs[:] = pre * vecs[0:num]
     lams = Vector(num * [1])
 
-    rho, converged, it = np.inf, False, 0
+    rho, converged, stalled, it = np.inf, False, False, 0
+    rho_mark, it_mark = np.inf, 0          # the last residual that halved its predecessor
     for it in range(maxit + 1):
         vecs[0:num] = mata * uvecs - (matm * uvecs).Scale(lams)
         vecs[num:2 * num] = pre * vecs[0:num]
@@ -496,7 +519,10 @@ def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_
                        * np.sqrt(abs(lam[i] + 1)) / abs(lam_true[i]) for i in check),
                       default=np.inf)
             converged = rho < tol
-            if converged or it == maxit:
+            if rho < 0.5 * rho_mark:
+                rho_mark, it_mark = rho, it
+            stalled = not converged and it - it_mark >= stall
+            if converged or stalled or it == maxit:
                 break
         vecs[0:num] = uvecs
         vecs.Orthogonalize(matm)
@@ -506,7 +532,7 @@ def pinvit(mata, matm, pre, num, maxit=DEFAULT_PINVIT_MAXIT, tol=DEFAULT_PINVIT_
         lams = Vector(ev[0:num])
         uvecs[:] = vecs * Matrix(evec[:, 0:num])
     return lams, uvecs, {'iterations': it, 'converged': bool(converged),
-                         'residual': float(rho)}
+                         'stalled': bool(stalled), 'residual': float(rho)}
 
 
 class NGSolveMEVP:
@@ -546,9 +572,30 @@ class NGSolveMEVP:
         return int(n_modes)
 
     @staticmethod
-    def pinvit_n_modes(requested_n_modes):
-        """PINVIT search size: always two more than requested."""
-        return int(requested_n_modes) + 2
+    def pinvit_n_modes(requested_n_modes, padding=None):
+        """PINVIT block size: the requested modes plus *padding* extra vectors.
+
+        The default padding is twice the requested count, at least 2 and at most
+        ``PINVIT_PADDING_CAP``. The highest requested modes converge at a rate set by
+        the gap to the first eigenvalue OUTSIDE the block. With the default
+        ``n_modes = n_cells + 2`` those two modes open the next, densely packed
+        passband, and two extra vectors left the block ending inside that band. Measured
+        with the residual stop (TESLA, h=20 mm):
+
+        - 9-cell monopole: 8.9 s -> 4.8 s;
+        - 9-cell dipole: 9.0 s -> 3.0 s;
+        - 5-cell monopole: 3.1 s -> 1.4 s;
+        - single cell: 0.25 s -> 0.29 s.
+
+        Padding equal to ``n_modes`` was not enough for the monopoles (the 9-cell still
+        needed 78 iterations). The cap bounds the memory of the extra vectors; large
+        ``n_modes`` has not been benchmarked. Override with
+        ``eigenmode_config['pinvit_padding']``.
+        """
+        n = int(requested_n_modes)
+        if padding is None:
+            padding = min(max(2 * n, 2), PINVIT_PADDING_CAP)
+        return n + int(padding)
 
     @staticmethod
     def resolve_materials(cav, eigenmode_config=None):
@@ -1483,7 +1530,7 @@ class NGSolveMEVP:
                 'ab_form': ab_form, 'pre_reg': pre_reg, 'pre_kind': pre_kind}
 
     def _solve_system(self, system, n_modes, pinvit_maxit=DEFAULT_PINVIT_MAXIT,
-                      pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None):
+                      pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None, padding=None):
         """Update, assemble and solve the reusable *system* on its (possibly
         just-refined) mesh. Returns ``(freq_fes, gfu_E, gfu_H)`` where each
         ``gfu_E`` entry is a product-space GridFunction (components: in-plane
@@ -1492,8 +1539,9 @@ class NGSolveMEVP:
         functions. The representation is the same for every m.
 
         PINVIT stops once the lowest *converge_modes* modes (None: all *n_modes*)
-        are converged to *pinvit_tol*, or after *pinvit_maxit* iterations; see
-        :func:`pinvit`. The iteration count and final residual are left on
+        are converged to *pinvit_tol*, once their residual stalls at its round-off
+        floor, or after *pinvit_maxit* iterations; see :func:`pinvit`. It iterates on *padding* extra vectors (None: the default of
+        :meth:`pinvit_n_modes`). The iteration count and final residual are left on
         ``self._last_pinvit``."""
         fes, fes_rz = system['fes'], system['fes_rz']
         a, b, m_pol = system['a'], system['b'], system['m']
@@ -1529,14 +1577,31 @@ class NGSolveMEVP:
             n_check = n_modes if converge_modes is None else min(int(converge_modes), n_modes)
             shift = ((2 * pi * f_shift * 1e6 / c0)**2
                      if f_shift and f_shift != 'default' else 0.0)
-            evals_, evecs_, info_ = pinvit(a.mat, b.mat, projpre,
-                                           num=self.pinvit_n_modes(n_modes),
+            # PINVIT's search space holds 2*num vectors, and they must fit in what the
+            # kernel projection leaves (free DOFs minus the free potential DOFs). On a
+            # very coarse mesh -- a 37-DOF start of an adaptive study -- the default
+            # padding does not fit, the vectors go linearly dependent and the
+            # Rayleigh-Ritz mass matrix is singular. Keep the block within a third of
+            # that space, falling back to the old n_modes + 2 when even that is too big.
+            n_phys = fes.FreeDofs().NumSet() - fes_pot.FreeDofs().NumSet()
+            num = self.pinvit_n_modes(n_modes, padding)
+            num = max(min(num, n_phys // 3), min(n_modes + 2, num))
+            evals_, evecs_, info_ = pinvit(a.mat, b.mat, projpre, num=num,
                                            maxit=int(pinvit_maxit), tol=float(pinvit_tol),
                                            n_check=n_check, shift=shift)
             self._last_pinvit = info_
-            if not info_['converged']:
-                # warnings.warn, not the verbosity-gated warning(): modes that did not
-                # converge are a correctness problem, and a silent one reads as a result.
+            # warnings.warn, not the verbosity-gated warning(): modes that did not
+            # converge are a correctness problem, and a silent one reads as a result.
+            # A floor below PINVIT_STALL_WARN is not one (see PINVIT_STALL_ITERATIONS).
+            if info_['stalled'] and info_['residual'] > PINVIT_STALL_WARN:
+                warnings.warn(
+                    f"PINVIT stalled at a relative residual of {info_['residual']:.1e} "
+                    f"(pinvit_tol={float(pinvit_tol):.0e}): the round-off floor of this "
+                    f"mesh, which more iterations cannot lower. The checked modes are "
+                    f"accurate only to about that level. Very small elements near the "
+                    f"axis raise the floor.",
+                    UserWarning, stacklevel=2)
+            elif not info_['converged'] and not info_['stalled']:
                 warnings.warn(
                     f"PINVIT stopped at pinvit_maxit={int(pinvit_maxit)} with a relative "
                     f"residual of {info_['residual']:.1e} against pinvit_tol="
@@ -1888,7 +1953,7 @@ class NGSolveMEVP:
     def _solve_modes(self, mesh, mesh_p, m_pol, n_modes, save_dir=None,
                      f_shift=0, direct_solver=None, pinvit_maxit=DEFAULT_PINVIT_MAXIT,
                      materials=None, loss_model='lossless', n_arnoldi=None,
-                     pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None):
+                     pinvit_tol=DEFAULT_PINVIT_TOL, converge_modes=None, padding=None):
         """Solve the Maxwell eigenproblem for a single azimuthal order *m_pol*.
 
         The one entry point for every polarisation (m = 0 monopole included);
@@ -1909,7 +1974,7 @@ class NGSolveMEVP:
         n_modes = self.requested_n_modes(n_modes=n_modes)
         system = self._build_system(mesh, mesh_p, m_pol, f_shift, direct_solver, materials)
         freq_fes, gfu_E, gfu_H = self._solve_system(system, n_modes, pinvit_maxit,
-                                                    pinvit_tol, converge_modes)
+                                                    pinvit_tol, converge_modes, padding)
         self._last_dielectric_q = None
         if loss_model == 'lossy':
             freq_fes, gfu_E, gfu_H, self._last_dielectric_q = self._lossy_pass(
@@ -2029,10 +2094,10 @@ class NGSolveMEVP:
         for step in range(max_ref + 1):
             fields = self._error_fields(mesh, fes_rz, gfu_E)
             per_mode_max = [float(f.max()) if len(f) else 0.0 for f in fields]
-            # Drive and gate on the requested physical modes only. PINVIT solves
-            # n_modes + 2 for accuracy; the top padding modes are barely converged
-            # (huge, noisy error) and would otherwise hijack the refinement and
-            # make the tolerance unreachable.
+            # Drive and gate on the requested physical modes only. PINVIT iterates
+            # on extra padding vectors for speed; those are not converged (huge, noisy
+            # error) and would otherwise hijack the refinement and make the tolerance
+            # unreachable.
             n_use = min(n_modes, len(fields))
             gate_max = max(per_mode_max[:n_use]) if n_use else 0.0
 
@@ -2137,10 +2202,10 @@ class NGSolveMEVP:
                     direct_solver=direct_solver, n_arnoldi=n_arnoldi)
 
         # Report the modes that were asked for, and no more. PINVIT iterates on
-        # n_modes + 2 vectors because the extra two speed up the convergence of the
-        # rest, but those two are themselves barely converged (the adaptive driver
-        # already refuses to be steered by them). Returning them put two unconverged
-        # modes in every results table, selectable as a mode of interest.
+        # extra padding vectors because they speed up the convergence of the rest,
+        # but they are themselves not converged (the adaptive driver already refuses
+        # to be steered by them). Returning them put unconverged modes in every
+        # results table, selectable as a mode of interest.
         if len(freq_fes) > n_modes:
             freq_fes, gfu_E, gfu_H = (list(freq_fes)[:n_modes], list(gfu_E)[:n_modes],
                                       list(gfu_H)[:n_modes])
@@ -2385,6 +2450,7 @@ class NGSolveMEVP:
                              'No of DOFs': ndof,
                              'PINVIT iterations': (info or {}).get('iterations'),
                              'converged': (info or {}).get('converged'),
+                             'stalled': (info or {}).get('stalled'),
                              **times,
                              **self._benchmark_errors(cav, m, cfg, f, q,
                                                       ref['freqs'], ref['qois'])})

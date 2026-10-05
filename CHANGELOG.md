@@ -6,6 +6,15 @@ follow [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- Slope triangles for convergence plots. `cav.plot_mesh_convergence()` draws the
+  relative error of a `study_mesh_convergence` against DOFs, one curve per order,
+  against an exact value or the finest solve. With `slopes=True` each curve gets a
+  triangle labelled with its measured convergence rate.
+  `cav.eigenmode.plot_convergence(slopes=...)` does the same for an adaptive run's
+  error. A triangle is drawn only where the curve follows a power law (a straight
+  line on log-log axes, R^2 >= 0.95), so a figure of merit whose error zig-zags
+  between meshes gets none rather than a meaningless slope. Placement is automatic.
+  The helper is `cavsim2d.utils.slope_triangles`.
 - `cav.eigenmode.benchmark(variants, sweep, n_repeats)` times and scores
   eigenmode solver settings on a cavity. Each variant is a set of config overrides,
   and a sweep crosses it with a list of values. Every point is a complete
@@ -306,11 +315,41 @@ follow [Semantic Versioning](https://semver.org).
   `pinvit_converge_modes` checks only the lowest few, and `pinvit_maxit` (default
   1000) is now a cap that warns when reached. A fixed count could not serve every
   cavity. A single cell converges in about 20 iterations. The two second-band modes
-  a 9-cell reports by default were still 2e-3 off at 20 and need about 250. A
-  9-cell monopole solve with the default modes therefore takes longer than before
-  (about 7 s instead of 1.6 s at the default mesh). Setting
-  `pinvit_converge_modes=n_cells` converges the passband alone in about 11
-  iterations.
+  a 9-cell reports by default were still 2e-3 off at 20.
+- The eigensolver also stops when its residual stops falling. Round-off sets a floor
+  under the residual: 1e-13 to 1e-10 on TESLA cells, but 1e-8 to 1e-6 where small
+  elements sit near the axis, such as a pillbox with a 2.5 mm aperture or a thin
+  dielectric tube at r = 2 mm. There the residual reached its floor in about 20
+  iterations. The solve then ran on to the 1000-iteration cap and warned that the
+  modes had not converged.
+  - A residual that has not halved in 50 iterations now stops the solve. That
+    window does not cut off genuine convergence: the slowest known case, a 9-cell
+    with two extra vectors, needs 205 iterations and still converges.
+  - A floor below 1e-5 is accepted silently; above it, the solve warns.
+  - On the dielectric-tube pillbox the solve drops from 1000 iterations and 42 s to
+    60 iterations and 2.9 s. Frequency, R/Q, Epk/Eacc and G stay within 1e-8 of the
+    1000-iteration result, the scatter between two random starts.
+  - The benchmark table gains a `stalled` column.
+- PINVIT iterates on more extra vectors: by default twice `n_modes`, at least 2 and
+  at most 30 and within a third of the mesh's free space, instead of always 2
+  (`eigenmode_config['pinvit_padding']`). The
+  highest requested modes converge at a rate set by the gap to the first eigenvalue
+  outside the block. With two extra vectors that block ended inside the next
+  passband, and the two second-band modes a 9-cell reports needed about 250
+  iterations. Measured on TESLA at the default mesh:
+  - 9-cell monopole: 8.9 s to 4.8 s;
+  - 9-cell dipole: 9.0 s to 3.0 s;
+  - 5-cell monopole: 3.1 s to 1.4 s;
+  - single cell: 0.25 s to 0.29 s.
+
+  A default 9-cell solve still takes longer than the 1.6 s it took before these
+  changes, which left those two modes unconverged. `pinvit_converge_modes=n_cells`
+  converges the passband alone in about 2.3 s, against 4.3 s for every mode.
+- Tuning solves every secant step with the default direct preconditioner. The steps
+  far from the target used BDDC, and a step landing near the target was solved again
+  with direct. Now that the eigensolver runs to convergence, a BDDC step needs several
+  times the iterations. A TESLA mid-cell tune to 1300 MHz is 1.4 to 1.9x faster without
+  it (for example 2.3 s to 1.6 s at `h = 20` mm), and lands on the same `Req` to 1e-8 mm.
 - The wall loss, and with it Q, G and Rsh, is integrated from the exact wall trace of
   the solved magnetic field. It used to be projected onto a continuous field first.
   The projection averaged the element-wise field between neighbours and added a

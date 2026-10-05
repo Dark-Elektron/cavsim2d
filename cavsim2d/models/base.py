@@ -31,6 +31,7 @@ from cavsim2d.solvers.solver_objects import (TuneSolver, EigenmodeSolver, Wakefi
 from cavsim2d.constants import SOFTWARE_DIRECTORY
 from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
 from cavsim2d.utils.style import house_style, polarisation_color, shades, WARM
+from cavsim2d.utils.slope_triangles import add_slope_triangles
 from fractions import Fraction
 
 # Safe arithmetic evaluator for simple expressions
@@ -1317,6 +1318,67 @@ class Cavity(ABC):
             self.convergence_df = self.calculate_rel_errors(self.convergence_df_data)
         except Exception:
             self.convergence_df = self.convergence_df_data.copy()
+
+    def plot_mesh_convergence(self, qoi='freq [MHz]', mode_index='0-0', reference=None,
+                              slopes=False, floor=5e-14, ax=None, show=True):
+        """The relative error of *qoi* against the number of DOFs, one curve per polynomial
+        order, from :meth:`study_mesh_convergence`.
+
+        *mode_index* is ``'<m>-<mode>'`` (``'0-0'``: the monopole fundamental). *reference*
+        is the exact value; ``None`` compares against the solve with the most DOFs, which
+        is then left out of the plot.
+
+        ``slopes=True`` marks each order's convergence rate with a slope triangle. A
+        triangle is drawn only where the curve follows a power law (see
+        :func:`~cavsim2d.utils.slope_triangles.fit_convergence_rate`), so a figure of merit
+        whose error changes sign or size irregularly from mesh to mesh gets none rather
+        than a meaningless slope. Errors at or below *floor* are round-off: they stay in
+        the plot and are left out of the rates. Returns ``(fig, ax)``.
+        """
+        df = self.convergence_df_data
+        if df is None or len(df) == 0:
+            raise ValueError("no mesh-convergence results: run study_mesh_convergence() first.")
+        sub = df[df['mode_index'] == mode_index]
+        if sub.empty:
+            raise ValueError(f"mode_index {mode_index!r} is not in the results; available: "
+                             f"{sorted(df['mode_index'].unique())}")
+        if qoi not in sub:
+            raise ValueError(f"{qoi!r} is not in the results; available: "
+                             f"{[c for c in sub.columns if '[' in c]}")
+        if reference is None:
+            finest = sub.loc[sub['No of DOFs'].idxmax()]
+            ref, against = float(finest[qoi]), 'the finest solve'
+            sub = sub.drop(index=finest.name)
+        else:
+            ref, against = float(reference), 'the reference'
+        sub = sub.assign(error=((sub[qoi] - ref).abs() / abs(ref)).clip(lower=1e-16))
+
+        with house_style():
+            if ax is None:
+                fig, ax = plt.subplots(figsize=(8, 5.2))
+            else:
+                fig = ax.figure
+            curves, colors = [], []
+            for i, (p, g) in enumerate(sub.groupby('p')):
+                g = g.sort_values('No of DOFs')
+                color = WARM[i % len(WARM)]
+                ax.plot(g['No of DOFs'], g['error'], 'o-', ms=5, color=color, label=f'p = {p}')
+                curves.append((g['No of DOFs'].values, g['error'].values))
+                colors.append(color)
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            if (sub['error'] <= 10 * floor).any():
+                ax.axhline(floor, color='0.5', lw=0.8, ls=':')
+                ax.text(1.0, floor * 1.4, 'round-off ', transform=ax.get_yaxis_transform(),
+                        ha='right', va='bottom', fontsize=8, color='0.4')
+            if slopes:
+                add_slope_triangles(ax, curves, colors, floor=floor)
+            ax.set_xlabel('degrees of freedom')
+            ax.set_ylabel(f'relative error in {qoi}')
+            ax.set_title(f'{self.name}: mode {mode_index} against {against}')
+            ax.legend()
+        _maybe_show(show)
+        return fig, ax
 
     def calculate_rel_errors(self, df):
         # Level-to-level relative error of the numeric QOI columns. Metadata

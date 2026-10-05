@@ -29,6 +29,7 @@ from cavsim2d.solvers.eigenmode_result import (EigenmodeResult, MPOLE_NAMES, pol
                                                pol_number, monopole_dir)
 from cavsim2d.utils.printing import done, error, info, suppress_errors
 from cavsim2d.utils.style import house_style, WARM, polarisation_color, shades
+from cavsim2d.utils.slope_triangles import add_slope_triangles
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import (DEFAULT_PINVIT_MAXIT, DEFAULT_PINVIT_TOL,
                                                     NGSolveMEVP, default_direct_solver,
@@ -76,6 +77,7 @@ DEFAULT_EIGENMODE_CONFIG = {
     'preconditioner': 'direct',      # PINVIT preconditioner: 'direct' or 'bddc'
     'pinvit_tol': DEFAULT_PINVIT_TOL,    # stop once every checked mode's residual is below
     'pinvit_converge_modes': None,   # modes that must converge; None -> all n_modes
+    'pinvit_padding': None,          # extra vectors iterated on; None -> 2 x n_modes, at most 30
     'pinvit_maxit': DEFAULT_PINVIT_MAXIT,    # iteration cap
 }
 
@@ -1058,12 +1060,17 @@ class EigenmodeSolver:
         with open(path) as f:
             return json.load(f)
 
-    def plot_convergence(self, pol='monopole', show=True):
+    def plot_convergence(self, pol='monopole', show=True, slopes=False):
         """Adaptive-refinement convergence for *pol* — the AMR namespace's
         "unique property". Two panels versus the number of DOFs along the
         refinement path: the recovery **error** (log-log, driving the marking)
         and each mode's **frequency** (it should flatten as the mesh resolves).
-        ``info`` + ``None`` when the run was not adaptive."""
+        ``info`` + ``None`` when the run was not adaptive.
+
+        *slopes* marks the rate at which each mode's error falls with a slope
+        triangle: ``True`` for every mode, or a list of 1-based mode numbers. A mode
+        whose error does not follow a power law gets none (see
+        :func:`~cavsim2d.utils.slope_triangles.fit_convergence_rate`)."""
         history = self.adaptive_history(pol)
         if not history:
             info(f"No adaptive history for {pol_name(pol_number(pol))} — run the "
@@ -1081,6 +1088,11 @@ class EigenmodeSolver:
                                label=f'mode {j + 1}')
                 axes[1].semilogx(dofs, freqs[:, j], marker='o', color=c,
                                  label=f'mode {j + 1}')
+            if slopes:
+                chosen = range(n_modes) if slopes is True else [int(j) - 1 for j in slopes]
+                chosen = [j for j in chosen if 0 <= j < n_modes]
+                add_slope_triangles(axes[0], [(dofs, errs[:, j]) for j in chosen],
+                                    [WARM[j % len(WARM)] for j in chosen])
             axes[0].set_xlabel('Number of DOFs')
             axes[0].set_ylabel('Recovery error')
             axes[0].set_title('Error vs DOFs')
@@ -1140,7 +1152,8 @@ class EigenmodeSolver:
         -------
         pandas.DataFrame
             One row per run: ``variant``, the swept keys, ``repeat``,
-            ``No of DOFs``, ``PINVIT iterations``, ``converged``, the stage times
+            ``No of DOFs``, ``PINVIT iterations``, ``converged``, ``stalled``
+            (stopped at the residual's round-off floor, above ``pinvit_tol``), the stage times
             ``mesh [s]``, ``solve [s]`` and ``QOIs [s]``, the time per simulation
             ``total [s]``, the worst relative error against the reference of
             ``freq (mode of interest)``, ``freq (passband)`` (the lowest ``n_cells``

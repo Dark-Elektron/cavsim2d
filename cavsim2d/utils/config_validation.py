@@ -16,7 +16,7 @@ EIGENMODE_KEYS = {
     'processes', 'rerun', 'force', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
     'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
     'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
-    'pinvit_tol', 'pinvit_converge_modes',
+    'pinvit_tol', 'pinvit_converge_modes', 'pinvit_padding',
     'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
     'opt', 'target', 'solver_save_directory', 'preconditioner', 'freq_only',
     'pml_length', 'pml_alpha', 'beampipe_length', 'n_port_modes',

@@ -101,14 +101,6 @@ def _resolve_cell_type(cell_type, shape, perturbed=None):
 
 
 class PyTuneNGSolve:
-    # Within this many tolerances of the target, a step is solved with the direct
-    # preconditioner instead of BDDC. BDDC is approximate and PINVIT stops after a
-    # fixed number of iterations, so a BDDC frequency carries an error of a few
-    # 1e-4 MHz on a fine mesh, different on every call (PINVIT starts from random
-    # vectors). Far from the target that is noise under the step; near it, it kept
-    # the secant from ever meeting the default 1e-4 MHz tolerance.
-    DIRECT_WITHIN_TOLS = 100
-
     def __init__(self):
         self.plot = None
         self.beampipe = None
@@ -314,12 +306,16 @@ class PyTuneNGSolve:
 
         # UQ tuning reads its own uq.json, so it keeps the full default solve.
         # Otherwise the secant needs only the frequency: defer the QOIs and fields
-        # to the solve on the tuned cavity, and use BDDC until the step is close
-        # enough for its error to matter.
+        # to the solve on the tuned cavity.
+        #
+        # Every step uses the default (direct) preconditioner. The steps far from
+        # the target used to take BDDC, and one landing near the target was solved
+        # again with direct. Once PINVIT stopped on its residual, a BDDC step needed
+        # several times the iterations, and that scheme made a TESLA mid-cell tune
+        # 1.4-1.9x slower than direct throughout, for the same tuned Req.
         uq = bool(self.tune_config.get('uq_config'))
-        pre = None if uq else self._preconditioner()
         if not degenerate:
-            degenerate = not self._solve_step(bp, endcell_tune, pre)
+            degenerate = not self._solve_step(bp, endcell_tune, freq_only=not uq)
 
         if degenerate:
             return self._degenerate_penalty(x_val)
@@ -332,12 +328,6 @@ class PyTuneNGSolve:
             freq = eigenmode_qois['freq [MHz]']['expe'][0]
         else:
             freq = self._read_frequency()
-            # A BDDC step that lands near the target is solved again exactly, so no
-            # step is accepted on the preconditioner's error.
-            if (pre == 'bddc' and abs(freq - self.target_freq)
-                    <= self.DIRECT_WITHIN_TOLS * self.tol
-                    and self._solve_step(bp, endcell_tune, 'direct')):
-                freq = self._read_frequency()
 
         self.freq_list.append(freq)
         self._valid_mask.append(True)
@@ -354,22 +344,16 @@ class PyTuneNGSolve:
 
         return diff
 
-    def _preconditioner(self):
-        """'direct' once the last valid step is within DIRECT_WITHIN_TOLS tolerances."""
-        last = [e for e, ok in zip(self.abs_err_list, self._valid_mask) if ok]
-        near = bool(last) and last[-1] <= self.DIRECT_WITHIN_TOLS * self.tol
-        return 'direct' if near else 'bddc'
-
     def _read_frequency(self):
         mono_dir = monopole_dir(os.path.join(self.cav.self_dir, 'eigenmode'))
         with open(os.path.join(mono_dir, 'qois.json')) as json_file:
             return json.load(json_file)['freq [MHz]']
 
-    def _solve_step(self, bp, endcell_tune, preconditioner):
+    def _solve_step(self, bp, endcell_tune, freq_only):
         """Solve the stage geometry once, on the caller's mesh. True on success.
 
-        *preconditioner* None is the full default solve (QOIs and fields);
-        otherwise a frequency-only solve with that preconditioner.
+        *freq_only* solves for the frequency alone; otherwise it is the full
+        default solve (QOIs and fields).
         """
         orig_n_cells = self.cav.n_cells
         orig_beampipe = getattr(self.cav, 'beampipe', None)
@@ -409,11 +393,10 @@ class PyTuneNGSolve:
                 self.cav.parameters[k] = self.cav.parameters[
                     f'{k[:-len(other)]}_m']
         try:
-            if preconditioner is None:
-                cfg = _step_eigenmode_config(self.tune_config)
+            if freq_only:
+                cfg = _step_eigenmode_config(self.tune_config, freq_only=True)
             else:
-                cfg = _step_eigenmode_config(self.tune_config, freq_only=True,
-                                             preconditioner=preconditioner)
+                cfg = _step_eigenmode_config(self.tune_config)
             res = ngsolve_mevp.solve(self.cav, eigenmode_config=cfg)
         except Exception:
             res = False

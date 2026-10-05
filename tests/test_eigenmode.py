@@ -3,6 +3,7 @@ per-polarisation result folders and rerun semantics, legacy-layout fallback."""
 import gc
 import os
 import shutil
+import warnings
 
 import numpy as np
 import pytest
@@ -11,7 +12,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d import Study, EllipticalCavity
+from cavsim2d import Beampipe, Study, EllipticalCavity, Pillbox
 from cavsim2d.solvers.NGSolve import eigen_ngsolve
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import (DEFAULT_PINVIT_MAXIT, DEFAULT_PINVIT_TOL,
                                                     NGSolveMEVP, default_direct_solver,
@@ -43,7 +44,10 @@ def test_mode_count_resolution_defaults_and_aliases():
     assert solver.requested_n_modes(DummyCavity()) == 5
     assert solver.requested_n_modes(DummyCavity(), {'n_modes': 7}) == 7
     assert solver.requested_n_modes(DummyCavity(), {'nmodes': 8}) == 8
-    assert solver.pinvit_n_modes(8) == 10
+    assert solver.pinvit_n_modes(8) == 24             # default padding: 2 x n_modes
+    assert solver.pinvit_n_modes(1) == 3              # ...at least 2
+    assert solver.pinvit_n_modes(20) == 50            # ...at most PINVIT_PADDING_CAP
+    assert solver.pinvit_n_modes(8, padding=2) == 10  # eigenmode_config['pinvit_padding']
     with pytest.raises(ValueError):
         solver.requested_n_modes(n_modes=0)
 
@@ -641,6 +645,36 @@ def test_pinvit_warns_when_the_cap_stops_it():
     assert solver._last_pinvit['converged'] is False
 
 
+def _floored_pillbox_mesh(solver):
+    """A mesh whose residual floor (~2e-7) sits above the default pinvit_tol: small
+    elements near the axis, in a thin dielectric tube at r = 2 mm."""
+    cav = Pillbox(1, [20, 37.5, 2.5, 0, 5], beampipe='both')
+    cav.add_dielectric('quartz', 3.8, z=(-1e4, 1e4), r=(2.0, 2.5), maxh=0.2)
+    return solver._build_mesh(cav, 4e-3, geometry_order(3), boundary_conditions='mm')
+
+
+def test_pinvit_stops_at_its_round_off_floor():
+    """A residual that cannot reach pinvit_tol stops once it stalls, not at the cap
+    of 1000 iterations, and a floor this low is no reason to warn."""
+    solver = NGSolveMEVP()
+    mesh = _floored_pillbox_mesh(solver)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        solver._solve_modes(mesh, 3, 0, 2)
+    info = solver._last_pinvit
+    assert info['stalled'] and not info['converged']
+    assert info['iterations'] < 200
+    assert DEFAULT_PINVIT_TOL < info['residual'] < eigen_ngsolve.PINVIT_STALL_WARN
+
+
+def test_pinvit_warns_when_it_stalls_above_the_warning_level(monkeypatch):
+    monkeypatch.setattr(eigen_ngsolve, 'PINVIT_STALL_WARN', 1e-12)
+    solver = NGSolveMEVP()
+    mesh = _floored_pillbox_mesh(solver)
+    with pytest.warns(UserWarning, match='PINVIT stalled'):
+        solver._solve_modes(mesh, 3, 0, 2)
+
+
 def test_field_figures_of_merit_repeat_between_identical_solves():
     """Round-off left a ~2e-7 gradient-kernel component in every eigenvector. It
     moves the frequency only at second order but the fields at first, and it differs
@@ -934,6 +968,23 @@ def test_plot_convergence_present_only_for_adaptive(project_dir):
                                                      'max_ndof': 40000}}})
     fig, axes = cav2.eigenmode.plot_convergence(show=False)
     assert fig is not None and len(axes) == 2
+    fig, axes = cav2.eigenmode.plot_convergence(show=False, slopes=[1])
+    assert fig is not None
+
+
+def test_plot_mesh_convergence_with_slopes(project_dir):
+    """plot_mesh_convergence draws a study's error against DOFs, one curve per order,
+    against an exact reference or the finest solve, with optional slope triangles."""
+    cav = Beampipe(230.0, 200.0, ends='pec', name='cyl')
+    cav.set_workspace(os.path.join(project_dir, 'cyl'))
+    cav.study_mesh_convergence(h=250, p=2, p_passes=2, n_modes=2, polarisation=('monopole',),
+                               max_refinements=3, max_ndof=20000)
+    f_exact = 498.880556
+    fig, ax = cav.plot_mesh_convergence(reference=f_exact, slopes=True, show=False)
+    assert len(ax.get_lines()) >= 2
+    fig, ax = cav.plot_mesh_convergence(qoi='R/Q [Ohm]', show=False)   # against the finest solve
+    with pytest.raises(ValueError, match='mode_index'):
+        cav.plot_mesh_convergence(mode_index='7-7', show=False)
 
 
 def test_sample_cfg_and_config_sample_return_authoritative_defaults(capsys):

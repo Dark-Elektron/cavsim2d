@@ -98,14 +98,21 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    checked mode is below this. At 1e-8 frequencies are converged to about 1e-13 and
    the fields, and every figure of merit computed from them, to about 3e-7: below the
    discretisation error of any practical mesh. A looser value is faster; see
-   :doc:`examples/convergence/index` for what each value buys.
+   :doc:`examples/convergence/index` for what each value buys. Round-off sets a floor
+   under the residual, and on meshes with very small elements near the axis that floor
+   can lie above 1e-8. The eigensolver then stops once the residual stops falling. It
+   warns only if the floor is above 1e-5.
 ``pinvit_converge_modes``
    *(int, default None)* How many of the lowest modes must meet ``pinvit_tol``. ``None``
    checks all ``n_modes``. Modes above the checked ones are still reported, but are
    not converged: check fewer modes only when you will not use the rest.
+``pinvit_padding``
+   *(int, default None)* Extra vectors the eigensolver iterates on beyond ``n_modes``.
+   They are never reported, but they make the highest requested modes converge in far
+   fewer iterations. ``None`` uses twice ``n_modes``, at least 2 and at most 30.
 ``pinvit_maxit``
-   *(int, default 1000)* Iteration cap. A solve that reaches it before converging
-   warns.
+   *(int, default 1000)* Iteration cap. A solve that reaches it while the residual is
+   still falling warns.
 ``preconditioner``
    *(str, default* ``'direct'`` *)* The eigensolver's preconditioner: ``'direct'``, an
    exact factorisation, or ``'bddc'``, an approximate one that is cheaper per iteration
