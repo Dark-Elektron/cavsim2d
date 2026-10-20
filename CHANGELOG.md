@@ -5,6 +5,10 @@ follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-20
+
+First release on PyPI.
+
 ### Added
 - Slope triangles for convergence plots. `cav.plot_mesh_convergence()` draws the
   relative error of a `study_mesh_convergence` against DOFs, one curve per order,
@@ -421,10 +425,14 @@ follow [Semantic Versioning](https://semver.org).
 - README rewritten around the current API, with a cavity-type capability matrix.
 
 ### Known issues
-- The m-pole eigensolver currently returns only near-zero gradient-kernel
-  eigenvalues (the physical modes are not extracted); m-pole frequencies/QOIs
-  are not reliable until this is resolved.
-- Multicell UQ and the parameter `sweep` are not available (they raise a clear
-  `NotImplementedError`).
-- Only `EllipticalCavity` is fully exercised; other cavity types are at varying
-  maturity (see the README capability matrix).
+- Waveguide ports (`boundary_conditions='port'`) are exact below the beam-pipe
+  cutoff. Above it the solve is a single linearised pass that can produce
+  spurious resonances, and the run warns on every such mode.
+- Eigenmode impedance above the beam-pipe cutoff includes beam-pipe and
+  absorbing-layer modes. `stable_modes()` filters them imperfectly, so treat
+  |Z| there as indicative and check it against a wakefield solve.
+- The staged (cup-decomposition) tuning with QoI targets is derived for
+  elliptical geometries; it has not been worked out for
+  `EllipticalCavityFlatTop`.
+- Wakefield analysis needs ABCI, a Windows program (run through `wine`
+  elsewhere) that you download from KEK.

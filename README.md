@@ -23,8 +23,8 @@ download from KEK yourself (see [Installation](#installation)).
 
 ## Cavity types and what is supported
 
-`EllipticalCavity` is the fully-supported, exercised path. Other geometry
-classes exist at varying maturity:
+Every cavity type supports every analysis; the notes below the table cover the
+caveats:
 
 | Cavity type | Eigenmode | Tuning | Wakefield | UQ / Optimisation |
 |---|---|---|---|---|

@@ -1,0 +1,107 @@
+name: Publish to PyPI
+
+# Trusted publishing: no API token is stored anywhere. PyPI and TestPyPI accept
+# uploads from this workflow once it is registered on each site as a publisher
+# of the cavsim2d project. After the first (manual, twine) upload, register it
+# under Your projects -> cavsim2d -> Manage -> Publishing; before the project
+# exists, use Account settings -> Publishing -> add a pending publisher. Either
+# way the form takes:
+#   owner Dark-Elektron, repository cavsim2d, workflow publish.yml,
+#   environment "pypi" on pypi.org and "testpypi" on test.pypi.org.
+#
+# - Run this workflow by hand (Actions tab -> Publish to PyPI -> Run workflow)
+#   to upload the current version to TestPyPI as a rehearsal.
+# - Publish a GitHub release whose tag is v<version> (e.g. v0.1.0) to upload
+#   that version to PyPI. A version can be uploaded only once, ever.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build the sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check --strict dist/*
+
+      - name: Check that ABCI is not packaged
+        # ABCI is free to use but not open source; KEK distributes it only from
+        # https://abci.kek.jp/abci.htm.
+        run: |
+          if (unzip -l dist/*.whl; tar tzf dist/*.tar.gz) | grep -iE '\.exe$|TopDrawer'; then
+            echo "::error::ABCI or TopDrawer files are in the package"
+            exit 1
+          fi
+
+      - name: Check the release tag matches the package version
+        if: github.event_name == 'release'
+        run: |
+          wheel=$(basename dist/*.whl)
+          version=$(echo "$wheel" | cut -d- -f2)
+          python -c "import sys; from packaging.version import Version as V; sys.exit(V(sys.argv[1]) != V(sys.argv[2]))" \
+            "${GITHUB_REF_NAME#v}" "$version" \
+            || { echo "::error::tag $GITHUB_REF_NAME does not match package version $version"; exit 1; }
+
+      - name: Import the built wheel in a clean environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglu1-mesa
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/venv/bin/python" -c "import cavsim2d; print('cavsim2d', cavsim2d.__version__)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/cavsim2d
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  pypi:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cavsim2d
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
