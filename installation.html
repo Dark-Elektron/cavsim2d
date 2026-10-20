@@ -42,7 +42,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.00eab0615caa71f42.min.css?v=8d75d14a" />
+        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.6efbe22605a23fcd6.min.css?v=b2ceb110" />
         <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -2757,39 +2757,45 @@
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
 <p>This section outlines how to install <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> and configure its required external solver dependencies.</p>
 <h2 id="toolkit-setup">Toolkit Setup<a class="headerlink" href="#toolkit-setup" title="Link to this heading">¶</a></h2>
-<p>To install <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code>, first clone the repository from GitHub:</p>
+<p>Install the released package from PyPI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>cavsim2d
+</code></pre></div>
+</div>
+<p>Or, to follow development or change the code, clone the repository from GitHub and install it in editable mode:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Dark-Elektron/cavsim2d.git
+<span class="nb">cd</span><span class="w"> </span>cavsim2d
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
 </code></pre></div>
 </div>
-<p>Navigate to the project root directory and install in editable mode:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-</code></pre></div>
-</div>
+<p>Either way the core dependencies, NGSolve and gmsh among them, are installed with it. The example notebooks also need the optional <code class="docutils literal notranslate"><span class="pre">jupyter</span></code> extra: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;cavsim2d[jupyter]&quot;</span></code> from PyPI, or <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[jupyter]&quot;</span></code> in a clone.</p>
 <p>To improve the readability of printed configurations and outputs, it is also recommended to install <code class="docutils literal notranslate"><span class="pre">pprintpp</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pprintpp
 </code></pre></div>
 </div>
 <h2 id="third-party-solvers">Third-Party Solvers<a class="headerlink" href="#third-party-solvers" title="Link to this heading">¶</a></h2>
 <h3 id="abci-setup-wakefield-solver">ABCI Setup (Wakefield Solver)<a class="headerlink" href="#abci-setup-wakefield-solver" title="Link to this heading">¶</a></h3>
-<p>Wakefield and impedance analyses in <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> are driven by Yang Ho Chin’s ABCI (Azimuthal Beam Cavity Interaction) code, which solves Maxwell’s equations in the time domain for axisymmetric structures.</p>
+<p>Wakefield and impedance analyses in <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> are driven by Yong Ho Chin’s ABCI (Azimuthal Beam Cavity Interaction) code, which solves Maxwell’s equations in the time domain for axisymmetric structures.</p>
+<p>ABCI is free to use but not open source, and KEK asks that it be obtained from its own page, so <code class="docutils literal notranslate"><span class="pre">cavsim2d</span></code> does not include it. Eigenmode, tuning, UQ and optimisation work without it.</p>
 <ol class="arabic">
-<li><p>Download the latest 64-bit version of ABCI (e.g., <code class="docutils literal notranslate"><span class="pre">ABCI_MP64_12_5.zip</span></code>) from the official <a class="reference external" href="https://abci.kek.jp/abci.htm">ABCI website</a>.</p></li>
-<li><p>If the website download links are broken, you can fetch the zip file directly via PowerShell:</p>
-<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><code><span class="nb">wget </span><span class="n">http</span><span class="p">://</span><span class="n">abci</span><span class="p">.</span><span class="n">kek</span><span class="p">.</span><span class="n">jp</span><span class="p">/</span><span class="n">ABCI_MP64_12_5</span><span class="p">.</span><span class="n">zip</span> <span class="n">-O</span> <span class="n">ABCI_MP64_12_5</span><span class="p">.</span><span class="n">zip</span>
+<li><p>Download ABCI from the <a class="reference external" href="https://abci.kek.jp/abci.htm">ABCI page at KEK</a>. For 64-bit Windows this is <code class="docutils literal notranslate"><span class="pre">ABCI_MP64_12_5.zip</span></code> at the time of writing.</p></li>
+<li><p>Unzip it anywhere. ABCI needs no installation.</p></li>
+<li><p>Set the <code class="docutils literal notranslate"><span class="pre">CAVSIM2D_ABCI</span></code> environment variable to the executable (for example <code class="docutils literal notranslate"><span class="pre">ABCI_MP64_12_5.exe</span></code>), or to the folder that holds <code class="docutils literal notranslate"><span class="pre">ABCI.exe</span></code>. On Windows, <code class="docutils literal notranslate"><span class="pre">setx</span></code> makes it persist for new terminals and Jupyter sessions:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><code><span class="n">setx</span> <span class="n">CAVSIM2D_ABCI</span> <span class="s2">"C:\ABCI\ABCI_MP64_12_5.exe"</span>
 </code></pre></div>
 </div>
-</li>
-<li><p>Create an <code class="docutils literal notranslate"><span class="pre">ABCI</span></code> directory in <code class="docutils literal notranslate"><span class="pre">cavsim2d/solvers</span></code> (or <code class="docutils literal notranslate"><span class="pre">cavsim2d/solver</span></code>):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>cavsim2d/solver/ABCI
+<p>On Linux or macOS:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">CAVSIM2D_ABCI</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/abci/ABCI_MP64_12_5.exe"</span>
 </code></pre></div>
 </div>
-</li>
-<li><p>Extract and copy the executable <code class="docutils literal notranslate"><span class="pre">ABCI_MP64_12_5.exe</span></code> (or similar) into the newly created folder, renaming it to <code class="docutils literal notranslate"><span class="pre">ABCI.exe</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>cp<span class="w"> </span>ABCI_MP_12_5/ABCI_MP64_12_5.exe<span class="w"> </span>cavsim2d/solver/ABCI/ABCI.exe
+<p>You can also set it from Python before the first wakefield run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'CAVSIM2D_ABCI'</span><span class="p">]</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">'C:\ABCI\ABCI_MP64_12_5.exe'</span>
 </code></pre></div>
 </div>
 </li>
 </ol>
+<p>ABCI is a Windows binary. On Linux and macOS it runs through <a class="reference external" href="https://www.winehq.org">wine</a>, which must be installed. If ABCI or wine is missing, a wakefield run stops at once with a message saying where to get it.</p>
+<p>If someone else wants ABCI, point them to the KEK page rather than passing on a copy.</p>
 <h3 id="ngsolve-setup-eigenmode-solver">NGSolve Setup (Eigenmode Solver)<a class="headerlink" href="#ngsolve-setup-eigenmode-solver" title="Link to this heading">¶</a></h3>
 <p>Eigenmode simulations are run in-memory via the NGSolve electromagnetic finite-element engine, which is a required Python dependency. It is installed automatically during the <cite>pip</cite> installation of <cite>cavsim2d</cite>.</p>
 
@@ -2838,7 +2844,7 @@
   
     Created using
     <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
-    9.1.0.
+    9.1.1.
      and
     <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
   

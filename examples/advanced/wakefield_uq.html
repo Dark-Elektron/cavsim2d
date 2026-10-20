@@ -42,7 +42,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.00eab0615caa71f42.min.css?v=8d75d14a" />
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.6efbe22605a23fcd6.min.css?v=b2ceb110" />
         <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -2762,7 +2762,7 @@
 </div></blockquote>
 <p>Here the analysis is the wakefield / impedance solve (ABCI). The figure of merit is the peak longitudinal impedance <span class="math notranslate nohighlight">\(|Z_\parallel|\)</span> in chosen frequency windows — a <code class="docutils literal notranslate"><span class="pre">ZL</span></code> objective, <code class="docutils literal notranslate"><span class="pre">[goal,</span> <span class="pre">'ZL',</span> <span class="pre">[f0,</span> <span class="pre">f1,</span> <span class="pre">…]]</span></code>, whose windows are the consecutive pairs of the frequency list (GHz). With a <code class="docutils literal notranslate"><span class="pre">uq_config</span></code>, each window’s peak comes back as a mean ± standard deviation over the perturbed geometries instead of a single number.</p>
 <blockquote>
-<div><p>Needs the bundled <code class="docutils literal notranslate"><span class="pre">ABCI.exe</span></code> (Windows, or <code class="docutils literal notranslate"><span class="pre">wine</span></code> elsewhere). ABCI needs beam pipes at both ends, so the cavity is built with <code class="docutils literal notranslate"><span class="pre">beampipe='both'</span></code>. See the <a class="reference internal" href="../../wakefield.html"><span class="doc std std-doc">wakefield guide</span></a> and the deterministic <a class="reference internal" href="../wakefield/impedance.html"><span class="std std-doc">wakefield example</span></a>.</p>
+<div><p>Needs ABCI, downloaded from KEK (see the <a class="reference internal" href="../../installation.html"><span class="doc std std-doc">installation page</span></a>), on Windows or with <code class="docutils literal notranslate"><span class="pre">wine</span></code> elsewhere. ABCI needs beam pipes at both ends, so the cavity is built with <code class="docutils literal notranslate"><span class="pre">beampipe='both'</span></code>. See the <a class="reference internal" href="../../wakefield.html"><span class="doc std std-doc">wakefield guide</span></a> and the deterministic <a class="reference internal" href="../wakefield/impedance.html"><span class="std std-doc">wakefield example</span></a>.</p>
 </div></blockquote>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -2932,7 +2932,7 @@ than per-operating-point quantities.</p>
   
     Created using
     <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
-    9.1.0.
+    9.1.1.
      and
     <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
   

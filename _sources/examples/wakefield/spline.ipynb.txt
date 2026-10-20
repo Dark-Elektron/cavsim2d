@@ -9,7 +9,7 @@
     "\n",
     "The ABCI wakefield solver runs the bunch through the cavity and reports the wake potentials and the beam-coupling impedance, for any geometry through `cav.wakefield`. This notebook walks the full single-cavity plotting suite.\n",
     "\n",
-    "> Needs the bundled `ABCI.exe` (Windows) / `abci` on PATH; ABCI needs a beam pipe at both ends."
+    "> Needs ABCI, downloaded from KEK (see the [installation page](../../installation)), on Windows or with `wine` elsewhere. ABCI needs a beam pipe at both ends."
    ]
   },
   {

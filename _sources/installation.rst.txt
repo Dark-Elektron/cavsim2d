@@ -6,17 +6,21 @@ This section outlines how to install ``cavsim2d`` and configure its required ext
 Toolkit Setup
 *************
 
-To install ``cavsim2d``, first clone the repository from GitHub:
+Install the released package from PyPI:
+
+.. code-block:: bash
+
+    pip install cavsim2d
+
+Or, to follow development or change the code, clone the repository from GitHub and install it in editable mode:
 
 .. code-block:: bash
 
     git clone https://github.com/Dark-Elektron/cavsim2d.git
-
-Navigate to the project root directory and install in editable mode:
-
-.. code-block:: bash
-
+    cd cavsim2d
     pip install -e .
+
+Either way the core dependencies, NGSolve and gmsh among them, are installed with it. The example notebooks also need the optional ``jupyter`` extra: ``pip install "cavsim2d[jupyter]"`` from PyPI, or ``pip install -e ".[jupyter]"`` in a clone.
 
 To improve the readability of printed configurations and outputs, it is also recommended to install ``pprintpp``:
 
@@ -29,26 +33,34 @@ Third-Party Solvers
 
 ABCI Setup (Wakefield Solver)
 =============================
-Wakefield and impedance analyses in ``cavsim2d`` are driven by Yang Ho Chin's ABCI (Azimuthal Beam Cavity Interaction) code, which solves Maxwell's equations in the time domain for axisymmetric structures.
+Wakefield and impedance analyses in ``cavsim2d`` are driven by Yong Ho Chin's ABCI (Azimuthal Beam Cavity Interaction) code, which solves Maxwell's equations in the time domain for axisymmetric structures.
 
-1. Download the latest 64-bit version of ABCI (e.g., ``ABCI_MP64_12_5.zip``) from the official `ABCI website <https://abci.kek.jp/abci.htm>`_.
-2. If the website download links are broken, you can fetch the zip file directly via PowerShell:
+ABCI is free to use but not open source, and KEK asks that it be obtained from its own page, so ``cavsim2d`` does not include it. Eigenmode, tuning, UQ and optimisation work without it.
+
+1. Download ABCI from the `ABCI page at KEK <https://abci.kek.jp/abci.htm>`_. For 64-bit Windows this is ``ABCI_MP64_12_5.zip`` at the time of writing.
+2. Unzip it anywhere. ABCI needs no installation.
+3. Set the ``CAVSIM2D_ABCI`` environment variable to the executable (for example ``ABCI_MP64_12_5.exe``), or to the folder that holds ``ABCI.exe``. On Windows, ``setx`` makes it persist for new terminals and Jupyter sessions:
 
    .. code-block:: powershell
 
-       wget http://abci.kek.jp/ABCI_MP64_12_5.zip -O ABCI_MP64_12_5.zip
+       setx CAVSIM2D_ABCI "C:\ABCI\ABCI_MP64_12_5.exe"
 
-3. Create an ``ABCI`` directory in ``cavsim2d/solvers`` (or ``cavsim2d/solver``):
-
-   .. code-block:: bash
-
-       mkdir -p cavsim2d/solver/ABCI
-
-4. Extract and copy the executable ``ABCI_MP64_12_5.exe`` (or similar) into the newly created folder, renaming it to ``ABCI.exe``:
+   On Linux or macOS:
 
    .. code-block:: bash
 
-       cp ABCI_MP_12_5/ABCI_MP64_12_5.exe cavsim2d/solver/ABCI/ABCI.exe
+       export CAVSIM2D_ABCI="$HOME/abci/ABCI_MP64_12_5.exe"
+
+   You can also set it from Python before the first wakefield run:
+
+   .. code-block:: python
+
+       import os
+       os.environ['CAVSIM2D_ABCI'] = r'C:\ABCI\ABCI_MP64_12_5.exe'
+
+ABCI is a Windows binary. On Linux and macOS it runs through `wine <https://www.winehq.org>`_, which must be installed. If ABCI or wine is missing, a wakefield run stops at once with a message saying where to get it.
+
+If someone else wants ABCI, point them to the KEK page rather than passing on a copy.
 
 NGSolve Setup (Eigenmode Solver)
 ================================
