@@ -6,8 +6,25 @@ import subprocess
 from cavsim2d.constants import SOFTWARE_DIRECTORY, MROT_DICT
 
 
+ABCI_URL = 'https://abci.kek.jp/abci.htm'
+ABCI_ENV_VAR = 'CAVSIM2D_ABCI'
+
+
 def abci_exe_path():
-    """Absolute path to the bundled ABCI executable."""
+    """Path to the ABCI executable.
+
+    cavsim2d does not ship ABCI: it is free to use but not open source, and KEK
+    distributes it from its own page (``ABCI_URL``). The user downloads it and
+    sets ``CAVSIM2D_ABCI`` to the executable, or to the folder holding
+    ``ABCI.exe``. Without the variable, a source checkout's local copy at
+    ``cavsim2d/solvers/ABCI/ABCI.exe`` (gitignored) is used.
+    """
+    configured = os.environ.get(ABCI_ENV_VAR)
+    if configured:
+        path = os.path.expanduser(configured)
+        if os.path.isdir(path):
+            path = os.path.join(path, 'ABCI.exe')
+        return path
     return os.path.join(SOFTWARE_DIRECTORY, 'solvers', 'ABCI', 'ABCI.exe')
 
 
@@ -55,11 +72,15 @@ def run_abci_exe(exe_path, input_path, run_dir, quiet=False):
     directory — not to the input file's directory — so *run_dir* must be where
     the downstream ABCIData reader looks for the output.
     """
-    if not os.path.exists(exe_path):
+    if not os.path.isfile(exe_path):
+        source = (f"{ABCI_ENV_VAR} points to {exe_path}" if os.environ.get(ABCI_ENV_VAR)
+                  else f"{ABCI_ENV_VAR} is not set")
         raise FileNotFoundError(
-            f"ABCI solver not found at {exe_path}. Wakefield analysis needs the free "
-            f"ABCI executable — see the README 'Third party code' section for how to "
-            f"download and place it as cavsim2d/solvers/ABCI/ABCI.exe.")
+            f"ABCI executable not found ({source}). Wakefield analysis needs ABCI, "
+            f"which cavsim2d does not ship: it is free to use but not open source, and "
+            f"KEK distributes it from its own page. Download it from {ABCI_URL}, then "
+            f"set the {ABCI_ENV_VAR} environment variable to the executable, e.g. "
+            f"os.environ['{ABCI_ENV_VAR}'] = r'C:\\ABCI\\ABCI_MP64_12_5.exe'.")
 
     if platform.system() == 'Windows':
         cmd = [exe_path, str(input_path)]

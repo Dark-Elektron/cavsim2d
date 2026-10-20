@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 import random
 import shutil
-from distutils import dir_util
 
 import numpy as np
 import pandas as pd

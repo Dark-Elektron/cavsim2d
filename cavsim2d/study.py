@@ -1,5 +1,3 @@
-from IPython.core.display import HTML, display_html, Math
-from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
 from pathlib import Path
 from cavsim2d.models.base import Cavity

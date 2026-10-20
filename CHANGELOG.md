@@ -120,6 +120,15 @@ follow [Semantic Versioning](https://semver.org).
 - Portable `pytest` suite under `tests/`; a `pyproject.toml`-based install.
 
 ### Fixed
+- A clean `pip install cavsim2d` now imports. IPython and ipywidgets, the optional
+  `[jupyter]` extra, were imported in module headers; they are now imported only by
+  the two notebook methods that use them (`inspect`, `plot_animate_wakefield`).
+  `distutils`, removed from the standard library in Python 3.12, was imported for
+  two dead SLANS helpers, which are deleted. Optimisation needed jinja2 (pandas'
+  Styler writes the Pareto table) without declaring it. CI now installs only the
+  package and its `[dev]` extra, so a missing runtime dependency fails the build.
+- Tests ran on numpy 1.x only: two called `ndarray.ptp()`, removed in numpy 2.
+  The stationary-corner test assumed netgen fails there; netgen 6.2.2608 curves it.
 - Multipacting collision surface. The wall vertices were sorted by z and joined in
   that order, which is the wall only while z increases along it. A pillbox's
   right-hand plate, a re-entrant iris and an RF gun's funnel were joined out of order
@@ -293,6 +302,17 @@ follow [Semantic Versioning](https://semver.org).
   bookkeeping keys.
 
 ### Changed
+- ABCI is no longer packaged. It is free to use but not open source, and KEK
+  distributes it from <https://abci.kek.jp/abci.htm>. Download it there and set
+  `CAVSIM2D_ABCI` to the executable, or to the folder that holds `ABCI.exe`. A
+  source checkout's `cavsim2d/solvers/ABCI/ABCI.exe` is still used when the
+  variable is unset. Without ABCI, a wakefield run stops with a message pointing
+  to the KEK page.
+- Packaging metadata: SPDX `license = "MIT"` with `license-files` (the license
+  table and classifier were deprecated); the version is read from
+  `cavsim2d.__version__`; `jinja2` and `joblib` are declared and the unused
+  `psutil` is dropped. Three subpackages no longer overwrite their `__name__`
+  with a leftover `CavityDesignHub` header.
 - The eigenmode solver factorises with `sparsecholesky` by default, on every
   platform and on both the lossless (PINVIT) and the lossy/PML (Arnoldi) paths.
   The eigen matrices are symmetric on every path, and PARDISO, the previous

@@ -1,18 +1,13 @@
 import re
-from IPython.core.display import HTML, display_html, Math
-from IPython.core.display_functions import display
 from abc import ABC, abstractmethod
 from pathlib import Path
 from cavsim2d.constants import *
 from cavsim2d.processes import *
 from cavsim2d.utils.shared_functions import *
-from distutils import dir_util
-from ipywidgets import HBox, VBox, Label
 from matplotlib.animation import FuncAnimation
 from scipy.signal import find_peaks
 import ast
 import copy
-import ipywidgets as widgets
 import json
 import matplotlib
 import matplotlib.pyplot as plt
@@ -2230,6 +2225,9 @@ class Cavity(ABC):
                 self.I0[key] = val['I0 [mA]']
 
     def plot_animate_wakefield(self, save=False):
+        # Deferred: IPython is a notebook-only optional dependency ([jupyter] extra).
+        from IPython.display import HTML, display_html
+
         def plot_contour_for_frame(data, frame_key, ax):
             ax.clear()
 
@@ -2728,6 +2726,11 @@ class Cavity(ABC):
         self.operating_points = op
 
     def inspect(self, cell_type='mid-cell', variation=0.2):
+        # Deferred: IPython and ipywidgets are notebook-only optional dependencies
+        # ([jupyter] extra).
+        from IPython.display import display
+        from ipywidgets import HBox, VBox, Label
+        import ipywidgets as widgets
 
         if cell_type == 'mid-cell':
             cell = self.shape['IC']
@@ -3374,21 +3377,6 @@ class Cavity(ABC):
                 return False
         else:
             return True
-
-    def _overwriteFolder(self, invar, projectDir, name):
-        path = os.path.join(self.self_dir, 'eigenmode', f'_process_{invar}')
-        if os.path.exists(path):
-            shutil.rmtree(path)
-            dir_util._path_created = {}
-
-        os.makedirs(path)
-
-    @staticmethod
-    def _copyFiles(invar, parentDir, projectDir, name):
-        src = os.path.join(parentDir, 'exe', 'SLANS_exe')
-        dst = os.path.join(projectDir, name, 'eigenmode', f'_process_{invar}', 'SLANS_exe')
-
-        dir_util.copy_tree(src, dst)
 
     def __repr__(self):
         bits = [f"name={self.name!r}"]

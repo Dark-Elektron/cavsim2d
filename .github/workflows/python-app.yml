@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: Install dependencies
@@ -28,12 +28,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libglu1-mesa
         python -m pip install --upgrade pip
-        pip install flake8 pytest
-        # Install the package from pyproject.toml so its declared runtime
-        # dependencies (the canonical list) are always present — avoids drift
-        # between pyproject.toml and requirements.txt.
-        pip install .
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # Only what `pip install cavsim2d` gives a user, plus the test tooling.
+        # Do not add requirements.txt here: it installs IPython, ipywidgets,
+        # setuptools and jinja2, which once hid missing runtime dependencies.
+        pip install ".[dev]"
+    - name: Import the installed package
+      run: |
+        # From outside the checkout, so the installed copy is the one imported.
+        cd "$RUNNER_TEMP"
+        python -c "import cavsim2d; print('cavsim2d', cavsim2d.__version__)"
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -43,5 +46,6 @@ jobs:
     - name: Test with pytest
       run: |
         # Solver tests self-skip when ngsolve/gmsh are unavailable, and the
-        # wakefield tests skip off-Windows (ABCI.exe is a Windows binary).
+        # wakefield tests skip here: ABCI is a Windows binary that users
+        # download from KEK themselves.
         pytest tests/ -q

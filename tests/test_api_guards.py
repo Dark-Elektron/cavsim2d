@@ -71,6 +71,31 @@ def test_imports_live_at_module_top():
     assert not offenders, 'imports not at top of file:\n  ' + '\n  '.join(offenders)
 
 
+def test_module_headers_import_only_declared_dependencies():
+    """A clean `pip install cavsim2d` must import.
+
+    IPython and ipywidgets are the optional [jupyter] extra, so a module header
+    that imports them unguarded breaks `import cavsim2d` without it. distutils
+    left the standard library in Python 3.12.
+    """
+    root = pathlib.Path(__file__).resolve().parent.parent / 'cavsim2d'
+    banned = {'IPython', 'ipywidgets', 'distutils'}
+    offenders = []
+    for f in sorted(root.rglob('*.py')):
+        tree = ast.parse(f.read_text(encoding='utf-8'))
+        for node in tree.body:
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and not node.level:
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                if name.split('.')[0] in banned:
+                    offenders.append(f'{f.relative_to(root)}:{node.lineno} {name}')
+    assert not offenders, 'unguarded optional/removed imports:\n  ' + '\n  '.join(offenders)
+
+
 def test_no_asserts_in_the_package():
     """User-input validation must raise, not assert.
 

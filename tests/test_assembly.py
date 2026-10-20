@@ -61,7 +61,7 @@ def test_circular_waveguide_alias_keeps_pec_ends():
 def test_bellows_extent_and_arc_count():
     b = _bellows(L_bp=10.0)
     pts = np.asarray(b.profile().contour_points(2e-4, skip=('AXI', 'PMC')))
-    assert np.isclose(pts[:, 0].ptp() * 1e3, 5 * 10.0 + 2 * 10.0)   # N*L_p + 2*L_bp
+    assert np.isclose(np.ptp(pts[:, 0]) * 1e3, 5 * 10.0 + 2 * 10.0)   # N*L_p + 2*L_bp
     assert np.isclose(pts[:, 1].min() * 1e3, RI)
     assert np.isclose(pts[:, 1].max() * 1e3, RI + 15.0)
     # four rounded corners per convolution, emitted as real arc segments
@@ -465,7 +465,7 @@ def test_taper_spans_the_two_radii():
     pts = np.asarray(t.profile().contour_points(2e-4, skip=('AXI', 'PMC')))
     assert np.isclose(pts[:, 1].min() * 1e3, 35.0)
     assert np.isclose(pts[:, 1].max() * 1e3, 80.0)
-    assert np.isclose(pts[:, 0].ptp() * 1e3, 120.0)
+    assert np.isclose(np.ptp(pts[:, 0]) * 1e3, 120.0)
     assert np.isclose(t.half_angle, np.degrees(np.arctan2(45.0, 120.0)))
 
 

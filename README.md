@@ -18,7 +18,8 @@ structures. It provides, through one small object-oriented API:
 - **Plotting and comparison** helpers for all of the above.
 
 The eigenmode solver is built on [NGSolve](https://ngsolve.org); wakefield
-analysis uses the free [ABCI](https://abci.kek.jp/abci.htm) code.
+analysis uses the free [ABCI](https://abci.kek.jp/abci.htm) code, which you
+download from KEK yourself (see [Installation](#installation)).
 
 ## Cavity types and what is supported
 
@@ -64,8 +65,14 @@ its handles are the point *coordinates*: `'p3_r'` moves the radial coordinate of
 
 ## Installation
 
-Clone the repository and install it (editable install recommended while the API
-is stabilising):
+Install the released package from PyPI:
+
+```bash
+pip install cavsim2d
+```
+
+or clone the repository and install it in editable mode, to follow development or
+change the code:
 
 ```bash
 git clone https://github.com/Dark-Elektron/cavsim2d.git
@@ -73,33 +80,54 @@ cd cavsim2d
 pip install -e .
 ```
 
-This installs the core dependencies (NGSolve, gmsh, numpy, scipy, pandas,
-matplotlib, …). For the example notebooks and the Jupyter banner, also install
-the optional extra:
+Either way this installs the core dependencies (NGSolve, gmsh, numpy, scipy,
+pandas, matplotlib, …). For the example notebooks and the Jupyter banner, also
+install the optional extra:
 
 ```bash
-pip install -e ".[jupyter]"
+pip install "cavsim2d[jupyter]"    # from PyPI
+pip install -e ".[jupyter]"        # from a clone
 ```
 
-Requirements: **Python ≥ 3.10**. NGSolve provides the finite-element backend and
-is easiest to obtain in a conda environment (`conda install -c ngsolve ngsolve`)
-if the pip wheel is not available for your platform.
+Requirements: **Python ≥ 3.10**. NGSolve (the finite-element backend) and gmsh
+are installed from PyPI as dependencies.
 
 ### Third-party code — ABCI (wakefield only)
 
-Wakefield analysis uses the ABCI electromagnetic time-domain solver. A Windows
-build of `ABCI.exe` ships in `cavsim2d/solvers/ABCI/`. If you need to (re)install
-it, download the latest release from [ABCI](https://abci.kek.jp/abci.htm) and
-place the executable at:
+Wakefield analysis uses ABCI, the electromagnetic time-domain solver written by
+Yong Ho Chin at KEK. ABCI is free to use but not open source, and KEK asks that
+it be obtained from its own page, so **cavsim2d does not include it**. To run
+wakefield analyses:
 
-```
-cavsim2d/solvers/ABCI/ABCI.exe
-```
+1. Download ABCI from the [ABCI page at KEK](https://abci.kek.jp/abci.htm)
+   (for 64-bit Windows, `ABCI_MP64_12_5.zip` at the time of writing) and unzip it
+   anywhere. No installation is needed.
+2. Point cavsim2d at the executable with the `CAVSIM2D_ABCI` environment
+   variable. It may also name the folder that holds `ABCI.exe`.
 
-`ABCI.exe` is a Windows binary. On Windows it runs directly; on Linux/macOS it is
-launched through [`wine`](https://www.winehq.org) if that is installed. If the
-executable or `wine` is missing, wakefield runs fail early with a clear message —
-eigenmode, tuning, UQ and optimisation do not need ABCI.
+   ```shell
+   # Windows, persistent for new terminals and Jupyter sessions
+   setx CAVSIM2D_ABCI "C:\ABCI\ABCI_MP64_12_5.exe"
+   # Linux / macOS
+   export CAVSIM2D_ABCI="$HOME/abci/ABCI_MP64_12_5.exe"
+   ```
+
+   or from Python, before the first wakefield run:
+
+   ```python
+   import os
+   os.environ['CAVSIM2D_ABCI'] = r'C:\ABCI\ABCI_MP64_12_5.exe'
+   ```
+
+If you know someone else who wants ABCI, point them to the KEK page rather than
+passing on a copy. In a source checkout, a copy at
+`cavsim2d/solvers/ABCI/ABCI.exe` is used when `CAVSIM2D_ABCI` is unset; that path
+is gitignored and is never packaged.
+
+ABCI is a Windows binary. On Windows it runs directly; on Linux/macOS it is
+launched through [`wine`](https://www.winehq.org) if that is installed. If ABCI
+or `wine` is missing, wakefield runs fail early with a message saying where to
+get it. Eigenmode, tuning, UQ and optimisation do not need ABCI.
 
 > [!TIP]
 > `pip install pprintpp` gives nicer nested-dict printing for the quantities of
@@ -135,7 +163,7 @@ For the 1-cell TESLA cavity this reports `freq ≈ 1300 MHz`, `R/Q ≈ 113 Ω`,
 `G ≈ 271 Ω`, `Epk/Eacc ≈ 2.04`, `Bpk/Eacc ≈ 4.16 mT/(MV/m)`.
 
 > [!TIP]
-> Prefer runnable scripts to prose? The [`examples/`](examples/) directory has
+> Prefer runnable scripts to prose? The [`examples/`](https://github.com/Dark-Elektron/cavsim2d/tree/master/examples) directory has
 > one self-contained script per feature (`01_eigenmode.py` … `06_optimisation.py`
 > and `run_all.py`) that writes results and plots to disk. They are the quickest
 > way to see each workflow end to end.
@@ -584,11 +612,11 @@ pytest tests/ -q
 ```
 
 The solver tests self-skip where NGSolve/gmsh are unavailable, and the wakefield
-tests skip off Windows (they need the bundled `ABCI.exe`), so the suite stays
+tests skip unless ABCI is available on Windows (see above), so the suite stays
 green in minimal environments.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/Dark-Elektron/cavsim2d/blob/master/LICENSE).

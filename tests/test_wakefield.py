@@ -1,4 +1,4 @@
-"""Wakefield smoke test (Windows + bundled ABCI.exe only): ABCI runs and
+"""Wakefield smoke test (Windows + ABCI downloaded from KEK only): ABCI runs and
 produces longitudinal + transversal output that the reader can load."""
 import os
 
@@ -79,6 +79,29 @@ def test_abci_abort_raises_instead_of_silently_producing_nothing(tmp_path):
     # a clean log passes through
     (tmp_path / 'cavity.out').write_text(' NORMAL COMPLETION\n')
     _raise_if_abci_aborted(str(tmp_path))
+
+
+def test_abci_path_comes_from_the_environment(tmp_path, monkeypatch):
+    """ABCI is not shipped; CAVSIM2D_ABCI names the user's download (file or folder)."""
+    from cavsim2d.solvers.ABCI.abci import abci_exe_path
+
+    exe = tmp_path / 'ABCI_MP64_12_5.exe'
+    exe.write_bytes(b'')
+    monkeypatch.setenv('CAVSIM2D_ABCI', str(exe))
+    assert abci_exe_path() == str(exe)
+
+    monkeypatch.setenv('CAVSIM2D_ABCI', str(tmp_path))
+    assert abci_exe_path() == os.path.join(str(tmp_path), 'ABCI.exe')
+
+
+def test_missing_abci_points_to_kek(tmp_path, monkeypatch):
+    """Without ABCI the error sends the user to KEK's download page."""
+    from cavsim2d.solvers.ABCI.abci import abci_exe_path, run_abci_exe
+
+    monkeypatch.setenv('CAVSIM2D_ABCI', str(tmp_path / 'nowhere.exe'))
+    with pytest.raises(FileNotFoundError, match=r'abci\.kek\.jp') as err:
+        run_abci_exe(abci_exe_path(), tmp_path / 'cavity.abc', tmp_path)
+    assert 'CAVSIM2D_ABCI' in str(err.value)
 
 
 @requires_abci

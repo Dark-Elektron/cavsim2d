@@ -402,10 +402,11 @@ def test_spline_cavity_eigenmode(project_dir):
 
 
 def test_stationary_corner_raises_actionable_error():
-    """netgen's high-order curving fails at a spline's stationary corner.
+    """netgen's high-order curving can fail at a spline's stationary corner.
 
     The raw OCC exception is `Standard_OutOfRange`, which says nothing. Profile
-    detects the corner and explains it instead.
+    detects the corner and explains it instead. netgen 6.2.2506 fails there;
+    6.2.2608 curves the corner, and then the mesh must simply be usable.
     """
     from cavsim2d import SplineCavity
     cav = SplineCavity({'geometry': dict(SPLINE_GEOM), 'n_cells': 2}, kind='BSpline')
@@ -414,8 +415,12 @@ def test_stationary_corner_raises_actionable_error():
     assert len(corners) == 1
     assert corners[0] == pytest.approx((0.115, 0.0466667), abs=1e-6)
 
-    with pytest.raises(RuntimeError, match='stationary corner'):
-        prof.mesh(maxh=0.004, order=3)
+    try:
+        mesh = prof.mesh(maxh=0.004, order=3)
+    except RuntimeError as exc:
+        assert 'stationary corner' in str(exc)
+    else:
+        assert mesh.ne > 0
 
     # smooth contours report no corners and still mesh at a fine order
     for kind, n in (('Bezier', 2), ('BSpline', 1)):

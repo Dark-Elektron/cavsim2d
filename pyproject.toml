@@ -1,28 +1,29 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "cavsim2d"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Quick 2D axisymmetric RF cavity analysis: eigenmode, tuning, wakefield, UQ and optimisation."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Sosoho-Abasi Udongwo", email = "numurho@gmail.com" }]
 keywords = ["rf-cavity", "accelerator", "eigenmode", "wakefield", "finite-element", "ngsolve"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
 # Core runtime dependencies. NGSolve pulls in netgen. The eigenmode pipeline
-# needs gmsh for meshing; wakefield additionally needs the bundled ABCI.exe
-# (Windows / wine) — see the README.
+# needs gmsh for meshing. Wakefield additionally needs ABCI, which is not
+# shipped: users download it from KEK (https://abci.kek.jp/abci.htm) — see the
+# README.
 dependencies = [
     "numpy>=1.26.4",
     "scipy>=1.13.1",
@@ -31,10 +32,11 @@ dependencies = [
     "ngsolve>=6.2.2402",
     "gmsh>=4.13",
     "paretoset>=1.2.4",
-    "psutil>=6.0.0",
     "termcolor>=2.1.0",
     "tqdm>=4.66.4",
     "openpyxl",
+    "jinja2",          # pandas' Styler, used to write the optimisation Pareto table
+    "joblib",
     "scikit-learn>=1.6",
     "SALib",
 ]
@@ -51,12 +53,14 @@ docs = ["sphinx-immaterial>=0.11", "sphinxcontrib-bibtex", "numpydoc", "myst-nb"
 Homepage = "https://github.com/Dark-Elektron/cavsim2d"
 Repository = "https://github.com/Dark-Elektron/cavsim2d"
 
+[tool.setuptools.dynamic]
+version = { attr = "cavsim2d.__version__" }
+
 [tool.setuptools.packages.find]
 include = ["cavsim2d*"]
 exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
-# Ship the bundled ABCI solver and TopDrawer alongside the package.
-"cavsim2d.solvers.ABCI" = ["ABCI.exe", "**/*"]
 # Ship the default secondary-emission-yield table for multipacting.
+# ABCI is never shipped: MANIFEST.in excludes a local copy kept in a checkout.
 "cavsim2d.data_module" = ["sey/*"]

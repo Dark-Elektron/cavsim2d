@@ -1,0 +1,6 @@
+# ABCI is free to use but not open source, and KEK distributes it only from
+# https://abci.kek.jp/abci.htm. A local copy kept in a checkout (gitignored) must
+# never reach the sdist or the wheel, even when an old egg-info manifest lists it.
+exclude cavsim2d/solvers/ABCI/*.exe
+prune cavsim2d/solvers/ABCI/TopDrawer*
+global-exclude *.py[cod]

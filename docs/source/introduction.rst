@@ -30,7 +30,7 @@ Wakefield Analysis
 ==================
 
 Wakefield analysis is performed using the ABCI (Azimuthal Beam Cavity Interaction) code written by
-Yang Ho Chin :cite:p:`ABCI`. It solves the Maxwell equations directly in the time domain
+Yong Ho Chin :cite:p:`ABCI`. It solves the Maxwell equations directly in the time domain
 when a bunched beam goes through an axisymmetric structure on or off axis. It can be found
 on the official `ABCI website <https://abci.kek.jp/abci.htm>`_.
 
