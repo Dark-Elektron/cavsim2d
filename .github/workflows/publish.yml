@@ -105,3 +105,8 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # The build job already checked that the tag matches the version, so
+          # a skip only means this exact version is on PyPI already (0.1.0 was
+          # uploaded by hand with twine, before this workflow was registered).
+          skip-existing: true
