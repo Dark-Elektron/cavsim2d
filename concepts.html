@@ -2781,23 +2781,28 @@ comparisons, to the study):</p>
 </code></pre></div>
 </div>
 <h2 id="project-folder-layout">Project folder layout<a class="headerlink" href="#project-folder-layout" title="Link to this heading">¶</a></h2>
-<p>A study is rooted at a project directory (<code class="docutils literal notranslate"><span class="pre">Study(project_dir)</span></code> or, for a single
-standalone cavity, <code class="docutils literal notranslate"><span class="pre">cav.set_workspace(dir)</span></code>). Every cavity gets its own folder,
-and every analysis writes into a subfolder of it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="n">project</span><span class="o">&gt;/</span>
+<p>A study lives in a folder named after the study inside the project directory:
+<code class="docutils literal notranslate"><span class="pre">Study(project_dir)</span></code> uses <code class="docutils literal notranslate"><span class="pre">&lt;project_dir&gt;/cavities/</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">Study(project_dir,</span> <span class="pre">name='run1')</span></code> uses <code class="docutils literal notranslate"><span class="pre">&lt;project_dir&gt;/run1/</span></code>. A standalone
+cavity uses <code class="docutils literal notranslate"><span class="pre">cav.set_workspace(dir)</span></code>, or <code class="docutils literal notranslate"><span class="pre">./&lt;cavity</span> <span class="pre">name&gt;/</span></code> by default. Every
+cavity gets its own folder, and every analysis writes into a subfolder of it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="n">project_dir</span><span class="o">&gt;/</span><span class="n">cavities</span><span class="o">/</span>
   <span class="o">&lt;</span><span class="n">cavity_name</span><span class="o">&gt;/</span>
-    <span class="n">geometry</span><span class="o">/</span>        <span class="c1"># geodata.geo, the meridian contour + a JSON snapshot</span>
+    <span class="n">geometry</span><span class="o">/</span>        <span class="c1"># geodata.geo, parameters.json, model.json</span>
     <span class="n">eigenmode</span><span class="o">/</span>
-      <span class="n">monopole</span><span class="o">/</span>      <span class="c1"># qois.json, fields, Ez_0_abs.csv, mesh, ...</span>
+      <span class="n">monopole</span><span class="o">/</span>      <span class="c1"># qois.json, fields, Ez_0_abs.csv, mesh, geometry_stamp.json</span>
       <span class="n">dipole</span><span class="o">/</span>        <span class="c1"># one folder per solved polarisation (m &gt;= 1)</span>
-    <span class="n">wakefield</span><span class="o">/</span>        <span class="c1"># ABCI decks + parsed impedance / wake / QOIs</span>
+    <span class="n">wakefield</span><span class="o">/</span>       <span class="c1"># ABCI decks + parsed impedance / wake / QOIs</span>
+      <span class="n">uq</span><span class="o">/</span>            <span class="c1"># wakefield UQ: nodes.csv, table.csv, uq.json</span>
     <span class="n">multipacting</span><span class="o">/</span>    <span class="c1"># tracked-particle results, field</span>
-    <span class="n">uq</span><span class="o">/</span>              <span class="c1"># nodes.csv, table.csv, uq.json, sobol.json</span>
+    <span class="n">uq</span><span class="o">/</span>              <span class="c1"># eigenmode UQ: nodes.csv, table.csv, uq.json, sobol.json</span>
     <span class="n">tuned</span><span class="o">/</span>           <span class="c1"># a *separate* cavity that hit the tune target</span>
       <span class="n">geometry</span><span class="o">/</span>  <span class="n">eigenmode</span><span class="o">/</span>  <span class="n">tune_info</span><span class="o">/</span>
-  <span class="n">optimisation</span><span class="o">/</span>       <span class="c1"># history.csv, pareto_front.csv, candidates/</span>
+  <span class="n">optimisation</span><span class="o">/</span>      <span class="c1"># history.csv, pareto_front.csv, candidates/</span>
 </code></pre></div>
 </div>
+<p>Each result folder carries a <code class="docutils literal notranslate"><span class="pre">geometry_stamp.json</span></code> naming the geometry it was
+computed for; see <a class="reference internal" href="#results-integrity"><span class="std std-ref">Keeping results consistent</span></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code> loads the cavity under <code class="docutils literal notranslate"><span class="pre">tuned/</span></code> (its <code class="docutils literal notranslate"><span class="pre">tune_info/tuned_parameters.json</span></code>
 records the complete, self-consistent parameter set the tuner converged on).</p>
 <h2 id="persistence-and-reloading">Persistence and reloading<a class="headerlink" href="#persistence-and-reloading" title="Link to this heading">¶</a></h2>
@@ -2816,6 +2821,31 @@ from different sessions, or a loaded one against a fresh one — compare directl
 (<code class="docutils literal notranslate"><span class="pre">study.eigenmode.qois_df</span></code>, <code class="docutils literal notranslate"><span class="pre">study.eigenmode.plot_compare()</span></code>). Custom
 in-notebook models whose module cannot be imported by name are passed explicitly:
 <code class="docutils literal notranslate"><span class="pre">Study.load(dir,</span> <span class="pre">models={'MyCavity':</span> <span class="pre">MyCavity})</span></code>.</p>
+<h2 id="keeping-results-consistent"><span id="results-integrity"></span>Keeping results consistent<a class="headerlink" href="#keeping-results-consistent" title="Link to this heading">¶</a></h2>
+<p>A cavity folder holds results that different analyses wrote at different times.
+To keep them describing one geometry, every analysis writes a
+<code class="docutils literal notranslate"><span class="pre">geometry_stamp.json</span></code> beside its results: a fingerprint of the geometry it
+solved (model, parameters, cell count, beam pipes, chaining, dielectric regions).</p>
+<p>Before an analysis runs, it checks the cavity’s folder:</p>
+<ul class="simple">
+<li><p>If the run would overwrite existing results, it asks first, naming what it would
+overwrite. Rerunning one analysis never touches another analysis’ results.</p></li>
+<li><p>If the folder holds results computed for a different geometry, because the
+cavity changed since they were run or because a different cavity was given the
+same name, the same question lists them and what changed (for example
+<code class="docutils literal notranslate"><span class="pre">Req_m</span> <span class="pre">103.3</span> <span class="pre">-&gt;</span> <span class="pre">104</span></code>). Answering yes deletes them before the run, so the folder
+never holds results for two geometries. Answering no runs and deletes nothing; to
+keep both sets, give the cavity a new name or folder.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">force=True</span></code> (or <code class="docutils literal notranslate"><span class="pre">overwrite=True</span></code>) answers yes without asking. In a script,
+under <code class="docutils literal notranslate"><span class="pre">nbconvert</span></code> or in a test there is nobody to ask: a run that only overwrites
+its own results goes ahead, but one that would leave results for two geometries
+raises an error and changes nothing. <code class="docutils literal notranslate"><span class="pre">rerun=False</span></code> reuses results that match the
+geometry and recomputes those that do not.</p>
+<p>Reading results computed for a different geometry, for example after changing
+<code class="docutils literal notranslate"><span class="pre">cav.parameters</span></code> without rerunning, gives a warning that says what changed.</p>
+<p><code class="docutils literal notranslate"><span class="pre">overwrite=True</span></code> on <code class="docutils literal notranslate"><span class="pre">Study(...)</span></code> and <code class="docutils literal notranslate"><span class="pre">cav.save(...)</span></code> only replaces a folder
+that cavsim2d created; anything else raises an error instead of being deleted.</p>
 <h2 id="parameter-sweeps">Parameter sweeps<a class="headerlink" href="#parameter-sweeps" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">study.sweep(template,</span> <span class="pre">{var:</span> <span class="pre">values},</span> <span class="pre">mode='tensor'|'hadamard')</span></code> builds one
 cavity per parameter combination (<code class="docutils literal notranslate"><span class="pre">'tensor'</span></code> = the full grid; <code class="docutils literal notranslate"><span class="pre">'hadamard'</span></code> =

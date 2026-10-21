@@ -2767,25 +2767,137 @@ same as passing it in the dict; an explicit kwarg wins.</p></li>
 <code class="docutils literal notranslate"><span class="pre">uq_config={}</span></code> does not trigger UQ).</p></li>
 </ul>
 <h2 id="discovering-the-options">Discovering the options<a class="headerlink" href="#discovering-the-options" title="Link to this heading">¶</a></h2>
-<p>You do not have to memorise these — every default is available at runtime:</p>
+<p>You do not have to memorise these — every default is available at runtime, from
+the object you are about to run:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">cav.config_sample(kind)</span></code> prints the complete default config for <em>kind</em>
-(<code class="docutils literal notranslate"><span class="pre">'eigenmode'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wakefield'</span></code>, <code class="docutils literal notranslate"><span class="pre">'tune'</span></code>, <code class="docutils literal notranslate"><span class="pre">'multipacting'</span></code> or <code class="docutils literal notranslate"><span class="pre">'uq'</span></code>) —
-every available key with its default value — and returns it as a dict.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.sample_cfg</span></code> returns that same default for one solver without
-printing, e.g. <code class="docutils literal notranslate"><span class="pre">cfg</span> <span class="pre">=</span> <span class="pre">cav.eigenmode.sample_cfg</span></code> — a fresh copy you can edit and
-pass straight to <code class="docutils literal notranslate"><span class="pre">cav.eigenmode.run(cfg)</span></code>. (<code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.config</span></code> is different:
-it is the <em>saved</em> config of a run that has already happened.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.config_sample</span></code> returns the complete default config of that
+solver, every key with its default, as a fresh copy to edit and pass straight
+back: <code class="docutils literal notranslate"><span class="pre">cfg</span> <span class="pre">=</span> <span class="pre">cav.tune.config_sample</span></code>, change what you need, then
+<code class="docutils literal notranslate"><span class="pre">cav.tune.run(cfg)</span></code>. <code class="docutils literal notranslate"><span class="pre">cfg_sample</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_config</span></code> and <code class="docutils literal notranslate"><span class="pre">sample_cfg</span></code> are
+the same thing, and calling it, <code class="docutils literal notranslate"><span class="pre">cav.tune.config_sample()</span></code>, works too. The study
+namespaces have it as well: <code class="docutils literal notranslate"><span class="pre">study.eigenmode.config_sample</span></code>,
+<code class="docutils literal notranslate"><span class="pre">study.wakefield.config_sample</span></code>, <code class="docutils literal notranslate"><span class="pre">study.optimisation.config_sample</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cav.config_sample(kind)</span></code>, or <code class="docutils literal notranslate"><span class="pre">cav.cfg_sample(kind)</span></code>, prints the default for
+<em>kind</em> — <code class="docutils literal notranslate"><span class="pre">'eigenmode'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wakefield'</span></code>, <code class="docutils literal notranslate"><span class="pre">'tune'</span></code>, <code class="docutils literal notranslate"><span class="pre">'multipacting'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'uq'</span></code> or <code class="docutils literal notranslate"><span class="pre">'optimisation'</span></code> — and returns it. <code class="docutils literal notranslate"><span class="pre">study.config_sample(kind)</span></code>
+does the same and needs no cavity in the study.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cav.&lt;solver&gt;.config</span></code> is different: it is the <em>saved</em> config of a run that has
+already happened.</p></li>
 </ul>
-<p>Both read the solvers’ own defaults — the exact dicts <code class="docutils literal notranslate"><span class="pre">run()</span></code> merges over — so
-they never drift from what a run actually uses.</p>
+<p>The samples are the solvers’ own defaults — the exact dicts <code class="docutils literal notranslate"><span class="pre">run()</span></code> merges over —
+so they never drift from what a run uses. <code class="docutils literal notranslate"><span class="pre">'uq'</span></code> and <code class="docutils literal notranslate"><span class="pre">'optimisation'</span></code> have no
+defaults to merge over; their samples are complete, valid templates whose
+variables, bounds and objectives you replace with your own.</p>
+<p>A sample displays with a note beside each key: what it does, its unit, and what
+<code class="docutils literal notranslate"><span class="pre">None</span></code> stands for. The display is valid Python, so you can paste it into a script
+and edit it there:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">cav</span><span class="o">.</span><span class="n">tune</span><span class="o">.</span><span class="n">config_sample</span>
+<span class="go">{</span>
+<span class="go">    'freqs': None,             # target [MHz]; None -&gt; c/(4L) of the half cell, with a warning</span>
+<span class="go">    'cell_type': None,         # None -&gt; {'mid-cell': 'Req'}, plus 'end-cell': 'L' for multicell</span>
+<span class="go">    'tol': 0.0001,             # stop once the frequency is this close to the target [MHz]</span>
+<span class="go">    ...</span>
+<span class="go">}</span>
+</code></pre></div>
+</div>
+<h2 id="units">Units<a class="headerlink" href="#units" title="Link to this heading">¶</a></h2>
+<p>Not every length is in the same unit. Geometry and mesh sizes are in millimetres,
+while lengths along the beam line that a solver adds (beam pipes, the wake, the PML)
+are in metres:</p>
+<table class="docutils data align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 15.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Unit</p></th>
+<th class="head"><p>Where</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Geometry parameters (<code class="docutils literal notranslate"><span class="pre">A</span></code>, <code class="docutils literal notranslate"><span class="pre">Req</span></code>, <code class="docutils literal notranslate"><span class="pre">L</span></code>, …), optimisation <code class="docutils literal notranslate"><span class="pre">bounds</span></code>,
+UQ <code class="docutils literal notranslate"><span class="pre">delta</span></code> (additive)</p></td>
+<td><p>mm</p></td>
+<td><p>cavity definitions, optimisation, UQ</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mesh_config['h']</span></code>, <code class="docutils literal notranslate"><span class="pre">pec_maxh</span></code></p></td>
+<td><p>mm</p></td>
+<td><p>eigenmode, multipacting</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bunch_length</span></code>, operating-point <code class="docutils literal notranslate"><span class="pre">'sigma</span> <span class="pre">[mm]'</span></code></p></td>
+<td><p>mm</p></td>
+<td><p>wakefield</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">beampipe_length</span></code></p></td>
+<td><p>m</p></td>
+<td><p>eigenmode, wakefield</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">wakelength</span></code>, <code class="docutils literal notranslate"><span class="pre">mesh_config['DDR']</span></code> / <code class="docutils literal notranslate"><span class="pre">['DDZ']</span></code></p></td>
+<td><p>m</p></td>
+<td><p>wakefield</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pml_length</span></code></p></td>
+<td><p>m</p></td>
+<td><p>eigenmode</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xrange</span></code></p></td>
+<td><p>m</p></td>
+<td><p>multipacting</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">freqs</span></code>, <code class="docutils literal notranslate"><span class="pre">tol</span></code></p></td>
+<td><p>MHz</p></td>
+<td><p>tuning</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">epks</span></code></p></td>
+<td><p>V/m</p></td>
+<td><p>multipacting</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">t_max</span></code></p></td>
+<td><p>s</p></td>
+<td><p>multipacting</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">v_init</span></code></p></td>
+<td><p>eV</p></td>
+<td><p>multipacting</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">conductivity</span></code></p></td>
+<td><p>S/m</p></td>
+<td><p>eigenmode</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">surface_resistance</span></code></p></td>
+<td><p>Ohm</p></td>
+<td><p>eigenmode</p></td>
+</tr>
+</tbody>
+</table>
+<p>Results carry their unit in the key name instead: <code class="docutils literal notranslate"><span class="pre">'freq</span> <span class="pre">[MHz]'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'R/Q</span> <span class="pre">[Ohm]'</span></code>, <code class="docutils literal notranslate"><span class="pre">'Epk/Eacc</span> <span class="pre">[]'</span></code>.</p>
+<h2 id="accepted-spellings">Accepted spellings<a class="headerlink" href="#accepted-spellings" title="Link to this heading">¶</a></h2>
+<p>A few keys have a second spelling. A run renames it to the key in this reference
+before it merges the defaults in, so either works:</p>
+<ul class="simple">
+<li><p>tune: <code class="docutils literal notranslate"><span class="pre">freq</span></code> is <code class="docutils literal notranslate"><span class="pre">freqs</span></code> and <code class="docutils literal notranslate"><span class="pre">tolerance</span></code> is <code class="docutils literal notranslate"><span class="pre">tol</span></code>; the legacy
+<code class="docutils literal notranslate"><span class="pre">parameters</span></code> + <code class="docutils literal notranslate"><span class="pre">cell_types</span></code> pair becomes <code class="docutils literal notranslate"><span class="pre">cell_type</span></code></p></li>
+<li><p>eigenmode: <code class="docutils literal notranslate"><span class="pre">nmodes</span></code> is <code class="docutils literal notranslate"><span class="pre">n_modes</span></code></p></li>
+<li><p>optimisation: <code class="docutils literal notranslate"><span class="pre">no_of_generations</span></code> is <code class="docutils literal notranslate"><span class="pre">no_of_generation</span></code></p></li>
+<li><p>every <code class="docutils literal notranslate"><span class="pre">run()</span></code>: <code class="docutils literal notranslate"><span class="pre">overwrite</span></code> is <code class="docutils literal notranslate"><span class="pre">force</span></code></p></li>
+</ul>
+<p>Giving both spellings with different values raises an error. Any other key a run
+does not recognise gives a warning that suggests the closest valid key.</p>
 <h2 id="cross-cutting-keys">Cross-cutting keys<a class="headerlink" href="#cross-cutting-keys" title="Link to this heading">¶</a></h2>
 <p>These appear in several configs:</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">processes</span></code></dt><dd><p><em>(int, default 1)</em> Worker processes for parallel evaluation (UQ nodes,
 optimisation candidates, multi-cavity studies).</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">rerun</span></code></dt><dd><p><em>(bool, default True)</em> Re-run even if cached results exist; <code class="docutils literal notranslate"><span class="pre">False</span></code> reuses them.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">rerun</span></code></dt><dd><p><em>(bool, default True)</em> Re-run even if cached results exist; <code class="docutils literal notranslate"><span class="pre">False</span></code> reuses the
+results that match the cavity’s geometry and recomputes the rest.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">force</span></code></dt><dd><p><em>(bool, default False)</em> Answer yes to the question a run asks before it
+overwrites existing results or deletes results computed for a different geometry
+(see <a class="reference internal" href="concepts.html#results-integrity"><span class="std std-ref">Keeping results consistent</span></a>). <code class="docutils literal notranslate"><span class="pre">overwrite</span></code> is the same key.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">uq_config</span></code></dt><dd><p><em>(dict, default None)</em> Nest this inside an eigenmode / wakefield / tune config to
 turn a single run into an uncertainty sweep — see <a class="reference internal" href="#config-uq"><span class="std std-ref">Uncertainty quantification — nested uq_config</span></a>.</p>
@@ -2820,6 +2932,14 @@ magnetic wall, <code class="docutils literal notranslate"><span class="pre">'e'<
 and <code class="docutils literal notranslate"><span class="pre">'pp'</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">n_port_modes</span></code></dt><dd><p><em>(int, default 3)</em> TM<sub>0n</sub> pipe modes kept per port with <code class="docutils literal notranslate"><span class="pre">boundary_conditions='port'</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">beampipe_length</span></code></dt><dd><p><em>(float, default None)</em> Length [m] of each beam pipe. <code class="docutils literal notranslate"><span class="pre">None</span></code> uses the model’s own
+default: twice the mid-cell length <code class="docutils literal notranslate"><span class="pre">L_m</span></code> for elliptical cavities.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pml_length</span></code></dt><dd><p><em>(float, default None)</em> Length [m] of the absorbing layer that <code class="docutils literal notranslate"><span class="pre">'o'</span></code> adds to a
+pipe end. <code class="docutils literal notranslate"><span class="pre">None</span></code> → three pipe radii.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pml_alpha</span></code></dt><dd><p><em>(complex, default 1j)</em> Complex stretch of that absorbing layer.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">conductivity</span></code></dt><dd><p><em>(float, default 5.96e7)</em> Wall conductivity [S/m] for the loss-based Q / G.</p>
 </dd>
@@ -2912,15 +3032,22 @@ particular geometry.</p>
 </div>
 <h2 id="tuning-cav-tune-run-study-run-tune">Tuning — <code class="docutils literal notranslate"><span class="pre">cav.tune.run</span></code> / <code class="docutils literal notranslate"><span class="pre">study.run_tune</span></code><a class="headerlink" href="#tuning-cav-tune-run-study-run-tune" title="Link to this heading">¶</a></h2>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">freqs</span></code></dt><dd><p><em>(float | list)</em> Target frequency [MHz] (a list gives a per-cavity target).</p>
+<dt><code class="docutils literal notranslate"><span class="pre">freqs</span></code></dt><dd><p><em>(float | list, default None)</em> Target frequency [MHz] (a list gives a per-cavity
+target). <code class="docutils literal notranslate"><span class="pre">None</span></code> tunes an elliptical cavity to the pi-mode estimate
+<span class="math notranslate nohighlight">\(c/4L\)</span> of its half-cell length, with a warning; other models need it.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cell_type</span></code></dt><dd><p><em>(dict)</em> <code class="docutils literal notranslate"><span class="pre">{cell</span> <span class="pre">block:</span> <span class="pre">handle}</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">{'mid-cell':</span> <span class="pre">'Req'}</span></code>. Schedule several
-blocks (<code class="docutils literal notranslate"><span class="pre">{'mid-cell':</span> <span class="pre">'Req',</span> <span class="pre">'end-cell':</span> <span class="pre">'L'}</span></code>) to tune them in turn — see
-<a class="reference internal" href="tuning.html"><span class="doc">Cavity Tuning</span></a>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">cell_type</span></code></dt><dd><p><em>(dict, default None)</em> <code class="docutils literal notranslate"><span class="pre">{cell</span> <span class="pre">block:</span> <span class="pre">handle}</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">{'mid-cell':</span> <span class="pre">'Req'}</span></code>.
+Schedule several blocks (<code class="docutils literal notranslate"><span class="pre">{'mid-cell':</span> <span class="pre">'Req',</span> <span class="pre">'end-cell':</span> <span class="pre">'L'}</span></code>) to tune them in
+turn — see <a class="reference internal" href="tuning.html"><span class="doc">Cavity Tuning</span></a>. <code class="docutils literal notranslate"><span class="pre">None</span></code> tunes the mid-cell <code class="docutils literal notranslate"><span class="pre">Req</span></code>, plus the end-cell
+<code class="docutils literal notranslate"><span class="pre">L</span></code> on a multi-cell elliptical cavity.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">eigenmode_config</span></code></dt><dd><p><em>(dict)</em> The eigenmode settings used for the solve at each tuning step.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">tol</span></code></dt><dd><p><em>(float, default 1e-4)</em> Secant-solver tolerance.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">solve_tuned</span></code></dt><dd><p><em>(bool, default False)</em> After tuning, also run the eigenmode analysis on the tuned
+cavity (<code class="docutils literal notranslate"><span class="pre">cav.tuned</span></code>) with <code class="docutils literal notranslate"><span class="pre">eigenmode_config</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">tol</span></code></dt><dd><p><em>(float, default 1e-4)</em> Frequency tolerance [MHz]: the secant stops once the
+frequency is this close to the target.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">maxiter</span></code></dt><dd><p><em>(int, default 10)</em> Maximum secant iterations.</p>
 </dd>
@@ -3004,7 +3131,7 @@ are read.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">initial_points</span></code></dt><dd><p><em>(int)</em> Initial candidates before the GA evolves.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">no_of_generation</span></code></dt><dd><p><em>(int)</em> Number of GA generations.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">no_of_generation</span></code></dt><dd><p><em>(int, default 100)</em> Number of GA generations (<code class="docutils literal notranslate"><span class="pre">no_of_generations</span></code> also works).</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">method</span></code></dt><dd><p><em>(dict, default LHS)</em> Initial-point sampler, e.g. <code class="docutils literal notranslate"><span class="pre">{'LHS':</span> <span class="pre">{'seed':</span> <span class="pre">5}}</span></code>.</p>
 </dd>
@@ -3085,6 +3212,8 @@ generation.</p>
     
       
         <script src="_static/sphinx_immaterial_theme.32136f45f91ae6956.min.js?v=a7a9472a"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script id="MathJax-script" src="_static/mathjax/tex-mml-chtml.js"></script>
     
   </body>
 </html>

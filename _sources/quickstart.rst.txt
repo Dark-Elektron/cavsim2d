@@ -27,8 +27,9 @@ Create a new Python script (e.g., ``run_tutorial.py``) and add the following:
     # Initialize a pretty printer for readable output
     pp = pprint.PrettyPrinter(indent=4)
 
-    # Initialize the project folder
-    # This directory will hold all meshes, solver inputs, and result JSON files
+    # Initialize the project folder. The study keeps its cavities, with their
+    # meshes, solver inputs and results, in ./tutorial_project/cavities/
+    # (Study('./tutorial_project', name='run1') would use ./tutorial_project/run1/)
     cavs = Study('./tutorial_project', overwrite=True)
 
     # Define dimensions for a standard 9-cell TESLA cavity (in mm)

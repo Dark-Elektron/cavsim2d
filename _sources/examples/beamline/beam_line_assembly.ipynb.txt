@@ -348,7 +348,7 @@
     "res = tuned_line.tune.qois['mid-cell']\n",
     "print(f\"\\ntarget      : {target:.3f} MHz\")\n",
     "print(f\"achieved    : {res['FREQ']:.3f} MHz\")\n",
-    "print(f\"cav:Req     : {before:.3f} -> {tuned_line.parameters['cav:Req_m']:.3f} mm\")"
+    "print(f\"cav:Req     : {before:.3f} -> {tuned_line.tuned.parameters['cav:Req_m']:.3f} mm\")"
    ]
   },
   {

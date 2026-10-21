@@ -2772,8 +2772,9 @@
 <span class="c1"># Initialize a pretty printer for readable output</span>
 <span class="n">pp</span> <span class="o">=</span> <span class="n">pprint</span><span class="o">.</span><span class="n">PrettyPrinter</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
-<span class="c1"># Initialize the project folder</span>
-<span class="c1"># This directory will hold all meshes, solver inputs, and result JSON files</span>
+<span class="c1"># Initialize the project folder. The study keeps its cavities, with their</span>
+<span class="c1"># meshes, solver inputs and results, in ./tutorial_project/cavities/</span>
+<span class="c1"># (Study('./tutorial_project', name='run1') would use ./tutorial_project/run1/)</span>
 <span class="n">cavs</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="s1">'./tutorial_project'</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Define dimensions for a standard 9-cell TESLA cavity (in mm)</span>
