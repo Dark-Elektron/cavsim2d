@@ -1,5 +1,5 @@
 """Data processing, file I/O, Pareto operations, and misc utilities."""
-from scipy.interpolate import interp1d
+from scipy.interpolate import griddata, interp1d
 import json
 import os
 import re
@@ -7,10 +7,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.interpolate import griddata
 
-from cavsim2d.constants import *
-from cavsim2d.utils.printing import *
 from cavsim2d.utils.sensitivity import Sobol
 from cavsim2d.utils.surrogate import PCE
 from cavsim2d.utils.cubature import Data
@@ -36,34 +33,6 @@ def get_qoi_value(d, obj):
     -------
 
     """
-    # Req = d['CAVITY RADIUS'][n_cells - 1] * 10  # convert to mm
-    # Freq = d['FREQUENCY'][n_cells - 1]
-    # E_stored = d['STORED ENERGY'][n_cells - 1]
-    # # Rsh = d['SHUNT IMPEDANCE'][n_cells-1]  # MOhm
-    # Q = d['QUALITY FACTOR'][n_cells - 1]
-    # Epk = d['MAXIMUM ELEC. FIELD'][n_cells - 1]  # MV/m
-    # Hpk = d['MAXIMUM MAG. FIELD'][n_cells - 1]  # A/m
-    # # Vacc = dict['ACCELERATION'][0]
-    # # Eavg = d['AVERAGE E.FIELD ON AXIS'][n_cells-1]  # MV/m
-    # Rsh_Q = d['EFFECTIVE IMPEDANCE'][n_cells - 1]  # Ohm
-    #
-    # Vacc = np.sqrt(
-    #     2 * Rsh_Q * E_stored * 2 * np.pi * Freq * 1e6) * 1e-6
-    # # factor of 2, remember circuit and accelerator definition
-    # # Eacc = Vacc / (374 * 1e-3)  # factor of 2, remember circuit and accelerator definition
-    # Eacc = Vacc / (norm_length * 1e-3)  # for 1 cell factor of 2, remember circuit and accelerator definition
-    # Epk_Eacc = Epk / Eacc
-    # Bpk_Eacc = (Hpk * 4 * np.pi * 1e-7) * 1e3 / Eacc
-    #
-    # d = {
-    #     "Req": Req,
-    #     "freq": Freq,
-    #     "Q": Q,
-    #     "E": E_stored,
-    #     "R/Q": 2 * Rsh_Q,
-    #     "Epk/Eacc": Epk_Eacc,
-    #     "Bpk/Eacc": Bpk_Eacc
-    # }
 
     objective = []
 

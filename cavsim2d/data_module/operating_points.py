@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import numpy as np
 import pandas as pd
 
 #: Operating-point key holding the RMS bunch length(s), in mm. ``'sigma'`` is

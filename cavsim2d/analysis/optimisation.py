@@ -1,7 +1,6 @@
 import datetime
 import json
 import operator
-import os
 from pathlib import Path
 import random
 import shutil
@@ -13,13 +12,14 @@ from paretoset import paretoset
 from scipy.stats import qmc
 from tqdm import tqdm
 
-from cavsim2d.constants import *
-from cavsim2d.processes import *
-from cavsim2d.utils.printing import *
-from cavsim2d.utils.shared_functions import *
-from cavsim2d.utils.printing import set_verbose
-from cavsim2d.processes.tune import normalize_cell_type_config, _resolve_suffixed_var
-from cavsim2d.processes.tune import last_stage_result
+from cavsim2d.constants import SOFTWARE_DIRECTORY
+from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
+from cavsim2d.processes.tune import (_resolve_suffixed_var, last_stage_result,
+                                     normalize_cell_type_config, run_tune_parallel)
+from cavsim2d.processes.wakefield import (get_wakefield_objectives_value, process_objectives,
+                                          run_wakefield_parallel, run_wakefield_s)
+from cavsim2d.utils.printing import done, error, info, set_verbose, suppress_errors, warning
+from cavsim2d.solvers.solver_objects import DEFAULT_WAKEFIELD_CONFIG, merge_config
 from cavsim2d.solvers.objectives import (SEP, parse_objective, read_objective_values,
                                          canonical_objective)
 from cavsim2d.utils.config_validation import require
@@ -440,8 +440,9 @@ class Optimisation:
                 eps_history = [np.inf if e is None else e for e in (cs.get('eps_history') or [])]
                 obj_norm = cs.get('obj_norm')
                 prev_front_norm = cs.get('prev_front_norm')
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"Resume: could not read {cs_path} ({e!r}); the convergence "
+                        f"history restarts from this generation.")
         if not hv_history:
             hv_path = folder / 'hv_history.json'
             if hv_path.exists():
@@ -463,8 +464,9 @@ class Optimisation:
                     for g, grp in ph_df.groupby('generation'):
                         if int(g) <= last_n:
                             pareto_history.append(grp.reset_index(drop=True))
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"Resume: could not read {ph_path} ({e!r}); the Pareto history "
+                        f"restarts from this generation.")
 
         return {
             'df_global': df_global,
@@ -578,8 +580,9 @@ class Optimisation:
                 hv_path = self.opt_solver.folder / 'hv_history.json'
                 with open(hv_path, 'w') as f:
                     json.dump({'hv_history': self.hv_history, 'hv_tol': self.hv_tol}, f)
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"Could not save the hypervolume history ({e!r}); "
+                        f"plot_convergence() will have nothing to show.")
 
         if len(self.hv_history) > 1:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
@@ -771,22 +774,26 @@ class Optimisation:
             # 'key' is the dataframe INDEX throughout _evaluate_generation (as in
             # the non-UQ path), not a column — iterate/join on the index.
             for key in df.index:
-                # Locate this candidate's uq.json via the cavity object (robust
-                # to the project-vs-candidates-folder layout, like the eigenmode
-                # objectives above): eigenmode and wakefield UQ both write to the
-                # tuned cavity's uq/ dir.
+                # Locate this candidate's uq.json files via the cavity object
+                # (robust to the project-vs-candidates-folder layout, like the
+                # eigenmode objectives above). The eigenmode UQ is in <cav>/uq/, the
+                # wakefield UQ in <cav>/wakefield/uq/: they used to share one
+                # uq.json, so a run with both kinds of objective lost one of them.
                 scav = cavs_dict.get(key)
-                uq_json = None
-                if scav is not None:
-                    tuned = scav.tuned
-                    candidates = ([Path(tuned.self_dir) / 'uq' / 'uq.json']
-                                  if tuned is not None else [])
-                    candidates.append(Path(scav.self_dir) / 'uq' / 'uq.json')
-                    uq_json = next((c for c in candidates if c.exists()), None)
-                if uq_json is None:
+                if scav is None:
                     continue
-                filename_eigen = filename_abci = uq_json
-                if os.path.exists(filename_eigen):
+                tuned = scav.tuned
+                roots = ([Path(tuned.self_dir)] if tuned is not None else []) + [Path(scav.self_dir)]
+
+                def _first(*parts):
+                    found = (r.joinpath(*parts) for r in roots)
+                    return next((f for f in found if f.exists()), None)
+
+                filename_eigen = _first('uq', 'uq.json')
+                filename_abci = _first('wakefield', 'uq', 'uq.json') or filename_eigen
+                if filename_eigen is None and filename_abci is None:
+                    continue
+                if filename_eigen is not None:
                     uq_result_dict[key] = []
                     with open(filename_eigen, "r") as infile:
                         uq_d = json.load(infile)
@@ -798,7 +805,7 @@ class Optimisation:
                                 uq_result_dict[key].append(std)
                                 uq_result_dict[key].append(_uq_robust_value(o, expe, std))
 
-                if os.path.exists(filename_abci):
+                if filename_abci is not None:
                     if key not in uq_result_dict:
                         uq_result_dict[key] = []
                     with open(filename_abci, "r") as infile:
@@ -946,8 +953,9 @@ class Optimisation:
                 }
                 with open(save_folder / 'convergence_state.json', 'w') as f:
                     json.dump(conv_state, f)
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"Could not save the convergence state ({e!r}); a resumed run "
+                        f"will restart its convergence history.")
 
         return df
 
@@ -1041,46 +1049,17 @@ class Optimisation:
         ``get_wakefield_objectives_value`` can iterate it and locate the
         ABCI output under ``<projectDir>/<key>/tuned/wakefield/``.
         """
-        wakefield_config_keys = wakefield_config.keys()
-        MROT = 2
-        MT = 10
-        wakelength = 50
-        bunch_length = 25
-        DDR_SIG = 0.1
-        DDZ_SIG = 0.1
-
-        wakefield_config.setdefault('beam_config', {})
-        wakefield_config.setdefault('wake_config', {})
-        wakefield_config.setdefault('mesh_config', {})
-
-        if 'bunch_length' in wakefield_config['beam_config']:
-            require(not isinstance(wakefield_config['beam_config']['bunch_length'], str),
-                    'Bunch length must be of type integer or float.')
-        else:
-            wakefield_config['beam_config']['bunch_length'] = bunch_length
-        if 'wakelength' in wakefield_config['wake_config']:
-            require(not isinstance(wakefield_config['wake_config']['wakelength'], str),
-                    'Wakelength must be of type integer or float.')
-        else:
-            wakefield_config['wake_config']['wakelength'] = wakelength
+        # The defaults go in underneath, at the top level where the deck writer
+        # reads them unless a nested beam_config / wake_config / mesh_config says
+        # otherwise. This used to nest hard-coded copies there, so every candidate
+        # ran with a 25 mm bunch and a 50 m wake whatever the config asked for.
+        wakefield_config = merge_config(DEFAULT_WAKEFIELD_CONFIG, wakefield_config)
 
         processes = wakefield_config.get('processes', 1)
         if processes <= 0:
             error('Number of processes must be greater than zero.')
             processes = 1
         wakefield_config['processes'] = processes
-
-        if 'polarisation' in wakefield_config_keys:
-            require(wakefield_config['polarisation'] in [0, 1, 2], 'Polarisation should be 0, 1, or 2.')
-        else:
-            wakefield_config['polarisation'] = MROT
-
-        if 'MT' not in wakefield_config_keys:
-            wakefield_config['MT'] = MT
-        if 'DDR_SIG' not in wakefield_config['mesh_config']:
-            wakefield_config['mesh_config']['DDR_SIG'] = DDR_SIG
-        if 'DDZ_SIG' not in wakefield_config['mesh_config']:
-            wakefield_config['mesh_config']['DDZ_SIG'] = DDZ_SIG
 
         # Only run wakefield on candidates that survived tuning.
         survived_keys = df['key'].tolist() if 'key' in df.columns else list(df.index)

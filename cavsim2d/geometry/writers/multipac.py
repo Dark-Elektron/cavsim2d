@@ -1,8 +1,7 @@
 """Exporters that write a cavity contour in the Multipac input format."""
 import matplotlib.pyplot as plt
 import numpy as np
-from cavsim2d.constants import *
-from cavsim2d.utils.printing import *
+from cavsim2d.utils.printing import error
 from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.primitives import arcTo, lineTo
 

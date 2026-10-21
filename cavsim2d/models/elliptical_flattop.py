@@ -1,12 +1,11 @@
 from cavsim2d.models.base import Cavity
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
+from cavsim2d.geometry.primitives import arcTo, lineTo
+from cavsim2d.geometry.tangency import tangent_coords, update_alpha
+from cavsim2d.utils.printing import error
 from cavsim2d.geometry.contours import elliptical_profile, DegenerateGeometry
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 from cavsim2d.utils.config_validation import require
 
 class EllipticalCavityFlatTop(Cavity):
@@ -135,6 +134,8 @@ class EllipticalCavityFlatTop(Cavity):
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters, n_cells, beampipe,
                                 write=self.geo_filepath)
+            # model.json, which Study.load rebuilds the cavity from.
+            self._write_geometry_snapshot()
 
     def write_geometry(self, parameters, n_cells, BP, scale=1, ax=None, bc=None, tangent_check=False,
                        ignore_degenerate=False, plot=False, write=None, dimension=False,

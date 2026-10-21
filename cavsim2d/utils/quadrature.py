@@ -1,13 +1,12 @@
 """Quadrature, sampling, and statistical weight utilities."""
 import math
 import warnings
+from cavsim2d.utils.printing import CavsimWarning, error
 import numpy as np
 import pandas as pd
 from scipy.stats import qmc
 from numpy.polynomial.legendre import leggauss
 
-from cavsim2d.constants import *
-from cavsim2d.utils.printing import error
 
 #: pandas separator for whitespace-delimited node files.
 SEP_WHITESPACE = r"\s+"
@@ -464,7 +463,7 @@ def weighted_mean_obj(tab_var, weights):
                 f"rule has negative weights (Stroud5 at 3+ variables) and the "
                 f"response varies too sharply across its axis nodes for the rule to "
                 f"hold. Re-run those objectives with a Monte-Carlo design.",
-                UserWarning, stacklevel=3)
+                CavsimWarning, stacklevel=3)
         std = np.sqrt(np.asarray(var, dtype=float))
         skew = weighted_skew(tab_var, weights.T[0], mean, std)
         kurtosis = weighted_kurtosis(tab_var, weights.T[0], mean, std)
@@ -763,7 +762,7 @@ def check_node_rule(k, node_type, n_nodes=None, stacklevel=4):
             f"{2 * k if rule == 'stroud3' else 2 * k * k + 1} nodes cannot reveal how "
             f"much higher-order content this response has. Cross-check with {better}, "
             f"or treat the stdDev as indicative.",
-            UserWarning, stacklevel=stacklevel)
+            CavsimWarning, stacklevel=stacklevel)
 
     if rule == 'stroud5' and k >= 3:
         # cn_leg_05_2 puts NEGATIVE weights on the 2k axis nodes for every k >= 3
@@ -778,7 +777,7 @@ def check_node_rule(k, node_type, n_nodes=None, stacklevel=4):
             f"degree-5 exact for smooth responses, but a sharply varying one can "
             f"produce a negative variance and a NaN stdDev. Check the reported "
             f"stdDev is finite, and prefer a Monte-Carlo design if it is not.",
-            UserWarning, stacklevel=stacklevel)
+            CavsimWarning, stacklevel=stacklevel)
 
     if rule == 'gauss_legendre' and params is not None:
         total = int(params) ** k
@@ -791,7 +790,7 @@ def check_node_rule(k, node_type, n_nodes=None, stacklevel=4):
         warnings.warn(
             f"UQ: ['Gauss_Legendre', {params}] over {k} variables is {total:,} solver "
             f"runs. 'Stroud5' reaches degree 5 in {2 * k * k + 1}.",
-            UserWarning, stacklevel=stacklevel)
+            CavsimWarning, stacklevel=stacklevel)
 
     if rule in ('uniform', 'normal', 'lhs') and params is not None:
         n = int(params)
@@ -804,13 +803,13 @@ def check_node_rule(k, node_type, n_nodes=None, stacklevel=4):
                 f"N>={samples_for_sigma_accuracy(0.05)}, for 1% use "
                 f"N>={samples_for_sigma_accuracy(0.01)}. This does not depend on the "
                 f"number of variables.",
-                UserWarning, stacklevel=stacklevel)
+                CavsimWarning, stacklevel=stacklevel)
         if rule == 'lhs':
             warnings.warn(
                 "UQ: Latin hypercube sharpens the MEAN (often by 1-3 orders of "
                 "magnitude) but not the stdDev — sigma's error still follows "
                 "1/sqrt(2N). Size N from the stdDev you need.",
-                UserWarning, stacklevel=stacklevel)
+                CavsimWarning, stacklevel=stacklevel)
 
 
 def bootstrap_moment_errors(tab_var, weights, n_boot=2000, seed=12345):

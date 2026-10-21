@@ -20,7 +20,9 @@ Or, to follow development or change the code, clone the repository from GitHub a
     cd cavsim2d
     pip install -e .
 
-Either way the core dependencies, NGSolve and gmsh among them, are installed with it. The example notebooks also need the optional ``jupyter`` extra: ``pip install "cavsim2d[jupyter]"`` from PyPI, or ``pip install -e ".[jupyter]"`` in a clone.
+Either way the core dependencies, NGSolve and gmsh among them, are installed with it. So are the Jupyter widget packages that NGSolve's interactive viewer needs, so ``cav.show_fields()``, ``cav.show_mesh()`` and ``cav.show_geometry()`` render in a notebook (JupyterLab, Jupyter Notebook 7 or VS Code) with nothing else to install. Recent NGSolve releases fetch the viewer's JavaScript from cdn.jsdelivr.net, so the notebook needs internet access for it. Outside a notebook, or when the viewer cannot render, these methods draw a static matplotlib view instead and say why.
+
+To run the example notebooks you also need a Jupyter kernel and front end. The optional ``jupyter`` extra installs JupyterLab and the kernel: ``pip install "cavsim2d[jupyter]"`` from PyPI, or ``pip install -e ".[jupyter]"`` in a clone. VS Code users only need the kernel, which VS Code offers to install.
 
 To improve the readability of printed configurations and outputs, it is also recommended to install ``pprintpp``:
 

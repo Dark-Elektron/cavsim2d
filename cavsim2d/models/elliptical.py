@@ -1,16 +1,12 @@
-import json
-from pathlib import Path
 from cavsim2d.models.base import Cavity
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
-import matplotlib
+from cavsim2d.geometry.primitives import arcTo, lineTo
+from cavsim2d.geometry.tangency import tangent_coords, update_alpha
+from cavsim2d.geometry.writers.gmsh import add_ellipse, add_line, add_point
+from cavsim2d.utils.printing import error, warning
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 from cavsim2d.study import Study
-from cavsim2d.geometry import Profile
-from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.contours import (elliptical_profile_from_half_cells, half_cell_sequence,
                                         continuity_violations, DegenerateGeometry)
 from cavsim2d.geometry.writers.multipac import writeCavityForMultipac, writeCavityForMultipac_multicell
@@ -212,6 +208,46 @@ class EllipticalCavity(Cavity):
             else:
                 self.write_quarter_geometry(self.parameters, beampipe, write=self.geo_filepath)
             self._write_geometry_snapshot()
+
+    def set_mid_cell(self, cell):
+        """Set the mid-cell ``[A, B, a, b, Ri, L, Req]`` (mm)."""
+        self.mid_cell = np.array(cell, dtype=float)[:7]
+        self._cells_changed()
+
+    def set_end_cell_left(self, cell):
+        """Set the left end-cell ``[A, B, a, b, Ri, L, Req]`` (mm)."""
+        self.end_cell_left = np.array(cell, dtype=float)[:7]
+        self._cells_changed()
+
+    def set_end_cell_right(self, cell):
+        """Set the right end-cell ``[A, B, a, b, Ri, L, Req]`` (mm)."""
+        self.end_cell_right = np.array(cell, dtype=float)[:7]
+        self._cells_changed()
+
+    def _cells_changed(self):
+        """Re-derive everything that follows from the cell lists after a setter.
+
+        ``profile()``, the ``.geo`` writer and the geometry stamp all read
+        ``self.parameters``. The base setters updated only ``self.shape``, so
+        ``set_mid_cell`` changed nothing that was ever solved.
+        """
+        self._unify_equator_radius()
+        (self.A, self.B, self.a, self.b,
+         self.Ri, self.L, self.Req) = self.mid_cell[:7]
+        (self.A_el, self.B_el, self.a_el,
+         self.b_el, self.Ri_el, self.L_el,
+         self.Req_el) = self.end_cell_left[:7]
+        (self.A_er, self.B_er, self.a_er,
+         self.b_er, self.Ri_er, self.L_er,
+         self.Req_er) = self.end_cell_right[:7]
+        self.shape.update({
+            'IC': update_alpha(self.mid_cell[:7], self.cell_parameterisation),
+            'OC': update_alpha(self.end_cell_left[:7], self.cell_parameterisation),
+            'OC_R': update_alpha(self.end_cell_right[:7], self.cell_parameterisation),
+        })
+        self.to_multicell()
+        self.get_geometric_parameters()
+        self.l_cavity = self.l_active + 8 * self.L * 1e-3
 
     def _unify_equator_radius(self):
         """Force Req to be identical on mid, end-left and end-right cells.
@@ -1270,6 +1306,9 @@ class EllipticalCavity(Cavity):
 
             name = key
             scav = EllipticalCavity(self.n_cells, mid_cells_mod, endcell_l_mod, endcell_r_mod, beampipe=self.beampipe)
+            # Dielectric regions and chaining are not in the cell lists; without
+            # this every variant was a vacuum, single-cavity copy.
+            self._carry_layout_to(self._carry_dielectrics_to(scav))
             scav.name = name
 
             # Set self_dir directly — flat structure, no Cavities/ nesting
@@ -1307,6 +1346,7 @@ class EllipticalCavity(Cavity):
         for name, half_cells in perturbed.items():
             scav = EllipticalCavity(self.n_cells, self.mid_cell, self.end_cell_left,
                                     self.end_cell_right, beampipe=self.beampipe)
+            self._carry_layout_to(self._carry_dielectrics_to(scav))
             scav.name = name
             scav.set_half_cells(half_cells)
 

@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
-from conftest import MIDCELL
+from conftest import MIDCELL, requires_abci
 from cavsim2d import Study, EllipticalCavity
 
 
@@ -63,6 +63,7 @@ def test_rerun_clears_stale_uq_artefacts(project_dir):
     assert not os.path.exists(uq_dir)
 
 
+@requires_abci
 def test_multicell_wakefield_uq_produces_statistics(project_dir):
     """Multicell wakefield UQ perturbs every half-cell and gathers impedance QOIs.
 
@@ -87,9 +88,12 @@ def test_multicell_wakefield_uq_produces_statistics(project_dir):
         },
     }, '')
 
+    # Wakefield UQ lives in wakefield/uq/, apart from the eigenmode UQ in uq/.
+    wake_uq = os.path.join(cav.self_dir, 'wakefield', 'uq')
     for fname in ('nodes.csv', 'table.csv', 'uq.json'):
-        assert os.path.exists(os.path.join(cav.uq_dir, fname)), fname
-    with open(os.path.join(cav.uq_dir, 'uq.json')) as fh:
+        assert os.path.exists(os.path.join(wake_uq, fname)), fname
+    assert not os.path.exists(os.path.join(cav.uq_dir, 'uq.json'))
+    with open(os.path.join(wake_uq, 'uq.json')) as fh:
         uq = json.load(fh)
     key = 'ZL [max(0.2<f<1.5)]'
     assert key in uq, uq.keys()

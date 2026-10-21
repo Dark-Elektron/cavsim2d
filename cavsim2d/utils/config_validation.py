@@ -8,46 +8,54 @@ keep working.
 """
 import difflib
 import warnings
+from cavsim2d.utils.printing import CavsimWarning
 
-# Accepted keys per config type — supersets of the public keys plus the few
-# keys the run functions inject internally, so validation flags typos without
-# false positives.
-EIGENMODE_KEYS = {
-    'processes', 'rerun', 'force', 'boundary_conditions', 'polarisation', 'n_modes', 'nmodes',
-    'mesh_config', 'uq_config', 'f_shift', 'direct_solver', 'n_cells',
-    'conductivity', 'surface_resistance', 'normalization_length', 'pinvit_maxit',
-    'pinvit_tol', 'pinvit_converge_modes', 'pinvit_padding',
-    'mode_of_interest', 'materials', 'loss_model', 'arnoldi_vectors',
-    'opt', 'target', 'solver_save_directory', 'preconditioner', 'freq_only',
-    'pml_length', 'pml_alpha', 'beampipe_length', 'n_port_modes',
+#: Keys a config accepts besides those of its default config: second spellings
+#: (see CONFIG_ALIASES), per-call switches, settings without a default and keys
+#: the run functions inject internally. The default configs live with the
+#: solvers, which add their keys with register_defaults(), so a new default is
+#: accepted without being listed a second time here.
+_EXTRA_KEYS = {
+    'eigenmode': {
+        'force', 'nmodes', 'n_cells', 'normalization_length', 'arnoldi_vectors',
+        'freq_only', 'opt', 'target', 'solver_save_directory',
+    },
+    'wakefield': {
+        'force', 'polarisation', 'objectives', 'mesh_config', 'beam_config',
+        'wake_config', 'LCPUTM', 'contour_ds', 'cutoff', 'opt', 'target',
+        'solver_save_directory',
+    },
+    'tune': {
+        'force', 'freq', 'tolerance', 'parameters', 'cell_types', 'n_family',
+        'family_fraction', 'qoi_split', 'qoi_tol', 'qoi_stage2', 'qoi_maxit',
+    },
+    'multipacting': {'force'},
+    'uq': {
+        'epsilon', 'cell', 'operating_points', 'perturbation_mode',
+        'objectives_unprocessed',
+    },
+    'optimisation': {
+        'force', 'no_of_generations', 'seed', 'weights', 'mutation_sigma', 'eta_sbx',
+        'resume', 'mid-cell', 'beampipe', 'eigenmode_config', 'wakefield_config',
+        'uq_config', 'constraints', 'hv_tol', 'hv_consecutive', 'archive_size',
+        'eps_tol', 'eps_consecutive',
+    },
 }
-UQ_KEYS = {
-    'variables', 'objectives', 'delta', 'epsilon', 'processes', 'distribution',
-    'method', 'cell_type', 'cell_complexity', 'perturbation_mode', 'tune_config',
-    'cell', 'operating_points', 'objectives_unprocessed',
-    'independent_half_cells',
-}
-WAKEFIELD_KEYS = {
-    'processes', 'rerun', 'force', 'MROT', 'polarisation', 'wakelength', 'bunch_length',
-    'MT', 'DDR_SIG', 'DDZ_SIG', 'operating_points', 'uq_config',
-    'beam_config', 'wake_config', 'mesh_config', 'target', 'LCPUTM',
-    'save_fields', 'objectives', 'opt', 'solver_save_directory',
-    'contour_ds', 'beampipe_length', 'solver', 'cutoff',
-}
-TUNE_KEYS = {
-    'freqs', 'freq', 'cell_type', 'cell_types', 'parameters', 'processes',
-    'rerun', 'force', 'eigenmode_config', 'tolerance', 'tol', 'maxiter', 'uq_config',
-    'equal_cell_freq', 'n_family', 'family_fraction', 'qoi_targets', 'qoi_split',
-    'qoi_tol', 'qoi_stage2', 'qoi_maxit',
-}
-OPTIMISATION_KEYS = {
-    'initial_points', 'no_of_generation', 'no_of_generations', 'method',
-    'bounds', 'objectives', 'tune_config', 'mutation_factor', 'crossover_factor',
-    'elites_for_crossover', 'chaos_factor', 'weights', 'seed', 'mutation_sigma',
-    'eta_sbx', 'resume', 'mid-cell', 'eigenmode_config', 'wakefield_config',
-    'hv_tol', 'hv_consecutive', 'archive_size', 'eps_tol', 'eps_consecutive',
- 'beampipe',
-}
+
+#: Accepted keys per config: its extra keys plus the keys of its default config.
+KNOWN_KEYS = {kind: set(keys) for kind, keys in _EXTRA_KEYS.items()}
+EIGENMODE_KEYS = KNOWN_KEYS['eigenmode']
+UQ_KEYS = KNOWN_KEYS['uq']
+WAKEFIELD_KEYS = KNOWN_KEYS['wakefield']
+TUNE_KEYS = KNOWN_KEYS['tune']
+OPTIMISATION_KEYS = KNOWN_KEYS['optimisation']
+MULTIPACTING_KEYS = KNOWN_KEYS['multipacting']
+
+
+def register_defaults(kind, defaults):
+    """Accept every key of *defaults*, the default config of a *kind* run."""
+    KNOWN_KEYS[kind].update(defaults)
+
 
 # Keys people commonly mistype -> the key the code actually reads.
 _DEPRECATED = {
@@ -55,12 +63,80 @@ _DEPRECATED = {
     'cell_type ': 'cell_type',
 }
 
+#: Second spellings accepted for a key, per config, mapped to the key the code
+#: reads. canonicalise() renames them before a run merges its defaults in: left
+#: as they were, a default for the real key shadowed them, so
+#: ``cav.tune.run(freq=1400)`` tuned to the default frequency and
+#: ``no_of_generations=20`` ran the default 100 generations.
+CONFIG_ALIASES = {
+    'eigenmode': {'nmodes': 'n_modes', 'overwrite': 'force'},
+    'wakefield': {'overwrite': 'force'},
+    'tune': {'freq': 'freqs', 'tolerance': 'tol', 'overwrite': 'force'},
+    'multipacting': {'overwrite': 'force'},
+    'optimisation': {'no_of_generations': 'no_of_generation', 'overwrite': 'force'},
+}
+
+#: Configs nested inside another one, canonicalised with it.
+_NESTED = {
+    'tune': {'eigenmode_config': 'eigenmode'},
+    'multipacting': {'eigenmode_config': 'eigenmode'},
+    'optimisation': {'tune_config': 'tune', 'eigenmode_config': 'eigenmode',
+                     'wakefield_config': 'wakefield'},
+}
+
+
+def canonicalise(config, kind):
+    """A copy of *config* with every alias renamed to the key the code reads.
+
+    For a tune config the legacy ``parameters`` + ``cell_types`` pair becomes the
+    ``cell_type`` dict. Nested configs (a tune's ``eigenmode_config``, an
+    optimisation's ``tune_config``, ...) are canonicalised too. An alias given
+    alongside its key with a different value raises: there is no telling which
+    was meant.
+    """
+    out = dict(config or {})
+    for alias, key in CONFIG_ALIASES.get(kind, {}).items():
+        if alias not in out:
+            continue
+        value = out.pop(alias)
+        if key in out and out[key] != value:
+            raise ValueError(
+                f"{kind} config: {alias!r} and {key!r} are the same setting but were "
+                f"given different values ({value!r} and {out[key]!r}). Give just one.")
+        out[key] = value
+    if kind == 'tune' and ('parameters' in out or 'cell_types' in out):
+        params, cell_types = out.pop('parameters', None), out.pop('cell_types', None)
+        if out.get('cell_type'):
+            raise ValueError("tune config: give 'cell_type' or the older 'parameters' + "
+                             "'cell_types' pair, not both.")
+        require(params and cell_types,
+                "tune config: the older 'parameters' + 'cell_types' form needs both, e.g. "
+                "parameters='Req', cell_types='mid-cell'. Or use cell_type={'mid-cell': 'Req'}.")
+        # In that form a list held one entry per cavity, and tuning only ever
+        # used the first; keep that reading, and say so when that drops a stage.
+        lists = [v for v in (params, cell_types) if isinstance(v, (list, tuple))]
+        if any(len(set(map(str, v))) > 1 for v in lists):
+            warnings.warn(
+                f"tune config: parameters={params!r} / cell_types={cell_types!r} hold "
+                f"several entries, but this older form tunes only the first. Use "
+                f"cell_type={{'mid-cell': 'Req', 'end-cell': 'L'}} to tune several "
+                f"cell types in turn.", CavsimWarning, stacklevel=3)
+        if isinstance(params, (list, tuple)):
+            params = params[0]
+        if isinstance(cell_types, (list, tuple)):
+            cell_types = cell_types[0]
+        out['cell_type'] = {cell_types: [params]}
+    for key, sub_kind in _NESTED.get(kind, {}).items():
+        if isinstance(out.get(key), dict):
+            out[key] = canonicalise(out[key], sub_kind)
+    return out
+
 
 def _warn(message):
     # Standard warnings so config typos are always visible (the project's
     # printing.warning is silent unless verbose mode is on). stacklevel=4
     # points the warning at the user's run_*(...) call site.
-    warnings.warn(message, UserWarning, stacklevel=4)
+    warnings.warn(message, CavsimWarning, stacklevel=4)
 
 
 def validate_config(config, known_keys, name='config'):
@@ -74,7 +150,8 @@ def validate_config(config, known_keys, name='config'):
             continue
         if key in known_keys:
             continue
-        match = difflib.get_close_matches(str(key), list(known_keys), n=1)
+        # A tighter cutoff than difflib's 0.6, which offered 'force' for 'freq'.
+        match = difflib.get_close_matches(str(key), list(known_keys), n=1, cutoff=0.75)
         hint = f" Did you mean '{match[0]}'?" if match else ""
         _warn(f"{name}: unrecognised key '{key}'.{hint}")
 
@@ -227,3 +304,11 @@ def validate_optimisation_config(cfg):
         _check_objectives(cfg, 'optimisation_config')
         if isinstance(cfg.get('tune_config'), dict):
             validate_tune_config(cfg['tune_config'])
+        if isinstance(cfg.get('uq_config'), dict):
+            validate_uq_config(cfg['uq_config'])
+
+
+def validate_multipacting_config(cfg):
+    validate_config(cfg, MULTIPACTING_KEYS, 'multipacting config')
+    if isinstance(cfg, dict) and isinstance(cfg.get('eigenmode_config'), dict):
+        validate_eigenmode_config(cfg['eigenmode_config'])

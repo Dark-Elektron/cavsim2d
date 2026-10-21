@@ -1,6 +1,7 @@
 """API-surface guards: removed legacy methods stay removed, and methods that
 were only guarded (not ported) raise a clear NotImplementedError."""
 import ast
+import importlib.metadata
 import pathlib
 
 import pytest
@@ -72,11 +73,11 @@ def test_imports_live_at_module_top():
 
 
 def test_module_headers_import_only_declared_dependencies():
-    """A clean `pip install cavsim2d` must import.
+    """A clean `pip install cavsim2d` must import, and quickly.
 
-    IPython and ipywidgets are the optional [jupyter] extra, so a module header
-    that imports them unguarded breaks `import cavsim2d` without it. distutils
-    left the standard library in Python 3.12.
+    IPython and ipywidgets come with the viewer's widget packages now, but they
+    stay out of module headers: importing them is slow and only a notebook needs
+    them. distutils left the standard library in Python 3.12.
     """
     root = pathlib.Path(__file__).resolve().parent.parent / 'cavsim2d'
     banned = {'IPython', 'ipywidgets', 'distutils'}
@@ -94,6 +95,25 @@ def test_module_headers_import_only_declared_dependencies():
                 if name.split('.')[0] in banned:
                     offenders.append(f'{f.relative_to(root)}:{node.lineno} {name}')
     assert not offenders, 'unguarded optional/removed imports:\n  ' + '\n  '.join(offenders)
+
+
+def test_interactive_viewer_dependencies_are_declared():
+    """`pip install cavsim2d` must bring what NGSolve's webgui viewer needs.
+
+    ngsolve does not depend on its own widget package, so on a clean install
+    `cav.show_fields()` drew nothing and said nothing. NGSolve 6.2.26xx renders
+    through anywidget, earlier releases through webgui_jupyter_widgets.
+    """
+    pyproject = pathlib.Path(__file__).resolve().parent.parent / 'pyproject.toml'
+    if pyproject.exists():                       # a source checkout
+        text = pyproject.read_text(encoding='utf-8')
+        core = text.split('\ndependencies = [', 1)[1].split('\n]', 1)[0]
+        declared = core
+    else:                                        # the tests run against an installed wheel
+        declared = '\n'.join(f'"{r}' for r in importlib.metadata.requires('cavsim2d')
+                             if 'extra ==' not in r)
+    for package in ('anywidget', 'webgui_jupyter_widgets', 'ipywidgets'):
+        assert f'"{package}' in declared, f'{package} is not a core dependency'
 
 
 def test_no_asserts_in_the_package():

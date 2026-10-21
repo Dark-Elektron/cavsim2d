@@ -16,7 +16,7 @@ from scipy.special import roots_legendre, legendre
 from scipy.stats import qmc
 from typing import List, Dict
 
-from cavsim2d.utils.printing import *
+from cavsim2d.utils.printing import error
 
 class Cubature:
     def __init__(self, problem):
@@ -78,7 +78,6 @@ class Cubature:
         self.nodes, self.weights = self.cn_leg_05_2(self.dim)
 
         self.unscaled_nodes = self.nodes
-        print(self.nodes.shape, self.weights.shape)
         self.scale()
         # print('SCALED NODES')
         # print(self.nodes)
@@ -519,9 +518,6 @@ class Cubature:
         mean = np.average(Y, weights=weights, axis=0)  # shape: (num_objectives,)
         var = np.average((Y - mean) ** 2, weights=weights, axis=0)  # shape: (num_objectives,)
 
-        print("Mean:", mean)
-        print("Variance:", var)
-
         # If Y is one-dimensional (a single objective), convert to 2D (n_nodes, 1)
         if Y.ndim == 1:
             Y = Y.reshape(-1, 1)
@@ -556,8 +552,6 @@ class Cubature:
         return S
 
     def weighted_mean_obj(self, tab_var, weights):
-        print(weights, weights.shape)
-        print(tab_var, tab_var.shape)
         rows_sims_no, cols = np.shape(tab_var)
         no_weights, dummy = np.shape(weights)
         if rows_sims_no == no_weights:
@@ -573,8 +567,6 @@ class Cubature:
             std = np.sqrt(self.weighted_variance(tab_var, weights.T[0], mean))
             skew = self.weighted_skew(tab_var, weights.T[0], mean, std)
             kurtosis = self.weighted_kurtosis(tab_var, weights.T[0], mean, std)
-            print('statistical moments')
-            print(mean.reshape(-1, 1), std.reshape(-1, 1), skew, kurtosis)
         else:
             mean = 0
             std = 0

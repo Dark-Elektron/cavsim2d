@@ -13,13 +13,13 @@ To run the geometry optimisation:
 
 Configuration Dictionary
 ************************
-Optimisation is driven by a nested configuration dictionary:
+Optimisation is driven by a nested configuration dictionary. ``study.optimisation.config_sample`` returns a complete, valid template to start from (see :doc:`configuration`):
 
 .. code-block:: python
 
     optimisation_config = {
         'tune_config': {
-            'freqs': 1300,
+            'freqs': 801.58,
             'cell_type': {'mid-cell': 'Req'},
             'processes': 1
         },

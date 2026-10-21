@@ -45,8 +45,7 @@ gives :math:`\Delta f/f = -\alpha/R` to 0.001%, and the same displacement of the
 plates gives zero.
 """
 import numpy as np
-from ngsolve import (Conj, GridFunction, H1, Integrate, InnerProduct, Norm,
-                     VectorH1, specialcf, y)
+from ngsolve import GridFunction, H1, Integrate, InnerProduct, Norm, VectorH1, specialcf, y
 
 from cavsim2d.constants import eps0, mu0
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import get_boundary_nodes

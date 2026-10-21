@@ -15,9 +15,11 @@ The remaining utilities were split into:
 - ``cavsim2d.utils.quadrature``  (quadrature and sampling utilities)
 - ``cavsim2d.utils.data_utils``  (data processing and file I/O)
 
-All symbols are re-exported here for backward compatibility. New code should
-import from the specific module instead.
+All symbols are re-exported here for backward compatibility, the physical
+constants of :mod:`cavsim2d.constants` included. New code should import from
+the specific module instead.
 """
+from cavsim2d.constants import *
 from cavsim2d.geometry.tangency import *
 from cavsim2d.geometry.primitives import *
 from cavsim2d.geometry.plotting import *

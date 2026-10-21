@@ -1,7 +1,9 @@
 from cavsim2d.models.base import Cavity
 from cavsim2d.geometry import Profile
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
+from cavsim2d.geometry.tangency import tangent_coords
+from cavsim2d.geometry.writers.gmsh import (add_bezierspline, add_bspline, add_ellipse,
+                                            add_line, add_point)
+from cavsim2d.utils.printing import error
 import numpy as np
 import os
 
@@ -106,6 +108,8 @@ class SplineCavity(Cavity):
                 self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
                 self.write_geometry(self.parameters, n_cells, beampipe,
                                     write=self.geo_filepath)
+            # model.json, which Study.load rebuilds the cavity from.
+            self._write_geometry_snapshot()
 
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']

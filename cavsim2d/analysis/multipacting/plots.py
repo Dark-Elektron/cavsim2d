@@ -15,7 +15,7 @@ from matplotlib.colors import LogNorm
 
 from cavsim2d.analysis.multipacting.metrics import distance_function
 from cavsim2d.constants import c0, m0, q0  # noqa: F401
-from cavsim2d.utils.printing import info
+from cavsim2d.utils.printing import CavsimWarning, info, warning
 from cavsim2d.utils.style import house_style
 
 
@@ -155,7 +155,7 @@ def _select_trajectories(solver, epk_i=None, phi_i=None, traj=None):
         bad = [e for e in want if not (0 <= e < n_epk)]
         if bad:
             warnings.warn(f"animate/select: field-level index(es) {bad} out of "
-                          f"range 0..{n_epk - 1}; ignored.", UserWarning, stacklevel=3)
+                          f"range 0..{n_epk - 1}; ignored.", CavsimWarning, stacklevel=3)
     traj_sel = None if traj is None else set(np.atleast_1d(traj).astype(int).tolist())
     phi_sel = None if phi_i is None else set(np.atleast_1d(phi_i).astype(int).tolist())
     within = traj_sel is not None or phi_sel is not None   # any within-level filter?
@@ -199,7 +199,7 @@ def distance_map(solver, epk_i, metric='d20', vmax=None, show=True):
     r = solver.results
     particles_objects = solver.particles
     if not particles_objects:
-        info("No multipacting results — run cav.multipacting.run(...) first.")
+        warning("No multipacting results — run cav.multipacting.run(...) first.")
         return None
     particles = particles_objects[epk_i]
     if not hasattr(particles, 'bright_init_x') or not hasattr(particles, 'sites_init'):
@@ -323,7 +323,7 @@ def trajectory_viewer(solver, color_by=None):
 
     particles_objects = solver.particles
     if not particles_objects:
-        info("No multipacting results — run cav.multipacting.run(...) first.")
+        warning("No multipacting results — run cav.multipacting.run(...) first.")
         return None
     boundary = _wall_polyline(solver)
     epk_axis = solver.epk
@@ -437,7 +437,7 @@ def trajectory_animation(solver, epk_i=None, phi_i=None, traj=None,
     from matplotlib.animation import FuncAnimation
 
     if not solver.particles:
-        info("No multipacting results — run cav.multipacting.run(...) first.")
+        warning("No multipacting results — run cav.multipacting.run(...) first.")
         return None
     sel = _select_trajectories(solver, epk_i=epk_i, phi_i=phi_i, traj=traj)
     if not sel:
@@ -660,7 +660,7 @@ def phase_space_animation(solver, x='z', y='r', epk_i=None, phi_i=None, traj=Non
     from matplotlib.animation import FuncAnimation
 
     if not solver.particles:
-        info("No multipacting results — run cav.multipacting.run(...) first.")
+        warning("No multipacting results — run cav.multipacting.run(...) first.")
         return None
     sel = _select_trajectories(solver, epk_i=epk_i, phi_i=phi_i, traj=traj)
     if not sel:

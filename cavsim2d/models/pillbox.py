@@ -1,11 +1,7 @@
-from abc import ABC, abstractmethod
 from cavsim2d.models.base import Cavity
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
-import json
-import matplotlib
+from cavsim2d.geometry.writers.gmsh import add_line, add_point
+from cavsim2d.utils.printing import warning
 import matplotlib.pyplot as plt
-import numpy as np
 import os
 from cavsim2d.geometry import Profile
 
@@ -317,7 +313,7 @@ class Pillbox(Cavity):
                     self._plot_convergence(ax)
                 return ax
             except ValueError:
-                info("Convergence data not available.")
+                warning("Convergence data not available.")
     def rebuild(self, parameters, beampipe=None):
         """A fresh Pillbox from an unsuffixed parameter dict (L, Req, Ri, S, L_bp)."""
         dims = [float(parameters[k]) for k in ('L', 'Req', 'Ri', 'S', 'L_bp')]

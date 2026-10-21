@@ -7,16 +7,17 @@ import multiprocessing as mp
 import json
 import os.path
 import shutil
-import time
 import numpy as np
 import pandas as pd
 from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.solvers.wakefield import get_backend
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
+from cavsim2d.constants import c0, q0
+from cavsim2d.utils.printing import done, error, info, warning
+from cavsim2d.utils.shapes import make_dirs_from_dict
 from cavsim2d.solvers.eigenmode_result import monopole_dir
 from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.config_validation import require
+from cavsim2d.utils.integrity import stamp_matches, write_stamp
 from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
 
 
@@ -86,6 +87,10 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
         with open(os.path.join(cav.wakefield_dir, 'config.json'), 'w') as cf:
             json.dump({k: v for k, v in wakefield_config.items() if k != 'target'},
                       cf, indent=2, default=str)
+        # The results record the geometry they were solved for, and the snapshot
+        # Study.load rebuilds from follows them.
+        write_stamp(cav.wakefield_dir, cav)
+        cav._write_geometry_snapshot()
 
         # Truthy check (not just presence): ``Study.run_wakefield``
         # injects an empty ``{}`` when the caller did not supply one, so a
@@ -104,7 +109,7 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
                         freq = fm_results['freq [MHz]']
                         R_Q = fm_results['R/Q [Ohm]']
                     except OSError:
-                        info("To run analysis for working points, eigenmode simulation has to be run first"
+                        warning("To run analysis for working points, eigenmode simulation has to be run first"
                              "to obtain the cavity operating frequency and R/Q")
 
                 if freq != 0 and R_Q != 0:
@@ -147,7 +152,7 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
 
                     done("Done with the secondary analysis for working points")
                 else:
-                    info("To run analysis for working points, eigenmode simulation has to be run first"
+                    warning("To run analysis for working points, eigenmode simulation has to be run first"
                          "to obtain the cavity operating frequency and R/Q")
             except KeyError:
                 error('The operating point entered is not valid. See below for the proper input structure.')
@@ -157,26 +162,21 @@ def run_wakefield_s(cavs_dict, wakefield_config, subdir):
         done(f'Cavity {cav.name}. Time: {total}')
 
     for i, (key, cav) in enumerate(cavs_dict.items()):
-        if os.path.exists(cav.self_dir):
-            # Warn if the cached wakefield output corresponds to a
-            # different geometry than the in-memory cavity.
-            cav._check_geometry_mismatch('wakefield')
-            wakefield_path = os.path.join(cav.self_dir, 'wakefield')
-            if rerun:
-                # Wipe the whole wakefield/ folder so a rerun doesn't leave
-                # stale transversal / longitudinal artefacts from a prior
-                # run with different config or geometry.
-                if os.path.exists(wakefield_path):
-                    shutil.rmtree(wakefield_path)
-                _run_abci(cav, wakefield_config)
-            else:
-                qois_path = os.path.join(wakefield_path, 'longitudinal', 'qois.json')
-                if os.path.exists(qois_path):
-                    pass
-                else:
-                    _run_abci(cav, wakefield_config)
-        else:
-            _run_abci(cav, wakefield_config)
+        wakefield_path = os.path.join(cav.self_dir, 'wakefield')
+        # rerun=False reuses finished results of this geometry. The merged
+        # qois.json is written by every run; the old test looked for
+        # longitudinal/qois.json, which a transverse-only run never writes.
+        reuse = (not rerun
+                 and os.path.exists(os.path.join(wakefield_path, 'qois.json'))
+                 and stamp_matches(wakefield_path, cav) is not False)
+        if reuse:
+            continue
+        # Wipe the whole wakefield/ folder so a rerun doesn't leave stale
+        # transversal / longitudinal artefacts from a prior run with a
+        # different config or geometry.
+        if os.path.exists(wakefield_path):
+            shutil.rmtree(wakefield_path)
+        _run_abci(cav, wakefield_config)
 
 
 def get_wakefield_objectives_value(d, objectives_unprocessed, abci_data_dir,

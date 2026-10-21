@@ -3,23 +3,21 @@ import json
 import os.path
 import re
 import shutil
-import tempfile
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import qmc
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
+from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP, parse_polarisations
 from cavsim2d.solvers.objectives import objective_polarisations, read_objective_values
-from cavsim2d.solvers.NGSolve.eigen_ngsolve import parse_polarisations
 from cavsim2d.solvers.eigenmode_result import pol_number
-from cavsim2d.utils.shapes import (perturb_half_cells, half_cells_to_dataframe,
-                                    perturb_half_cells_independent)
+from cavsim2d.utils.shapes import (half_cells_to_dataframe, perturb_geometry,
+                                   perturb_half_cells, perturb_half_cells_independent,
+                                   shapes_to_dataframe)
 from cavsim2d.utils.quadrature import (bootstrap_moment_errors, is_sampling_rule,
-                                       sigma_relative_standard_error)
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
+                                       sigma_relative_standard_error, weighted_mean_obj)
+from cavsim2d.utils.printing import error, warning
+from cavsim2d.utils.scratch import scratch_folders
 
 ngsolve_mevp = NGSolveMEVP()
 
@@ -109,11 +107,17 @@ def _tune_half_cells_quarter(half_cells, target_freq, save_root=None,
     later. A ``tune_log.txt`` at ``save_root`` records the per-half-cell time and
     the total. A pure array-in/array-out function so a batch runs in a joblib
     worker (each worker owns its own gmsh)."""
+    if save_root is None:
+        # Nobody asked to keep the per-half-cell records: tune in a scratch folder
+        # removed afterwards (it used to stay in the temp directory for good).
+        with scratch_folders() as scratch:
+            return _tune_half_cells_quarter(half_cells, target_freq,
+                                            os.path.join(scratch(), 'multicell_tune'),
+                                            beampipe=beampipe, mode=mode,
+                                            mesh_h=mesh_h, mesh_p=mesh_p)
     m_pol, mode_index = _parse_tune_mode(mode)
     hc = np.asarray(half_cells, dtype=float).copy()         # (2*n_cells, 7)
     n = hc.shape[0]
-    if save_root is None:
-        save_root = os.path.join(tempfile.mkdtemp(), 'multicell_tune')
     os.makedirs(save_root, exist_ok=True)
     bp = str(beampipe).lower()
     t_total = time.time()
@@ -498,8 +502,12 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
         wakefield_config = eigenmode_config
         uq_cfg = wakefield_config['uq_config']
 
-        if not os.path.exists(cav.uq_dir):
-            os.mkdir(cav.uq_dir)
+        # Wakefield UQ lives inside the wakefield results, not in <cav>/uq/ beside
+        # the eigenmode UQ: both wrote uq.json, table.csv and nodes.csv there, and
+        # their perturbed cavities too, so each overwrote the other, and an
+        # eigenmode rerun (which clears <cav>/uq/) deleted the wakefield UQ.
+        uq_dir = os.path.join(cav.self_dir, 'wakefield', 'uq')
+        os.makedirs(uq_dir, exist_ok=True)
 
         # Multicell UQ perturbs every half-cell (from ``half_cells()``) rather
         # than the mid/end-cell groups, exactly as the eigenmode branch does. The
@@ -515,29 +523,29 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                 perturbed_half_cells, before_hc, weights_ = \
                     perturb_half_cells_independent(cav, wakefield_config)
                 half_cells_to_dataframe(before_hc).to_csv(
-                    os.path.join(cav.uq_dir, 'nodes_before_continuity.csv'),
+                    os.path.join(uq_dir, 'nodes_before_continuity.csv'),
                     index=False, sep='\t', float_format='%.32f')
             else:
                 perturbed_half_cells, weights_ = perturb_half_cells(cav, wakefield_config)
             half_cells_to_dataframe(perturbed_half_cells).to_csv(
-                os.path.join(cav.uq_dir, 'nodes.csv'),
+                os.path.join(uq_dir, 'nodes.csv'),
                 index=False, sep='\t', float_format='%.32f')
             cavs_object = cav.spawn_half_cells(perturbed_half_cells,
-                                               os.path.join(cav.self_dir, 'uq'))
+                                               uq_dir)
         else:
             perturbed_cavities, weights_ = perturb_geometry(cav, wakefield_config)
 
             nodes_perturbed = shapes_to_dataframe(perturbed_cavities)
-            nodes_perturbed.to_csv(os.path.join(cav.uq_dir, 'nodes_before_continuity.csv'),
+            nodes_perturbed.to_csv(os.path.join(uq_dir, 'nodes_before_continuity.csv'),
                                    index=False, sep='\t', float_format='%.32f')
 
             nodes_ = nodes_perturbed
-            nodes_.to_csv(os.path.join(cav.uq_dir, 'nodes.csv'),
+            nodes_.to_csv(os.path.join(uq_dir, 'nodes.csv'),
                           index=False, sep='\t', float_format='%.32f')
 
-            cavs_object = cav.spawn(nodes_, os.path.join(cav.self_dir, 'uq'))
+            cavs_object = cav.spawn(nodes_, uq_dir)
 
-        with open(os.path.join(cav.uq_dir, 'uq_config.json'), 'w') as f:
+        with open(os.path.join(uq_dir, 'uq_config.json'), 'w') as f:
             json.dump(wakefield_config, f, indent=4, default=str)
 
         # Run wakefield on the perturbed variants. Strip the nested uq_config
@@ -581,12 +589,12 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                   f"for {cav.name}.")
             return
 
-        df_wake.to_csv(os.path.join(cav.uq_dir, 'table.csv'), sep='\t',
+        df_wake.to_csv(os.path.join(uq_dir, 'table.csv'), sep='\t',
                        float_format='%.32f')
-        df_wake.to_excel(os.path.join(cav.uq_dir, 'table.xlsx'))
+        df_wake.to_excel(os.path.join(uq_dir, 'table.xlsx'))
 
         data_table_w = pd.DataFrame(weights_, columns=['weights'])
-        data_table_w.to_csv(os.path.join(cav.uq_dir, 'weights.csv'),
+        data_table_w.to_csv(os.path.join(uq_dir, 'weights.csv'),
                             index=False, sep='\t', float_format='%.32f')
 
         Ttab_val_f = df_wake.to_numpy()
@@ -633,27 +641,15 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                 'sigma_rel_std_err': [sigma_rse],
             }
 
-        # Write to ``<cav>/uq/uq.json`` — the same file the eigenmode branch
-        # writes and the exact file the optimiser reads back
-        # (``filename_abci = uq_json`` -> ``<cav>/uq/uq.json`` in
-        # ``Optimisation._evaluate_generation``) and the QOI-spread plots load.
-        # ``cav.uq_dir`` is created above; ``cav.wakefield_dir`` (the old target)
-        # need not exist here, which is why this used to raise FileNotFoundError.
-        with open(os.path.join(cav.uq_dir, 'uq.json'), 'w') as f:
+        # <cav>/wakefield/uq/uq.json: what Study.get_wakefield_qois and the
+        # optimiser read back for the wakefield objectives.
+        with open(os.path.join(uq_dir, 'uq.json'), 'w') as f:
             json.dump(result_dict_wake, f, indent=4, separators=(',', ': '))
 
 
 # `uq(proc_cavs_dict, ...)` was removed 2026-07-09: it had no callers, and it filtered
 # objectives against a hardcoded whitelist, silently dropping anything not on it.
 # Objectives are now polarisation-qualified and validated (cavsim2d.solvers.objectives).
-
-def sa_parallel():
-    pass
-
-
-def sa():
-    pass
-
 
 
 def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoords='data',
@@ -703,26 +699,3 @@ def add_text(ax, text, box, xy=(0.5, 0.5), xycoords='data', xytext=None, textcoo
     ax.get_figure().canvas.flush_events()
     return annotext
 
-
-def _data_uq_op(d_uq_op):
-    # Initialize an empty list to store the rows
-    rows = []
-
-    # Iterate over the dictionary
-    for main_key, sub_dict in d_uq_op.items():
-        row = {'key': main_key}
-        for sub_key, metrics in sub_dict.items():
-            for metric, value in metrics.items():
-                # Check if the metric is one of the desired ones
-                if metric in ['k_FM [V/pC]', '|k_loss| [V/pC]', '|k_kick| [V/pC/m]', 'P_HOM [kW]']:
-                    # Create a new key combining the metric and the sub_key
-                    new_key = f"{metric}_{sub_key}"
-                    # Add the value to the row
-                    row[new_key] = value
-        # Add the row to the list
-        rows.append(row)
-
-    # Convert the list of rows into a DataFrame
-    df = pd.DataFrame(rows)
-
-    return df

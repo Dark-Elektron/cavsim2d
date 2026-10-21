@@ -20,6 +20,7 @@ Example (a box)::
     mesh = p.mesh(maxh=0.02, order=3)
 """
 import warnings
+from cavsim2d.utils.printing import CavsimWarning
 
 import numpy as np
 from scipy.interpolate import BSpline
@@ -493,7 +494,7 @@ class Profile:
                 'If that is intended, pass allow_step=True to silence this; if '
                 f'not, insert a Taper(R_left={r_join * 1e3:.6g}, '
                 f'R_right={o_r0 * 1e3:.6g}, L=...) between them.',
-                UserWarning, stacklevel=2)
+                CavsimWarning, stacklevel=2)
 
         p = Profile(name or f'{self.name}+{other.name}')
         p.start(*self._pts[l_ap['i0']])

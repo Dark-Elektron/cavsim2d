@@ -7,7 +7,6 @@ planned in-house NGSolve time-domain solver will be another — swapping them
 changes only ``wakefield_config['solver']``.
 """
 import json
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path

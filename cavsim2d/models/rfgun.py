@@ -1,10 +1,10 @@
 from cavsim2d.models.base import Cavity
 from cavsim2d.geometry import Profile
-from cavsim2d.constants import *
-from cavsim2d.utils.shared_functions import *
+from cavsim2d.geometry.primitives import lineTo
+from cavsim2d.geometry.writers.gmsh import add_ellipse, add_line, add_point
+from cavsim2d.utils.printing import error, warning
 from scipy.signal import find_peaks
 import json
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -88,6 +88,8 @@ class RFGun(Cavity):
             self.geo_filepath = os.path.join(geo_dir, 'geodata.geo')
             self.write_geometry(self.parameters,
                                 write=self.geo_filepath)
+            # model.json, which Study.load rebuilds the cavity from.
+            self._write_geometry_snapshot()
 
     def get_geometric_parameters(self):
         self.parameters = self.shape['geometry']
@@ -511,7 +513,7 @@ class RFGun(Cavity):
                     self._plot_convergence(ax)
                 return ax
             except ValueError:
-                info("Convergence data not available.")
+                warning("Convergence data not available.")
 
     def get_eigenmode_qois(self, config=None):
         """Read the eigenmode QOIs, plus the gun's on-axis ``|Ez|`` profile.
@@ -526,14 +528,6 @@ class RFGun(Cavity):
         if os.path.exists(ez_path):
             with open(ez_path) as csv_file:
                 self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-        self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-        self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-        self.G = self.GR_Q / self.R_Q
-        self.Q = self.eigenmode_qois['Q []']
-        self.e = self.eigenmode_qois['Epk/Eacc []']
-        self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
-        self.Epk_Eacc = self.e
-        self.Bpk_Eacc = self.b
 
     def plot_axis_field(self, show_min_max=True):
         fig, ax = plt.subplots(figsize=(12, 3))

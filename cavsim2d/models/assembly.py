@@ -31,6 +31,7 @@ solver's own ``boundary_conditions`` cannot).
 import importlib
 import os
 import warnings
+from cavsim2d.utils.printing import CavsimWarning
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -256,7 +257,7 @@ class Assembly(Cavity):
                       f"e.g. Taper(R_left={found[0]['radii'][0]:.6g}, "
                       f"R_right={found[0]['radii'][1]:.6g}, L=...).")
             warnings.warn('\n'.join([header] + lines + [footer]),
-                          UserWarning, stacklevel=3)
+                          CavsimWarning, stacklevel=3)
         return found
 
     def set_ends(self, left, right=None):

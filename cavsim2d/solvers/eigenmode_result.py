@@ -1,8 +1,6 @@
 """Unified eigenmode result container."""
-import json
 import os
 
-import numpy as np
 
 # Azimuthal mode number <-> polarisation folder name. Results of an m-pole
 # eigenmode solve are stored in ``<cavity>/eigenmode/<pol_name(m)>/``

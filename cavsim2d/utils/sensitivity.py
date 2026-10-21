@@ -18,7 +18,7 @@ from SALib.analyze import sobol
 from scipy.stats import qmc
 from typing import List
 
-from cavsim2d.utils.printing import *
+from cavsim2d.utils.sampling import SampleGenerator
 
 class Sobol:
     def __init__(self, problem, folder):
@@ -791,18 +791,4 @@ def test_function(x):
 
 def ishigami(x):
     return np.sin(x[0]) + 7 * (np.sin(x[1])) ** 2 + 0.1 * x[2] ** 4 * np.sin(x[0])
-
-
-# Example usage:
-if __name__ == "__main__":
-    # filename = r"C:\Users\sosoho\PycharmProjects\cst_control\files\dakota.in"  # replace with the path to your file
-    # descriptors, bounds = read_dakota_input_file(filename)
-    # print("Descriptors:", descriptors)
-    # print("Bounds:", bounds)
-
-    cub = Cubature()
-    p = 3
-    sobol_indices = cub.estimate_sobol_indices(ishigami)
-    print("Estimated Sobol indices:", sobol_indices)
-
 

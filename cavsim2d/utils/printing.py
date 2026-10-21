@@ -1,5 +1,6 @@
 
 import sys
+import warnings
 from contextlib import contextmanager
 from termcolor import colored
 
@@ -9,14 +10,20 @@ from termcolor import colored
 _suppress_substrings = []
 
 # Global chattiness switch. When False (the default for all analyses),
-# info / running / done / warning calls are silenced — leaving only
-# errors and external progress bars (tqdm) visible. Call ``set_verbose(True)``
-# or use the ``verbose()`` context manager to re-enable output.
+# info / running / done calls are silenced — leaving errors, warnings and
+# external progress bars (tqdm) visible. Call ``set_verbose(True)`` or use the
+# ``verbose()`` context manager to re-enable output.
 _verbose = False
 
 
+class CavsimWarning(UserWarning):
+    """The category of every warning cavsim2d gives. Silence them all with
+    ``warnings.simplefilter('ignore', cavsim2d.CavsimWarning)``."""
+
+
 def set_verbose(flag):
-    """Enable or disable chatty info/running/done/warning output globally."""
+    """Enable or disable chatty info/running/done output globally. Warnings are
+    shown either way."""
     global _verbose
     _verbose = bool(flag)
 
@@ -83,9 +90,16 @@ def suppress_errors(*substrings):
 
 
 def warning(*arg):
-    if not _verbose:
+    """Warn the user: always shown, unlike :func:`info`.
+
+    This used to print only in verbose mode, which silenced every warning by
+    default: a skipped UQ step, a clamped ABCI setting, a staged tune that missed
+    its tolerance. A Python warning shows once per message and place, so a loop
+    repeating one message does not flood the output, and it can be filtered.
+    """
+    if not arg:
         return
-    print(f'\x1b[33mWARNING:: {_printable(str(arg[0]))}\x1b[0m')
+    warnings.warn(_printable(str(arg[0])), CavsimWarning, stacklevel=2)
 
 
 def running(*arg):

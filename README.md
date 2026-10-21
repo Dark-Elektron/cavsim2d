@@ -81,8 +81,17 @@ pip install -e .
 ```
 
 Either way this installs the core dependencies (NGSolve, gmsh, numpy, scipy,
-pandas, matplotlib, …). For the example notebooks and the Jupyter banner, also
-install the optional extra:
+pandas, matplotlib, …), including the Jupyter widget packages NGSolve's
+interactive viewer needs. So `cav.show_fields()`, `cav.show_mesh()` and
+`cav.show_geometry()` render in a notebook (JupyterLab, Jupyter Notebook 7 or
+VS Code) with nothing else to install. Recent NGSolve releases fetch the viewer's
+JavaScript from cdn.jsdelivr.net, so the notebook needs internet access for it.
+Outside a notebook, or when the viewer cannot render, these methods draw a static
+matplotlib view instead and say why.
+
+To run the example notebooks you also need a Jupyter kernel and front end. The
+optional `jupyter` extra installs JupyterLab and the kernel (VS Code users only need
+the kernel, which VS Code offers to install):
 
 ```bash
 pip install "cavsim2d[jupyter]"    # from PyPI
@@ -146,7 +155,8 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 from cavsim2d import Study, EllipticalCavity
 
-# A project folder — all results and geometry are written here.
+# A project folder. The study keeps its cavities, their geometry and results in
+# /path/to/my_project/cavities/ (name='run1' would use /path/to/my_project/run1/).
 cavs = Study(r'/path/to/my_project')
 
 # A 1-cell TESLA mid-cell:  A, B, a, b, Ri, L, Req  [mm]
@@ -224,8 +234,8 @@ Access results either on the container or per cavity:
 
 ```python
 cavs.eigenmode_qois            # {name: {qoi: value}} for the fundamental mode
-tesla.get_eigenmode_qois()     # populate tesla.eigenmode_qois, tesla.freq, ...
 tesla.eigenmode.qois           # fundamental-mode QOIs (solver-object API)
+tesla.eigenmode_qois           # the same dict
 tesla.eigenmode.modes          # list of all computed modes
 ```
 
@@ -346,7 +356,9 @@ tuned = tesla.tuned             # the tuned Cavity (its own folder + results)
 
 `Req` converges to ≈ 103.35 mm and the frequency to 1300 MHz. The tuned cavity is
 a full `Cavity` living under `<cavity>/tuned/`, so you can run eigenmode/wakefield
-on it directly (`tesla.tuned.run_eigenmode(...)`).
+on it directly (`tesla.tuned.eigenmode.run(...)`), or add `'solve_tuned': True` to
+the tune config to solve it as part of the tune. `eigenmode_config` only sets the
+mesh of the tuning solves.
 
 ---
 

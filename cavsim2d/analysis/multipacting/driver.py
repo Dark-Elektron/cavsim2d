@@ -9,7 +9,6 @@ wall over a grid of RF launch phases and tracked with the RK4 integrator; the
 counter function ``c20/c0`` is the fraction that survives to 20 impacts. The
 sweep is embarrassingly parallel over field levels (one worker per chunk).
 """
-import itertools
 from collections import defaultdict
 import multiprocessing as mp
 import os
@@ -26,10 +25,11 @@ from ngsolve import Norm
 from tqdm.auto import tqdm
 
 from cavsim2d.analysis.multipacting.fields import build_emfield, load_eigenmode_fields
-from cavsim2d.constants import c0, m0, q0  # noqa: F401  (re-exported to the workers)
+from cavsim2d.constants import c0  # noqa: F401  (re-exported to the workers)
 from cavsim2d.analysis.multipacting.integrators import Integrators
 from cavsim2d.analysis.multipacting.metrics import distance_function
 from cavsim2d.analysis.multipacting.particles import Particles
+from cavsim2d.utils.printing import info
 from cavsim2d.utils.run_log import RunTimer
 
 
@@ -108,7 +108,7 @@ def default_xrange(xsurf):
     """Default emission band: a few wall points around the equator (the
     max-radius point), where elliptical-cavity multipacting concentrates. Spans
     the nearest wall points so the band always contains emission sites (an
-    empty band makes the ported Particles call exit())."""
+    empty band is an error)."""
     z = xsurf[:, 0]
     z_eq = float(z[np.argmax(xsurf[:, 1])])
     near = np.sort(np.abs(z - z_eq))[:min(7, len(z))]
@@ -213,8 +213,8 @@ def _worker(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epks,
 
     Any failure is written to ``mresults_{proc_id}.err`` — a spawned child's
     stderr is invisible in notebooks, so the traceback must reach a file the
-    parent can read back. BaseException also catches the ``exit()`` the ported
-    Particles code calls on an empty emission set (SystemExit)."""
+    parent can read back. BaseException also catches a SystemExit or a
+    KeyboardInterrupt, so the parent always learns why a worker stopped."""
     try:
         _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange,
                      procs_epks, phis, v_init, sey, Epk, step, bounding_rect,
@@ -260,8 +260,8 @@ def _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epk
 
         particles_objects.append(particles)
         particles_left.append(len(particles.bright_set))
-        print(f"\tEpk: {epk * Epk * 1e-6:.2f} MV/m, bright set: "
-              f"{len(particles.bright_set)}, {time.time() - sub_start:.1f}s")
+        info(f"\tEpk: {epk * Epk * 1e-6:.2f} MV/m, bright set: "
+             f"{len(particles.bright_set)}, {time.time() - sub_start:.1f}s")
         # Publish progress (field levels finished by this worker) so the parent
         # can aggregate a live bar; a small file the parent polls, robust across
         # the subprocess boundary.
@@ -277,7 +277,7 @@ def _worker_impl(proc_id, folder, fields_dir, freq_mode, mode, xrange, procs_epk
                'phis_v': phis}
     with open(os.path.join(folder, f"mresults_{proc_id}"), "wb") as file:
         pickle.dump(mresult, file)
-    print(f"\tProc {proc_id} done ({time.time() - start:.1f}s).")
+    info(f"\tProc {proc_id} done ({time.time() - start:.1f}s).")
 
 
 def _read_progress(folder, proc_count):
@@ -365,8 +365,8 @@ def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
     if proc_count is None:
         proc_count = max(1, min(mp.cpu_count() - 1, len(epks_v)))
     proc_count = max(1, int(proc_count))
-    print(f"Multipacting Epk sweep: {len(epks_v)} points on {proc_count} "
-          f"process{'es' if proc_count > 1 else ''}.")
+    info(f"Multipacting Epk sweep: {len(epks_v)} points on {proc_count} "
+         f"process{'es' if proc_count > 1 else ''}.")
     sweep_start = time.time()
 
     # round-robin split, remembering original indices for re-assembly
@@ -467,9 +467,9 @@ def run_sweep(folder, fields_dir, freqs, sey, *, mode=1, xrange=None, epks=None,
     timer._t0 = sweep_start
     timer.add('sweep', elapsed)
     timer.write()
-    print(f"Multipacting sweep done: {len(epks_v)} field levels, "
-          f"{n_init} launch sites x phases, {elapsed:.1f}s "
-          f"({elapsed / max(len(epks_v), 1):.2f}s per field level).")
+    info(f"Multipacting sweep done: {len(epks_v)} field levels, "
+         f"{n_init} launch sites x phases, {elapsed:.1f}s "
+         f"({elapsed / max(len(epks_v), 1):.2f}s per field level).")
     return result
 
 

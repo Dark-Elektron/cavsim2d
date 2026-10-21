@@ -1,19 +1,18 @@
 """Parallel tuning process functions."""
 import json
-import os.path
 import shutil
 import tempfile
-import time
+import warnings
+from cavsim2d.utils.printing import CavsimWarning, error, info, warning
 from pathlib import Path
 
 import numpy as np
 from cavsim2d.analysis.tune.tuner import Tuner
 from cavsim2d.analysis.tune.pyTuner import TUNE_DEFECTS
-from cavsim2d.constants import *
-from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s  # noqa: F401 — used by multicell path
-from cavsim2d.utils.shared_functions import *
-from cavsim2d.utils.printing import suppress_errors
+from cavsim2d.constants import c0
 from cavsim2d.utils.config_validation import require
+from cavsim2d.utils.integrity import stamp_matches, write_stamp
+from cavsim2d.utils.scratch import scratch_folders
 
 tuner = Tuner()
 
@@ -52,7 +51,8 @@ def normalize_cell_type_config(tune_config):
     or the legacy form ``tune_config['parameters'] + tune_config['cell_types']``
     (emitting a DeprecationWarning).
     """
-    if 'cell_type' in tune_config:
+    # Truthy, not present: a complete config carries cell_type=None when unset.
+    if tune_config.get('cell_type'):
         raw = tune_config['cell_type']
         if not isinstance(raw, dict):
             raise TypeError(
@@ -66,7 +66,7 @@ def normalize_cell_type_config(tune_config):
         return out
 
     # Legacy path: parameters + cell_types.
-    if 'parameters' in tune_config and 'cell_types' in tune_config:
+    if tune_config.get('parameters') and tune_config.get('cell_types'):
         warning(
             "tune_config: the 'parameters' and 'cell_types' keys are "
             "deprecated; please use the single 'cell_type' dict "
@@ -221,6 +221,75 @@ def _filter_params_for_ct(params, ct_name):
     return filtered if filtered else dict(params)
 
 
+def _probe_copy(cav, folder):
+    """A copy of *cav* for the secant tuner to probe on, living in *folder*.
+
+    Every probe rewrites the geometry and solves it, and a solve writes its mesh
+    and ``qois.json`` under ``<self_dir>/eigenmode/``. Probing the cavity itself
+    therefore replaced the cavity's own eigenmode results with the last probe's
+    (a four-key ``qois.json`` at the tuned frequency) and left a native-only
+    cavity carrying the tuned parameters. The copy keeps all of that in scratch.
+    """
+    folder = Path(folder)
+    work = cav._carry_layout_to(cav._carry_dielectrics_to(
+        cav.rebuild(dict(cav.parameters), beampipe=cav.beampipe)))
+    # create() rebuilds self_dir from projectDir and name, so all three must
+    # point at the scratch folder, never at the cavity's own.
+    work.name = folder.name
+    work.projectDir = str(folder.parent)
+    work.self_dir = str(folder)
+    work.uq_dir = str(folder / 'uq')
+    geo_dir = folder / 'geometry'
+    geo_dir.mkdir(parents=True, exist_ok=True)
+    writer = getattr(work, 'write_geometry', None)
+    if callable(writer) and getattr(cav, 'geo_filepath', None):
+        work.geo_filepath = str(geo_dir / 'geodata.geo')
+        writer(work.parameters, work.n_cells, work.beampipe, write=work.geo_filepath)
+    else:
+        work.geo_filepath = None
+    work.shape['FREQ'] = cav.shape.get('FREQ')
+    return work
+
+
+def default_cell_type(cavities):
+    """The tune recipe used when ``cell_type`` is not given: the mid-cell
+    equator radius, plus the end-cell length on a multi-cell elliptical cavity
+    (field flatness needs both)."""
+    multicell = any(getattr(c, 'uses_cell_suffixes', False) and (c.n_cells or 1) >= 2
+                    for c in cavities)
+    return {'mid-cell': 'Req', 'end-cell': 'L'} if multicell else {'mid-cell': 'Req'}
+
+
+def default_tune_frequency(cav):
+    """The pi-mode estimate c/(4L) [MHz] from an elliptical half-cell length L [mm]."""
+    half_cell = getattr(cav, 'L', None)
+    if not half_cell:
+        raise ValueError(
+            f"No target frequency given for {cav.name!r}, and a {type(cav).__name__} has "
+            f"no half-cell length to estimate one from. Pass it: tune.run(freq=<MHz>).")
+    return c0 / (4 * float(half_cell) * 1e-3) * 1e-6
+
+
+def resolve_tune_defaults(tune_config, cavities):
+    """Fill the tune settings left as None with their run-time defaults, in place.
+
+    ``cell_type`` falls back to :func:`default_cell_type`. ``freqs`` falls back to
+    :func:`default_tune_frequency` per cavity, with a warning: a target nobody
+    chose produces a design nobody asked for.
+    """
+    if not tune_config.get('cell_type'):
+        tune_config['cell_type'] = default_cell_type(cavities)
+    if tune_config.get('freqs') is None:
+        freqs = [default_tune_frequency(c) for c in cavities]
+        warnings.warn(
+            "No target frequency given, so each cavity is tuned to the pi-mode "
+            "estimate c/(4L) of its half-cell length: "
+            + ', '.join(f'{c.name} {f:.3f} MHz' for c, f in zip(cavities, freqs))
+            + ". Pass freqs (or freq) to choose it.", CavsimWarning, stacklevel=3)
+        tune_config['freqs'] = freqs[0] if len(freqs) == 1 else freqs
+    return tune_config
+
+
 def _save_convergence(tune_info_dir, conv, abs_err, status, reason='', target=None):
     """Persist the tuning convergence history + a status stamp.
 
@@ -238,8 +307,8 @@ def _save_convergence(tune_info_dir, conv, abs_err, status, reason='', target=No
         with open(Path(tune_info_dir) / 'tune_status.json', 'w') as f:
             json.dump({'status': status, 'reason': reason, 'target_freq': target},
                       f, indent=4, default=str)
-    except Exception:
-        pass
+    except Exception as e:
+        warning(f"Could not write the tune record in {tune_info_dir} ({e!r}).")
 
 
 def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
@@ -403,26 +472,27 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                 cav.parameters[sibling] = new_val
 
     def _run_tune(cav, key, target_freq):
-        # Capture original parameters once — tuner mutates cav.parameters.
-        pre_tune_params = dict(cav.parameters)
         tuned_self_dir = Path(cav.self_dir) / 'tuned'
         tune_info_dir = tuned_self_dir / 'tune_info'
+        probe_dir = tune_info_dir / 'probe'
+        try:
+            _run_tune_on_probe(cav, key, target_freq, tuned_self_dir, tune_info_dir,
+                               _probe_copy(cav, probe_dir))
+        finally:
+            shutil.rmtree(probe_dir, ignore_errors=True)
+
+    def _run_tune_on_probe(cav, key, target_freq, tuned_self_dir, tune_info_dir, probe):
+        # The tuner mutates the probe's parameters; the cavity itself is never
+        # touched, so a failed stage has nothing to restore.
+        pre_tune_params = dict(cav.parameters)
 
         aggregated_tune_res = {}
         aggregated_conv = {}
         aggregated_abs_err = {}
 
         def _restore_and_bail():
-            """Reset source cav to pre-tune state so a failed stage's
-            garbage parameters don't leak out (e.g. into ``.tuned``)."""
-            cav.parameters.update(pre_tune_params)
-            if cav.geo_filepath:
-                try:
-                    with suppress_errors('Parameter set leads to degenerate geometry'):
-                        cav.write_geometry(cav.parameters, cav.n_cells,
-                                           cav.beampipe, write=cav.geo_filepath)
-                except Exception:
-                    pass
+            """A failed stage leaves only the scratch probe behind, which the
+            caller removes."""
 
         for ct_name, tune_vars in cell_type_config.items():
             for tune_var in tune_vars:
@@ -449,7 +519,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
 
                 try:
                     _tss, stage_res, conv_dict, abs_err_dict = tuner.tune_ngsolve(
-                        {key: cav}, 33,
+                        {key: probe}, 33,
                         proc=p,
                         tune_variable=tune_var,
                         tune_config=stage_tune_config,
@@ -502,13 +572,13 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                     return
 
                 resolved_var = d_tune_res.get('TUNED VARIABLE') or stage_var
-                _propagate_after_stage(cav, resolved_var, pre_tune_params)
+                _propagate_after_stage(probe, resolved_var, pre_tune_params)
 
                 # Per-stage snapshot records only the cell that was tuned
                 # (e.g. mid-cell stage stores only ``*_m`` params). This
                 # avoids the misleading repetition of untouched sibling
                 # values from other cells.
-                stage_params = _filter_params_for_ct(cav.parameters, ct_name)
+                stage_params = _filter_params_for_ct(probe.parameters, ct_name)
                 stage_freq = d_tune_res.get('FREQ', target_freq)
 
                 ct_entry = aggregated_tune_res.setdefault(ct_name, {
@@ -530,29 +600,16 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
 
         tune_info_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build final tuned cavity from the cumulative tuned parameters
-        # (cav.parameters was mutated in-place by the tuner).
-        final_params = dict(cav.parameters)
+        # The tuned cavity carries the cumulative parameters the tuner left on
+        # the probe.
+        final_params = dict(probe.parameters)
         final_freq = next(reversed(aggregated_tune_res.values()))['FREQ']
-
-        # Restore the *original* cavity's full geometry file — the tuner
-        # overwrote it with a quarter/reduced geometry during stages. The
-        # restore write reconstructs the untuned full multicell geometry
-        # purely as a reference; its "Parameter set leads to degenerate
-        # geometry" warnings (if any) are not user-actionable because the
-        # tuned cavity lives in ``tuned_cav`` below.
-        if cav.geo_filepath:
-            cav.parameters.update(pre_tune_params)
-            with suppress_errors('Parameter set leads to degenerate geometry'):
-                cav.write_geometry(cav.parameters, cav.n_cells,
-                                   cav.beampipe, write=cav.geo_filepath)
 
         tuned_cav = cav.clone_for_tuning(
             tuned_parameters=final_params,
             tuned_self_dir=str(tuned_self_dir),
             beampipe=cav.beampipe,
         )
-        tuned_cav.tune_results = dict(aggregated_tune_res)
         tuned_cav.freq = final_freq
 
         with open(tune_info_dir / 'tune_res.json', 'w') as f:
@@ -588,7 +645,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         # emitted ``<eigenmode>/uq.json`` — each stage overwrites the file,
         # so we keep whatever remains from the final stage and key it by
         # the final cell type.
-        uq_tune_res_path = Path(cav.self_dir) / 'eigenmode' / 'uq.json'
+        uq_tune_res_path = Path(probe.self_dir) / 'eigenmode' / 'uq.json'
         if uq_tune_res_path.exists():
             last_ct = next(reversed(aggregated_tune_res.keys()))
             with open(uq_tune_res_path) as f:
@@ -596,15 +653,22 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             with open(tune_info_dir / 'uq_tune_results.json', 'w') as f:
                 json.dump({last_ct: last_uq}, f, indent=4, default=str)
 
-        # Mark original cavity as tuned in its own tune_results too.
-        cav.tune_results = dict(aggregated_tune_res)
-
     def _jsonable(params):
         return {k: (list(v) if isinstance(v, (list, tuple, np.ndarray))
                     else float(v) if isinstance(v, (int, float, np.floating)) else v)
                 for k, v in params.items()}
 
     def _write_family_manifest(cav, fam, target_freq):
+        try:
+            return _write_family_manifest_in(cav, fam, target_freq)
+        finally:
+            # The scan's members are recorded in family.json (cav.tune.family
+            # rebuilds them from it); their own temporary folder is not needed.
+            folder = Path(fam.projectDir)
+            if folder.name.startswith('cavsim2d_family_') and                     Path(tempfile.gettempdir()) in folder.resolve().parents:
+                shutil.rmtree(folder, ignore_errors=True)
+
+    def _write_family_manifest_in(cav, fam, target_freq):
         """Persist a family Study (from ``family_scan``) as the tuned manifest:
         ``family.json`` plus the each-cell-at-f member as the representative tuned
         cavity, so ``cav.tuned`` stays valid and the optimiser can fan out over the
@@ -645,8 +709,6 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         with open(tune_info_dir / 'tune_status.json', 'w') as f:
             json.dump({'status': 'converged', 'reason': f'family ({len(members)} members)',
                        'target_freq': target_freq}, f, indent=4, default=str)
-        cav.parameters.update(rep_params)
-        cav.tune_results = tune_res
         return True
 
     def _run_family_tune(cav, key, target_freq, n_family):
@@ -758,7 +820,6 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
 
         final_freq = ach.get('freq [MHz]', target_freq)
         tune_info_dir.mkdir(parents=True, exist_ok=True)
-        cav.parameters.update(final_params)
         tuned_cav = cav.clone_for_tuning(tuned_parameters=final_params,
                                          tuned_self_dir=str(tuned_self_dir),
                                          beampipe=cav.beampipe)
@@ -784,9 +845,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                             'NEWTON VARIABLES': list(var_names),
                             'PARAMETERS CHANGED': moved,
                             'FREQ': final_freq, 'QOIS': ach}}
-        tuned_cav.tune_results = tune_res
         tuned_cav.freq = final_freq
-        cav.tune_results = tune_res
         # {stage: {tune_var: {param: [values]}}} so cav.tune.convergence parses it; record
         # BOTH the tune variables (h[0]) and the targets (h[1]) per Newton iteration, so
         # plot_convergence shows a panel for each variable as well as each target.
@@ -817,6 +876,13 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         return {f'{label}:{k}': v for k, v in d.items()}
 
     def _run_staged_qoi_tune(cav, key, target_freq, qoi_targets, qoi_split):
+        # Every sub-tune and assembly solve runs in a scratch folder removed
+        # afterwards (they used to stay in the temp directory for good).
+        with scratch_folders() as scratch:
+            return _run_staged_qoi_tune_in(cav, key, target_freq, qoi_targets,
+                                           qoi_split, scratch)
+
+    def _run_staged_qoi_tune_in(cav, key, target_freq, qoi_targets, qoi_split, scratch):
         """Staged, per-cup R/Q tune for n>2, exploiting cup additivity
         (R/Q_total = (2N-2)*mid_cup + 2*end_cup). The mid cell is tuned FREQUENCY-ONLY
         (via Req, periodic) and its cup R/Q measured; the remaining cavity R/Q is then
@@ -873,7 +939,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                 end_vars_asm.append(f'{v}_e')
 
         def _acc(c, bc=None):
-            c.set_workspace(tempfile.mkdtemp())
+            c.set_workspace(scratch())
             run = {'mesh_config': mesh, 'n_modes': (c.n_cells or 1) + 3}
             if bc:
                 run['boundary_conditions'] = bc
@@ -884,13 +950,13 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
 
         # STAGE 1 -- mid cell frequency-only (periodic, mm): sets shared Req, measures mid_cup
         cm = EllipticalCavity(1, mid7, mid7, mid7, beampipe='none')
-        cm.set_workspace(tempfile.mkdtemp())
+        cm.set_workspace(scratch())
         try:
             _mid_cfg = {'freqs': target_freq, 'cell_type': {'mid-cell': mid_vars},
                         'eigenmode_config': {'boundary_conditions': 'mm',
                                              'mesh_config': mesh}}
-            if tune_config.get('tolerance') is not None:
-                _mid_cfg['tolerance'] = tune_config['tolerance']
+            if tune_config.get('tol') is not None:
+                _mid_cfg['tol'] = tune_config['tol']
             cm.tune.run(_mid_cfg)
         except Exception as e:
             error(f'Staged tune {key}: mid-cell frequency tune failed: {e!r}')
@@ -954,7 +1020,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             # parameters update, so the Newton would silently start from the
             # pre-stage-1 geometry (measured 792.7 MHz instead of 801.6).
             cav_asm = EllipticalCavity(N, mid7, end7, end7, beampipe=cav.beampipe)
-            cav_asm.set_workspace(tempfile.mkdtemp())
+            cav_asm.set_workspace(scratch())
             try:
                 res2 = cav_asm.tune._solve_qoi_targets(
                     end_vars_asm,
@@ -1019,14 +1085,14 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             best_end7 = None         # last FEASIBLE (A_el, L_el) design
             for _it in range(_maxit):
                 ce = EllipticalCavity(1, end7, end7, end7, beampipe='both')
-                ce.set_workspace(tempfile.mkdtemp())
+                ce.set_workspace(scratch())
                 try:
                     _end_cfg = {'freqs': target_freq,
                                 'cell_type': {'end-cell': end_vars},
                                 'qoi_targets': {'R/Q [Ohm]': n_end_cups * share},
                                 'eigenmode_config': {'mesh_config': mesh}}
-                    if tune_config.get('tolerance') is not None:
-                        _end_cfg['tolerance'] = tune_config['tolerance']
+                    if tune_config.get('tol') is not None:
+                        _end_cfg['tol'] = tune_config['tol']
                     ce.tune.run(_end_cfg)
                 except Exception as e:
                     error(f'Staged tune {key}: end-cell tune failed: {e!r}')
@@ -1165,7 +1231,6 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             final_params[f'{nm}_er'] = end7[j]
 
         tune_info_dir.mkdir(parents=True, exist_ok=True)
-        cav.parameters.update(final_params)
         tuned_cav = cav.clone_for_tuning(tuned_parameters=final_params,
                                          tuned_self_dir=str(tuned_self_dir),
                                          beampipe=cav.beampipe)
@@ -1174,9 +1239,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
                                'FREQ': ach['freq [MHz]'], 'QOIS': ach,
                                'mid_cup': mid_cup, 'end_cup': end_cup,
                                'R/Q target': total_rq}}
-        tuned_cav.tune_results = tune_res
         tuned_cav.freq = ach['freq [MHz]']
-        cav.tune_results = tune_res
         with open(tune_info_dir / 'tune_res.json', 'w') as f:
             json.dump(tune_res, f, indent=4, default=str)
         with open(tune_info_dir / 'tuned_parameters.json', 'w') as f:
@@ -1191,11 +1254,14 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
     for i, (key, cav) in enumerate(processor_cavs_dict.items()):
         target_freq = float(proc_freqs[i])
         cav.shape['FREQ'] = target_freq
-        # Warn if a cached tune is being served for a cavity whose
-        # in-memory parameters no longer match the geometry on disk.
-        cav._check_geometry_mismatch('tune')
-        tuned_path = os.path.join(cav.self_dir, 'tuned')
-        if os.path.exists(tuned_path) and rerun:
+        tuned_path = Path(cav.self_dir) / 'tuned'
+        tune_info = tuned_path / 'tune_info'
+        # rerun=False reuses a finished tune, but only one of this geometry: a
+        # tune whose stamp names another geometry is redone, never served.
+        if (not rerun and (tune_info / 'tune_res.json').exists()
+                and stamp_matches(tune_info, cav) is not False):
+            continue
+        if tuned_path.exists():
             # Scope: only the tuned cavity folder is wiped — sibling
             # analyses (root eigenmode/, wakefield/) are preserved.
             shutil.rmtree(tuned_path)
@@ -1218,42 +1284,7 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             _run_family_tune(cav, key, target_freq, n_family)
         else:
             _run_tune(cav, key, target_freq)
+        # The tune record names the geometry it started from (the tuned cavity's
+        # own analyses stamp the tuned geometry), succeeded or not.
+        write_stamp(tune_info, cav)
 
-
-def run_tune_s_multicell(processor_shape_space, proc_tune_variables, tune_config, projectDir, resume,
-                         p, sim_folder='Optimisation'):
-    # perform necessary checks
-    if tune_config is None:
-        tune_config = {}
-    tune_config_keys = tune_config.keys()
-
-    rerun = True
-    if 'rerun' in tune_config_keys:
-        if isinstance(tune_config['rerun'], bool):
-            rerun = tune_config['rerun']
-
-    def _run_tune(key, shape):
-        tuned_shape_space, d_tune_res, conv_dict, abs_err_dict = tuner.tune_ngsolve_multicell({key: shape}, 33,
-                                                                                              SOFTWARE_DIRECTORY,
-                                                                                              projectDir, key,
-                                                                                              resume=resume, proc=p,
-                                                                                              tune_variable=
-                                                                                              proc_tune_variables[i],
-                                                                                              sim_folder=sim_folder,
-                                                                                              tune_config=tune_config)
-
-        return tuned_shape_space[key]
-
-    processor_shape_space_tuned = {}
-    for i, (key, shape) in enumerate(processor_shape_space.items()):
-        # Only wipe the tuned/ folder on rerun — leave the cavity's
-        # eigenmode/ and wakefield/ alone so a re-tune doesn't nuke
-        # sibling analyses.
-        tuned_path = os.path.join(projectDir, key, 'tuned')
-        if rerun and os.path.exists(tuned_path):
-            shutil.rmtree(tuned_path)
-        tuned_shape = _run_tune(key, shape)
-
-        processor_shape_space_tuned[key] = tuned_shape
-
-    return processor_shape_space_tuned

@@ -225,7 +225,6 @@ class PCE:
         start = time.time()
 
         if Y is None:
-            print('condition number', np.linalg.cond(basis_matrix))
             # print(basis_matrix, basis_matrix.shape)
             coeffs = np.linalg.pinv(basis_matrix) @ self.Y
             # print(coeffs.T)
@@ -235,10 +234,8 @@ class PCE:
             poly.fit_transform(self.nodes)
             poly.fit(self.nodes, self.Y)
 
-            print('====' * 50)
         else:
             # print('second', Y)
-            print(np.linalg.pinv(basis_matrix).shape, Y.shape)
             coeffs = np.linalg.pinv(basis_matrix) @ Y
 
         # print('time: ', time.time() - start)
@@ -296,7 +293,6 @@ class PCE:
             Y = f(X)
 
         num_objectives = Y.shape[1]
-        print(num_objectives)
         Si_D = {}
         for obj in range(num_objectives):
             Si = sobol.analyze(self.problem, Y[:, obj], calc_second_order=False)

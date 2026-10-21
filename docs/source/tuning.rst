@@ -21,7 +21,7 @@ Or for a single cavity:
 
 Configuration Dictionary
 ************************
-The tuning process is controlled by a configuration dictionary:
+The tuning process is controlled by a configuration dictionary. ``cav.tune.config_sample`` returns the complete default to start from (see :doc:`configuration`):
 
 .. code-block:: python
 
@@ -139,6 +139,21 @@ Once tuning finishes, the tuned geometric variables and final frequencies are st
     # View final tuned parameters for a cavity
     tuned_qois = tesla.tune.qois
     pp.pprint(tuned_qois)
+
+The tuned geometry is a separate cavity, ``tesla.tuned``, with its own folder,
+``<cavity>/tuned/``. Run analyses on it like on any cavity, or pass
+``solve_tuned=True`` to run the eigenmode analysis on it as part of the tune:
+
+.. code-block:: python
+
+    tesla.tuned.eigenmode.run({'mesh_config': {'h': 10, 'p': 3}})
+    tesla.tuned.eigenmode.qois     # the tuned cavity's results
+    tesla.eigenmode.qois           # still the untuned cavity's results
+
+A run on the untuned cavity saves its results to the untuned cavity's folder, and
+says so once per session when a tuned version exists. If the cavity changes after it
+was tuned, its tuned version belongs to the earlier geometry: reading
+``tesla.tuned`` warns, and ``study.tuned`` leaves it out until you tune again.
 
 .. tip::
 

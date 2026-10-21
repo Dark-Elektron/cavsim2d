@@ -10,6 +10,7 @@ Study
 
 .. autoclass:: cavsim2d.study.Study
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 
@@ -21,6 +22,7 @@ their own geometry parameterisation and tuning handles.
 
 .. autoclass:: cavsim2d.models.base.Cavity
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 
@@ -78,22 +80,27 @@ Reached as ``cav.eigenmode``, ``cav.wakefield``, ``cav.tune``,
 
 .. autoclass:: cavsim2d.solvers.solver_objects.EigenmodeSolver
    :members:
+   :inherited-members:
    :show-inheritance:
 
 .. autoclass:: cavsim2d.solvers.solver_objects.WakefieldSolver
    :members:
+   :inherited-members:
    :show-inheritance:
 
 .. autoclass:: cavsim2d.solvers.solver_objects.TuneSolver
    :members:
+   :inherited-members:
    :show-inheritance:
 
 .. autoclass:: cavsim2d.solvers.solver_objects.MultipactingSolver
    :members:
+   :inherited-members:
    :show-inheritance:
 
 .. autoclass:: cavsim2d.solvers.solver_objects.OptimisationSolver
    :members:
+   :inherited-members:
    :show-inheritance:
 
 Result objects

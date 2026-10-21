@@ -9,6 +9,7 @@ import math
 import warnings
 from cavsim2d.utils.quadrature import stroud3_nodes_and_weights
 from cavsim2d.utils.config_validation import require
+from cavsim2d.utils.printing import warning
 
 class SampleGenerator:
     def __init__(self):
@@ -337,7 +338,7 @@ class SampleGenerator:
                 Convergence properties of the Sobol' sequence is only valid if
                 `skip_values` ({M}) is a power of 2.
                 """
-                print(msg)
+                warning(msg)
 
             # warning when N > skip_values
             # see https://github.com/scipy/scipy/pull/10844#issuecomment-673029539
@@ -349,9 +350,9 @@ class SampleGenerator:
                     "requested samples is"
                     f" > `skip_values` ({N} > {M})."
                 )
-                print(msg)
+                warning(msg)
         elif skip_values == 0:
-            print("Duplicate samples will be taken as no points are skipped.")
+            warning("Duplicate samples will be taken as no points are skipped.")
         else:
             require(isinstance(skip_values, int) and skip_values >= 0, '`skip_values` must be a positive integer.')
 

@@ -34,22 +34,28 @@ comparisons, to the study):
 Project folder layout
 ---------------------
 
-A study is rooted at a project directory (``Study(project_dir)`` or, for a single
-standalone cavity, ``cav.set_workspace(dir)``). Every cavity gets its own folder,
-and every analysis writes into a subfolder of it::
+A study lives in a folder named after the study inside the project directory:
+``Study(project_dir)`` uses ``<project_dir>/cavities/``, and
+``Study(project_dir, name='run1')`` uses ``<project_dir>/run1/``. A standalone
+cavity uses ``cav.set_workspace(dir)``, or ``./<cavity name>/`` by default. Every
+cavity gets its own folder, and every analysis writes into a subfolder of it::
 
-    <project>/
+    <project_dir>/cavities/
       <cavity_name>/
-        geometry/        # geodata.geo, the meridian contour + a JSON snapshot
+        geometry/        # geodata.geo, parameters.json, model.json
         eigenmode/
-          monopole/      # qois.json, fields, Ez_0_abs.csv, mesh, ...
+          monopole/      # qois.json, fields, Ez_0_abs.csv, mesh, geometry_stamp.json
           dipole/        # one folder per solved polarisation (m >= 1)
-        wakefield/        # ABCI decks + parsed impedance / wake / QOIs
+        wakefield/       # ABCI decks + parsed impedance / wake / QOIs
+          uq/            # wakefield UQ: nodes.csv, table.csv, uq.json
         multipacting/    # tracked-particle results, field
-        uq/              # nodes.csv, table.csv, uq.json, sobol.json
+        uq/              # eigenmode UQ: nodes.csv, table.csv, uq.json, sobol.json
         tuned/           # a *separate* cavity that hit the tune target
           geometry/  eigenmode/  tune_info/
-      optimisation/       # history.csv, pareto_front.csv, candidates/
+      optimisation/      # history.csv, pareto_front.csv, candidates/
+
+Each result folder carries a ``geometry_stamp.json`` naming the geometry it was
+computed for; see :ref:`results-integrity`.
 
 ``cav.tuned`` loads the cavity under ``tuned/`` (its ``tune_info/tuned_parameters.json``
 records the complete, self-consistent parameter set the tuner converged on).
@@ -73,6 +79,39 @@ from different sessions, or a loaded one against a fresh one — compare directl
 (``study.eigenmode.qois_df``, ``study.eigenmode.plot_compare()``). Custom
 in-notebook models whose module cannot be imported by name are passed explicitly:
 ``Study.load(dir, models={'MyCavity': MyCavity})``.
+
+.. _results-integrity:
+
+Keeping results consistent
+--------------------------
+
+A cavity folder holds results that different analyses wrote at different times.
+To keep them describing one geometry, every analysis writes a
+``geometry_stamp.json`` beside its results: a fingerprint of the geometry it
+solved (model, parameters, cell count, beam pipes, chaining, dielectric regions).
+
+Before an analysis runs, it checks the cavity's folder:
+
+- If the run would overwrite existing results, it asks first, naming what it would
+  overwrite. Rerunning one analysis never touches another analysis' results.
+- If the folder holds results computed for a different geometry, because the
+  cavity changed since they were run or because a different cavity was given the
+  same name, the same question lists them and what changed (for example
+  ``Req_m 103.3 -> 104``). Answering yes deletes them before the run, so the folder
+  never holds results for two geometries. Answering no runs and deletes nothing; to
+  keep both sets, give the cavity a new name or folder.
+
+``force=True`` (or ``overwrite=True``) answers yes without asking. In a script,
+under ``nbconvert`` or in a test there is nobody to ask: a run that only overwrites
+its own results goes ahead, but one that would leave results for two geometries
+raises an error and changes nothing. ``rerun=False`` reuses results that match the
+geometry and recomputes those that do not.
+
+Reading results computed for a different geometry, for example after changing
+``cav.parameters`` without rerunning, gives a warning that says what changed.
+
+``overwrite=True`` on ``Study(...)`` and ``cav.save(...)`` only replaces a folder
+that cavsim2d created; anything else raises an error instead of being deleted.
 
 Parameter sweeps
 ----------------

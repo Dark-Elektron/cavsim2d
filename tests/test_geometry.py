@@ -731,14 +731,13 @@ def test_chain_repeats_cavity_into_a_connected_module():
     assert base.chained(1) is base
 
 
-def test_chain_module_has_one_coupled_mode_per_cavity():
+def test_chain_module_has_one_coupled_mode_per_cavity(tmp_path):
     """A 3-cavity module resonates as three coupled copies of the single-cavity
     fundamental (a tight passband), not a single mode."""
-    import os, tempfile
     from cavsim2d import EllipticalCavity
     mid = [42, 42, 12, 19, 35, 57.7, 103.3]
     module = EllipticalCavity(1, mid, mid, mid, beampipe='both', chain=3)
-    module.set_workspace(os.path.join(tempfile.mkdtemp(), 'module3'))
+    module.set_workspace(str(tmp_path / 'module3'))
     module.eigenmode.run(mesh_config={'h': 12, 'p': 2}, n_modes=4)
     f = sorted(module.eigenmode.qois_df.query('m == 0')['freq [MHz]'])
     passband = [x for x in f if x < 1600]                     # the fundamental passband

@@ -2,8 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cavsim2d.constants import *
-from cavsim2d.utils.printing import *
+from cavsim2d.utils.printing import error
 from cavsim2d.geometry.tangency import tangent_coords
 from cavsim2d.geometry.primitives import arcTo, lineTo
 

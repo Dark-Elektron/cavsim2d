@@ -2,11 +2,10 @@ import os
 import time
 
 from cavsim2d.analysis.tune.pyTuner import PyTuneNGSolve
-from cavsim2d.utils.shared_functions import *
+from cavsim2d.utils.printing import done, error, info, warning
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 import shutil
 import json
-from cavsim2d.constants import *
 
 ngsolve_mevp = NGSolveMEVP()
 
@@ -151,57 +150,3 @@ class Tuner:
         info(f'\tProcessor {proc} runtime: {runtime}s')
 
         return tuned_shape_space, all_tune_res, all_conv, all_abs_err
-
-    def tune_ngsolve_multicell(self, pseudo_shape_space, bc, parentDir, projectDir, filename, resume="No",
-                            proc=0, sim_folder='NGSolveMEVP', tune_variable='Req', cell_type='Mid Cell',
-                            tune_config=None):
-
-        if tune_config is None:
-            tune_config = {}
-        target_freq = tune_config['freq']
-        pytune_ngsolve = PyTuneNGSolve()
-
-        tuned_multicell_shape_space = {}
-        all_tune_res = {}
-        all_conv = {}
-        all_abs_err = {}
-
-        for key, multicell in pseudo_shape_space.items():
-
-            if os.path.exists(os.path.join(projectDir, key, "eigenmode")):
-                shutil.rmtree(os.path.join(projectDir, key, "eigenmode"))
-
-            tune_var_dict, freq_dict, conv_dict, abs_err_list = pytune_ngsolve.tune_multicell(
-                multicell, tune_variable, target_freq, bc,
-                sim_folder, parentDir, projectDir,
-                proc=proc, tune_config=tune_config)
-
-            tuned_multicell_shape_space[key] = multicell  # tuning done in place
-
-            # Clear processor folder to avoid stale results
-            proc_fold = os.path.join(projectDir, '_tune_temp', f'_process_{proc}')
-            shutil.rmtree(proc_fold)
-
-            result = "Passed"
-            end_freq_list = []
-            for fkey, freq_list in freq_dict.items():
-                end_freq_list.append(freq_list[-1])
-                if not (1 - 0.001) * target_freq < round(freq_list[-1], 2) < (1 + 0.001) * target_freq:
-                    result = 'Failed'
-
-            done(f'Done Tuning Cavity {key}: {result}:: {end_freq_list}')
-
-            # Accumulate this cavity's results instead of overwriting a
-            # loop-local variable that only the last iteration would survive.
-            all_tune_res[key] = {
-                'TUNED VARIABLE': tune_var_dict,
-                'FREQ': freq_dict,
-                'end_freqs': end_freq_list,
-                'result': result,
-            }
-            all_conv[key] = conv_dict
-            all_abs_err[key] = abs_err_list
-
-        return tuned_multicell_shape_space, all_tune_res, all_conv, all_abs_err
-
-        

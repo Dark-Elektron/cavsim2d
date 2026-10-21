@@ -894,17 +894,16 @@ def test_no_mode_stalls_when_many_modes_share_a_mesh():
     assert m0_errs[-1] < m0_errs[0] / 100
 
 
-def test_eigenmode_order_below_two_raises_clear_error():
+def test_eigenmode_order_below_two_raises_clear_error(tmp_path):
     """p < 2 is unsupported (the HCurl(p) x H1(p+1) space is rank-deficient at p=1
     and the PINVIT solve returns NaN -> a cryptic scipy 'array must not contain
     infs or NaNs'). _build_system must fail early with a clear, actionable message
     instead. Guards the low-order crash the mesh-convergence example hit."""
     from cavsim2d import CircularWaveguide
     from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
-    import tempfile
 
     cav = CircularWaveguide(230.0, 200.0)
-    cav.set_workspace(os.path.join(tempfile.mkdtemp(), 'cyl'))
+    cav.set_workspace(str(tmp_path / 'cyl'))
     cav.create()
     mevp = NGSolveMEVP()
     mesh = mevp._build_mesh(cav, 60, 2)          # a coarse mesh is enough
@@ -1018,8 +1017,10 @@ def test_sample_cfg_and_config_sample_return_authoritative_defaults(capsys):
                           ('tune', DEFAULT_TUNE_CONFIG),
                           ('multipacting', DEFAULT_MULTIPACTING_CONFIG)]:
         assert cav.config_sample(kind, show=False) == default
-    # unknown kind -> None, no raise
-    assert cav.config_sample('nope', show=False) is None
+    # an unknown kind raises, naming the valid ones (it used to return None,
+    # with the explanation silenced unless verbose)
+    with pytest.raises(ValueError, match='eigenmode'):
+        cav.config_sample('nope', show=False)
 
 
 def test_open_bc_q_rad_separated(project_dir):

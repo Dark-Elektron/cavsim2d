@@ -7,12 +7,11 @@ field source) is adapted; the dynamics are unchanged.
 """
 import copy
 import os
-import time
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from cavsim2d.constants import c0, eps0, m0, mu0, q0  # noqa: F401
+from cavsim2d.constants import c0, m0, mu0, q0  # noqa: F401
 
 
 # Number of nearest surface points fetched per boundary-check to reconstruct
@@ -232,120 +231,6 @@ class Integrators:
         if particles.len == 0:
             return False
         self.plot_path(particles)
-
-    # def rk4(self, particles, tn, h, em, scale, sey):
-    #     #         start = time.time()
-    #     # k1
-    #     ku1 = h * self.lorentz_force(particles, tn, em, scale)
-    #     kx1 = h * particles.u
-    #     print('Strat')
-    #     #         ss = time.time()
-    #     particles_dummy = copy.deepcopy(particles)
-    #
-    #     particles_dummy.save_old()
-    #     particles_dummy.u += ku1 / 2
-    #     particles_dummy.x += kx1 / 2
-    #
-    #     try:
-    #         print('In here 1')
-    #         ku2 = h * self.lorentz_force(particles_dummy, tn + h / 2, em,
-    #                                      scale)  # <- particles dummy = particles.u + kn
-    #         kx2 = h * (particles.u + ku1 / 2)
-    #     except:
-    #         # take full step - euler
-    #         particles.u = particles.u + ku1
-    #         particles.x = particles.x + kx1
-    #
-    #         lpi, rpi = self.hit_bound(particles, tn, h, em, scale, sey)
-    #
-    #         if len(rpi) != 0:
-    #             particles.update_hit_count(list(set(rpi)))
-    #
-    #         if len(lpi) != 0:
-    #             particles.remove(lpi)
-    #
-    #         self.plot_path(particles, tn)
-    #         print('Return 2')
-    #         return
-    #
-    #     particles_dummy = copy.deepcopy(particles)
-    #
-    #     particles_dummy.save_old()
-    #     particles_dummy.u += ku2 / 2
-    #     particles_dummy.x += kx2 / 2
-    #
-    #     try:
-    #         print('In here 3')
-    #         ku3 = h * self.lorentz_force(particles_dummy, tn + h / 2, em,
-    #                                      scale)  # <- particles dummy = particles.u + kn
-    #         kx3 = h * (particles.u + ku2 / 2)
-    #     except:
-    #         # take full step - euler
-    #         particles.u = particles.u + ku1
-    #         particles.x = particles.x + kx1
-    #
-    #         lpi, rpi = self.hit_bound(particles, tn, h, em, scale, sey)
-    #
-    #         if len(rpi) != 0:
-    #             particles.update_hit_count(list(set(rpi)))
-    #
-    #         if len(lpi) != 0:
-    #             particles.remove(lpi)
-    #
-    #         self.plot_path(particles, tn)
-    #         print('Return 2')
-    #
-    #         return
-    #
-    #     particles_dummy = copy.deepcopy(particles)
-    #
-    #     particles_dummy.save_old()
-    #     particles_dummy.u += ku3
-    #     particles_dummy.x += kx3
-    #
-    #     try:
-    #         print('In here 4')
-    #         ku4 = h * self.lorentz_force(particles_dummy, tn + h, em, scale)  # <- particles dummy = particles.u + kn
-    #         kx4 = h * particles_dummy.u
-    #     except:
-    #         # take full step - euler
-    #         particles.u = particles.u + ku1
-    #         particles.x = particles.x + kx1
-    #
-    #         lpi, rpi = self.hit_bound(particles, tn, h, em, scale, sey)
-    #
-    #         if len(rpi) != 0:
-    #             particles.update_hit_count(list(set(rpi)))
-    #
-    #         if len(lpi) != 0:
-    #             particles.remove(lpi)
-    #
-    #         self.plot_path(particles, tn)
-    #         print('Return 3')
-    #
-    #         return
-    #
-    #     particles.u = particles.u + 1 / 6 * (ku1 + 2 * ku2 + 2 * ku3 + ku4)
-    #     particles.x = particles.x + 1 / 6 * (kx1 + 2 * kx2 + 2 * kx3 + kx4)
-    #
-    #     # check for lost particles
-    #     lpi, rpi = self.hit_bound(particles, tn, h, em, scale, sey)
-    #
-    #     if len(rpi) != 0:
-    #         particles.update_hit_count(list(set(rpi)))
-    #
-    #     if len(lpi) != 0:
-    #         particles.remove(lpi)
-    #
-    #     # check if all particles are lost
-    #     if particles.len == 0:
-    #         print('Return 54')
-    #         return False
-    #     #         print("rk4 exec time: ", time.time() - start)
-    #     #         print('='*80)
-    #
-    #     self.plot_path(particles, tn)
-    #     print('Finish')
 
     def rk4(self, particles, tn, h, em, scale, sey):
         lpi_all = []

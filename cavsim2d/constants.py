@@ -47,67 +47,6 @@ LABELS = {'freq [MHz]': r'$f$ [MHz]', r'R/Q [Ohm]': r"$R/Q ~\mathrm{[\Omega]}$",
 MROT_DICT = {0: 'longitudinal',
              1: 'transversal'}
 
-EIGENMODE_CONFIG = {
-    'processes': 3,
-    'rerun': True,
-    'boundary_conditions': 'mm', # m: PMC, e: PEC
-    'mesh_config': {
-        'p': 3, # order
-        'h': 1, # global upper bound for mesh size
-        'grading': 0.3, # mesh grading how fast the local mesh size can change
-        'segmentsperedge': 1, # minimal number of segments per edge
-    }
-    }
-
-UQ_CONFIG = {
-    'variables': ['A', 'B', 'a', 'b'],
-    'objectives': ["Epk/Eacc []", "Bpk/Eacc [mT/MV/m]", "R/Q [Ohm]", "G [Ohm]"],
-    'delta': [0.05, 0.05, 0.05, 0.05],
-    'processes': 4,
-    'distribution': 'gaussian',
-    'method': ['Quadrature', 'Stroud3'],
-    'cell_type': 'mid-cell',
-    'cell complexity': 'multicell'
-}
-OPERATING_POINTS = {
-            "Z": {
-                "freq [MHz]": 400.79,  # Operating frequency
-                "E [GeV]": 45.6,  # <- Beam energy
-                "I0 [mA]": 1280,  # <- Beam current
-                "V [GV]": 0.12,  # <- Total voltage
-                "Eacc [MV/m]": 5.72,  # <- Accelerating field
-                "nu_s []": 0.0370,  # <- Synchrotron oscillation tune
-                "alpha_p [1e-5]": 2.85,  # <- Momentum compaction factor
-                "tau_z [ms]": 354.91,  # <- Longitudinal damping time
-                "tau_xy [ms]": 709.82,  # <- Transverse damping time
-                "f_rev [kHz]": 3.07,  # <- Revolution frequency
-                "beta_xy [m]": 56,  # <- Beta function
-                "N_c []": 56,  # <- Number of cavities
-                "T [K]": 4.5,  # <- Operating tempereature
-                "sigma_SR [mm]": 4.32,  # <- Bunch length
-                "sigma_BS [mm]": 15.2,  # <- Bunch length
-                "Nb [1e11]": 2.76  # <- Bunch population
-            }
-}
-
-WAKEFIELD_CONFIG = {
-    'beam_config': {
-        'bunch_length': 25
-    },
-    'wake_config': {
-        'wakelength': 50
-    },
-    'processes': 2,
-    'rerun': True
-}
-
-TUNE_CONFIG = {
-    'freqs': 1300,
-    'parameters': 'A',
-    'cell_types': 'mid-cell',
-    'processes': 1,
-    'rerun': True
-}
 
 # Physical constants, SI, from scipy's CODATA table. The single source for the
 # package: every module imports these rather than keeping its own copy (there used

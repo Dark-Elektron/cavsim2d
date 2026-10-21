@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 
-from cavsim2d.constants import c0, eps0, m0, mu0, q0  # noqa: F401
+from cavsim2d.constants import m0, q0  # noqa: F401
 
 
 
@@ -35,10 +35,12 @@ class Particles:
         if step:
             self.x = self._select_values_with_step(self.x, step)
 
-        # check if any particle in range
+        # check if any particle in range (this used to call exit(), which ended
+        # the Python session)
         if len(self.x) == 0:
-            print('No surface emission point in selected range.')
-            exit()
+            raise ValueError(
+                f"No wall point lies in the emission range xrange={list(xrange)} [m]. "
+                f"Widen it, or ask for more emission sites with n_points.")
 
         shape = self.x.shape
         self.len = len(self.x)

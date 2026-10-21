@@ -5,6 +5,159 @@ follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+- Tuning no longer overwrites the cavity's own eigenmode results. The secant tuner
+  probed the cavity itself, so every probe solve rewrote
+  `<cav>/eigenmode/monopole/qois.json`; after `cav.tune.run()` the cavity's results
+  were the last probe's four-key dict at the tuned frequency. The probes now run on
+  a copy in a scratch folder, and the cavity's parameters are never changed (a QoI,
+  family or staged tune used to leave the tuned values on it).
+- An eigenmode (or wakefield) run on `cav.tuned`, including the one
+  `study.run_tune(eigenmode_config=...)` starts, no longer writes the tuned
+  geometry's results into the parent cavity's folder. Every model's `create()`
+  rebuilt the folder from the parent's name; only elliptical cavities with a `.geo`
+  escaped. The tuned cavity's folder is now pinned to `<cav>/tuned/`.
+- `study.run_wakefield()` and the optimiser's wakefield runs use the bunch length,
+  wake length and mesh ratios they are given. Both nested hard-coded copies (25 mm,
+  50 m, 0.1) where the ABCI deck writer reads them first.
+- Documented second spellings reach the solver: `freq` (tune), `tolerance` (tune,
+  the tuner reads `tol`), `nmodes` (eigenmode) and `no_of_generations`
+  (optimisation). A default for the real key used to shadow them.
+- `cav.eigenmode.run()`, `cav.wakefield.run()`, `cav.tune.run()` and
+  `cav.multipacting.run()` check their config like the study-level runs: an unknown
+  key warns (with a suggestion) instead of being ignored. `overwrite=True` is now
+  the same as `force=True`.
+- `cav.eigenmode_qois`, `cav.wakefield_qois` and `cav.tune_results` always match
+  `cav.eigenmode.qois`, `cav.wakefield.qois` and `cav.tune.qois`, whichever way the
+  run was started. `cav.wakefield_qois` now means the main run's loss and kick
+  factors, as `study.wakefield_qois` does; the operating-point table is
+  `cav.wakefield_qois_op`.
+- Eigenmode UQ and wakefield UQ no longer share `<cav>/uq/`. Each overwrote the
+  other's `uq.json`, and an eigenmode rerun deleted the wakefield UQ. Wakefield UQ
+  is in `<cav>/wakefield/uq/`.
+- `cav.save(folder, overwrite=True)` and `Study(folder, overwrite=True)` only
+  replace a folder cavsim2d created; anything else raises instead of being deleted.
+- `cav.tune.config` is no longer always empty after a tune.
+- Without a workspace, `cav.eigenmode.qois` (and the wakefield and tune ones)
+  return an empty dict instead of raising `TypeError`.
+- `EllipticalCavity.set_mid_cell()` / `set_end_cell_left()` / `set_end_cell_right()`
+  change the solved geometry; they used to update only `cav.shape`.
+- `Study(folder, cavities_list=...)` works and puts the cavities in the study
+  folder. Two cavities with one name in a study raise instead of sharing a folder.
+  `study.add_cavity([...])` without names no longer raises.
+- `Study.load(project_dir)` finds the cavities `Study(project_dir)` created in
+  `<project_dir>/cavities/`.
+- Flat-top, RF gun and spline cavities write `geometry/model.json`, so
+  `Study.load` rebuilds them.
+- Chaining (`chain`, `spacing`) and `beampipe_length` survive every rebuild: the
+  tuned cavity of a module, its UQ and sweep variants and a module reloaded by
+  `Study.load` used to come back as a single cavity. Elliptical UQ and sweep
+  variants also keep the cavity's dielectric regions (they were vacuum copies).
+- The `.geo` expression evaluator no longer uses `ast.Num`, removed in Python 3.14.
+- `rerun=False` reuses only results computed for the cavity's current geometry and
+  recomputes the rest; for wakefield it no longer reruns a transverse-only result,
+  and for tuning it no longer re-tunes.
+- Warnings that only showed after `set_verbose(True)` now always show, as
+  `cavsim2d.CavsimWarning`: a skipped UQ step, a staged tune that missed its
+  tolerance, a plot with no results to draw, and about 30 more.
+- `cav.b`, which held Bpk/Eacc after the eigenmode results were read, no longer
+  overwrites the semi-axis `b` of an elliptical cell, and `study.summary()` no
+  longer reports that semi-axis as Bpk/Eacc for a cavity without results.
+- `cav.set_n_cells()`, `cav.set_beampipe()` and `cav.set_parameterisation()` work on
+  every model. They raised `KeyError` on a pillbox, spline or gun, so a tuned
+  pillbox could not be solved with `eigenmode_config={'n_cells': ...}`.
+- A multipacting emission range with no wall point in it raises `ValueError`. It
+  used to call `exit()`, which ended the Python session.
+- `study.optimisation.cavities` returns the evaluated candidates as a study. It was
+  always `None`.
+- Family scans, the QoI-constrained tune, the staged tune and multicell UQ tuning
+  remove their scratch folders. Each left a folder with a mesh and fields in the
+  system temp directory.
+- `Study(folder)` raises when it cannot create its folder. It printed the error
+  and carried on, so the first run failed instead.
+- A resumed optimisation warns when it cannot read its saved convergence state, and
+  a run warns when it cannot write its tune record, its convergence history or
+  `geometry/model.json`. A reloaded mesh that cannot be curved warns that its
+  elements stay straight. These were silently ignored.
+
+### Added
+- Folder integrity. Every analysis writes `geometry_stamp.json` beside its results.
+  Before a run replaces anything it asks once, naming what it overwrites and any
+  results computed for a different geometry (a changed cavity, or another cavity
+  given the same name), which it deletes on yes so a folder never holds results
+  for two geometries. Study-level runs and a fresh optimisation over a previous one
+  ask too. `force=True` answers yes; without a terminal, a run that would leave two
+  geometries in a folder raises instead. Reading results computed for another
+  geometry warns.
+- `cav.<solver>.config_sample` on every solver and study namespace, also spelled
+  `cfg_sample`, `sample_config` and `sample_cfg`, and callable.
+  `cav.config_sample(kind)` / `study.config_sample(kind)` take `'uq'` and
+  `'optimisation'` too, and a study needs no cavity for it. The `uq` sample is now
+  a valid config, and an unknown kind raises.
+- `cav.run_tune()`, which the tuning guide already used.
+- The packages NGSolve's interactive viewer needs (`anywidget`,
+  `webgui_jupyter_widgets`, `ipywidgets`) are core dependencies, so
+  `cav.show_fields()` renders in a notebook after a plain `pip install cavsim2d`.
+  Outside a notebook the `show_*` views draw the matplotlib view and warn why.
+- `solve_tuned` in the tune config: after tuning, run the eigenmode analysis on the
+  tuned cavity with `eigenmode_config`.
+- A run on a cavity that has a tuned version says, once per session, that its
+  results go to the untuned cavity's folder, and how to solve the tuned one.
+- A displayed config sample notes beside each key what it does, its unit and what
+  `None` stands for. The display is valid Python to paste into a script.
+- A units table in the configuration reference.
+- `cavsim2d.CavsimWarning`, the category of every warning cavsim2d gives.
+
+### Changed
+- The default tune config uses `cell_type` and resolves unset values per cavity:
+  `freqs` to c/(4L) (with a warning) and `cell_type` to the mid-cell `Req` (plus the
+  end-cell `L` on a multi-cell elliptical cavity), the same defaults as
+  `study.run_tune`. It used to tune `A` to 1300 MHz.
+- The `jupyter` extra installs JupyterLab and a kernel.
+- `cav.eigenmode.run()`, `cav.wakefield.run()`, `cav.tune.run()` and
+  `study.optimisation.run()` return their namespace, so calls chain:
+  `cav.eigenmode.run(cfg).qois`. `cav.run_eigenmode()` and `study.run_eigenmode()`
+  return the eigenmode namespace instead of `True`, `False` or `None`; the same
+  holds for wakefield.
+- `study.run_tune(eigenmode_config=...)` no longer solves the tuned cavities by
+  itself. `eigenmode_config` sets the mesh of the tuning solves, as in
+  `cav.tune.run()`; pass `solve_tuned=True` to solve them too.
+- `study.tuned` leaves out a tuned version computed for an earlier geometry of its
+  cavity.
+- UQ-averaged tuning of a multicell sweep raises `NotImplementedError` instead of
+  quietly running a deterministic tune.
+- A legacy `parameters` + `cell_types` tune config with several entries warns that
+  only the first is tuned.
+- The keys a config accepts are those of its default plus a short list of extras,
+  so a new default can no longer be rejected as a typo.
+- The multipacting sweep's progress lines print with `set_verbose(True)`; the
+  progress bar is unchanged.
+- Code moved to smaller modules: each solver namespace has its own module under
+  `cavsim2d.solvers`, the study's comparison plots and tables are in
+  `cavsim2d.study_plotting`, and a cavity's plots and ABCI deck are in
+  `cavsim2d.models.cavity_plotting` and `cavsim2d.models.abci_deck`. Imports from
+  the old places keep working.
+- Library modules import names explicitly instead of with `import *`.
+  `cavsim2d.utils.shared_functions` and `shared_classes` still re-export
+  everything they did.
+
+### Deprecated
+- `cav.R_Q`, `cav.GR_Q`, `cav.G`, `cav.Q`, `cav.ff`, `cav.k_cc`, `cav.e`,
+  `cav.Epk_Eacc` and `cav.Bpk_Eacc`: read `cav.eigenmode.qois[...]`. They read the
+  results now, so they are never stale, and warn. `cav.freq` reads the eigenmode
+  result too, falling back to the frequency a tune set.
+
+### Removed
+- The stale sample dicts in `cavsim2d.constants` (`EIGENMODE_CONFIG`, `UQ_CONFIG`,
+  `WAKEFIELD_CONFIG`, `TUNE_CONFIG`) and the unused `cavsim2d/config_files/`.
+- Code that nothing called, or that could not work: `Study.compare_power`,
+  `set_cavities_field`, `linspace`, `lineTo`, `arcTo`, `arcTo2`,
+  `plot_surface_fields`, `plot_uq_geometries` and `make_excel_summary`;
+  `Cavity.calc_op_freq`, `load_shape_space`, `save_shape_space` and `get_uq_post`;
+  `run_tune_s_multicell` and the multicell tuner behind it; `uq_parallel_tuner`;
+  `ABCIDataExtraction`; `constants.OPERATING_POINTS`; about 500 lines of
+  commented-out code.
+
 ## [0.1.0] - 2026-10-20
 
 First release on PyPI.

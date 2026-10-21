@@ -1,79 +1,44 @@
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from cavsim2d.constants import *
-from cavsim2d.processes import *
-from cavsim2d.utils.shared_functions import *
-from matplotlib.animation import FuncAnimation
-from scipy.signal import find_peaks
-import ast
-import copy
+from cavsim2d.geometry.tangency import update_alpha
+from cavsim2d.processes.uq import ngsolve_mevp
+from cavsim2d.utils.printing import CavsimWarning, error, info, warning
+from cavsim2d.utils.quadrature import weighted_mean_obj
 import json
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
-import operator as op
 import os
 import pandas as pd
 import shutil
-import time
+import warnings
 from cavsim2d.processes.tune import last_stage_result
-from cavsim2d.geometry.beampipes import abci_shape
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number, monopole_dir
-from cavsim2d.solvers.ABCI.abci import resolve_mrot
 from cavsim2d.solvers.solver_objects import (TuneSolver, EigenmodeSolver, WakefieldSolver,
-                                             MultipactingSolver, _maybe_show)
-from cavsim2d.constants import SOFTWARE_DIRECTORY
+                                             MultipactingSolver, config_sample)
+from cavsim2d.utils.integrity import (describe_change, geometry_fingerprint,
+                                      is_cavity_workspace, stale_units, warn_if_stale)
 from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
-from cavsim2d.utils.style import house_style, polarisation_color, shades, WARM
-from cavsim2d.utils.slope_triangles import add_slope_triangles
-from fractions import Fraction
-
-# Safe arithmetic evaluator for simple expressions
-_ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
-        ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg}
-
-#: ABCI mesh step [m] used when neither an explicit DDR/DDZ nor a short bunch asks
-#: for a finer one.
-ABCI_DEFAULT_STEP = 0.00125
+from cavsim2d.models.abci_deck import AbciDeck
+from cavsim2d.models.abci_deck import (ABCI_DEFAULT_STEP, abci_bunch_length,  # noqa: F401
+                                       abci_mesh_steps)  # (re-exported: they lived here)
+from cavsim2d.models.cavity_plotting import CavityPlotting
 
 
-def abci_bunch_length(wakefield_config):
-    """RMS bunch length [m] a wakefield config asks for, nested (``beam_config``)
-    or top-level; ``None`` when it sets none."""
-    cfg = wakefield_config or {}
-    bunch = (cfg.get('beam_config') or {}).get('bunch_length', cfg.get('bunch_length'))
-    return None if bunch is None else float(bunch) * 1e-3
+def _result_alias(attr, key):
+    """A deprecated, read-only cavity attribute that reads ``cav.eigenmode.qois[key]``.
 
-
-def abci_mesh_steps(wakefield_config):
-    """ABCI's radial and axial mesh steps ``(DDR, DDZ)`` in metres.
-
-    An explicit ``mesh_config['DDR']``/``['DDZ']`` wins. Otherwise the step is
-    ``DDR_SIG``/``DDZ_SIG`` (default 0.1) times the bunch length, capped at
-    :data:`ABCI_DEFAULT_STEP`. Those two ratios were documented as the mesh control
-    but never read, so the mesh stayed at 1.25 mm whatever the bunch. That is 20
-    steps per sigma for the default 25 mm bunch, but only 3.5 for a 4.32 mm one,
-    too coarse to resolve it. The cap keeps every run with a bunch of 12.5 mm or
-    longer on exactly the mesh it always had.
+    ``cav.R_Q``, ``cav.ff`` and the like were copies of the eigenmode results that
+    only some run paths refreshed, so they went stale; the Bpk/Eacc copy,
+    ``cav.b``, also overwrote the semi-axis ``b`` of an elliptical cell.
     """
-    cfg = wakefield_config or {}
-    mesh_cfg = cfg.get('mesh_config') or {}
-    sig = abci_bunch_length(cfg)
-    steps = []
-    for key in ('DDR', 'DDZ'):
-        if mesh_cfg.get(key) is not None:
-            steps.append(float(mesh_cfg[key]))
-            continue
-        ratio = mesh_cfg.get(f'{key}_SIG', cfg.get(f'{key}_SIG', 0.1))
-        step = ABCI_DEFAULT_STEP
-        if sig is not None and ratio:
-            step = min(step, float(ratio) * sig)
-        steps.append(step)
-    return tuple(steps)
+    def read(self):
+        warnings.warn(f"cav.{attr} is deprecated; read cav.eigenmode.qois[{key!r}].",
+                      DeprecationWarning, stacklevel=2)
+        return (self.eigenmode_qois or {}).get(key, 0)
+    return property(read, doc=f"Deprecated: ``cav.eigenmode.qois[{key!r}]``.")
 
 
-class Cavity(ABC):
+class Cavity(CavityPlotting, AbciDeck, ABC):
     """
     Command Line Interface module for running analysis.
 
@@ -170,10 +135,6 @@ class Cavity(ABC):
         self._multipacting_solver = None
         self._tuned_cavity = None
 
-        self.eigenmode_qois_all_modes = {}
-        self.Epk_Eacc = None
-        self.Bpk_Eacc = None
-        self.Q = None
         self.Ez_0_abs = {'z(0, 0)': [], '|Ez(0, 0)|': []}
         self.uq_nodes = None
         self.convergence_df_data = None
@@ -195,30 +156,14 @@ class Cavity(ABC):
 
         self.projectDir = None
         self.bc = 33
-        self.eigenmode_qois = {}
         self.custom_eig_qois = {}
-        self.wakefield_qois = {}
         self.wake_op_points = {}
         self.convergence_list = []
-        self.tune_results = {}
         self.operating_points = None
         self.Q0 = None
         self.inv_eta = None
         self.neighbours = {}
         self.wall_material = None
-
-        # eigenmode results placeholders
-        (self.R_Q,
-         self.k_fm,
-         self.GR_Q,
-         self.freq,
-         self.e,
-         self.b,
-         self.G,
-         self.ff,
-         self.k_cc,
-         self.axis_field,
-         self.surface_field) = [0] * 11
 
         # wakefield results placeholders
         (self.k_fm,
@@ -234,6 +179,33 @@ class Cavity(ABC):
         #  2) Choose initialisation path: “from file” or “from dimensions”
         # ───────────────────────────────────────────────────────────────────────────────────────────
         self.parameters = {}
+
+    # ─── Results folder ───────────────────────────────────────────────────
+    # A tuned cavity lives in <parent>/tuned/ but keeps its parent's name and
+    # project, and every model's create() rebuilds self_dir as
+    # <projectDir>/<name>: the parent's folder. An eigenmode run on cav.tuned then
+    # wrote the tuned geometry's results over the parent's (elliptical cavities
+    # with a .geo were spared only by create()'s early return). A pinned folder
+    # survives that assignment, in custom models' create() too; moving the cavity
+    # on purpose (set_workspace, save, load, Study.add_cavity) unpins it.
+
+    @property
+    def self_dir(self):
+        """This cavity's results folder (None until it has one)."""
+        return self.__dict__.get('_self_dir')
+
+    @self_dir.setter
+    def self_dir(self, value):
+        pinned = self.__dict__.get('_pinned_self_dir')
+        self.__dict__['_self_dir'] = pinned if (pinned and value is not None) else value
+
+    def _pin_folder(self, folder):
+        """Keep this cavity in *folder* whatever create() computes."""
+        self.__dict__['_pinned_self_dir'] = str(folder)
+        self.self_dir = str(folder)
+
+    def _unpin_folder(self):
+        self.__dict__['_pinned_self_dir'] = None
 
     # ─── Composition ──────────────────────────────────────────────────────
 
@@ -323,14 +295,81 @@ class Cavity(ABC):
             self._multipacting_solver = MultipactingSolver(self)
         return self._multipacting_solver
 
+    # ─── Results, read through the solver namespaces ──────────────────────
+    # These were plain attributes that only run_eigenmode()/run_wakefield() and
+    # the Study filled in, so after cav.eigenmode.run() cav.eigenmode_qois stayed
+    # empty. Reading the namespaces makes every run path agree.
+
+    @property
+    def eigenmode_qois(self):
+        """QOIs of the monopole mode of interest: the same dict as
+        ``cav.eigenmode.qois``."""
+        return self.eigenmode.qois
+
+    @property
+    def eigenmode_qois_all_modes(self):
+        """Every mode of every solved polarisation, keyed ``'<mode>-<m>'``."""
+        all_modes = {}
+        if not self.self_dir:
+            return all_modes
+        for pol in self._available_polarisations():
+            for idx, qois in (self.eigenmode.mpole_qois(pol) or {}).items():
+                all_modes[f"{idx}-{qois.get('m', pol_number(pol))}"] = qois
+        return all_modes
+
+    @property
+    def wakefield_qois(self):
+        """Loss and kick factors of the main wakefield run: the same dict as
+        ``cav.wakefield.qois`` (and as ``study.wakefield_qois[name]``)."""
+        return self.wakefield.qois
+
+    @property
+    def wakefield_qois_op(self):
+        """Operating-point wakefield QOIs (P_HOM, loss and kick factors per
+        operating point and bunch length): ``cav.wakefield.qois_op``."""
+        return self.wakefield.qois_op
+
+    @property
+    def tune_results(self):
+        """The tune record (tuned parameters and frequency per stage): the same
+        dict as ``cav.tune.qois``."""
+        return self.tune.qois
+
+    @property
+    def freq(self):
+        """The cavity's frequency [MHz]: the eigenmode result when there is one,
+        otherwise the frequency a tune set (0 when neither has)."""
+        value = (self.eigenmode_qois or {}).get('freq [MHz]')
+        return self.__dict__.get('_freq', 0) if value is None else value
+
+    @freq.setter
+    def freq(self, value):
+        self.__dict__['_freq'] = value
+
+    R_Q = _result_alias('R_Q', 'R/Q [Ohm]')
+    GR_Q = _result_alias('GR_Q', 'GR/Q [Ohm^2]')
+    G = _result_alias('G', 'G [Ohm]')
+    Q = _result_alias('Q', 'Q []')
+    ff = _result_alias('ff', 'ff [%]')
+    k_cc = _result_alias('k_cc', 'kcc [%]')
+    e = _result_alias('e', 'Epk/Eacc []')
+    Epk_Eacc = _result_alias('Epk_Eacc', 'Epk/Eacc []')
+    Bpk_Eacc = _result_alias('Bpk_Eacc', 'Bpk/Eacc [mT/MV/m]')
+
     @property
     def tuned(self):
         """Separate Cavity object living in ``<self_dir>/tuned/``.
 
         Lazy: if the tuned folder exists on disk we instantiate the tuned
         cavity from it on first access. Returns None when the cavity has
-        not been tuned yet.
+        not been tuned yet. Warns when the tune started from a geometry other
+        than the one this cavity has now: that tuned version belongs to the
+        earlier geometry, so ``study.tuned`` leaves it out and the next run on
+        this cavity offers to delete it.
         """
+        if self.self_dir is not None:
+            warn_if_stale(self, Path(self.self_dir) / 'tuned' / 'tune_info',
+                          'The tuned cavity and its results')
         if self._tuned_cavity is not None:
             return self._tuned_cavity
 
@@ -501,6 +540,21 @@ class Cavity(ABC):
             f"fresh instance built from those parameters."
         )
 
+    #: Geometry held outside ``parameters``, which ``rebuild()`` cannot see.
+    _LAYOUT_ATTRS = ('chain', 'spacing', 'beampipe_length')
+
+    def _carry_layout_to(self, clone):
+        """Copy chaining and the beam-pipe length onto a rebuilt *clone*.
+
+        ``rebuild()`` works from the parameter dict, which holds neither, so the
+        tuned cavity of a chained module, its UQ and sweep variants and a module
+        reloaded by ``Study.load`` all came back as a single cavity.
+        """
+        for attr in self._LAYOUT_ATTRS:
+            if hasattr(self, attr):
+                setattr(clone, attr, getattr(self, attr))
+        return clone
+
     def _carry_dielectrics_to(self, clone):
         """Copy this cavity's dielectric regions onto a rebuilt *clone*.
 
@@ -523,12 +577,12 @@ class Cavity(ABC):
         own ``geometry/`` folder with a freshly written geometry, and empty result
         caches so later eigenmode/wakefield runs write into the clone's folders.
         """
-        clone = self._carry_dielectrics_to(
+        clone = self._carry_layout_to(self._carry_dielectrics_to(
             self.rebuild(tuned_parameters,
-                         beampipe=self.beampipe if beampipe is None else beampipe))
+                         beampipe=self.beampipe if beampipe is None else beampipe)))
         clone.name = self.name
         clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_self_dir)
+        clone._pin_folder(tuned_self_dir)
 
         geo_dir = os.path.join(clone.self_dir, 'geometry')
         os.makedirs(geo_dir, exist_ok=True)
@@ -589,10 +643,11 @@ class Cavity(ABC):
                     except (TypeError, ValueError):
                         pass
 
-        clone = self._carry_dielectrics_to(self.rebuild(params, beampipe=self.beampipe))
+        clone = self._carry_layout_to(
+            self._carry_dielectrics_to(self.rebuild(params, beampipe=self.beampipe)))
         clone.name = self.name
         clone.projectDir = self.projectDir
-        clone.self_dir = str(tuned_dir)
+        clone._pin_folder(tuned_dir)
         clone.uq_dir = os.path.join(clone.self_dir, 'uq')
         geo_dir = os.path.join(clone.self_dir, 'geometry')
         if os.path.exists(os.path.join(geo_dir, 'geodata.geo')):
@@ -893,8 +948,15 @@ class Cavity(ABC):
         analyses can detect when the in-memory cavity no longer matches
         the cached simulation results. A companion ``model.json`` records
         enough to *reconstruct* the cavity from disk (:meth:`Study.load`).
+
+        Skipped while the folder holds results computed for a different
+        geometry: the snapshot keeps describing those until a run replaces them
+        (after asking), or ``Study.load`` would rebuild a cavity the results do
+        not belong to.
         """
         if self.self_dir is None:
+            return
+        if stale_units(self):
             return
         geo_dir = Path(self.self_dir) / 'geometry'
         try:
@@ -908,8 +970,9 @@ class Cavity(ABC):
         try:
             with open(geo_dir / 'model.json', 'w') as f:
                 json.dump(self._reconstruct_state(), f, indent=2, default=str)
-        except Exception:
-            pass
+        except Exception as e:
+            warning(f"Could not write {geo_dir / 'model.json'} ({e!r}); Study.load "
+                    f"will not be able to rebuild cavity {self.name!r}.")
 
     def _reconstruct_state(self):
         """The state :meth:`Study.load` needs to rebuild this cavity from disk:
@@ -923,6 +986,7 @@ class Cavity(ABC):
             'name': self.name,
             'parameters': dict(self.parameters),
             'dielectrics': [dict(d) for d in self.dielectrics],
+            **{attr: getattr(self, attr) for attr in self._LAYOUT_ATTRS if hasattr(self, attr)},
         }
 
     @classmethod
@@ -940,6 +1004,9 @@ class Cavity(ABC):
         stub.plot_label = state.get('plot_label', None)
         cav = stub.rebuild(dict(state['parameters']), beampipe=stub.beampipe)
         cav.name = state.get('name', cav.name)
+        for attr in cls._LAYOUT_ATTRS:
+            if attr in state:
+                setattr(cav, attr, state[attr])
         for d in state.get('dielectrics', ()) or ():
             if d.get('points'):
                 cav.add_dielectric(d['material'], d['eps_r'],
@@ -952,48 +1019,6 @@ class Cavity(ABC):
                                    z=d['z'], r=d['r'], maxh=d.get('maxh'),
                                    color=d.get('color', (1.0, 1.0, 0.0)))
         return cav
-
-    def _check_geometry_mismatch(self, analysis):
-        """Warn if the on-disk geometry snapshot disagrees with
-        ``self.parameters``. Returns True when they match (or no snapshot
-        exists yet); False when a mismatch was detected and warned.
-
-        ``analysis`` is a short tag (``'eigenmode'``, ``'wakefield'``,
-        ``'tune'``) used to label the warning.
-        """
-        if self.self_dir is None:
-            return True
-        snap = Path(self.self_dir) / 'geometry' / 'parameters.json'
-        if not snap.exists():
-            return True
-        try:
-            with open(snap, 'r') as f:
-                saved = json.load(f)
-        except Exception:
-            return True
-        cur = {**dict(self.parameters), **self._dielectric_signature()}
-        changed = []
-        for k in set(cur.keys()) | set(saved.keys()):
-            vc, vs = cur.get(k), saved.get(k)
-            try:
-                if vc is None or vs is None or not np.isclose(
-                        float(vc), float(vs), rtol=1e-9, atol=1e-9):
-                    changed.append(k)
-            except (TypeError, ValueError):
-                if vc != vs:
-                    changed.append(k)
-        if not changed:
-            return True
-        preview = ', '.join(sorted(changed)[:5])
-        more = '...' if len(changed) > 5 else ''
-        warning(
-            f"[{analysis}] geometry mismatch for cavity '{self.name}': "
-            f"{len(changed)} parameter(s) differ from the geometry snapshot "
-            f"on disk ({preview}{more}). Existing results may not correspond "
-            f"to the current in-memory parameters — pass rerun=True to "
-            f"regenerate, or delete {self.self_dir} to start fresh."
-        )
-        return False
 
     def set_name(self, name):
         """
@@ -1039,8 +1064,7 @@ class Cavity(ABC):
 
         """
         self.cell_parameterisation = cell_parameterisation
-        self.shape['CELL PARAMETERISATION'] = cell_parameterisation
-        self.to_multicell()
+        self._set_shape_key('CELL PARAMETERISATION', cell_parameterisation)
 
     def set_plot_label(self, plot_label):
         """
@@ -1075,8 +1099,7 @@ class Cavity(ABC):
 
         """
         self.n_cells = int(n_cells)
-        self.shape['n_cells'] = n_cells
-        self.to_multicell()
+        self._set_shape_key('n_cells', self.n_cells)
 
     def set_mid_cell(self, cell):
         """
@@ -1158,8 +1181,7 @@ class Cavity(ABC):
 
         """
         self.beampipe = bp
-        self.shape['BP'] = bp
-        self.to_multicell()
+        self._set_shape_key('BP', bp)
 
     # ─── Standalone workspace ────────────────────────────────────────────
     # A cavity can be analysed on its own, without a Study: the first analysis
@@ -1171,26 +1193,52 @@ class Cavity(ABC):
         """Use *folder* as this cavity's results directory and write its geometry.
 
         This is what ``Study.add_cavity`` does under the hood; call it directly to
-        analyse a cavity standalone (``cav.set_workspace('runs/tesla')``)."""
+        analyse a cavity standalone (``cav.set_workspace('runs/tesla')``). Warns
+        when *folder* already holds results computed for a different geometry."""
+        self._attach(folder)
+        self._notice_stale_results()
+        return self
+
+    def _attach(self, folder):
         folder = str(folder)
+        self._unpin_folder()
         self.projectDir = str(Path(folder).parent)
         self.name = Path(folder).name
         self.self_dir = folder
         Path(folder).mkdir(parents=True, exist_ok=True)
         self.create()
-        return self
+
+    def _notice_stale_results(self):
+        """Warn when this cavity's folder already holds results computed for a
+        different geometry: a name reused for another cavity, or this cavity
+        changed since they were run."""
+        stale = stale_units(self)
+        if not stale:
+            return
+        current = geometry_fingerprint(self)
+        listing = '; '.join(f"{unit.label} ({describe_change(stamp.get('geometry'), current)})"
+                            for unit, stamp in stale)
+        warnings.warn(
+            f"{self.self_dir} already holds results computed for a different geometry "
+            f"than cavity {self.name!r}: {listing}. They are kept for now; the next "
+            f"analysis run on this cavity asks before deleting them. To keep both, "
+            f"give this cavity another name.", CavsimWarning, stacklevel=3)
 
     def _ensure_workspace(self):
         """Provision a default workspace (``./<name>/``) if none is set, so a
         standalone cavity can be analysed without a Study. No-op once ``self_dir``
-        exists (the Study path sets it first)."""
+        exists (the Study path sets it first). Results already there for another
+        geometry are left to the run's own check, which asks about them."""
         if not self.self_dir:
-            self.set_workspace(os.path.join(os.getcwd(), self.name))
+            self._attach(os.path.join(os.getcwd(), self.name))
         return self.self_dir
 
     def save(self, folder, overwrite=False):
         """Copy this cavity's workspace (geometry + all results) to *folder* and
-        continue writing there. Persists a standalone run to a chosen location."""
+        continue writing there. Persists a standalone run to a chosen location.
+
+        ``overwrite=True`` replaces *folder* only if it is empty or a cavsim2d
+        cavity folder; anything else raises instead of being deleted."""
         self._ensure_workspace()
         dst = str(folder)
         if os.path.abspath(dst) == os.path.abspath(self.self_dir):
@@ -1199,6 +1247,10 @@ class Cavity(ABC):
             if not overwrite:
                 error(f"{dst} already exists — pass overwrite=True to replace it.")
                 return self
+            if not is_cavity_workspace(dst):
+                raise ValueError(
+                    f"{dst} is not a cavsim2d cavity folder, so overwrite=True will not "
+                    f"delete it. Choose another folder, or empty it first.")
             shutil.rmtree(dst)
         shutil.copytree(self.self_dir, dst)
         self.set_workspace(dst)
@@ -1206,44 +1258,18 @@ class Cavity(ABC):
 
     def load(self, folder):
         """Reopen a previously-saved cavity workspace: point this cavity at
-        *folder* so ``cav.eigenmode.qois`` etc. read the results already there."""
+        *folder* so ``cav.eigenmode.qois`` etc. read the results already there.
+        Warns when those results were computed for a different geometry than
+        this cavity object has."""
         folder = str(folder)
         if not os.path.isdir(folder):
             raise FileNotFoundError(f"No cavity workspace at {folder}.")
+        self._unpin_folder()
         self.projectDir = str(Path(folder).parent)
         self.name = Path(folder).name
         self.self_dir = folder
+        self._notice_stale_results()
         return self
-
-    def load_shape_space(self, filepath):
-        """
-        Get cavity geometric parameters from shape space
-
-        Parameters
-        ----------
-        filepath: str
-            Shape space directory
-
-        Returns
-        -------
-
-        """
-        pass
-
-    def save_shape_space(self, filepath=None):
-        """
-        Save current geometric parameters as shape space
-
-        Parameters
-        ----------
-        filepath: str
-            Directory to save shape space to. If no input is given, it is saved to the project directory
-
-        Returns
-        -------
-
-        """
-        pass
 
     def study_mesh_convergence(self, eigenmode_config=None, h=10, p=2, p_passes=3, p_step=1,
                                n_modes=10, polarisation=('monopole', 'dipole'),
@@ -1314,67 +1340,6 @@ class Cavity(ABC):
         except Exception:
             self.convergence_df = self.convergence_df_data.copy()
 
-    def plot_mesh_convergence(self, qoi='freq [MHz]', mode_index='0-0', reference=None,
-                              slopes=False, floor=5e-14, ax=None, show=True):
-        """The relative error of *qoi* against the number of DOFs, one curve per polynomial
-        order, from :meth:`study_mesh_convergence`.
-
-        *mode_index* is ``'<m>-<mode>'`` (``'0-0'``: the monopole fundamental). *reference*
-        is the exact value; ``None`` compares against the solve with the most DOFs, which
-        is then left out of the plot.
-
-        ``slopes=True`` marks each order's convergence rate with a slope triangle. A
-        triangle is drawn only where the curve follows a power law (see
-        :func:`~cavsim2d.utils.slope_triangles.fit_convergence_rate`), so a figure of merit
-        whose error changes sign or size irregularly from mesh to mesh gets none rather
-        than a meaningless slope. Errors at or below *floor* are round-off: they stay in
-        the plot and are left out of the rates. Returns ``(fig, ax)``.
-        """
-        df = self.convergence_df_data
-        if df is None or len(df) == 0:
-            raise ValueError("no mesh-convergence results: run study_mesh_convergence() first.")
-        sub = df[df['mode_index'] == mode_index]
-        if sub.empty:
-            raise ValueError(f"mode_index {mode_index!r} is not in the results; available: "
-                             f"{sorted(df['mode_index'].unique())}")
-        if qoi not in sub:
-            raise ValueError(f"{qoi!r} is not in the results; available: "
-                             f"{[c for c in sub.columns if '[' in c]}")
-        if reference is None:
-            finest = sub.loc[sub['No of DOFs'].idxmax()]
-            ref, against = float(finest[qoi]), 'the finest solve'
-            sub = sub.drop(index=finest.name)
-        else:
-            ref, against = float(reference), 'the reference'
-        sub = sub.assign(error=((sub[qoi] - ref).abs() / abs(ref)).clip(lower=1e-16))
-
-        with house_style():
-            if ax is None:
-                fig, ax = plt.subplots(figsize=(8, 5.2))
-            else:
-                fig = ax.figure
-            curves, colors = [], []
-            for i, (p, g) in enumerate(sub.groupby('p')):
-                g = g.sort_values('No of DOFs')
-                color = WARM[i % len(WARM)]
-                ax.plot(g['No of DOFs'], g['error'], 'o-', ms=5, color=color, label=f'p = {p}')
-                curves.append((g['No of DOFs'].values, g['error'].values))
-                colors.append(color)
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-            if (sub['error'] <= 10 * floor).any():
-                ax.axhline(floor, color='0.5', lw=0.8, ls=':')
-                ax.text(1.0, floor * 1.4, 'round-off ', transform=ax.get_yaxis_transform(),
-                        ha='right', va='bottom', fontsize=8, color='0.4')
-            if slopes:
-                add_slope_triangles(ax, curves, colors, floor=floor)
-            ax.set_xlabel('degrees of freedom')
-            ax.set_ylabel(f'relative error in {qoi}')
-            ax.set_title(f'{self.name}: mode {mode_index} against {against}')
-            ax.legend()
-        _maybe_show(show)
-        return fig, ax
-
     def calculate_rel_errors(self, df):
         # Level-to-level relative error of the numeric QOI columns. Metadata
         # (mesh size/order, the refinement/pass indices, timings, mode/pol
@@ -1431,10 +1396,10 @@ class Cavity(ABC):
                 # UQ results are written to <cav>/uq/ (uq.json, uq_all_modes.json);
                 # get_uq_fm_results takes that folder, not a file path.
                 self.get_uq_fm_results(os.path.join(self.self_dir, 'uq'))
-            return True
         except FileNotFoundError as e:
             error(f"Could not find eigenmode results. Please rerun eigenmode analysis:: {e}")
-            return False
+        # The namespace, like every run: true when modes were computed.
+        return self.eigenmode
 
     def run_wakefield(self, MROT=2, MT=10, wakelength=50, bunch_length=25,
                       DDR_SIG=0.1, DDZ_SIG=0.1, WG_M=None, marker='', operating_points=None, solver='ABCI'):
@@ -1494,6 +1459,13 @@ class Cavity(ABC):
             self.get_wakefield_qois(config)
         except FileNotFoundError:
             error("Could not find the wakefield results. Please rerun wakefield analysis.")
+        return self.wakefield
+
+    def run_tune(self, tune_config=None, **kwargs):
+        """Tune this cavity: the same as ``cav.tune.run(...)``, which documents the
+        settings. The tuned geometry becomes ``cav.tuned``; this cavity is not
+        changed."""
+        return self.tune.run(tune_config, **kwargs)
 
     def active_length(self):
         """Accelerating length [mm] that ``Eacc`` is normalised to.
@@ -1511,22 +1483,6 @@ class Cavity(ABC):
         """Active length [m] for the RF power budget: :meth:`active_length`."""
         length = self.active_length()
         return None if length is None else float(length) * 1e-3
-
-    def calc_op_freq(self):
-        """
-        Calculates operating frequency. The operating frequency is used for tuning when a frequency is not given.
-        It is advisable to always include the desired tune frequency. Example
-
-        .. py:function:: cav.run_tune('Req', freq=1300)
-
-        Returns
-        -------
-
-        """
-        if not self.freq:
-            # A pi-mode half cell is lambda/4 long, so f = c / (4 L). L is in mm and
-            # freq in MHz. This used to read c0 / 4 * L, which is ~4e9 for TESLA.
-            self.freq = c0 / (4 * self.L * 1e-3) * 1e-6
 
     # Cavity._run_ngsolve (a dead pre-refactor staticmethod) was removed 2026-07-09:
     # it was never called (the live one is processes.eigenmode._run_ngsolve), it
@@ -1557,25 +1513,23 @@ class Cavity(ABC):
 
         if tune_res_path.exists():
             with open(tune_res_path, 'r') as json_file:
-                self.tune_results = json.load(json_file)
-            last = last_stage_result(self.tune_results)
+                tune_res = json.load(json_file)
+            last = last_stage_result(tune_res)
             if last is not None and 'FREQ' in last:
                 self.freq = last['FREQ']
         else:
             error("Tune results not found. Please tune the cavity")
 
     def get_eigenmode_qois(self, config=None):
-        """
-        Get quantities of interest written by the SLANS code
-        Returns
-        -------
+        """Reload the saved eigenmode results.
 
+        The results are ``cav.eigenmode.qois`` (also ``cav.eigenmode_qois``) and
+        ``cav.eigenmode_qois_all_modes``, read from disk whenever they are asked
+        for. Raises ``FileNotFoundError`` when there is no eigenmode result at all.
         """
-        qois = 'qois.json'
-
-        # Which polarisations to read: those named in the config (normalised to
-        # names — a bare 'dipole'/1 or a list are all accepted), or, when no
-        # config is given (e.g. the Study-level caller), whatever was solved.
+        # Which polarisations to check: those named in the config (a bare
+        # 'dipole'/1 or a list are all accepted), or, when no config is given
+        # (e.g. the Study-level caller), whatever was solved.
         raw = (config or {}).get('polarisation') if isinstance(config, dict) else None
         if raw is not None:
             if not isinstance(raw, (list, tuple, set)):
@@ -1584,573 +1538,24 @@ class Cavity(ABC):
         else:
             poles = self._available_polarisations() or ['monopole']
 
-        # Initialize the all-modes dictionary so we can append to it across polarisations
-        self.eigenmode_qois_all_modes = {}
-
         for pole in poles:
-            mono_dir = self._eigenmode_pol_dir(pole)
-            qois_path = os.path.join(mono_dir, qois)
-
+            qois_path = os.path.join(self._eigenmode_pol_dir(pole), 'qois.json')
             if not os.path.exists(qois_path):
-                # No monopole result. If higher-order (m-pole) results exist, this
-                # was an m-pole-only run — the monopole-derived summary attributes
-                # (freq, R/Q, …) simply aren't available; use cav.eigenmode.mpole_qois()
-                # for those. Only error when there is no eigenmode result at all.
+                # No result for this polarisation. If others were solved (an
+                # m-pole-only run), the monopole summary attributes simply aren't
+                # defined; read those with cav.eigenmode.mpole_qois(). Only error
+                # when there is no eigenmode result at all.
                 available = self._available_polarisations()
                 if available:
-                    info(f"No monopole eigenmode result for {self.name}; solved "
+                    info(f"No {pole} eigenmode result for {self.name}; solved "
                          f"polarisations: {available}. Read them with "
                          f"cav.eigenmode.mpole_qois('<pol>').")
                     return
                 raise FileNotFoundError(
                     f"No eigenmode result for {self.name} at {qois_path}. "
-                    f"Run run_eigenmode() first.")
+                    f"Run cav.eigenmode.run() first.")
 
-            # Keep tracking the baseline summary QOIs if monopole is processed
-            if pole == 'monopole':
-                with open(qois_path) as json_file:
-                    self.eigenmode_qois = json.load(json_file)
-
-            # Process the all-modes JSON and dynamically append/remap keys
-            all_modes_path = os.path.join(mono_dir, 'qois_all_modes.json')
-            if os.path.exists(all_modes_path):
-                with open(all_modes_path) as json_file:
-                    data = json.load(json_file)
-
-                    # Loop through each mode profile and modify the keys
-                    for mode_idx, mode_data in data.items():
-                        m_value = mode_data.get('m', 'unknown')
-                        new_key = f"{mode_idx}-{m_value}"
-
-                        # Store inside our master dictionary
-                        self.eigenmode_qois_all_modes[new_key] = mode_data
-
-        # with open(os.path.join(self.self_dir, 'eigenmode', 'monopole', 'Ez_0_abs.csv')) as csv_file:
-        #     self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-
-        # Monopole-derived summary attributes. Only set them when a monopole
-        # result was actually read — an m-pole-only run leaves eigenmode_qois
-        # empty, and those scalars aren't defined without the monopole.
-        if self.eigenmode_qois:
-            self.freq = self.eigenmode_qois['freq [MHz]']
-            self.k_cc = self.eigenmode_qois['kcc [%]']
-            self.ff = self.eigenmode_qois['ff [%]']
-            self.R_Q = self.eigenmode_qois['R/Q [Ohm]']
-            self.GR_Q = self.eigenmode_qois['GR/Q [Ohm^2]']
-            self.G = self.eigenmode_qois.get('G [Ohm]', (self.GR_Q / self.R_Q) if self.R_Q else 0)
-            self.Q = self.eigenmode_qois['Q []']
-            self.e = self.eigenmode_qois['Epk/Eacc []']
-            self.b = self.eigenmode_qois['Bpk/Eacc [mT/MV/m]']
-            self.Epk_Eacc = self.e
-            self.Bpk_Eacc = self.b
-
-    @staticmethod
-    def _phase_advance_label(j, n):
-        """Tick label for a phase advance of ``j*pi/n`` as a reduced fraction of
-        pi, rendered with mathtext (no LaTeX install needed): ``0``, ``pi/2``,
-        ``2pi/3``, ``pi``.
-        """
-        if j == 0:
-            return r'$0$'
-        f = Fraction(j, n)
-        if f == 1:
-            return r'$\pi$'
-        num = '' if f.numerator == 1 else str(f.numerator)
-        return rf'$\dfrac{{{num}\pi}}{{{f.denominator}}}$'
-
-    @staticmethod
-    def _phase_advances(n):
-        """The per-cell phase advances of an ``n``-cell fundamental passband:
-        ``mu_q = q*pi/(n-1)`` for ``q = 0..n-1`` — the standing-wave modes from the
-        0-mode (``mu = 0``) to the pi-mode (``mu = pi``). A single cell has only
-        the pi-mode. Returns ``(mu array, tick-label list)``.
-
-        This is the textbook convention for a well-ordered passband; it assigns
-        each mode by frequency order (the accelerating pi-mode at the high end).
-        The fully general value would come from each mode's on-axis field node
-        count, which is monopole-specific — see SHIPPING_ACTION_PLAN.md.
-        """
-        if n <= 1:
-            return np.array([np.pi]), [r'$\pi$']
-        mu = np.linspace(0.0, np.pi, n)
-        labels = [Cavity._phase_advance_label(q, n - 1) for q in range(n)]
-        return mu, labels
-
-    @staticmethod
-    def _resolve_bands(bands, pols):
-        """Normalise the ``bands`` argument to one 1-based list per polarisation.
-
-        - ``None`` -> ``None`` for every polarisation (all computed passbands).
-        - a flat list like ``[1, 2]`` -> the same selection for every polarisation.
-        - a nested list like ``[[1, 2], [1]]`` -> one selection per polarisation,
-          and its length must match ``pols``.
-        """
-        if bands is None:
-            return [None] * len(pols)
-        if not isinstance(bands, (list, tuple)):
-            raise TypeError("'bands' must be a list of passband numbers, or a "
-                            "list of such lists (one per polarisation).")
-        nested = [b for b in bands if isinstance(b, (list, tuple))]
-        if nested:
-            if len(nested) != len(bands):
-                raise ValueError("'bands' mixes plain numbers and per-polarisation "
-                                 "lists; use either [1, 2] or [[1, 2], [1]].")
-            if len(bands) != len(pols):
-                raise ValueError(f"'bands' has {len(bands)} per-polarisation lists "
-                                 f"but there are {len(pols)} polarisation(s).")
-            return [list(b) for b in bands]
-        return [list(bands)] * len(pols)          # one flat list, shared
-
-    def _cell_length_m(self):
-        """Axial length of one (mid-)cell in metres, for the dispersion light
-        line. Returns None when the period is not defined for this geometry, in
-        which case the light line is skipped. Overridden by the cavity types
-        that have a periodic cell."""
-        return None
-
-    def _dispersion_series(self, pol=None, bands=None, color=None, label=None):
-        """Collect the dispersion curves as a list of ``dict(x, y, color, label)``,
-        one per (polarisation, passband). Shared by the single-cavity and the
-        ``Study`` overlay plotters so both render identically."""
-        if pol is None:
-            pols = self._available_polarisations() or ['monopole']
-        elif isinstance(pol, (str, int)):
-            pols = [pol]
-        else:
-            pols = list(pol)
-
-        band_selection = self._resolve_bands(bands, pols)
-        n = self.n_cells
-        series = []
-
-        for pol_i, want_bands in zip(pols, band_selection):
-            all_modes = self.eigenmode.mpole_qois(pol_i)   # {idx: qois}
-            df = pd.DataFrame.from_dict(all_modes, orient='index')
-            if df.empty or 'freq [MHz]' not in df:
-                info(f"No {pol_name(pol_number(pol_i))} passband data — run "
-                     f"eigenmode with that polarisation first.")
-                continue
-            df = df.loc[sorted(df.index, key=lambda s: int(s))]
-            freqs = df['freq [MHz]'].to_numpy()
-
-            n_passbands = int(np.ceil(len(freqs) / n))
-            hue = color or polarisation_color(pol_i)
-            # colour by absolute band index, so passband 2 keeps its shade
-            # whether or not passband 1 is also drawn
-            band_colors = shades(hue, n_passbands)
-            pretty = pol_name(pol_number(pol_i))
-            chosen = range(1, n_passbands + 1) if want_bands is None else want_bands
-
-            for b in chosen:
-                if not isinstance(b, int) or isinstance(b, bool) or b < 1:
-                    raise ValueError(f"passband numbers are 1-based integers; got {b!r}.")
-                if b > n_passbands:
-                    info(f"{pretty}: passband {b} was not computed "
-                         f"(only {n_passbands} available).")
-                    continue
-                seg = freqs[(b - 1) * n:b * n]
-                k = self._phase_advances(n)[0][:len(seg)]
-                if label is not None:
-                    lbl = label
-                elif n_passbands == 1:
-                    lbl = f'{self.name} ({pretty})'
-                else:
-                    lbl = f'{self.name} ({pretty}, passband {b})'
-                series.append({'x': k, 'y': seg, 'color': band_colors[b - 1], 'label': lbl})
-        return series, n
-
-    @staticmethod
-    def _frequency_clusters(values, gap_factor=4.0, min_rel_gap=0.12):
-        """Group *values* into clusters split at large vertical gaps.
-
-        A gap becomes a break only when it is both several times the typical
-        within-cluster spacing (``gap_factor``) and a real fraction of the total
-        span (``min_rel_gap``) — so a broken axis appears only when passbands are
-        genuinely far apart, not for ordinary spread.
-        Returns a list of ``(low, high)`` ranges, ascending.
-        """
-        vals = np.unique(np.asarray(values, dtype=float))
-        if len(vals) < 2:
-            v = float(vals[0]) if len(vals) else 0.0
-            return [(v, v)]
-        diffs = np.diff(vals)
-        span = vals[-1] - vals[0]
-        typical = float(np.median(diffs)) or float(diffs.min())
-        clusters, start, prev = [], vals[0], vals[0]
-        for v, d in zip(vals[1:], diffs):
-            if d > gap_factor * typical and d > min_rel_gap * span:
-                clusters.append((float(start), float(prev)))
-                start = v
-            prev = v
-        clusters.append((float(start), float(prev)))
-        return clusters
-
-    @staticmethod
-    def _clusters_from_breaks(values, breaks):
-        """Cluster *values* at explicit gap ranges. Each break is a ``(low, high)``
-        frequency gap to cut, e.g. ``[(1350, 1600), (1900, 2350)]``; the split
-        falls between the two data points that straddle the gap's midpoint, so the
-        gap bounds only need to be approximate. Returns ``(low, high)`` ranges."""
-        vals = np.unique(np.asarray(values, dtype=float))
-        if len(vals) < 2:
-            v = float(vals[0]) if len(vals) else 0.0
-            return [(v, v)]
-        mids = []
-        for b in breaks:
-            if not (isinstance(b, (list, tuple)) and len(b) == 2):
-                raise ValueError("each entry in 'breaks' must be a (low, high) "
-                                 f"frequency gap, e.g. (1350, 1600); got {b!r}.")
-            lo, hi = sorted(float(x) for x in b)
-            mids.append(0.5 * (lo + hi))
-        mids.sort()
-        clusters, start, prev = [], vals[0], vals[0]
-        for v in vals[1:]:
-            if any(prev < m <= v for m in mids):
-                clusters.append((float(start), float(prev)))
-                start = v
-            prev = v
-        clusters.append((float(start), float(prev)))
-        return clusters
-
-    @staticmethod
-    def _render_dispersion(series, n, ax=None, break_axis=True, breaks=None,
-                           light_lines=None, **plot_kw):
-        """Draw collected dispersion *series*, optionally on a broken y-axis.
-
-        Breaks are chosen automatically from the frequency grouping unless
-        *breaks* gives explicit ``(low, high)`` gap ranges. *light_lines* is a
-        list of ``dict(d=cell_length_m, label=...)`` speed-of-light reference
-        lines. Returns the (top) axis; when broken, the stacked sub-axes are
-        reachable via ``ax.figure.axes``.
-        """
-        with house_style():
-            if not series:
-                return ax
-            yvals = np.concatenate([s['y'] for s in series])
-            ticks, ticklabels = Cavity._phase_advances(n)
-
-            def draw(a):
-                for s in series:
-                    a.plot(s['x'], s['y'], marker='o', mec='k', mew=0.6,
-                           color=s['color'], label=s['label'], **plot_kw)
-
-            def draw_light(a, add_label):
-                # Light line f = c*phi / (2*pi*d) (phase velocity = c). The diagram
-                # is a reduced (folded) zone, so every band is folded into
-                # mu in [0, pi] and the light line becomes a triangle wave: for
-                # band m the extended-zone phase is (m-1)*pi + mu (odd m, rising)
-                # or m*pi - mu (even m, reflected). One segment per band covers the
-                # plotted frequencies; drawn on every panel and clipped by y-limits.
-                mu = np.linspace(ticks[0], np.pi, 80)
-                for ll in (light_lines or []):
-                    d = ll['d']
-                    step = c0 / (2 * d) / 1e6                 # MHz gained per band
-                    n_bands = max(1, int(np.ceil(yvals.max() / step)))
-                    labelled = False
-                    for m in range(1, n_bands + 1):
-                        phi = (m - 1) * np.pi + mu if m % 2 else m * np.pi - mu
-                        f = c0 * phi / (2 * np.pi * d) / 1e6
-                        lab = ll['label'] if (add_label and not labelled) else '_nolegend_'
-                        a.plot(mu, f, ls='--', lw=1.3, color='0.35', zorder=1, label=lab)
-                        labelled = True
-
-            def draw_single(a):
-                draw(a)
-                # clip to the data band before the light line, so its full
-                # triangle wave does not stretch the y-axis
-                pad = 0.05 * (float(yvals.max() - yvals.min()) or 1.0)
-                a.set_ylim(yvals.min() - pad, yvals.max() + pad)
-                draw_light(a, add_label=True)
-                a.set_xticks(ticks)
-                a.set_xticklabels(ticklabels)
-                a.set_xlabel('phase advance per cell')
-                a.set_ylabel(r'$f$ [MHz]')
-                a.legend()
-                return a
-
-            if not break_axis:
-                clusters = [(float(yvals.min()), float(yvals.max()))]
-            elif breaks is not None:
-                clusters = Cavity._clusters_from_breaks(yvals, breaks)
-            else:
-                clusters = Cavity._frequency_clusters(yvals)
-
-            # A single cluster needs no break.
-            if len(clusters) <= 1:
-                if ax is None:
-                    _, ax = plt.subplots()
-                return draw_single(ax)
-
-            # Broken axis: highest-frequency cluster on top. Each sub-axis gets
-            # height proportional to its own data span, so the empty gaps vanish.
-            clusters_desc = clusters[::-1]
-            spans = [hi - lo for lo, hi in clusters_desc]
-            max_span = max(spans) or 1.0
-            ratios = [max(s, 0.25 * max_span) for s in spans]
-            global_range = float(yvals.max() - yvals.min()) or 1.0
-            k = len(clusters_desc)
-
-            # Build the stack of sub-axes. When the caller passed an axis we
-            # subdivide *its* grid slot in place (so it works inside a mosaic or
-            # a subplot grid); a free-floating axis with no slot can't be split,
-            # so fall back to drawing it on one axis.
-            owns_figure = ax is None
-            if owns_figure:
-                fig = plt.figure(figsize=(7, 6))
-                axes = list(np.atleast_1d(fig.subplots(
-                    k, 1, sharex=True,
-                    gridspec_kw={'height_ratios': ratios, 'hspace': 0.07})))
-            else:
-                spec = ax.get_subplotspec()
-                if spec is None:
-                    return draw_single(ax)
-                fig = ax.figure
-                ax.remove()
-                subspec = spec.subgridspec(k, 1, height_ratios=ratios, hspace=0.07)
-                axes = [fig.add_subplot(subspec[i]) for i in range(k)]
-                for a in axes[1:]:
-                    a.sharex(axes[0])
-
-            for a in axes:
-                draw(a)
-                a.grid(True)
-            # light line on every panel (clipped to each band); label it once
-            for i, a in enumerate(axes):
-                draw_light(a, add_label=(i == 0))
-            for a, (lo, hi) in zip(axes, clusters_desc):
-                pad = max(0.12 * (hi - lo), 0.02 * global_range)
-                a.set_ylim(lo - pad, hi + pad)
-
-            # diagonal break marks; hide the spines that face the gap
-            mark = dict(marker=[(-1, -0.6), (1, 0.6)], markersize=9, linestyle='none',
-                        color='#333333', mec='#333333', mew=1, clip_on=False)
-            for upper, lower in zip(axes[:-1], axes[1:]):
-                upper.spines['bottom'].set_visible(False)
-                lower.spines['top'].set_visible(False)
-                upper.tick_params(labelbottom=False, bottom=False)
-                upper.plot([0, 1], [0, 0], transform=upper.transAxes, **mark)
-                lower.plot([0, 1], [1, 1], transform=lower.transAxes, **mark)
-
-            axes[-1].set_xticks(ticks)
-            axes[-1].set_xticklabels(ticklabels)
-            axes[-1].set_xlabel('phase advance per cell')
-            axes[0].legend()
-            # y-label: supylabel centres it on the whole figure (fine when we own
-            # it); inside someone's mosaic, label the middle panel instead so we
-            # don't relabel their other axes.
-            if owns_figure:
-                fig.supylabel(r'$f$ [MHz]')
-            else:
-                axes[k // 2].set_ylabel(r'$f$ [MHz]')
-            return axes[0]
-
-    def plot_dispersion(self, ax=None, pol=None, bands=None, break_axis=True,
-                        breaks=None, light_line=True, **kwargs):
-        """Plot the Brillouin (dispersion) diagram: frequency vs per-cell phase
-        advance.
-
-        ``pol`` selects the polarisation(s):
-
-        - ``None`` (default) overlays every polarisation that has results
-          (monopole, dipole, …);
-        - a name or azimuthal number ('dipole', 1) plots just that one;
-        - a list plots the given subset.
-
-        ``bands`` selects which passbands to show (1-based; passband 1 is the
-        fundamental). By default every computed passband is drawn.
-
-        - a flat list, e.g. ``bands=[1, 2]``, applies to every polarisation;
-        - a nested list, e.g. ``bands=[[1, 2], [1]]`` with
-          ``pol=['monopole', 'dipole']``, selects the first two passbands for the
-          monopole and only the first for the dipole (one inner list per
-          polarisation, in order).
-
-        ``break_axis`` (default ``True``) splits the y-axis where passbands are
-        far apart, so the empty space between them is not wasted. The breaks are
-        found automatically from the frequency grouping; pass ``breaks`` to place
-        them by hand as ``(low, high)`` gap ranges, e.g.
-        ``breaks=[(1350, 1600), (1900, 2350)]`` (the bounds are approximate — the
-        split falls between the data points straddling each gap). Set
-        ``break_axis=False`` for a single axis. Breaking needs this call to own
-        the figure (``ax=None``); pass an ``ax`` to draw on one existing axis.
-
-        ``light_line`` (default ``True``) overlays the speed-of-light line
-        ``f = c*mu / (2*pi*d)`` (``d`` the cell length), the synchronism line the
-        accelerating pi-mode sits on. It is skipped for geometries whose cell
-        period is undefined.
-
-        Each polarisation gets a hue from the house palette; its passbands share
-        the hue and shade, so a whole polarisation reads as one colour family.
-        """
-        color = kwargs.pop('color', None)
-        label = kwargs.pop('label', None)
-        series, n = self._dispersion_series(pol=pol, bands=bands, color=color, label=label)
-        light_lines = None
-        if light_line:
-            d = self._cell_length_m()
-            if d:
-                light_lines = [{'d': d, 'label': 'light line'}]
-            else:
-                info(f"No light line: cell period is undefined for "
-                     f"{type(self).__name__}.")
-        return self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
-                                       breaks=breaks, light_lines=light_lines, **kwargs)
-
-    def axis_field_profile(self, mode, pol='monopole', n=801, normalise=True):
-        """Signed on-axis accelerating field of one mode: ``(z_mm, Ez)``.
-
-        The cached ``Ez_0_abs.csv`` holds ``|Ez|`` for the *mode of interest*
-        only, which cannot show whether two parts of a structure are in phase.
-        This samples the saved field of any solved mode, keeping the sign, so a
-        multi-cavity line can be read directly: where the lobes sit tells you
-        which cavity a mode lives in, and their relative sign tells you how the
-        cavities are phased.
-
-        *mode* is the 0-based index within the polarisation, matching
-        ``eigenmode.qois_df``. ``normalise`` scales to a peak of 1 so modes can
-        be overlaid.
-        """
-        gfu_E, _ = self.get_fields(mode, pol)
-        field = gfu_E[mode].components[0]          # in-plane (E_z, E_r)
-        mesh = gfu_E[mode].space.mesh
-        xs = np.array([v.point[0] for v in mesh.vertices], dtype=float)
-        # Just off the axis: r = 0 is the domain boundary, and a point exactly on
-        # it can fall outside the element the evaluator picks.
-        r_probe = 1e-4
-        z = np.linspace(xs.min(), xs.max(), int(n))
-        # Complex: a lossy solve (a beam line absorber, say) returns complex
-        # fields, and a float buffer would reject them.
-        vals = np.full(z.shape, np.nan, dtype=complex)
-        for i, zi in enumerate(z):
-            try:
-                point = mesh(float(zi), r_probe)
-            except Exception:
-                continue                            # outside the domain
-            vals[i] = complex(field(point)[0])
-
-        good = np.isfinite(vals)
-        if not good.any():
-            raise RuntimeError(
-                f"could not sample the axis field of mode {mode} for "
-                f"{self.name!r}: every probe point fell outside the meshed "
-                "domain. The saved mesh spans "
-                f"z = {xs.min() * 1e3:.1f} to {xs.max() * 1e3:.1f} mm.")
-        # A complex mode carries an arbitrary global phase, so the raw real part
-        # can come out near zero everywhere. Rotate the largest sample onto the
-        # real axis first; the remaining sign is then the physical one.
-        k = int(np.argmax(np.where(good, np.abs(vals), -1.0)))
-        if abs(vals[k]) > 0:
-            vals = vals * (np.conj(vals[k]) / abs(vals[k]))
-        ez = np.where(good, vals.real, np.nan)
-
-        if normalise:
-            peak = np.nanmax(np.abs(ez))
-            if peak > 0:
-                ez = ez / peak
-        return z * 1e3, ez
-
-    def plot_axis_field(self, mode=None, show_min_max=True, show=True, ax=None,
-                        pol='monopole', normalise=True, label=None, **kwargs):
-        """Plot the on-axis accelerating field.
-
-        With *mode* given, the **signed** field of that mode is drawn (see
-        :meth:`axis_field_profile`), which is what shows how a multi-cavity line
-        is phased. With ``mode=None`` (default) the cached ``|Ez|`` of the mode
-        of interest is drawn, annotated with the field flatness.
-        """
-        if mode is not None:
-            z, ez = self.axis_field_profile(mode, pol=pol, normalise=normalise)
-            if ax is None:
-                _, ax = plt.subplots(figsize=(12, 3))
-            ax.plot(z, ez, label=label if label is not None else f'mode {mode}',
-                    **kwargs)
-            ax.axhline(0.0, color='0.6', lw=0.8, ls=(0, (6, 4)), zorder=0)
-            ax.set_xlabel('$z$ [mm]')
-            ax.set_ylabel('$E_z(0,0)$' + (' [normalised]' if normalise else ''))
-            if show:
-                plt.tight_layout()
-                plt.show()
-            return ax
-
-        # Load the on-axis field if it isn't already in memory.
-        if len(self.Ez_0_abs['z(0, 0)']) == 0:
-            csv = os.path.join(self._eigenmode_pol_dir('monopole'), 'Ez_0_abs.csv')
-            if not os.path.exists(csv):
-                error('Axis field plot data not found.')
-                return None
-            with open(csv) as csv_file:
-                self.Ez_0_abs = pd.read_csv(csv_file, sep='\t')
-
-        z = np.asarray(self.Ez_0_abs['z(0, 0)'])
-        e = np.asarray(self.Ez_0_abs['|Ez(0, 0)|'])
-
-        fig, ax = plt.subplots(figsize=(12, 3))
-        ax.plot(z, e, label='$|E_z(0,0)|$')
-
-        # Field flatness from the on-axis cell peaks — computed here from the
-        # same peaks the min/max lines below draw, so the printed eta always
-        # matches the plot. (self.ff is only populated after get_eigenmode_qois;
-        # reading it here printed 0.00% on a fresh cavity.) Uses the same peak
-        # detection as evaluate_qois so the value equals the QOI 'ff [%]'.
-        peaks, _ = find_peaks(e, distance=max(1, len(e) // 100), width=100)
-        ff = (min(e[peaks]) / max(e[peaks]) * 100) if len(peaks) else 100.0
-        ax.text(0.95, 0.05, '$' + r'\eta=' + fr'{ff:.2f}\%' + '$', fontsize=12,
-                ha='right', va='bottom', transform=ax.transAxes)
-        ax.legend(loc="upper right")
-        if show_min_max and len(peaks):
-            ax.plot(z[peaks], e[peaks], marker='o', ls='')
-            ax.axhline(min(e[peaks]), c='r', ls='--')
-            ax.axhline(max(e[peaks]), c='k')
-        _maybe_show(show)
-        return ax
-
-    def plot_spectra(self, var='freq [MHz]', ax=None, show=True, **kwargs):
-        """Mode-spectrum plot — delegates to :meth:`EigenmodeSolver.plot_spectra`
-        (the canonical home). Draws the per-mode distribution of *var* over the UQ
-        samples, coloured by polarisation; see that method for mode/frequency
-        selection, ``std_cap`` and reference overlays."""
-        return self.eigenmode.plot_spectra(var=var, ax=ax, show=show, **kwargs)
-
-    def _plot_spectra_legacy(self, var, ax=None):
-        if len(self.uq_fm_results_all_modes) != 0:
-            results = self.uq_fm_results_all_modes
-
-            if ax is None:
-                fig, ax = plt.subplots(figsize=(12, 4))
-
-            # Generate KDE data for each mode found in the nested results
-            # Sort modes numerically if possible
-            try:
-                sorted_modes = sorted(results.keys(), key=lambda x: int(x))
-            except ValueError:
-                sorted_modes = sorted(results.keys())
-
-            for mode_idx in sorted_modes:
-                qois = results[mode_idx]
-                if var in qois:
-                    stats = qois[var]
-                    mean = stats["expe"][0]
-                    std = stats["stdDev"][0]
-
-                    if std == 0:
-                        # Avoid division by zero, plot a vertical line for zero-variance results
-                        ax.axvline(mean, ls='--', alpha=0.5, label=f"{var}_{mode_idx} (std=0)")
-                        continue
-
-                    # Dynamic range based on standard deviation
-                    x_values = np.linspace(mean - 4 * std, mean + 4 * std, 1000)
-                    y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
-                    
-                    ax.plot(x_values, y_values, label=f"{var}_{mode_idx}")
-
-            # Plot settings
-            ax.set_title(f"KDE Plots for {var}")
-            ax.set_xlabel(var)
-            ax.set_ylabel("Density")
-            ax.legend()
-
-        else:
-            error("uq_fm_results_all_modes not found")
+        self.eigenmode._invalidate()
 
     def get_uq_fm_results(self, folder):
         # load uq result
@@ -2191,76 +1596,33 @@ class Cavity(ABC):
             self.uq_hom_results = json.load(json_file)
 
     def get_wakefield_qois(self, wakefield_config):
-        """Load the operating-point wakefield QOIs (P_HOM, per-operating-point
-        loss/kick) from ``wakefield/qois_op.json``.
+        """Fill the per-operating-point attributes (``k_fm``, ``k_loss``,
+        ``k_kick``, ``phom``, ``I0``) from ``wakefield/qois_op.json``.
 
-        The main run's loss/kick factors are ``cav.wakefield.qois`` (always
-        written); this operating-point set is only produced when
-        ``operating_points`` were given, because those need the machine
-        parameters and per-bunch-length re-runs.
+        The main run's loss/kick factors are ``cav.wakefield_qois`` (the same as
+        ``cav.wakefield.qois``, always written); the operating-point table,
+        ``cav.wakefield_qois_op``, exists only when ``operating_points`` were
+        given, because it needs the machine parameters and a rerun per bunch
+        length.
         """
-        op_path = os.path.join(self.self_dir, 'wakefield', 'qois_op.json')
-        all_wakefield_qois = {}
-        if os.path.exists(op_path):
-            with open(op_path) as json_file:
-                all_wakefield_qois = json.load(json_file)
-
-        # get only keys in op_points. Truthy check (not just presence): the
-        # complete saved config carries 'operating_points': None when unset.
-        # Matched on the exact sub-run ids, not a substring: 'Z' is a substring of
-        # 'Z_b_2024_SR_4.32mm', so two operating points sharing a prefix used to
-        # pull in each other's results.
-        if wakefield_config.get('operating_points'):
-            for op_pt, op_vals in wakefield_config['operating_points'].items():
-                for label, sigma in bunch_lengths(op_vals).items():
-                    key = bunch_tag(op_pt, label, sigma)
-                    if key in all_wakefield_qois:
-                        self.wakefield_qois[key] = all_wakefield_qois[key]
-
-            for key, val in self.wakefield_qois.items():
+        all_op = self.wakefield_qois_op
+        # Truthy check (not just presence): the complete saved config carries
+        # 'operating_points': None when unset. Matched on the exact sub-run ids,
+        # not a substring: 'Z' is a substring of 'Z_b_2024_SR_4.32mm', so two
+        # operating points sharing a prefix used to pull in each other's results.
+        if not wakefield_config.get('operating_points'):
+            return
+        for op_pt, op_vals in wakefield_config['operating_points'].items():
+            for label, sigma in bunch_lengths(op_vals).items():
+                key = bunch_tag(op_pt, label, sigma)
+                val = all_op.get(key)
+                if val is None:
+                    continue
                 self.k_fm[key] = val['k_FM [V/pC]']
                 self.k_loss[key] = val['|k_loss| [V/pC]']
                 self.k_kick[key] = val['|k_kick| [V/pC/m]']
                 self.phom[key] = val['P_HOM [kW]']
                 self.I0[key] = val['I0 [mA]']
-
-    def plot_animate_wakefield(self, save=False):
-        # Deferred: IPython is a notebook-only optional dependency ([jupyter] extra).
-        from IPython.display import HTML, display_html
-
-        def plot_contour_for_frame(data, frame_key, ax):
-            ax.clear()
-
-            colors = {'DOTS': 'k', 'SOLID': 'k'}
-
-            if frame_key in data:
-                for plot_type, df in data[frame_key]:
-                    ax.plot(df['X'], df['Y'], linestyle='-', color=colors[plot_type])
-
-            ax.set_xlabel('X-axis (m)')
-            ax.set_ylabel('Y-axis (m)')
-            ax.set_title(f'Contour Plot for {frame_key}')
-
-        def animate_frames(data):
-            fig, ax = plt.subplots(figsize=(18, 4))
-            frame_keys = sorted(data.keys(), key=lambda x: int(x.split('_')[1]))  # Sort frames by their order
-
-            def update(frame_key):
-                plot_contour_for_frame(data, frame_key, ax)
-
-            ani = FuncAnimation(fig, update, frames=frame_keys, repeat=True, interval=1000)
-            plt.close(fig)
-
-            return ani
-
-        top_folder = self.wakefield_dir
-        efield_contour = get_wakefield_data(os.path.join(top_folder, 'longitudinal', 'cavity.top'))
-        ani = animate_frames(efield_contour)
-        display_html(HTML(animate_frames(efield_contour).to_jshtml()))
-
-        if save:
-            # Save the animation as an MP4 file
-            ani.save(os.path.join(top_folder, f'{self.name}_e_field_animation.mp4'), writer='ffmpeg', dpi=150)
 
     def get_power_uq(self, rf_config, op_points_list):
         stat_moms = ['expe', 'stdDev', 'skew', 'kurtosis']
@@ -2396,9 +1758,6 @@ class Cavity(ABC):
                 }
         return self.rf_performance_qois
 
-    def get_uq_post(self, qoi):
-        pass
-
     def _eigenmode_pol_dir(self, pol='monopole'):
         """Folder holding eigenmode results for a polarisation:
         ``eigenmode/<pol name>/`` (monopole, dipole, ...). Monopole results
@@ -2413,212 +1772,6 @@ class Cavity(ABC):
     def get_fields(self, mode=1, pol='monopole'):
         gfu_E, gfu_H = ngsolve_mevp.load_fields(self._eigenmode_pol_dir(pol), mode)
         return gfu_E, gfu_H
-
-    def _plot_profile(self, profile, ax=None, mirror=False, fill=False,
-                      center=True, control_points=None, regions=True, **kwargs):
-        """Draw a cavity's meridian outline straight from its :class:`Profile`.
-
-        Geometry-independent: works for every model, since each builds a Profile.
-        The wall is drawn in mm. Only the upper half (``r >= 0``) is the analysed,
-        axisymmetric domain, so that is what is drawn by default; pass
-        ``mirror=True`` to reflect it about the axis for the full cross-section.
-
-        ``center`` (default ``True``) centres each cavity on ``z = 0`` so cavities of
-        different lengths line up about their middle when overlaid for comparison;
-        ``center=False`` instead starts every cavity at ``z = 0`` (left-aligned).
-        ``fill`` shades the interior (default ``False``).
-
-        ``control_points`` overlays a spline cavity's control points and the
-        polygon connecting them: ``None`` (default) shows them automatically for
-        cavities that expose ``control_polygons()`` (i.e. splines), ``True`` forces
-        it, ``False`` hides it.
-        """
-        with house_style():
-            if ax is None:
-                _, ax = plt.subplots(figsize=(8, 3))
-            pts = np.asarray(profile.contour_points(3e-4, skip=('AXI',)), dtype=float)
-            z, r = pts[:, 0] * 1e3, pts[:, 1] * 1e3          # metres -> mm
-            # centre on z = 0 (overlaid cavities align at their middle) or, with
-            # center=False, start every cavity at z = 0 (left-aligned).
-            z_shift = 0.5 * (z.min() + z.max()) if center else z.min()
-            z = z - z_shift
-            color = kwargs.pop('color', None) or getattr(self, 'color', None) or WARM[1]
-            lw = kwargs.pop('lw', kwargs.pop('linewidth', 1.8))
-            label = kwargs.pop('label', self.name)
-            if fill:
-                poly_z = np.concatenate([z, z[::-1]])
-                poly_r = np.concatenate([r, -r[::-1] if mirror else np.zeros_like(r)])
-                ax.fill(poly_z, poly_r, color=color, alpha=0.12, lw=0)
-            ax.plot(z, r, color=color, lw=lw, label=label, **kwargs)
-            if mirror:
-                ax.plot(z, -r, color=color, lw=lw, **kwargs)
-            self._overlay_control_points(ax, z_shift, mirror, control_points)
-            self._overlay_regions(ax, z_shift, mirror, regions)
-            ax.set_aspect('equal')
-            ax.set_xlabel('$z$ [mm]')
-            ax.set_ylabel(r'$r$ [mm]')
-            return ax
-
-    def _overlay_regions(self, ax, z_shift_mm, mirror, regions=True):
-        """Shade this cavity's material regions on a geometry plot.
-
-        A beam line absorber, a ceramic window or a dielectric liner is part of
-        the geometry, so a drawing that omits it is misleading — most obviously
-        for a :class:`~cavsim2d.models.bla.BLA`, whose whole point is the ring
-        in its wall. Drawn in the same shifted-mm frame as the wall, and skipped
-        with ``regions=False``.
-        """
-        if not regions:
-            return
-        for i, d in enumerate(self.dielectrics or ()):
-            fc = d.get('color') or WARM[1 + i % (len(WARM) - 1)]
-            if d.get('points'):
-                poly = np.asarray(d['points'], dtype=float)
-            elif d.get('z') is not None:
-                (z0, z1), (r0, r1) = d['z'], d['r']
-                poly = np.array([[z0, r0], [z1, r0], [z1, r1], [z0, r1]], dtype=float)
-            else:
-                continue
-            pz = poly[:, 0] - z_shift_mm            # region extents are already mm
-            pr = poly[:, 1]
-            ax.fill(pz, pr, color=fc, alpha=0.45, lw=0, zorder=0,
-                    label=d['material'])
-            if mirror:
-                ax.fill(pz, -pr, color=fc, alpha=0.45, lw=0, zorder=0,
-                        label='_nolegend_')
-        return ax
-
-    def _overlay_control_points(self, ax, z_shift_mm, mirror, control_points):
-        """Overlay spline control points and their connecting control polygon on a
-        geometry plot, in the same shifted-mm frame as the wall.
-
-        Drawn when *control_points* is ``True``, or when it is ``None`` (default)
-        and this cavity exposes ``control_polygons()`` (i.e. a spline). A silent
-        no-op for models without control points; ``control_points=False`` always
-        suppresses it. Dashed polygon + open markers, so the interpolated wall
-        still reads clearly underneath.
-        """
-        if control_points is False:
-            return
-        maker = getattr(self, 'control_polygons', None)
-        polys = maker() if callable(maker) else None
-        if not polys:
-            if control_points:                    # explicitly asked but none exist
-                info(f"{type(self).__name__} '{self.name}' has no control points "
-                     "to overlay.")
-            return
-        cp_color = WARM[4]
-        for i, poly in enumerate(polys):
-            poly = np.asarray(poly, dtype=float)
-            pz = poly[:, 0] * 1e3 - z_shift_mm
-            pr = poly[:, 1] * 1e3
-            # label only the first cell's polygon, so a legend shows one entry.
-            ax.plot(pz, pr, ls='--', lw=1.0, marker='o', ms=5, color=cp_color,
-                    mfc='white', mec=cp_color, zorder=6,
-                    label='control points' if i == 0 else '_nolegend_')
-            if mirror:
-                ax.plot(pz, -pr, ls='--', lw=1.0, marker='o', ms=5, color=cp_color,
-                        mfc='white', mec=cp_color, zorder=6, label='_nolegend_')
-        return ax
-
-    def plot(self, what, ax=None, scale_x=1, show=True, **kwargs):
-        """Plot a static view of this cavity (``what='geometry'`` or
-        ``'convergence'``). Like the solver-object ``plot_*`` methods this shows
-        the figure by default; pass ``show=False`` to compose onto the returned
-        axis (e.g. add a title, or overlay several cavities on one ``ax``)."""
-        result = self._plot_dispatch(what, ax=ax, scale_x=scale_x, **kwargs)
-        _maybe_show(show)
-        return result
-
-    def _plot_dispatch(self, what, ax=None, scale_x=1, **kwargs):
-        if what.lower() == 'geometry':
-            # Opt-in: `tuned=True` routes the plot to self.tuned when it
-            # exists, so callers can overlay before/after on the same ax.
-            tuned_flag = kwargs.pop('tuned', False)
-            target = self
-            if tuned_flag:
-                if self.tuned is None:
-                    warning('tuned=True requested but cavity has no tuned version yet — '
-                            'plotting original geometry instead.')
-                else:
-                    target = self.tuned
-
-            # Use the pure-matplotlib geometry function. The gmsh-oriented
-            # `write_cavity_geometry_cli` only populates `geo` under
-            # `write=...`, so it cannot draw a visible plot on its own.
-            # ``ignore_degenerate=True`` keeps the drawing going on
-            # borderline input instead of bailing on the tangent check —
-            # the caller wants to *see* the geometry, even if it would
-            # fail a strict mesh check.
-            # Single-cell elliptical views (mid_cell / end_cell_*) keep the
-            # cell-list drawer, which only the elliptical family carries.
-            cell_kwargs = ('mid_cell', 'end_cell_left', 'end_cell_right')
-            if any(k in kwargs for k in cell_kwargs) and hasattr(target, 'mid_cell'):
-                common_kwargs = dict(scale=1, ax=ax, plot=True, ignore_degenerate=True)
-                if 'mid_cell' in kwargs:
-                    kw = {k: v for k, v in kwargs.items() if k != 'mid_cell'}
-                    ax = write_cavity_geometry_cli_wo_gmsh(target.mid_cell, target.mid_cell,
-                                                           target.mid_cell, 'none', 1,
-                                                           **common_kwargs, **kw)
-                elif 'end_cell_left' in kwargs:
-                    ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_left, target.end_cell_left,
-                                                           target.end_cell_left, 'left', 1,
-                                                           **common_kwargs, **kwargs)
-                else:
-                    ax = write_cavity_geometry_cli_wo_gmsh(target.end_cell_right, target.end_cell_right,
-                                                           target.end_cell_right, 'right', 1,
-                                                           **common_kwargs, **kwargs)
-                if ax is None:
-                    return None
-                ax.set_xlabel('$z$ [mm]')
-                ax.set_ylabel(r"$r$ [mm]")
-                return ax
-
-            # General path: every model builds a Profile, so draw that directly.
-            # This is geometry-independent — the spline, gun and pillbox all work,
-            # not just the elliptical family (whose mid_cell/end_cell lists the
-            # old drawer required).
-            maker = getattr(target, 'profile', None)
-            profile = maker() if callable(maker) else None
-            if profile is not None:
-                return target._plot_profile(profile, ax=ax, **kwargs)
-
-            # Fallback for a cavity imported from a .geo/CAD file (no profile):
-            # the elliptical cell-list drawer, if this type carries the lists.
-            if hasattr(target, 'mid_cell'):
-                ax = write_cavity_geometry_cli_wo_gmsh(
-                    target.mid_cell, target.end_cell_left, target.end_cell_right,
-                    target.beampipe, target.n_cells,
-                    scale=1, ax=ax, plot=True, ignore_degenerate=True, **kwargs)
-                if ax is None:
-                    return None
-                ax.set_xlabel('$z$ [mm]')
-                ax.set_ylabel(r"$r$ [mm]")
-                return ax
-
-            error(f"{type(target).__name__} has no profile() and no cell lists to "
-                  f"plot its geometry.")
-            return None
-
-        # All wakefield plotting now lives on the wakefield namespace:
-        #   cav.wakefield.plot_impedance() / plot_wake() / plot_k_loss() / plot_k_kick()
-        # cav.plot(...) keeps only the geometry and convergence views.
-        if what.lower() in ('zl', 'zt', 'wpl', 'wpt'):
-            error(f"cav.plot('{what}') was removed. Use the wakefield namespace: "
-                  f"cav.wakefield.plot_impedance() / plot_wake() "
-                  f"(kind='longitudinal'|'transverse').")
-            return ax
-
-        if what.lower() == 'convergence':
-            try:
-                if ax:
-                    self._plot_convergence(ax)
-                else:
-                    fig, ax = plt.subplot_mosaic([['conv', 'abs_err']], layout='constrained', figsize=(12, 4))
-                    self._plot_convergence(ax)
-                return ax
-            except ValueError:
-                info("Convergence data not available.")
 
     def _available_polarisations(self):
         """Polarisation result folders that actually exist for this cavity
@@ -2644,668 +1797,44 @@ class Cavity(ABC):
         error(f"No {what} for polarisation '{pol}' "
               f"(looked for {required_file}). {avail_msg}{hint}")
 
-    def show_geometry(self, plotter='ngsolve', maxh=20e-3, order=1, ax=None, show=True):
-        """Interactive NGSolve (webgui) view of the analysed geometry.
-
-        Meshes the geometry on the fly, so it needs no prior eigenmode run.
-        For the flat matplotlib meridian outline use :meth:`plot` instead::
-
-            cav.plot('geometry')     # matplotlib, half cross-section (r >= 0)
-
-        Draws whatever :attr:`beampipe_length` the cavity carries, so it always
-        shows the geometry a solve would mesh.
-
-        With ``plotter='matplotlib'``, *ax* and *show* work as they do on the
-        ``plot_*`` methods: draw into a given axes and pass ``show=False`` to
-        keep the figure open for further panels. Both are ignored by the
-        webgui plotter.
-        """
-        return ngsolve_mevp.show_geometry(self, maxh=maxh, order=order, plotter=plotter,
-                                          ax=ax, show=show)
-
-    def show_mesh(self, plotter='ngsolve', pol='monopole', ax=None, show=True):
-        """Interactive NGSolve (webgui) view of the mesh used in the analysis.
-
-        *ax* / *show* apply to ``plotter='matplotlib'`` — see :meth:`show_geometry`."""
-        mesh_path = self._eigenmode_pol_dir(pol)
-        if any(os.path.exists(os.path.join(mesh_path, f)) for f in ('mesh.vol', 'mesh.pkl')):
-            return ngsolve_mevp.show_mesh(mesh_path, plotter=plotter, ax=ax, show=show)
-        self._eigenmode_artifact_error(pol, 'mesh.vol', 'mesh')
-
-    def show_fields(self, mode=0, which='E', plotter='ngsolve', pol='monopole',
-                    ax=None, show=True):
-        """Interactive NGSolve (webgui) view of the eigenmode fields.
-
-        For m-pole results pass ``pol`` ('dipole', 'quadrupole', ... or the mode
-        number m); *which* then accepts 'E'/'H' (in-plane envelopes) as well as
-        'Ephi'/'Hphi' (azimuthal envelopes).
-
-        *ax* / *show* apply to ``plotter='matplotlib'`` — see :meth:`show_geometry`."""
-        field_path = self._eigenmode_pol_dir(pol)
-        if any(os.path.exists(os.path.join(field_path, f)) for f in ('field_meta.json', 'gfu_EH.pkl')):
-            return ngsolve_mevp.show_fields(field_path, mode, which, plotter,
-                                            ax=ax, show=show)
-        self._eigenmode_artifact_error(pol, 'field_meta.json', 'field data')
-
-    def _plot_convergence(self, ax):
-        keys = list(ax.keys())
-        # plot convergence
-        conv_filepath = os.path.join(self.self_dir, 'eigenmode', "tune_convergence.json")
-        if os.path.exists(conv_filepath):
-            with open(conv_filepath, 'r') as f:
-                convergence_dict = json.load(f)
-            if len(convergence_dict) > 0:
-                x, y = convergence_dict[list(convergence_dict.keys())[0]], convergence_dict['freq [MHz]']
-                ax[keys[0]].scatter(x, y, ec='k', label=self.name)
-
-                # plot directions
-                for i in range(len(x) - 1):
-                    dx = x[i + 1] - x[i]
-                    dy = y[i + 1] - y[i]
-                    ax[keys[0]].quiver(x[i], y[i], dx, dy, ls='--', angles='xy',
-                                       scale_units='xy', scale=1, color='red',
-                                       width=0.005, units='width', headwidth=3, headlength=5,
-                                       headaxislength=4)
-
-        # plot absolute error
-        abs_err_filepath = os.path.join(self.self_dir, 'eigenmode', "tune_absolute_error.json")
-        abs_err_dict = {}
-        if os.path.exists(conv_filepath):
-            with open(abs_err_filepath, 'r') as f:
-                abs_err_dict = json.load(f)
-        if len(abs_err_dict) > 0:
-            ax[keys[1]].plot(abs_err_dict['abs_err'], marker='o', mec='k', label=self.name)
-
-        ax[keys[0]].set_xlabel('Parameter')
-        ax[keys[0]].set_ylabel(r"Value")
-        ax[keys[1]].set_xlabel('Iteration')
-        ax[keys[1]].set_ylabel(r"Absolute error")
-        ax[keys[1]].set_yscale('log')
-
     def define_operating_points(self, op):
         self.operating_points = op
 
-    def inspect(self, cell_type='mid-cell', variation=0.2):
-        # Deferred: IPython and ipywidgets are notebook-only optional dependencies
-        # ([jupyter] extra).
-        from IPython.display import display
-        from ipywidgets import HBox, VBox, Label
-        import ipywidgets as widgets
-
-        if cell_type == 'mid-cell':
-            cell = self.shape['IC']
-        elif cell_type == 'end-cell-left':
-            cell = self.shape['OC']
-        elif cell_type == 'end-cell-right':
-            cell = self.shape['OC_R']
-        else:
-            cell = self.shape['IC']
-
-        if self.cell_parameterisation == 'flattop':
-            A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
-
-            # Define the function that plots the graph
-            def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
-                cell = np.array([A, B, a, b, Ri, L, Req, l])
-                write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
-                                                  n_cell=1, tangent_check=True, lw=1,
-                                                  plot=True,
-                                                  ignore_degenerate=True)
-
-                # Update the sum display
-                sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
-
-            # Create sliders for each variable
-            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-                                           description='A')
-            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-                                           description='B')
-            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-                                           description='a')
-            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-                                           description='b')
-            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-                                            description='Ri')
-            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-                                           description='L')
-            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-                                             value=Req_,
-                                             description='Req')
-            l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
-                                           description='l')
-            # Create a label to display the sum of A + a
-            sum_label = Label()
-
-            # Arrange the sliders in a 3x3 layout
-            ui = VBox([
-                HBox([A_slider, B_slider, a_slider]),
-                HBox([b_slider, Ri_slider, L_slider]),
-                HBox([Req_slider, l_slider]),
-                sum_label  # Add the sum label to the layout
-            ])
-
-            # Create an interactive widget to update the plot
-            out = widgets.interactive_output(plot_cavity_geometry_flattop,
-                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
-
-        else:
-            A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
-
-            # Define the function that plots the graph
-            def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
-                cell = np.array([A, B, a, b, Ri, L, Req])
-                write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-                                          tangent_check=True, lw=1,
-                                          plot=True,
-                                          ignore_degenerate=True)
-
-                # Update the sum display
-                sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
-
-            # Create sliders for each variable
-            A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-                                           description='A')
-            B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-                                           description='B')
-            a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-                                           description='a')
-            b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-                                           description='b')
-            Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-                                            description='Ri')
-            L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-                                           description='L')
-            Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-                                             value=Req_,
-                                             description='Req')
-            # Create a label to display the sum of A + a
-            sum_label = Label()
-
-            # Arrange the sliders in a 3x3 layout
-            ui = VBox([
-                HBox([A_slider, B_slider, a_slider]),
-                HBox([b_slider, Ri_slider, L_slider]),
-                HBox([Req_slider]),
-                sum_label  # Add the sum label to the layout
-            ])
-
-            # Create an interactive widget to update the plot
-            out = widgets.interactive_output(plot_cavity_geometry,
-                                             {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-                                              'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
-
-        # Display the layout
-        display(out, ui)
-
     def config_sample(self, kind, show=True):
-        """Show every configurable entry of a solver config, with its default.
+        """Show every configurable entry of a config, with its default.
 
         Prints the complete default config for *kind* — all available options with
         their default values — and returns it as a dict you can copy, edit and pass
         to the matching ``run(...)``. *kind* is one of ``'eigenmode'``,
-        ``'wakefield'``, ``'tune'``, ``'multipacting'`` or ``'uq'``.
+        ``'wakefield'``, ``'tune'``, ``'multipacting'``, ``'uq'`` or
+        ``'optimisation'``; an unknown one raises ``ValueError``.
 
-        The defaults come from the solvers themselves (the same dicts ``run()``
-        merges over), so this never drifts from what a run actually uses. For one
-        solver's default without the printout, use ``cav.<solver>.sample_cfg``
-        (e.g. ``cav.eigenmode.sample_cfg``).
+        The defaults are the ones the solvers merge over, so this never drifts
+        from what a run uses. Each solver namespace has the same without the
+        printout: ``cav.tune.config_sample`` (or ``cfg_sample``,
+        ``sample_config``, ``sample_cfg``). ``cfg_sample``, ``sample_config`` and
+        ``sample_cfg`` are also other names for this method.
         """
-        samplers = {
-            'eigenmode': lambda: self.eigenmode.sample_cfg,
-            'wakefield': lambda: self.wakefield.sample_cfg,
-            'tune': lambda: self.tune.sample_cfg,
-            'multipacting': lambda: self.multipacting.sample_cfg,
-            'uq': lambda: copy.deepcopy(UQ_CONFIG),
-        }
-        if kind not in samplers:
-            info(f"config_sample: unknown kind {kind!r}. "
-                 f"Choose one of: {', '.join(samplers)}.")
-            return None
-        cfg = samplers[kind]()
-        if show:
-            print(f"# default {kind} config - every available option, with its default\n"
-                  + json.dumps(cfg, indent=2, default=str))
-        return cfg
-    # def inspect(self, cell_type='mid-cell', variation=0.2, tangent_check=False):
-    #
-    #     fig, ax = plt.subplots(figsize=(12, 6))
-    #     ax.set_aspect('equal')
-    #
-    #     if cell_type == 'mid-cell':
-    #         cell = self.shape['IC']
-    #     elif cell_type == 'end-cell-left':
-    #         cell = self.shape['OC']
-    #     elif cell_type == 'end-cell-right':
-    #         cell = self.shape['OC_R']
-    #     else:
-    #         cell = self.shape['IC']
-    #
-    #     if self.cell_parameterisation == 'flattop':
-    #         A_, B_, a_, b_, Ri_, L_, Req_, l_ = cell[:8]
-    #
-    #         # Define the function that plots the graph
-    #         def plot_cavity_geometry_flattop(A, B, a, b, Ri, L, Req, l):
-    #             cell = np.array([A, B, a, b, Ri, L, Req, l])
-    #             write_cavity_geometry_cli_flattop(cell, cell, cell, BP='none',
-    #                                               n_cell=1, tangent_check=True, lw=1,
-    #                                               plot=True,
-    #                                               ignore_degenerate=True)
-    #
-    #             # Update the sum display
-    #             sum_label.value = f'Sum of A + a + l: {A + a + l:.2f}, L: {L}, delta: {A + a + l - L}'
-    #
-    #         # Create sliders for each variable
-    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-    #                                        description='A')
-    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-    #                                        description='B')
-    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-    #                                        description='a')
-    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-    #                                        description='b')
-    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-    #                                         description='Ri')
-    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-    #                                        description='L')
-    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-    #                                          value=Req_,
-    #                                          description='Req')
-    #         l_slider = widgets.FloatSlider(min=(1 - variation) * l_, max=(1 + variation) * l_, step=0.1, value=l_,
-    #                                        description='l')
-    #         # Create a label to display the sum of A + a
-    #         sum_label = Label()
-    #
-    #         # Arrange the sliders in a 3x3 layout
-    #         ui = VBox([
-    #             HBox([A_slider, B_slider, a_slider]),
-    #             HBox([b_slider, Ri_slider, L_slider]),
-    #             HBox([Req_slider, l_slider]),
-    #             sum_label  # Add the sum label to the layout
-    #         ])
-    #
-    #         # Create an interactive widget to update the plot
-    #         out = widgets.interactive_output(plot_cavity_geometry_flattop,
-    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider, 'l': l_slider})
-    #
-    #     else:
-    #         A_, B_, a_, b_, Ri_, L_, Req_ = cell[:7]
-    #
-    #         # Define the function that plots the graph
-    #         def plot_cavity_geometry(A, B, a, b, Ri, L, Req):
-    #             cell = np.array([A, B, a, b, Ri, L, Req])
-    #             # ax.clear()
-    #             write_cavity_geometry_cli(cell, cell, cell, BP='none', n_cell=1,
-    #                                       tangent_check=tangent_check, lw=3,
-    #                                       plot=True, ax=ax,
-    #                                       ignore_degenerate=True)
-    #             # Update the sum display
-    #             sum_label.value = f'Sum of A + a: {A + a:.2f}, L: {L}, delta: {A + a - L}'
-    #
-    #         def run_eigenmode(b):
-    #             eigenmode_config = {'processes': 1}
-    #             boundary_conds = 'mm'
-    #             eigenmode_config['boundary_conditions'] = BOUNDARY_CONDITIONS_DICT[boundary_conds]
-    #
-    #             shape_space = {}
-    #
-    #             # run_eigenmode_s({self.name: self.shape}, {self.name: self.shape_multicell}, self.projectDir, eigenmode_config)
-    #
-    #         # Create sliders for each variable
-    #         A_slider = widgets.FloatSlider(min=(1 - variation) * A_, max=(1 + variation) * A_, step=0.1, value=A_,
-    #                                        description='A')
-    #         B_slider = widgets.FloatSlider(min=(1 - variation) * B_, max=(1 + variation) * B_, step=0.1, value=B_,
-    #                                        description='B')
-    #         a_slider = widgets.FloatSlider(min=(1 - variation) * a_, max=(1 + variation) * a_, step=0.1, value=a_,
-    #                                        description='a')
-    #         b_slider = widgets.FloatSlider(min=(1 - variation) * b_, max=(1 + variation) * b_, step=0.1, value=b_,
-    #                                        description='b')
-    #         Ri_slider = widgets.FloatSlider(min=(1 - variation) * Ri_, max=(1 + variation) * Ri_, step=0.1, value=Ri_,
-    #                                         description='Ri')
-    #         L_slider = widgets.FloatSlider(min=(1 - variation) * L_, max=(1 + variation) * L_, step=0.1, value=L_,
-    #                                        description='L')
-    #         Req_slider = widgets.FloatSlider(min=(1 - variation) * Req_, max=(1 + variation) * Req_, step=0.1,
-    #                                          value=Req_,
-    #                                          description='Req')
-    #         # Create a label to display the sum of A + a
-    #         sum_label = Label()
-    #
-    #         # create run tune and run eigenmode button
-    #         button_tune = widgets.Button(description="Tune")
-    #         button_eigenmode = widgets.Button(description="Eigenmode")
-    #         button_eigenmode.on_click(run_eigenmode)
-    #
-    #         # Arrange the sliders in a 3x3 layout
-    #         ui = VBox([
-    #             HBox([A_slider, B_slider, a_slider]),
-    #             HBox([b_slider, Ri_slider, L_slider]),
-    #             HBox([Req_slider]),
-    #             sum_label,  # Add the sum label to the layout
-    #             # HBox([button_tune, button_eigenmode])
-    #         ])
-    #
-    #         # Create an interactive widget to update the plot
-    #         out = widgets.interactive_output(plot_cavity_geometry,
-    #                                          {'A': A_slider, 'B': B_slider, 'a': a_slider, 'b': b_slider,
-    #                                           'Ri': Ri_slider, 'L': L_slider, 'Req': Req_slider})
-    #
-    #     # Display the layout
-    #     display(out, ui)
+        return config_sample(kind, show=show)
 
-    def eval_expr(self, expr, symbols):
-        """Evaluate numeric expression with symbols."""
-        node = ast.parse(expr, mode='eval').body
+    cfg_sample = sample_config = sample_cfg = config_sample
 
-        def _eval(n):
-            if isinstance(n, ast.Num): return n.n
-            if isinstance(n, ast.Name): return symbols[n.id]
-            if isinstance(n, ast.BinOp): return _ops[type(n.op)](_eval(n.left), _eval(n.right))
-            if isinstance(n, ast.UnaryOp): return _ops[type(n.op)](_eval(n.operand))
-            raise ValueError(f"Unsupported expression: {expr}")
-
-        return _eval(node)
-
-    # Main converter
-    def geo_to_abc(self, wakefield_config=None, folder=None, **kwargs):
-        """Write this cavity's ABCI input deck(s).
-
-        The contour comes from the unified :class:`~cavsim2d.geometry.Profile`
-        (densified to the mesh spacing, exact for ellipse / circle / spline
-        walls), with beam pipes guaranteed at both ends because ABCI refuses to
-        run without them. Cavities that expose no ``profile()`` — an imported
-        ``.geo``/CAD — fall back to parsing the ``.geo`` text.
-        """
-        self.create()
-
-        cfg = wakefield_config or {}
-        ddr, ddz = abci_mesh_steps(cfg)
-        ds = float(cfg.get('contour_ds', min(ddr, ddz)))
-        # ABCI wants at least 5 mesh lengths of pipe; ask for a little margin.
-        min_pipe = 6.0 * ddz
-        pipe_length = cfg.get('beampipe_length')      # metres; None -> 3x axial length
-
-        maker = getattr(self, 'profile', None)
-        profile = maker() if callable(maker) else None
-
-        if profile is not None:
-            # ABCI's own arc primitive is kept: replacing an arc that meets a beam
-            # pipe tangentially (an elliptical cavity's iris) with a dense polyline
-            # makes ABCI's mesher emit NaN wake potentials.
-            items, added_l, added_r = abci_shape(profile, ds, min_pipe, pipe_length)
-            if added_l or added_r:
-                info(f"{self.name}: ABCI needs a beam pipe at each end; added "
-                     f"{added_l * 1e3:.1f} mm on the left and {added_r * 1e3:.1f} mm on "
-                     f"the right.")
-            zmin = min(it[1] if it[0] == 'point' else it[2][0] for it in items)
-            segments = []
-            for it in items:
-                if it[0] == 'point':
-                    segments.append(('point', it[2], it[1] - zmin))
-                else:
-                    (zc, rc), (ze, re) = it[1], it[2]
-                    segments.append(('arc', rc, zc - zmin, re, ze - zmin))
-            points = {}
-        else:
-            points, segments, zmin = self._contour_from_geo()
-
-        wakefield_folder_structure = {
-            'wakefield': {
-                'longitudinal': None,
-                'transversal': None
-            }
-        }
-        if folder:
-            make_dirs_from_dict(wakefield_folder_structure, folder)
-        else:
-            make_dirs_from_dict(wakefield_folder_structure, self.self_dir)
-            folder = self.self_dir
-
-        MROT = resolve_mrot(wakefield_config)
-        if MROT == 2:
-            for m in range(2):
-                self._write_abc(points, segments, zmin, {}, m, wakefield_config, folder, **kwargs)
-        else:
-            self._write_abc(points, segments, zmin, {}, MROT, wakefield_config, folder, **kwargs)
-
-    def _contour_from_geo(self):
-        """Legacy contour extraction: regex-parse the gmsh ``.geo`` text.
-
-        Only understands ``Point(...)`` and ``Ellipse(...)``, and encodes each
-        ellipse as an ABCI ``-3.`` *circular* arc about the ellipse centre — which
-        is only faithful when the ellipse is a circle. Kept for cavities with an
-        imported ``.geo`` and no ``profile()``.
-        """
-        with open(self.geo_filepath) as f:
-            lines = [l.split('%', 1)[0].strip() for l in f]
-
-        symbols = {}
-        define_re = re.compile(r"(\w+)\s*=\s*DefineNumber\[\s*([^,\]]+)")
-        for line in lines:
-            m = define_re.search(line)
-            if m:
-                symbols[m.group(1)] = m.group(2).strip()
-        changed = True
-        while changed:
-            changed = False
-            for k, v in list(symbols.items()):
-                if isinstance(v, str):
-                    try:
-                        symbols[k] = self.eval_expr(v, symbols)
-                        changed = True
-                    except Exception:
-                        pass
-
-        point_re = re.compile(r"Point\((\d+)\)\s*=\s*\{([^}]+)\}")
-        ellipse_re = re.compile(r"Ellipse\(\d+\)\s*=\s*\{([^}]+)\}")
-
-        points = {}
-        segments = []
-        zvals = []
-        for line in lines:
-            m = point_re.match(line)
-            if m:
-                pid = int(m.group(1))
-                coords = [p.strip() for p in m.group(2).split(',')]
-                z = self.eval_expr(coords[0], symbols)
-                r = self.eval_expr(coords[1], symbols)
-                points[pid] = (r, z)
-                zvals.append(z)
-
-        zmin = min(zvals) if zvals else 0.0
-
-        for line in lines:
-            if line.startswith('Point('):
-                m = point_re.match(line)
-                pid = int(m.group(1))
-                r, z = points[pid]
-                segments.append(('point', r, z - zmin))
-            elif line.startswith('Line('):
-                continue
-            elif line.startswith('Ellipse('):
-                m = ellipse_re.match(line)
-                ids = [int(x.strip()) for x in m.group(1).split(',')]
-                if len(segments) >= 3:
-                    segments = segments[:-3]
-                segments.append(('ellipse', ids[1], ids[3]))
-
-        return points, segments, zmin
-
-    def _write_abc(self, points, segments, zmin, symbols, MROT, wakefield_config, folder, **kwargs):
-        # defaults
-        RDRIVE, ISIG = 5e-3, 5
-        LCRBW = 'F'  # counter-rotating beam
-        ZSEP = 0.0
-        BSEP = 0
-        NBUNCH = 1
-        BETA = 1
-        LMATPR = '.F.'
-        LPRW, LPPW, LSVW, LSVWA, LSVWT, LSVWL, LSVF = '.T.', '.T.', '.T.', '.F.', '.T.', '.T.', '.F.'
-        LSAV, LCPUTM = 'F', 'F'
-        LCBACK = '.T.'
-        LPLE = '.F.'
-        NSHOT = 0
-        UBT = 50
-        SIG = 25e-3
-        MT = 4
-
-        # unpack kwargs
-        for key, value in kwargs.items():
-            if key == 'RADIAL BEAM OFFSET AT (RDRIVE)':
-                RDRIVE = value
-            if key == 'NUMBER OF WAKE POTENTIAL POINTS (NW)':
-                NW = value
-            if key == 'WAKE FOR A COUNTER-ROTATING BEAM (LCRBW)':
-                LCRBW = value
-            if key == 'VELOCITY OF THE BUNCH / C (BETA)':
-                BETA = value
-            if key == 'PRINTOUT OF CAVITY SHAPE USED (LMATPR)':
-                LMATPR = value
-            if key == 'PRINTOUT OF WAKE POTENTIALS (LPRW)':
-                LPRW = value
-            if key == 'LINE-PRINTER PLOT OF WAKE POT. (LPPW)':
-                LPPW = value
-            if key == 'SAVE WAKE POTENTIALS IN A FILE (LSVW)':
-                LSVW = value
-            if key == 'SAVE AZIMUTHAL WAKE IN A FILE (LSVWA)':
-                LSVWA = value
-            if key == 'SAVE TRANSVERSE WAKE IN A FILE (LSVWT)':
-                LSVWT = value
-            if key == 'SAVE LONGITUDINAL WAKE IN A FILE (LSVWL)':
-                LSVWL = value
-            if key == 'SAVE FFT RESULTS IN A FILE (LSVF)':
-                LSVF = value
-            if key == 'SAVE FIELDS INTO FILE (LSAV)':
-                LSAV = value
-            if key == 'CPUTIME MONITOR ACTIVE (LCPUTM)':
-                LCPUTM = value
-
-        # ABCI's own field mesh. geo_to_abc already reads these to size the
-        # contour sampling and the minimum beam pipe, so leaving them out here
-        # left the deck pinned at the default: a caller who set DDR/DDZ got a
-        # differently *sampled* wall solved on an unchanged mesh, and a mesh
-        # convergence check came back perfectly flat. The same helper sizes both,
-        # so the wall sampling and the field mesh cannot disagree.
-        mesh_DDR, mesh_DDZ = abci_mesh_steps(wakefield_config)
-
-        if 'save_fields' in wakefield_config.keys():
-            LPLE, LCBACK = 'T', 'F'
-            if isinstance(wakefield_config['save_fields'], dict):
-                if 'nshot' in wakefield_config['save_fields'].keys():
-                    NSHOT = wakefield_config['save_fields']['nshot']
-
-        if 'wake_config' in wakefield_config.keys():
-            wake_config = wakefield_config['wake_config']
-            if 'counter_rotating'in wakefield_config['wake_config'].keys():
-                LCRBW = 'T'
-                if 'separation' in wakefield_config['wake_config']['counter_rotating'].keys():
-                    ZSEP = wakefield_config['wake_config']['counter_rotating']['separation']
-
-        if 'beam_config' in wakefield_config.keys():
-            if 'beam_offset' in wakefield_config['beam_config'].keys():
-                RDRIVE = wakefield_config['beam_config']['beam_offset']
-            if 'nbunch' in wakefield_config['beam_config'].keys():
-                NBUNCH = wakefield_config['beam_config']['nbunch']
-            if 'separation' in wakefield_config['beam_config'].keys():
-                BSEP = wakefield_config['beam_config']['separation']
-
-        # Bunch length (SIG) and wake length (UBT). Both are accepted either
-        # nested under beam_config/wake_config — the form Study.run_wakefield
-        # populates — or at the top level, the form DEFAULT_WAKEFIELD_CONFIG
-        # declares. Without this the hardcoded defaults above were the only
-        # values that ever reached the deck, so every loss factor came back at
-        # 25 mm whatever the caller asked for.
-        bunch_length = (wakefield_config.get('beam_config') or {}).get(
-            'bunch_length', wakefield_config.get('bunch_length'))
-        if bunch_length is not None:
-            SIG = float(bunch_length) * 1e-3          # [mm] -> [m]
-
-        wakelength = (wakefield_config.get('wake_config') or {}).get(
-            'wakelength', wakefield_config.get('wakelength'))
-        if wakelength is not None:
-            UBT = float(wakelength)                   # [m]
-
-        # MT (time steps to cross a mesh cell -> time-integration resolution). Accept it
-        # nested OR top-level, like SIG/UBT above. It used to be read only from
-        # wake_config['MT'], so a top-level MT -- the form run_wakefield and
-        # DEFAULT_WAKEFIELD_CONFIG use -- was silently dropped and the run fell back to the
-        # MT=4 default. That coarse integration degrades the TRANSVERSE (dipole) wake far
-        # more than the on-axis longitudinal monopole (noisy/smeared transverse spectrum).
-        mt_cfg = (wakefield_config.get('wake_config') or {}).get('MT', wakefield_config.get('MT'))
-        if mt_cfg is not None:
-            MT = int(mt_cfg)
-        # ABCI caps its time mesh at NPT=40, i.e. 2*(MT+1) <= 40 -> MT <= 19. A larger MT
-        # aborts the run ("2*(MT+1) EXCEEDS MAXIMUM NPT"), so clamp instead. (Empirically
-        # MT barely moves the impedance spectrum anyway -- MT=4 and MT=15 are identical.)
-        if MT > 19:
-            warning(f'MT={MT} exceeds the ABCI time-mesh limit (2*(MT+1) <= NPT=40); '
-                    f'clamping to MT=19.')
-            MT = 19
-
-        # Upper frequency of the FFT/spectrum output [GHz]. Without it ABCI
-        # runs the spectrum out to its own limit — tens of GHz for a short
-        # bunch — which is mostly noise and makes the output files large.
-        CUTOFF = (wakefield_config.get('wake_config') or {}).get(
-            'cutoff', wakefield_config.get('cutoff'))
-
-        with open(os.path.join(folder, 'wakefield', MROT_DICT[MROT], 'cavity.abc'), 'w') as out:
-            # Header
-            out.write(f' &FILE LSAV = .{LSAV}., ITEST = 0, LREC = .F., LCPUTM = .{LCPUTM}. &END \n')
-            out.write(' SAMPLE INPUT #1 A SIMPLE CAVITY STRUCTURE \n')
-            out.write(' &BOUN  IZL = 3, IZR = 3  &END \n')
-            out.write(f' &MESH DDR = {mesh_DDR}, DDZ = {mesh_DDZ} &END \n')
-            out.write(" #CAVITYSHAPE\n0.\n")
-
-            # Body
-            for seg in segments:
-                if seg[0] == 'point':
-                    _, r, z = seg
-                    out.write(f"{r:.16f} {z:.16f}\n")
-                elif seg[0] == 'arc':
-                    # '-3.' introduces an arc given by its centre, then its end point.
-                    # Emitted by the Profile path; already z-shifted.
-                    _, r_c, z_c, r_e, z_e = seg
-                    out.write("-3., 0.000\n")
-                    out.write(f"{r_c:.16f} {z_c:.16f}\n")
-                    out.write(f"{r_e:.16f} {z_e:.16f}\n")
-                elif seg[0] == 'ellipse':
-                    # legacy .geo path: point ids into `points`
-                    _, pid_m, pid_e = seg
-                    r_m, z_m = points[pid_m]
-                    r_e, z_e = points[pid_e]
-                    out.write("-3., 0.000\n")
-                    out.write(f"{r_m:.16f} {z_m - zmin:.16f}\n")
-                    out.write(f"{r_e:.16f} {z_e - zmin:.16f}\n")
-
-            # Closing
-            out.write("0.000 0.000\n9999. 9999.\n")
-
-            # wakefield simulation paramters
-            out.write(f' &BEAM  SIG = {SIG}, ISIG = {ISIG}, RDRIVE = {RDRIVE}, MROT = {MROT}, NBUNCH = {NBUNCH}, BSEP = {BSEP} &END \n')
-            # out.write(' &BEAM  SIG = {}, MROT = {}, RDRIVE = {}  &END \n'.format(SIG, MROT, 0.005))
-            out.write(f' &TIME  MT = {int(MT)} &END \n')
-            # UBT must not be truncated to an integer: a loss-factor run uses a
-            # wake only a few bunch lengths long (5 x 2.4 mm = 0.012 m), and
-            # int() turned that into 0.
-            out.write(
-                f' &WAKE  UBT = {UBT:g}, LCRBW = .{LCRBW}., LCBACK = {LCBACK}, LCRBW = .{LCRBW}., ZSEP = {ZSEP} &END \n')
-            # No NFS here. ABCI has no such namelist variable -- its &WAKE takes
-            # UBT, LCFRON, LCBACK, LCHIN, LNAPOLY, ZCF, ZCT, RWAK, LCRBW, ZSEP,
-            # LNONAP and nothing else, and an unknown name is a namelist read
-            # error. The number of points in the FFT output is ABCI's own, and
-            # its resolution is set by the wake length (df ~ c/UBT); CUTOFF in
-            # &PLOT below bounds the range. A dead 'NFS = {NFS}' fragment used to
-            # sit at the end of this line, which made the config key look live.
-            # f.write(' &WAKE  UBT = {}, LCHIN = F, LNAPOLY = F, LNONAP = F &END \n'.format(UBT, wake_offset))
-            # f.write(' &WAKE R  = {}   &END \n'.format(wake_offset))
-            _cutoff = f'CUTOFF = {CUTOFF:g}, ' if CUTOFF is not None else ''
-            out.write(f' &PLOT  LCAVIN = .T., LCAVUS = .F., LPLW = .T., LFFT = .T., LSPEC = .T., '
-                    f'{_cutoff}LINTZ = .F., LPATH = .T., LPLE = {LPLE}, LPLC= .F. &END \n')
-            out.write(f' &PRIN  LMATPR = {LMATPR}, LPRW = {LPRW}, LPPW = {LPPW}, LSVW = {LSVW}, '
-                    f'LSVWA = {LSVWA}, LSVWT = {LSVWT}, LSVWL = {LSVWL},  LSVF = {LSVF}   &END\n')
-            out.write('\nSTOP\n')
+    def _set_shape_key(self, key, value):
+        """Record *key* in ``shape`` and rebuild ``shape_multicell`` from it."""
+        if isinstance(self.shape, dict):
+            self.shape[key] = value
+        self.to_multicell()
 
     def to_multicell(self):
+        """Rebuild ``shape_multicell`` from the elliptical cell dict in ``shape``.
+
+        Only a model described by mid and end cells (``IC``, ``OC``, ``OC_R``) has
+        one; for the others this does nothing. It used to raise ``KeyError``, so
+        ``set_n_cells`` and ``set_beampipe`` failed on a pillbox, a spline or a gun.
+        """
+        if not (isinstance(self.shape, dict)
+                and all(k in self.shape for k in ('IC', 'OC', 'OC_R', 'BP', 'n_cells'))):
+            return
         mid_cell = self.shape['IC']
 
         self.shape_multicell = {}
@@ -3446,7 +1975,7 @@ class Cavity(ABC):
                 for slot in self._row_slots(k):
                     params[slot] = v
 
-            scav = self._carry_dielectrics_to(self.rebuild(params))
+            scav = self._carry_layout_to(self._carry_dielectrics_to(self.rebuild(params)))
             # Dielectric variables are not in `parameters`, so rebuild() cannot
             # carry them; overlay them onto the clone's own regions.
             for k, v in row.items():
@@ -3495,7 +2024,7 @@ class Cavity(ABC):
             content, n = re.subn(pattern, replacement, content)
 
             if n == 0:
-                print(f"Warning: parameter '{name}' not found in {os.path.basename(input_geo)}")
+                warning(f"Parameter '{name}' not found in {os.path.basename(input_geo)}.")
                 info(fr"Here are available parameters: {(self.parameters.keys())}")
 
         os.makedirs(output_folder, exist_ok=True)

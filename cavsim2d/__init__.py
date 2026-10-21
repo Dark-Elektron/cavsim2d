@@ -49,6 +49,7 @@ from cavsim2d.solvers import (
 )
 
 from cavsim2d.utils.style import apply_style, house_style, WARM
+from cavsim2d.utils.printing import CavsimWarning, set_verbose, verbose
 from cavsim2d.analysis.uq import (plot_uq_comparison, uq_comparison_table,
                                   perturbation_slots, perturbation_nodes)
 
@@ -74,6 +75,9 @@ __all__ = [
     'OptimisationSolver',
     'EigenmodeResult',
     'apply_style',
+    'CavsimWarning',
+    'set_verbose',
+    'verbose',
     'house_style',
     'WARM',
     'plot_uq_comparison',

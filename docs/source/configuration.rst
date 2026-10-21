@@ -15,18 +15,114 @@ all of their keys. See :doc:`concepts` for the conventions they share:
 Discovering the options
 -----------------------
 
-You do not have to memorise these — every default is available at runtime:
+You do not have to memorise these — every default is available at runtime, from
+the object you are about to run:
 
-- ``cav.config_sample(kind)`` prints the complete default config for *kind*
-  (``'eigenmode'``, ``'wakefield'``, ``'tune'``, ``'multipacting'`` or ``'uq'``) —
-  every available key with its default value — and returns it as a dict.
-- ``cav.<solver>.sample_cfg`` returns that same default for one solver without
-  printing, e.g. ``cfg = cav.eigenmode.sample_cfg`` — a fresh copy you can edit and
-  pass straight to ``cav.eigenmode.run(cfg)``. (``cav.<solver>.config`` is different:
-  it is the *saved* config of a run that has already happened.)
+- ``cav.<solver>.config_sample`` returns the complete default config of that
+  solver, every key with its default, as a fresh copy to edit and pass straight
+  back: ``cfg = cav.tune.config_sample``, change what you need, then
+  ``cav.tune.run(cfg)``. ``cfg_sample``, ``sample_config`` and ``sample_cfg`` are
+  the same thing, and calling it, ``cav.tune.config_sample()``, works too. The study
+  namespaces have it as well: ``study.eigenmode.config_sample``,
+  ``study.wakefield.config_sample``, ``study.optimisation.config_sample``.
+- ``cav.config_sample(kind)``, or ``cav.cfg_sample(kind)``, prints the default for
+  *kind* — ``'eigenmode'``, ``'wakefield'``, ``'tune'``, ``'multipacting'``,
+  ``'uq'`` or ``'optimisation'`` — and returns it. ``study.config_sample(kind)``
+  does the same and needs no cavity in the study.
+- ``cav.<solver>.config`` is different: it is the *saved* config of a run that has
+  already happened.
 
-Both read the solvers' own defaults — the exact dicts ``run()`` merges over — so
-they never drift from what a run actually uses.
+The samples are the solvers' own defaults — the exact dicts ``run()`` merges over —
+so they never drift from what a run uses. ``'uq'`` and ``'optimisation'`` have no
+defaults to merge over; their samples are complete, valid templates whose
+variables, bounds and objectives you replace with your own.
+
+A sample displays with a note beside each key: what it does, its unit, and what
+``None`` stands for. The display is valid Python, so you can paste it into a script
+and edit it there:
+
+.. code-block:: python
+
+   >>> cav.tune.config_sample
+   {
+       'freqs': None,             # target [MHz]; None -> c/(4L) of the half cell, with a warning
+       'cell_type': None,         # None -> {'mid-cell': 'Req'}, plus 'end-cell': 'L' for multicell
+       'tol': 0.0001,             # stop once the frequency is this close to the target [MHz]
+       ...
+   }
+
+Units
+-----
+
+Not every length is in the same unit. Geometry and mesh sizes are in millimetres,
+while lengths along the beam line that a solver adds (beam pipes, the wake, the PML)
+are in metres:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 15 45
+
+   * - Setting
+     - Unit
+     - Where
+   * - Geometry parameters (``A``, ``Req``, ``L``, …), optimisation ``bounds``,
+       UQ ``delta`` (additive)
+     - mm
+     - cavity definitions, optimisation, UQ
+   * - ``mesh_config['h']``, ``pec_maxh``
+     - mm
+     - eigenmode, multipacting
+   * - ``bunch_length``, operating-point ``'sigma [mm]'``
+     - mm
+     - wakefield
+   * - ``beampipe_length``
+     - m
+     - eigenmode, wakefield
+   * - ``wakelength``, ``mesh_config['DDR']`` / ``['DDZ']``
+     - m
+     - wakefield
+   * - ``pml_length``
+     - m
+     - eigenmode
+   * - ``xrange``
+     - m
+     - multipacting
+   * - ``freqs``, ``tol``
+     - MHz
+     - tuning
+   * - ``epks``
+     - V/m
+     - multipacting
+   * - ``t_max``
+     - s
+     - multipacting
+   * - ``v_init``
+     - eV
+     - multipacting
+   * - ``conductivity``
+     - S/m
+     - eigenmode
+   * - ``surface_resistance``
+     - Ohm
+     - eigenmode
+
+Results carry their unit in the key name instead: ``'freq [MHz]'``,
+``'R/Q [Ohm]'``, ``'Epk/Eacc []'``.
+
+Accepted spellings
+------------------
+
+A few keys have a second spelling. A run renames it to the key in this reference
+before it merges the defaults in, so either works:
+
+- tune: ``freq`` is ``freqs`` and ``tolerance`` is ``tol``; the legacy
+  ``parameters`` + ``cell_types`` pair becomes ``cell_type``
+- eigenmode: ``nmodes`` is ``n_modes``
+- optimisation: ``no_of_generations`` is ``no_of_generation``
+- every ``run()``: ``overwrite`` is ``force``
+
+Giving both spellings with different values raises an error. Any other key a run
+does not recognise gives a warning that suggests the closest valid key.
 
 Cross-cutting keys
 ------------------
@@ -37,7 +133,12 @@ These appear in several configs:
    *(int, default 1)* Worker processes for parallel evaluation (UQ nodes,
    optimisation candidates, multi-cavity studies).
 ``rerun``
-   *(bool, default True)* Re-run even if cached results exist; ``False`` reuses them.
+   *(bool, default True)* Re-run even if cached results exist; ``False`` reuses the
+   results that match the cavity's geometry and recomputes the rest.
+``force``
+   *(bool, default False)* Answer yes to the question a run asks before it
+   overwrites existing results or deletes results computed for a different geometry
+   (see :ref:`results-integrity`). ``overwrite`` is the same key.
 ``uq_config``
    *(dict, default None)* Nest this inside an eigenmode / wakefield / tune config to
    turn a single run into an uncertainty sweep — see :ref:`config-uq`.
@@ -73,6 +174,14 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
    and ``'pp'``.
 ``n_port_modes``
    *(int, default 3)* TM\ :sub:`0n` pipe modes kept per port with ``boundary_conditions='port'``.
+``beampipe_length``
+   *(float, default None)* Length [m] of each beam pipe. ``None`` uses the model's own
+   default: twice the mid-cell length ``L_m`` for elliptical cavities.
+``pml_length``
+   *(float, default None)* Length [m] of the absorbing layer that ``'o'`` adds to a
+   pipe end. ``None`` → three pipe radii.
+``pml_alpha``
+   *(complex, default 1j)* Complex stretch of that absorbing layer.
 ``conductivity``
    *(float, default 5.96e7)* Wall conductivity [S/m] for the loss-based Q / G.
 ``surface_resistance``
@@ -167,15 +276,22 @@ Tuning — ``cav.tune.run`` / ``study.run_tune``
 ----------------------------------------------
 
 ``freqs``
-   *(float | list)* Target frequency [MHz] (a list gives a per-cavity target).
+   *(float | list, default None)* Target frequency [MHz] (a list gives a per-cavity
+   target). ``None`` tunes an elliptical cavity to the pi-mode estimate
+   :math:`c/4L` of its half-cell length, with a warning; other models need it.
 ``cell_type``
-   *(dict)* ``{cell block: handle}``, e.g. ``{'mid-cell': 'Req'}``. Schedule several
-   blocks (``{'mid-cell': 'Req', 'end-cell': 'L'}``) to tune them in turn — see
-   :doc:`tuning`.
+   *(dict, default None)* ``{cell block: handle}``, e.g. ``{'mid-cell': 'Req'}``.
+   Schedule several blocks (``{'mid-cell': 'Req', 'end-cell': 'L'}``) to tune them in
+   turn — see :doc:`tuning`. ``None`` tunes the mid-cell ``Req``, plus the end-cell
+   ``L`` on a multi-cell elliptical cavity.
 ``eigenmode_config``
    *(dict)* The eigenmode settings used for the solve at each tuning step.
+``solve_tuned``
+   *(bool, default False)* After tuning, also run the eigenmode analysis on the tuned
+   cavity (``cav.tuned``) with ``eigenmode_config``.
 ``tol``
-   *(float, default 1e-4)* Secant-solver tolerance.
+   *(float, default 1e-4)* Frequency tolerance [MHz]: the secant stops once the
+   frequency is this close to the target.
 ``maxiter``
    *(int, default 10)* Maximum secant iterations.
 
@@ -268,7 +384,7 @@ Optimisation — ``study.run_optimisation``
 ``initial_points``
    *(int)* Initial candidates before the GA evolves.
 ``no_of_generation``
-   *(int)* Number of GA generations.
+   *(int, default 100)* Number of GA generations (``no_of_generations`` also works).
 ``method``
    *(dict, default LHS)* Initial-point sampler, e.g. ``{'LHS': {'seed': 5}}``.
 ``crossover_factor`` / ``mutation_factor`` / ``chaos_factor``

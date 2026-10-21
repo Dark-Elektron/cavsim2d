@@ -8,7 +8,7 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import requires_abci
-from cavsim2d import Study, Pillbox, RFGun, EllipticalCavity
+from cavsim2d import Study, Pillbox, RFGun, EllipticalCavity, SplineCavity
 
 
 def test_pillbox_eigenmode(project_dir):
@@ -56,6 +56,22 @@ def test_pillbox_tuning(project_dir):
     assert res['parameters']['Req'] != 100     # Req moved
     tuned = pb.tuned
     assert tuned is not None and isinstance(tuned, Pillbox)
+
+
+def test_base_setters_work_on_every_model():
+    """set_n_cells / set_beampipe read the elliptical cell dict and raised
+    KeyError on any other model, e.g. when a tuned pillbox was solved with
+    eigenmode_config={'n_cells': ...}."""
+    spline = SplineCavity({'geometry': {'p0': [0, 35], 'p1': [0, 70], 'p2': [30, 103],
+                                        'p3': [85, 103], 'p4': [115, 70], 'p5': [115, 35]}})
+    for cav in (Pillbox(1, [100, 100, 20, 0, 0], beampipe='none'), spline):
+        cav.set_n_cells(2)
+        cav.set_beampipe('both')
+        assert cav.n_cells == 2 and cav.beampipe == 'both'
+    mid = [42, 42, 12, 19, 35, 57.7, 103.353]
+    ell = EllipticalCavity(1, mid, mid, mid, beampipe='none')
+    ell.set_n_cells(3)
+    assert ell.shape_multicell['n_cells'] == 3
 
 
 def test_pillbox_inherits_base_run_eigenmode():
@@ -117,5 +133,7 @@ def test_per_cavity_run_eigenmode_delegates(project_dir):
     cavs = Study(project_dir)
     pb = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
     cavs.add_cavity([pb], ['PB'])
-    assert pb.run_eigenmode() is True
+    # every run returns the namespace holding its results, true when modes exist
+    result = pb.run_eigenmode()
+    assert result is pb.eigenmode and result
     assert pb.freq > 0

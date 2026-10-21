@@ -1,18 +1,17 @@
 """Parallel eigenmode analysis process functions."""
-import os.path
 import shutil
-import time
 from pathlib import Path
 
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import (NGSolveMEVP, parse_boundary_conditions,
                                                     parse_polarisations)
 from cavsim2d.solvers.NGSolve.eigen_ports import PortEigenSolver
 from cavsim2d.solvers.eigenmode_result import pol_name
-from cavsim2d.constants import *
+from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT
+from cavsim2d.utils.printing import done, error
 from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.utils.run_log import RunTimer
-from cavsim2d.utils.shared_functions import *
 from cavsim2d.utils.config_validation import require
+from cavsim2d.utils.integrity import stamp_matches, write_stamp
 
 ngsolve_mevp = NGSolveMEVP()
 
@@ -101,6 +100,9 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
                 PortEigenSolver().run(cav, eigenmode_config)
             else:
                 ngsolve_mevp.solve(cav, eigenmode_config=eigenmode_config)
+        # Each polarisation's results record the geometry they were solved for.
+        for m in parse_polarisations(eigenmode_config.get('polarisation', 0)):
+            write_stamp(Path(cav.self_dir) / 'eigenmode' / pol_name(m), cav)
 
         # Run UQ if configured. With uq_config['cell_complexity'] = 'multicell',
         # every half-cell becomes an independent random variable (subject to the
@@ -111,6 +113,10 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         if eigenmode_config.get('uq_config'):
             with timer.step('uq'):
                 uq_parallel(cav, eigenmode_config, 'eigenmode')
+            write_stamp(cav.uq_dir or Path(cav.self_dir) / 'uq', cav)
+        # geometry/model.json is what Study.load rebuilds the cavity from: make it
+        # the geometry these results belong to.
+        cav._write_geometry_snapshot()
 
         total = timer.write()
         done(f'Done with Cavity {cav.name}. Time: {total}')
@@ -125,10 +131,6 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
         eigenmode_path = cav_path / "eigenmode"
         pols = parse_polarisations(eigenmode_config.get('polarisation', 0))
         if cav_path.exists():
-            # Guard against silently serving cached results that no longer
-            # match the in-memory geometry. ``rerun=True`` will regenerate
-            # the geometry below; ``rerun=False`` will only warn.
-            cav._check_geometry_mismatch('eigenmode')
             if rerun:
                 # Only clear the polarisations being rerun, so e.g. a dipole
                 # rerun never wipes existing monopole results (and vice versa).
@@ -155,14 +157,27 @@ def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):
                         shutil.rmtree(uq_dir)
                 _run_ngsolve(cav, eigenmode_config)
             else:
-                missing = [m for m in pols
-                           if not (eigenmode_path / pol_name(m) / 'qois.json').exists()]
+                # Reuse what is there, but only results of this geometry: a
+                # polarisation whose stamp names another geometry is redone,
+                # never served as current.
+                missing, stale = [], []
+                for m in pols:
+                    pol_path = eigenmode_path / pol_name(m)
+                    if stamp_matches(pol_path, cav) is False:
+                        stale.append(m)
+                    elif not (pol_path / 'qois.json').exists():
+                        missing.append(m)
                 # legacy flat monopole results still count as present
                 if 0 in missing and (eigenmode_path / 'qois.json').exists():
                     missing.remove(0)
-                if missing:
+                for m in stale:
+                    shutil.rmtree(eigenmode_path / pol_name(m))
+                if 0 in stale and (cav_path / 'uq').exists():
+                    shutil.rmtree(cav_path / 'uq')     # computed from the stale monopole
+                todo = sorted(missing + stale)
+                if todo:
                     config_missing = dict(eigenmode_config)
-                    config_missing['polarisation'] = missing
+                    config_missing['polarisation'] = todo
                     _run_ngsolve(cav, config_missing)
         else:
             _run_ngsolve(cav, eigenmode_config)

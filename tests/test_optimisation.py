@@ -39,6 +39,8 @@ def test_optimisation_small_run(project_dir):
     assert cavs.optimisation.folder.exists()
     # a run must record at least the evaluated candidates
     assert not cavs.optimisation.history.empty
+    # ... and hand them back as a study (this used to be None)
+    assert cavs.optimisation.cavities.cavities_list
 
 
 def test_optimisation_generalises_to_pillbox(project_dir):

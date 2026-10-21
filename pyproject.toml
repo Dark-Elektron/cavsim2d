@@ -39,11 +39,19 @@ dependencies = [
     "joblib",
     "scikit-learn>=1.6",
     "SALib",
+    # NGSolve's interactive viewer (cav.show_fields/show_mesh/show_geometry) draws
+    # nothing without its widget package, and ngsolve does not depend on it.
+    # NGSolve 6.2.26xx renders through anywidget, earlier releases through
+    # webgui_jupyter_widgets; both are small pure-Python wheels.
+    "ipywidgets>=8.1.3",
+    "anywidget>=0.9",
+    "webgui_jupyter_widgets>=0.2.18",
 ]
 
 [project.optional-dependencies]
-# Jupyter banner / widgets used in the example notebooks.
-jupyter = ["ipython>=8.26.0", "ipywidgets>=8.1.3"]
+# A kernel and a front end for the example notebooks (VS Code needs only the
+# kernel). The widget packages themselves are core dependencies above.
+jupyter = ["ipykernel", "jupyterlab"]
 # Test + lint tooling.
 dev = ["pytest", "flake8"]
 # Documentation building

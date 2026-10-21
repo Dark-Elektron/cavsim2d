@@ -62,6 +62,7 @@ two different port-plane conditions and combine them.
 import json
 import os
 import warnings
+from cavsim2d.utils.printing import CavsimWarning, info, warning
 
 import numpy as np
 import pandas as pd
@@ -78,9 +79,7 @@ from cavsim2d.solvers.NGSolve.eigen_ngsolve import (AXIS_EPS, NGSolveMEVP, SIGMA
                                                     parse_boundary_conditions,
                                                     parse_polarisations)
 from cavsim2d.solvers.eigenmode_result import pol_name
-from cavsim2d.solvers.NGSolve.ports import (C0, port_planes, projection_vectors,
-                                            propagation_constant)
-from cavsim2d.utils.printing import info, warning
+from cavsim2d.solvers.NGSolve.ports import C0, projection_vectors, propagation_constant
 
 
 def _to_scipy(mat):
@@ -399,7 +398,7 @@ class PortEigenSolver:
                 "straight, matched pipe). Below the cutoff the port result is exact. For "
                 "radiating modes use boundary_conditions='oo' and keep the modes that "
                 "survive a change of pipe length (cav.eigenmode.stable_modes).",
-                UserWarning, stacklevel=4)
+                CavsimWarning, stacklevel=4)
 
         solver = NGSolveMEVP()
         pol_dir = os.path.join(cav.self_dir, 'eigenmode', pol_name(self.m))

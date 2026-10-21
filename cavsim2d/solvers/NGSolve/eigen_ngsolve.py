@@ -7,35 +7,75 @@ import pickle
 import sys
 import time
 import warnings
+from cavsim2d.utils.printing import CavsimWarning, error, warning
 
 from matplotlib import tri
-from cavsim2d.utils.shared_functions import *
-from ngsolve import *
-from ngsolve import (x, y, dx, pi, Mesh, exp, BND, # type: ignore
-                     GridFunction, BilinearForm, InnerProduct, curl, grad, Conj, # type: ignore
-                     Integrate, TaskManager, HCurl, H1, Preconditioner, Norm, # type: ignore
-                     IdentityMatrix, ArnoldiSolver, MultiVector, Vector, Matrix, # type: ignore
-                     BoundaryFromVolumeCF) # type: ignore
-from ngsolve.la import Embedding # type: ignore
-from cavsim2d.constants import c0, eps0, mu0
+from cavsim2d.geometry.writers.gmsh import (write_cavity_geometry_cli_flattop,
+                                            write_cavity_geometry_cli_multicell)
+from cavsim2d.utils.shapes import make_dirs_from_dict
+from netgen.occ import Glue, OCCGeometry, WorkPlane
+from ngsolve import (ArnoldiSolver, BilinearForm, BND, BoundaryFromVolumeCF, Conj, curl, dx,
+                     exp, grad, GridFunction, H1, HCurl, IdentityMatrix, IfPos, InnerProduct,
+                     Integrate, IntegrationRule, Matrix, Mesh, MultiVector, Norm, pi,
+                     pml as ngpml, Preconditioner, sqrt, TaskManager, Vector, VectorH1, VOL, x,
+                     y)  # type: ignore
+from cavsim2d.constants import BC_DIGIT, BOUNDARY_CONDITIONS_DICT, c0, eps0, mu0
 from ngsolve.webgui import Draw
+import netgen.webgui as netgen_webgui
 from ngsolve.comp import VorB # type: ignore
-from netgen.occ import *
-from netgen.occ import OCCGeometry
-from ngsolve import pml as ngpml
-from cavsim2d.constants import BOUNDARY_CONDITIONS_DICT, BC_DIGIT
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg
 from scipy.signal import find_peaks
-from cavsim2d.utils.printing import *
 from cavsim2d.solvers.eigenmode_result import pol_name, pol_number
 from cavsim2d.geometry.contours import quarter_cell_profile, DegenerateGeometry
 import gmsh
 
 SIGMA_COPPER = 5.96e7  # electrical conductivity of copper [S/m]
 DEFAULT_N_MODES = 10
+
+
+def webgui_problem():
+    """Why NGSolve's interactive viewer cannot render here, or None when it can.
+
+    ``Draw`` shows nothing at all, and says nothing, when there is no notebook or
+    when the widget package of the installed NGSolve is missing, so the ``show_*``
+    methods ask first. NGSolve up to 6.2.25xx renders through
+    ``webgui_jupyter_widgets``, later releases through ``anywidget``.
+    """
+    shell = None
+    try:
+        # Deferred: IPython is needed only to tell a notebook from a script.
+        from IPython import get_ipython
+        shell = get_ipython()
+    except ImportError:
+        pass
+    if shell is None or type(shell).__name__ == 'TerminalInteractiveShell':
+        return 'the interactive viewer only renders in a Jupyter notebook'
+    if hasattr(netgen_webgui, 'wg'):
+        if netgen_webgui.wg is None:
+            return ("the interactive viewer needs the 'webgui_jupyter_widgets' package "
+                    "(pip install webgui_jupyter_widgets)")
+        return None
+    widget = getattr(netgen_webgui, 'WebGuiWidget', None)
+    if not any(cls.__module__.startswith('anywidget')
+               for cls in getattr(widget, '__mro__', ())):
+        return "the interactive viewer needs the 'anywidget' package (pip install anywidget)"
+    return None
+
+
+def choose_viewer(plotter):
+    """*plotter*, or ``'matplotlib'`` (with a warning saying why) when the webgui
+    viewer cannot render here."""
+    if plotter != 'ngsolve':
+        return plotter
+    problem = webgui_problem()
+    if problem is None:
+        return plotter
+    warnings.warn(f"{problem}, so a static matplotlib view is shown instead (pass "
+                  f"plotter='matplotlib' to choose it directly).", CavsimWarning, stacklevel=4)
+    return 'matplotlib'
 # Loss tangent above which perturbation theory stops being trustworthy and the
 # automatic loss model switches to the full complex eigenproblem: perturbation is
 # O(tan_delta^2) in the eigenvalue and blind to field redistribution.
@@ -160,7 +200,7 @@ def mesh_h_metres(mesh_config, default=20):
             f"mesh_config['h'] is in MILLIMETRES: h={h:g} requests {h:g} mm "
             f"({h * 1e-3:.1e} m) elements — meshing will be extremely slow. "
             f"If you meant {h * 1e3:g} mm, pass h={h * 1e3:g}.",
-            UserWarning, stacklevel=3)
+            CavsimWarning, stacklevel=3)
     return h * 1e-3
 
 
@@ -343,7 +383,7 @@ def resolve_loss_model(materials, eigenmode_config=None):
                 "(lossless) eigenproblem. Set tan_delta on a region — via "
                 "cav.add_dielectric(..., tan_delta=...) or "
                 "eigenmode_config['materials'] — to make the lossy path meaningful.",
-                UserWarning, stacklevel=3)
+                CavsimWarning, stacklevel=3)
         return 'lossless'
 
     if requested == 'lossy':
@@ -362,7 +402,7 @@ def resolve_loss_model(materials, eigenmode_config=None):
             "un-modelled field redistribution both matter. Continuing as asked — Q is "
             "tagged 'perturbation' in the QOIs. Use loss_model='lossy' (or 'auto') for "
             "the full complex eigenproblem.",
-            UserWarning, stacklevel=3)
+            CavsimWarning, stacklevel=3)
     return 'perturbation'
 
 
@@ -717,12 +757,7 @@ class NGSolveMEVP:
     def write_geometry_multicell(self, folder, n_cells, multicell,
                                  beampipe='none', plot=False, cell_parameterisation='normal'):
         """Write a multicell cavity geometry file to *folder*."""
-        if not os.path.exists(folder):
-            try:
-                os.mkdir(folder)
-            except FileNotFoundError:
-                error("Could not create multicell simulation directory. Check folder path.")
-                exit()
+        os.makedirs(folder, exist_ok=True)
 
         file_path = os.path.join(folder, 'geodata.n')
         if cell_parameterisation == 'normal':
@@ -1600,7 +1635,7 @@ class NGSolveMEVP:
                     f"mesh, which more iterations cannot lower. The checked modes are "
                     f"accurate only to about that level. Very small elements near the "
                     f"axis raise the floor.",
-                    UserWarning, stacklevel=2)
+                    CavsimWarning, stacklevel=2)
             elif not info_['converged'] and not info_['stalled']:
                 warnings.warn(
                     f"PINVIT stopped at pinvit_maxit={int(pinvit_maxit)} with a relative "
@@ -1608,7 +1643,7 @@ class NGSolveMEVP:
                     f"{float(pinvit_tol):.0e}, so the highest checked modes are not "
                     f"converged. Raise eigenmode_config['pinvit_maxit'], loosen "
                     f"'pinvit_tol', or check fewer modes with 'pinvit_converge_modes'.",
-                    UserWarning, stacklevel=2)
+                    CavsimWarning, stacklevel=2)
 
             # Project the gradient kernel out of every Ritz vector. The preconditioner
             # is projected, but round-off leaves a ~2e-7 (B-norm) kernel component in
@@ -1878,7 +1913,7 @@ class NGSolveMEVP:
                         f"{c0 * np.sqrt(lam).real / (2 * np.pi) * 1e-6:.3f} MHz converged "
                         f"only to a relative residual of {res:.1e}. Raise "
                         f"eigenmode_config['arnoldi_vectors'] (currently {n_arnoldi}) "
-                        f"if that accuracy is not enough.", UserWarning, stacklevel=2)
+                        f"if that accuracy is not enough.", CavsimWarning, stacklevel=2)
                     accepted.append((lam, vec))
                 else:
                     warnings.warn(
@@ -1886,7 +1921,7 @@ class NGSolveMEVP:
                         f"(relative residual {res:.1e}) rather than reporting it as a "
                         f"mode. The remaining modes are renumbered, so check "
                         f"'mode_of_interest' against the reported frequencies.",
-                        UserWarning, stacklevel=2)
+                        CavsimWarning, stacklevel=2)
 
             accepted.sort(key=lambda t: t[0].real)
 
@@ -1928,7 +1963,7 @@ class NGSolveMEVP:
                     f"contain enough distinct eigenvalues. The modes are renumbered, "
                     f"so check 'mode_of_interest' against the reported frequencies; "
                     f"raising eigenmode_config['arnoldi_vectors'] (currently "
-                    f"{n_arnoldi}) may separate them.", UserWarning, stacklevel=2)
+                    f"{n_arnoldi}) may separate them.", CavsimWarning, stacklevel=2)
 
             inv_r = IfPos(y - AXIS_EPS, 1 / y, 0)
             eps_re_cf = material_cfs(mesh, materials)
@@ -2950,8 +2985,9 @@ class NGSolveMEVP:
             if geom_order > 1:
                 try:
                     flat.Curve(geom_order)
-                except Exception:
-                    pass
+                except Exception as e:
+                    warning(f"Could not curve the saved mesh to order {geom_order} "
+                            f"({e!r}); its elements stay straight.")
             fes = self._build_system(flat, mesh_p, m, materials=materials,
                                      complex_fes=is_complex)['fes']
             fes.Update()
@@ -3007,8 +3043,9 @@ class NGSolveMEVP:
         if geom_order > 1:
             try:
                 mesh.Curve(geom_order)
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"Could not curve the reloaded mesh to order {geom_order} "
+                        f"({e!r}); fields are evaluated on straight elements.")
         # Absent in caches written before the lossy path existed -> real, which is
         # what those caches are.
         fes = self._build_system(mesh, meta['mesh_p'], meta['m'],
@@ -3069,14 +3106,14 @@ class NGSolveMEVP:
         mesh = gfu_E[mode].space.mesh
         field_cf = self._field_cf(gfu_E[mode], gfu_H[mode], which)
 
-        if plotter == 'matplotlib':
+        if choose_viewer(plotter) == 'matplotlib':
             return self._plot_field_matplotlib(mesh, field_cf, ax=ax, show=show)
         return Draw(field_cf, mesh, order=2, settings={'Objects': {'Wireframe': False}})
 
     def show_mesh(self, folder, plotter='ngsolve', ax=None, show=True):
         mesh = self.load_mesh(folder)
 
-        if plotter == 'matplotlib':
+        if choose_viewer(plotter) == 'matplotlib':
             return self._plot_mesh_matplotlib(mesh, ax=ax, show=show)
         return Draw(mesh)
 
@@ -3087,7 +3124,7 @@ class NGSolveMEVP:
         The cavity's own ``beampipe_length`` is used, so this is the geometry a
         solve would mesh."""
         mesh = self._build_mesh(cav, maxh, order)
-        if plotter == 'matplotlib':
+        if choose_viewer(plotter) == 'matplotlib':
             return self._plot_mesh_matplotlib(mesh, ax=ax, show=show)
         return Draw(mesh)
 
