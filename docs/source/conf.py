@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import os
+import re
 import sys
 
 # sys.path.insert(0, os.path.abspath('.'))
@@ -14,7 +15,9 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'cavsim2d'
 copyright = '2024, Sosoho-Abasi Udongwo'
 author = 'Sosoho-Abasi Udongwo'
-release = '1.0.0'
+# The package's own version, read without importing it.
+with open(os.path.join(os.path.dirname(__file__), '..', '..', 'cavsim2d', '__init__.py')) as f:
+    release = re.search(r"__version__ = '([^']+)'", f.read()).group(1)
 
 # -- General configuration ---------------------------------------------------
 

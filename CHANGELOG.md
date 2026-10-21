@@ -5,6 +5,8 @@ follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-22
+
 ### Fixed
 - Tuning no longer overwrites the cavity's own eigenmode results. The secant tuner
   probed the cavity itself, so every probe solve rewrote

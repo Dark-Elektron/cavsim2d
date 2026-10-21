@@ -20,7 +20,7 @@ Solver objects (attached as lazy properties on Cavity/Study):
     cav.wakefield      - WakefieldSolver
     cavs.optimisation  - OptimisationSolver
 """
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 from cavsim2d.models import (
     Cavity,
