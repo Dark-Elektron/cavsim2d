@@ -5,6 +5,56 @@ follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- `eigenmode_config['beta']`, the particle velocity v/c in the voltage integral
+  `V = |∫ E_z exp(i w z / (beta c)) dz|`. It sets the accelerating voltage, R/Q,
+  Eacc, the peak-field ratios and, for m ≥ 1, the transverse kick; the field and the
+  frequency do not depend on it. Default 1 (ultra-relativistic), as before.
+
+### Changed
+- Comparisons across a study read tuned-first. `study.summary()`, `qois_fm()`,
+  `study.eigenmode.qois_df`, `plot_dispersion()` and the study-level comparison and
+  overlay plots (`plot_fm_scatter`, `plot_fm_bar`, `plot_impedance`, `plot_wake`,
+  `plot_hom_scatter`, `plot_all_scatter`, ...) show each cavity's current tuned
+  version in its place when that version has the results, labelled
+  `'<name> (tuned)'`. A cavity whose tuned version has no results yet is shown
+  untuned, with a warning. `tuned=False` compares every cavity untuned. Reads on a
+  single cavity (`cav.eigenmode.qois`, ...) are unchanged.
+
+### Fixed
+- A QoI-constrained tune (`qoi_targets`) of an `EllipticalCavityFlatTop` tuned a
+  cavity without its flat sections. The Newton and `family_scan` built plain
+  `EllipticalCavity` candidates from the cell vectors, which silently dropped the
+  flat length `l` (about 25 MHz on an 800 MHz cell with a 20 mm flat). Candidates
+  are now the cavity's own model. A flat top that asks for the staged per-cup R/Q
+  tune, which was derived for elliptical cells, is tuned on the assembled cavity
+  instead, with a warning.
+- Meshing through gmsh no longer fails where the process has no real
+  stdout/stderr descriptor (`pythonw`, some embedded consoles); output is flushed
+  before the C-level streams are silenced.
+- The example scripts in `examples/` failed on their first line: they imported
+  `cavsim2d.cavity.Cavities`, which no longer exists. They use the current API now,
+  write to `examples/output/` (or `$CAVSIM2D_EXAMPLES_DIR`) instead of a hard-coded
+  home folder, and the wakefield example finds ABCI the way the library does.
+- The documentation examples that ran with a 50 m wake instead of the stated
+  length (`advanced/wakefield_uq`, `custom_geometry/cone_cavity`,
+  `wakefield/multicell_uq`, `wakefield/parameter_sweep`) are re-executed. The cone
+  example's wakefield step now analyses the tuned cone it has just designed.
+- Executed notebooks no longer show local file paths in their warning output.
+
+### Removed
+- `study.wakefield.plot_power_bar()` and `study.plot_power_comparison()`. They read
+  results nothing produces and always raised; `study.wakefield.plot_power_scatter()`
+  is the power comparison.
+- The unused legacy multicell code: `NGSolveMEVP.cavity_multicell` and
+  `write_geometry_multicell`, the gmsh writer `write_cavity_geometry_cli_multicell`,
+  `pyTuner.uq_tuner` and three helpers with no callers, and the `shape_multicell`
+  encoding (`Cavity.shape_multicell`, `Cavity.to_multicell()`,
+  `Study.shape_space_multicell`, `utils.shapes.to_multicell`), which nothing read.
+  `half_cells()` is the multicell representation.
+- The leftover Jupyter Book configuration (`docs/myst.yml`, `docs/intro.md`); the
+  documentation is built with Sphinx.
+
 ## [0.1.1] - 2026-10-22
 
 ### Fixed
