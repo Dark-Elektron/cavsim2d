@@ -11,7 +11,7 @@ from cavsim2d.utils.style import apply_style, WARM
 
 apply_style()
 
-OUT = r'C:\Users\Soske\Documents\git_projects\cavsim2d\docs\source\_static'
+OUT = os.path.dirname(os.path.abspath(__file__))
 WALL, DIM, ACC = '#1d1d1d', WARM[0], WARM[1]
 
 

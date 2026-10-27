@@ -62,10 +62,11 @@ autodoc_mock_imports = []
 # eigenmodes, so a build would take ~10 minutes and could fail for reasons that
 # have nothing to do with the docs.
 #
-# To re-execute a notebook after changing the library, run it yourself and
-# commit the result:
+# To re-execute a notebook after changing the library, run it yourself, strip
+# the local paths its warnings printed, and commit the result:
 #     jupyter nbconvert --to notebook --execute --inplace \
-#         docs/source/examples/eigenmode_pillbox.ipynb
+#         docs/source/examples/eigenmode/pillbox.ipynb
+#     python docs/scrub_notebook_paths.py docs/source/examples/eigenmode/pillbox.ipynb
 # (or set nb_execution_mode = "cache" to let Sphinx do it).
 nb_execution_mode = 'off'
 nb_render_markdown_format = 'myst'

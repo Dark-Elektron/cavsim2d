@@ -1,7 +1,7 @@
 """Multipacting integration tests.
 
-The physics (RK4 tracking, secondary emission) is ported verbatim from the user's
-validated PyMultipact; these tests cover the *cavsim2d plumbing*: the SEY table,
+The physics (RK4 tracking, secondary emission) is ported verbatim from the
+validated PyMultipact code; these tests cover the *cavsim2d plumbing*: the SEY table,
 the eigenmode-field adapter (in-plane E + reconstructed 1j-phase H), and the
 ``cav.multipacting`` run/plot surface end-to-end.
 """

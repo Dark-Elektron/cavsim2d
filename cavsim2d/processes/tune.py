@@ -1069,9 +1069,8 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
             # hard and the solve wanders into degenerate geometry (measured: R/Q=95 near
             # nominal tunes fine, R/Q=88=total/2 degenerates at A_el=40). So the mirrored
             # self-cup is kept -- it lands the assembled frequency ~0.05 MHz high but tunes
-            # robustly; use qoi_stage2='assembly' for a frequency-exact result. See the
-            # flattop/hybrid TODO in SHIPPING_ACTION_PLAN.md. Only affects n >= 3 (n=2
-            # defaults to 'assembly').
+            # robustly; use qoi_stage2='assembly' for a frequency-exact result. Only
+            # affects n >= 3 (n=2 defaults to 'assembly').
             _qtol = tune_config.get('qoi_tol')
             if isinstance(_qtol, dict) and 'R/Q [Ohm]' in _qtol:
                 rq_conv_tol = abs(float(_qtol['R/Q [Ohm]']))

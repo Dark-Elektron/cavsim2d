@@ -1,6 +1,6 @@
 """Relativistic particle tracking for multipacting analysis.
 
-Ported near-verbatim from PyMultipact (the user's validated physics): RK4
+Ported near-verbatim from the validated PyMultipact code: RK4
 relativistic Lorentz push, exception-driven wall detection, secondary emission
 via the SEY table, and the ``loss_model`` handling. Only the plumbing (imports,
 field source) is adapted; the dynamics are unchanged.

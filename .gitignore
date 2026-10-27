@@ -196,10 +196,10 @@ cavsim2d.egg-info/
 .venv/
 .venv_test/
 
-# Local release checklist — kept out of git
+# Local-only notes, scratch work and benchmarks — kept out of git
 SHIPPING_ACTION_PLAN.md
-benchmark/cavities/
-benchmark/cylindrical_waveguide/
+implemented.md
+benchmark/
 benchmark_test_proj/
 playground/
 # Sphinx/myst-nb build artefacts. docs/jupyter_execute/ holds GENERATED copies of

@@ -113,7 +113,7 @@ class CavityPlotting:
         This is the textbook convention for a well-ordered passband; it assigns
         each mode by frequency order (the accelerating pi-mode at the high end).
         The fully general value would come from each mode's on-axis field node
-        count, which is monopole-specific — see SHIPPING_ACTION_PLAN.md.
+        count, which is monopole-specific.
         """
         if n <= 1:
             return np.array([np.pi]), [r'$\pi$']
