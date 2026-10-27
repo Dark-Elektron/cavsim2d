@@ -13,7 +13,7 @@ setuptools>=78.1.1
 ngsolve>=6.2.2402
 openpyxl
 jinja2
-joblib
+joblib>=1.3
 scikit-learn~=1.6.1
 meshio~=5.3.5
 gmsh~=4.13.1

@@ -196,13 +196,22 @@ class StudyPlotting:
         return fig_properties
 
     def plot_dispersion(self, pol=None, bands=None, ax=None, break_axis=True,
-                        breaks=None, light_line=True, **kwargs):
+                        breaks=None, light_line=True, tuned='auto', show=True, **kwargs):
         """Overlay each cavity's dispersion diagram. ``pol`` selects the
         polarisation(s): ``None`` (default) shows every computed polarisation,
         or name one ('monopole', 'dipole', ...) or a list. ``bands`` selects
         passbands; ``break_axis`` splits the y-axis where passbands are far apart,
         ``breaks`` places those splits by hand, and ``light_line`` overlays the
-        speed-of-light line (see :meth:`Cavity.plot_dispersion`)."""
+        speed-of-light line (see :meth:`Cavity.plot_dispersion`). A cavity's
+        current tuned version is drawn in its place when it has eigenmode
+        results; ``tuned=False`` draws every cavity untuned. ``show=False`` leaves
+        the figure open to compose on."""
+        view = self._comparison_view('eigenmode', tuned)
+        if view is not self:
+            return view.plot_dispersion(pol=pol, bands=bands, ax=ax,
+                                        break_axis=break_axis, breaks=breaks,
+                                        light_line=light_line, tuned=False, show=show,
+                                        **kwargs)
         if not self.cavities_list:
             return ax
         # Gather every cavity's series first, then render once, so the broken
@@ -216,9 +225,11 @@ class StudyPlotting:
             if d and not any(abs(d - ll['d']) < 1e-9 for ll in light_lines):
                 lbl = 'light line' if len(self.cavities_list) == 1 else f'light line ({cav.name})'
                 light_lines.append({'d': d, 'label': lbl})
-        return Cavity._render_dispersion(series, n, ax=ax, break_axis=break_axis,
-                                         breaks=breaks, light_lines=light_lines or None,
-                                         **kwargs)
+        ax = Cavity._render_dispersion(series, n, ax=ax, break_axis=break_axis,
+                                       breaks=breaks, light_lines=light_lines or None,
+                                       **kwargs)
+        _maybe_show(show)
+        return ax
 
     def plot(self, what, ax=None, scale_x=None, **kwargs):
         # All wakefield plotting is on the wakefield namespace now
@@ -314,127 +325,6 @@ class StudyPlotting:
 
         return matching_folders
 
-    def plot_power_comparison(self, fig=None, ax_list=None):
-        """
-        Can be called using ``cavities.plot_power_comparison()``
-
-        Parameters
-        ----------
-        fig: matplotlib figure
-        ax_list: list of matplotlib axes object
-
-        Returns
-        -------
-
-        """
-        if fig is not None:
-            fig = fig
-            ax1, ax2, ax3 = ax_list
-        else:
-            # create figure
-            fig = plt.figure()
-            gs = fig.add_gridspec(2, 2)
-            ax1 = fig.add_subplot(gs[:, 0])
-            ax2 = fig.add_subplot(gs[0, 1])
-            ax3 = fig.add_subplot(gs[1, 1])
-        # def E_acc_Pin(self, cavity, E_acc, op_field, ls='-', ):
-
-        # ax_right2._get_lines.prop_cycler = ax._get_lines.prop_cycler
-        # ax_right2.spines["right"].set_position(("axes", 1.2))
-        for i, cavity in enumerate(self.cavities_list):
-            ax1.plot(cavity.E_acc * 1e-6, cavity.pstat / cavity.n_cav,
-                     ls=self.ls[i], lw=2, c='tab:orange',
-                     label=r"$P_\mathrm{static/cav}$" + fr"{cavity.name}")
-
-            ax1.plot(cavity.E_acc * 1e-6, cavity.pdyn / cavity.n_cav,
-                     ls=self.ls[i], lw=2, c='tab:blue', label=r"$P_\mathrm{dynamic/cav}$" + fr"{cavity.name}")
-
-            # p1, = ax1.plot(cavity.E_acc * 1e-6, cavity.p_wp/cavity.n_cav,
-            #                ls=self.ls[i], lw=2, c='k', label=r"$P_\mathrm{wp/beam}$" + fr"{cavity.name}")
-
-            p2, = ax2.plot(cavity.E_acc * 1e-6, cavity.n_cav, ls=self.ls[i], lw=2, c='tab:red',
-                           label=fr"{cavity.name}")
-
-            p3, = ax3.plot(cavity.E_acc * 1e-6, cavity.p_in * 1e-3, ls=self.ls[i], lw=2, c='tab:purple',
-                           label=fr"{cavity.name}")
-
-            ax1.set_xlabel(r"$E_\mathrm{acc}$ [MV/m]")
-            ax1.set_ylabel(r"$P_\mathrm{stat, dyn}$/cav [W]")
-            ax2.set_xlabel(r"$E_\mathrm{acc}$ [MV/m]")
-            ax2.set_ylabel(r"$N_\mathrm{cav/beam}$")
-            ax3.set_xlabel(r"$E_\mathrm{acc}$ [MV/m]")
-            ax3.set_ylabel(r"$P_\mathrm{in/cav}$ [kW]")
-
-            ax1.axvline(cavity.op_field * 1e-6, ls=':', c='k')
-            ax1.text(cavity.op_field * 1e-6 - 1, 0.3, f"{cavity.op_field * 1e-6} MV/m",
-                     size=14, rotation=90, transform=ax1.get_xaxis_transform())
-            ax2.axvline(cavity.op_field * 1e-6, ls=':', c='k')
-            ax2.text(cavity.op_field * 1e-6 - 1, 0.5, f"{cavity.op_field * 1e-6} MV/m",
-                     size=14, rotation=90, transform=ax2.get_xaxis_transform())
-            ax3.axvline(cavity.op_field * 1e-6, ls=':', c='k')
-            ax3.text(cavity.op_field * 1e-6 - 1, 0.3, f"{cavity.op_field * 1e-6} MV/m",
-                     size=14, rotation=90,
-                     transform=ax3.get_xaxis_transform())
-
-            # ax.axvline(7.13, ls='--', c='k')
-            # ax.axvline(10, ls='--', c='k')
-            # ax.axvline(15, ls='--', c='k')
-            # ax_right2.axhline(500, ls='--', c='k')
-            # ax_right2.axhline(1000, ls='--', c='k')
-            # ax.xaxis.set_major_locator(ticker.MultipleLocator(2))
-            # ax.yaxis.set_major_locator(ticker.MultipleLocator(2))
-            # ax_right.yaxis.set_major_locator(ticker.MultipleLocator(100))
-            # ax_right2.yaxis.set_major_locator(ticker.MultipleLocator(200))
-
-            # ax.yaxis.label.set_color(p1.get_color())
-            # ax_right.yaxis.label.set_color(p2.get_color())
-            # ax_right2.yaxis.label.set_color(p3.get_color())
-
-            ax1.set_xlim(min(cavity.E_acc) * 1e-6, max(cavity.E_acc) * 1e-6)
-            ax2.set_xlim(min(cavity.E_acc) * 1e-6, max(cavity.E_acc) * 1e-6)
-            ax3.set_xlim(min(cavity.E_acc) * 1e-6, max(cavity.E_acc) * 1e-6)
-            # # ax.set_ylim(0, 50)
-            # ax_right.set_ylim(100, 400)f
-            # ax_right2.set_ylim(0, 700)
-            ax1.set_yscale('log')
-            ax2.set_yscale('log')
-            ax3.set_yscale('log')
-
-            # tkw = dict(size=4, width=1.5)
-            # ax.tick_params(axis='y', colors=p1.get_color(), **tkw)
-            # ax_right.tick_params(axis='y', colors=p2.get_color(), **tkw)
-            # ax_right2.tick_params(axis='y', colors=p3.get_color(), **tkw)
-            # ax.tick_params(axis='x', **tkw)
-
-            ax1.minorticks_on()
-            # ax.grid(True, which='both', axis='both')
-
-        # dummy lines with NO entries, just to create the black style legend
-        dummy_lines = []
-        for b_idx, b in enumerate(self.cavities_list):
-            dummy_lines.append(ax1.plot([], [], c="gray", ls=self.ls[b_idx])[0])
-
-        lines = ax1.get_lines()
-        legend1 = ax1.legend([lines[i] for i in range(3)],
-                             [r"$P_\mathrm{stat}$", r"$P_\mathrm{dyn}$"], loc=3)
-        legend2 = ax1.legend([dummy_lines[i] for i in range(len(self.cavities_list))],
-                             [cavity.name for cavity in self.cavities_list],
-                             loc=0)
-        ax1.add_artist(legend1)
-
-        # ax1.legend(ncol=len(cavities))
-        ax2.legend(loc='upper left')
-        ax3.legend(loc=3)
-
-        label = [r"$\mathbf{Z^*}$", 'Z', r"$\mathbf{W^*}$", 'W']
-        plt.tight_layout()
-
-        # save plots
-        fname = [cav.name for cav in self.cavities_list]
-        fname = '_'.join(fname)
-
-        self.save_all_plots(f"{fname}_power_comparison.png")
-
     def _resolve_qoi_keys(self, qois, df_columns):
         def normalize(s):
             s = s.lower()
@@ -464,43 +354,6 @@ class StudyPlotting:
                 if not found:
                     resolved.append(qoi)
         return [r for r in resolved if r in df_columns]
-
-    def _power_bar_impl(self):
-        """
-        Plots bar chart of power quantities of interest
-
-        Returns
-        -------
-
-        """
-        plt.rcParams["figure.figsize"] = (12, 3)
-        # plot barchart
-        data = np.array([list(d.values()) for d in self.returned_results])
-        data_col_max = data.max(axis=0)
-
-        x = list(self.returned_results[0].keys())
-        X = np.arange(len(x))
-
-        fig, ax = plt.subplots()
-        ax.margins(x=0)
-        width = 0.15  # 1 / len(x)
-        for i, cav in enumerate(self.cavities_list):
-            ax.bar(X + i * width, data[i] / data_col_max, width=width, label=cav.name)
-
-        ax.set_xticks([r + width for r in range(len(x))], x)
-        # label = ["C3794_H (2-Cell)", "C3795_H (5-Cell)"]
-
-        ax.axhline(1.05, c='k')
-        ax.set_ylim(-0.01, 1.5 * ax.get_ylim()[-1])
-        ax.legend(loc='upper center', ncol=len(self.cavities_list))
-        plt.tight_layout()
-
-        # save plots
-        fname = [cav.name for cav in self.cavities_list]
-        fname = '_'.join(fname)
-
-        self.save_all_plots(f"{fname}_power_comparison_bar.png")
-        return ax
 
     def get_power_qois(self, cav, rf_config, op_points_list, uq=False):
         """
@@ -1046,7 +899,7 @@ class StudyPlotting:
             qois = ['freq', 'Epk/Eacc', 'Bpk/Eacc', 'R/Q']
 
         if not uq:
-            self.fm_results = self.qois_fm()
+            self.fm_results = self.qois_fm(tuned=False)
 
             df = pd.DataFrame.from_dict(self.fm_results)
             selected_qois = self._resolve_qoi_keys(qois, df.columns)
@@ -1196,7 +1049,7 @@ class StudyPlotting:
                     selected_qois.append(qoi)
 
         if not uq:
-            self.fm_results = self.qois_fm()
+            self.fm_results = self.qois_fm(tuned=False)
             df = pd.DataFrame.from_dict(self.fm_results)
             selected_qois = [q for q in selected_qois if q in df.columns]
             if not selected_qois:
@@ -1549,16 +1402,22 @@ class StudyPlotting:
     # HOM/power QOIs, so they live at the Study level rather than under a single
     # result namespace. Per-domain comparisons live under study.eigenmode.* /
     # study.wakefield.*.
-    def plot_all_scatter(self, opt, ncols=3, uq=False, show=True):
+    def plot_all_scatter(self, opt, ncols=3, uq=False, show=True, tuned='auto'):
         """Scatter of fundamental-mode + HOM/power QOIs across every cavity
-        (``uq=True``: UQ mean with a +/-1 sigma error bar)."""
-        r = self._all_scatter_impl(opt, ncols=ncols, uq=uq)
+        (``uq=True``: UQ mean with a +/-1 sigma error bar). A cavity's current
+        tuned version stands in for it when it has the results; ``tuned=False``
+        compares every cavity untuned."""
+        view = self._comparison_view('all', tuned, uq=uq)
+        r = view._all_scatter_impl(opt, ncols=ncols, uq=uq)
         _maybe_show(show)
         return r
 
-    def plot_all_bar(self, opt, ncols=3, show=True):
-        """Bar chart of fundamental-mode + HOM/power QOIs across every cavity."""
-        r = self._all_bar_impl(opt, ncols=ncols)
+    def plot_all_bar(self, opt, ncols=3, show=True, tuned='auto'):
+        """Bar chart of fundamental-mode + HOM/power QOIs across every cavity; a
+        cavity's current tuned version stands in for it when it has the results
+        (``tuned=False``: every cavity untuned)."""
+        view = self._comparison_view('all', tuned)
+        r = view._all_bar_impl(opt, ncols=ncols)
         _maybe_show(show)
         return r
 

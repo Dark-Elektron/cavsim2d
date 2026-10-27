@@ -410,6 +410,7 @@ class PortEigenSolver:
         def qois(i, write_axis=False):
             q = NGSolveMEVP.evaluate_qois(
                 mesh, gfu_E, gfu_H, freqs, self.m, mode_idx=i, n_cells=cav.n_cells,
+                beta=cfg.get('beta') or 1.0,
                 L=L_norm, save_dir=pol_dir, write_axis=write_axis,
                 conductivity=cfg.get('conductivity', SIGMA_COPPER),
                 surface_resistance_ohm=cfg.get('surface_resistance'), q_diel=q_ext)

@@ -1,15 +1,12 @@
 import json
 import os.path
-from itertools import groupby
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import root_scalar
 
-from cavsim2d.utils.data_utils import get_qoi_value
 from cavsim2d.utils.printing import error, suppress_errors, warning
 from cavsim2d.utils.quadrature import cn_gauss, cn_leg_05_2, quad_stroud3, weighted_mean_obj
-from cavsim2d.utils.shapes import enforce_Req_continuity
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import NGSolveMEVP
 from cavsim2d.solvers.eigenmode_result import monopole_dir
 
@@ -44,48 +41,6 @@ def _step_eigenmode_config(tune_config, **extra):
     if mesh:
         cfg['mesh_config'] = dict(mesh)
     return cfg or None
-
-
-VAR_TO_INDEX_DICT = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6, 'l': 7}
-TUNE_VAR_STEP_DIRECTION_DICT = {'A': -1, 'B': 1, 'a': -1, 'b': 1, 'Ri': 1, 'L': 1, 'Req': -1, 'l': 1}
-MAX_TUNE_ITERATION = 10
-
-EIGENMODE_OBJECTIVES = {"Req", "freq [MHz]", "Epk/Eacc []", "Bpk/Eacc [mT/MV/m]",
-                         "R/Q [Ohm]", "G [Ohm]", "Q []", "kcc [%]", "ff [%]"}
-
-
-def _resolve_cell_type(cell_type, shape, perturbed=None):
-    """Map cell_type string to (mid, left, right, beampipes) tuple.
-
-    Parameters
-    ----------
-    cell_type : str
-        One of 'mid-cell', 'end-cell', 'single-cell'.
-    shape : dict
-        Shape dictionary with 'IC' and 'OC' keys.
-    perturbed : np.ndarray, optional
-        If provided, used as the perturbed cell node (for UQ).
-        If None, returns the base cell node from shape.
-
-    Returns
-    -------
-    tuple : (mid, left, right, beampipes, cell_node)
-    """
-    ct = cell_type.lower().replace('-', ' ').replace('_', ' ')
-
-    if ct == 'mid cell':
-        cell_node = shape['IC'] if perturbed is None else perturbed
-        return cell_node, cell_node, cell_node, 'none', shape['IC']
-    elif ct == 'end cell':
-        base = shape['IC'] if perturbed is None else shape['IC']
-        end = shape['OC'] if perturbed is None else perturbed
-        return base, base, end, 'right', shape['OC']
-    elif ct == 'single cell':
-        cell_node = shape['OC'] if perturbed is None else perturbed
-        return cell_node, cell_node, cell_node, 'both', shape['OC']
-    else:
-        cell_node = shape['IC'] if perturbed is None else perturbed
-        return cell_node, cell_node, cell_node, 'none', shape['IC']
 
 
 class PyTuneNGSolve:
@@ -436,17 +391,6 @@ class PyTuneNGSolve:
             )
         return penalty
 
-    @staticmethod
-    def all_equal(iterable):
-        g = groupby(iterable)
-        return next(g, True) and not next(g, False)
-
-    @staticmethod
-    def write_output(tv_list, freq_list, fid, projectDir):
-        dd = {"tv": tv_list, "freq": freq_list}
-        with open(os.path.join(projectDir, '_tune_temp', fid, "convergence_output.json"), "w") as outfile:
-            json.dump(dd, outfile, indent=4, separators=(',', ': '))
-
 
 def run_tune_uq(cav, tune_config):
     """Run eigenmode UQ at the current tune iteration.
@@ -594,81 +538,3 @@ def run_tune_uq(cav, tune_config):
     debug_rows['mean freq [MHz]'] = [float(mean_obj[0])] * n_sims
     pd.DataFrame(debug_rows).to_csv(os.path.join(eigenmode_dir, 'uq_nodes.csv'),
                                     index=False, sep='\t', float_format='%.6f')
-
-
-def uq_tuner(key, objectives, uq_config, uq_path, solver_args_dict, sub_dir,
-             proc_keys_list, processor_nodes, proc_num, cell_node, solver):
-    """Run UQ eigenmode solves for a subset of quadrature points.
-
-    Parameters
-    ----------
-    key : str
-        Cavity geometry identifier.
-    objectives : list
-        QOIs for UQ.
-    uq_config : dict
-        UQ configuration.
-    uq_path : Path
-        Output directory.
-    solver_args_dict : dict
-        Solver arguments.
-    sub_dir : str
-        Subdirectory for results.
-    proc_keys_list : np.ndarray
-        Indices of quadrature points for this process.
-    processor_nodes : np.ndarray
-        Quadrature nodes for this process.
-    proc_num : int
-        Process number.
-    cell_node : np.ndarray
-        Base cell parameters.
-    solver : str
-        Solver type.
-    """
-    if solver != 'eigenmode':
-        return
-
-    parentDir = solver_args_dict['parentDir']
-    projectDir = solver_args_dict['projectDir']
-    cell_type = uq_config['cell_type']
-    analysis_folder = solver_args_dict['analysis folder']
-    opt = solver_args_dict['optimisation']
-    delta = uq_config['delta']
-    uq_vars = uq_config['variables']
-
-    eigen_obj_list = [o for o in objectives if o in EIGENMODE_OBJECTIVES]
-    Ttab_val_f = []
-
-    perturbed_cell_node = np.array(cell_node)
-    for i1, proc_key in enumerate(proc_keys_list):
-        for j, uq_var in enumerate(uq_vars):
-            uq_var_indx = VAR_TO_INDEX_DICT[uq_var]
-            perturbed_cell_node[uq_var_indx] = cell_node[uq_var_indx] * (1 + delta[j] * processor_nodes[j, i1])
-
-        ct = cell_type.lower().replace('-', ' ').replace('_', ' ')
-        if ct == 'mid cell':
-            mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'none'
-        elif ct == 'end cell':
-            mid, left, right, beampipes = cell_node, cell_node, perturbed_cell_node, 'right'
-        elif ct == 'single cell':
-            mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'both'
-        else:
-            mid, left, right, beampipes = perturbed_cell_node, perturbed_cell_node, perturbed_cell_node, 'none'
-
-        enforce_Req_continuity(mid, left, right, cell_type)
-
-        fid = fr'{key}_Q{proc_key}'
-        ngsolve_mevp.createFolder(fid, projectDir, subdir=sub_dir, opt=opt)
-        ngsolve_mevp.cavity(1, 1, mid, left, right, f_shift=0, bc=33, beampipes=beampipes,
-                            fid=fid, sim_folder=analysis_folder, parentDir=parentDir,
-                            projectDir=projectDir, subdir=sub_dir)
-
-        filename = uq_path / f'{fid}/monopole/qois.json'
-        if os.path.exists(filename):
-            with open(filename) as json_file:
-                qois_result_dict = json.load(json_file)
-            qois_result = get_qoi_value(qois_result_dict, eigen_obj_list)
-            Ttab_val_f.append(qois_result)
-
-    data_table = pd.DataFrame(Ttab_val_f, columns=list(eigen_obj_list))
-    data_table.to_csv(uq_path / f'table_{proc_num}.csv', index=False, sep='\t', float_format='%.32f')

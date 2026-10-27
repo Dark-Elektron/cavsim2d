@@ -3,7 +3,6 @@
 Solving and reading go through a :class:`WakefieldBackend` (ABCI by default),
 selected from ``wakefield_config['solver']`` — no ABCI reader is touched here.
 """
-import multiprocessing as mp
 import json
 import os.path
 import shutil
@@ -18,6 +17,7 @@ from cavsim2d.solvers.eigenmode_result import monopole_dir
 from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.integrity import stamp_matches, write_stamp
+from cavsim2d.utils.parallel import run_each
 from cavsim2d.data_module.operating_points import bunch_lengths, bunch_tag
 
 
@@ -28,36 +28,19 @@ def run_wakefield_parallel(cavs_dict, solver_config, subdir=''):
         error('Number of processes must be greater than zero.')
         processes = 1
 
-    keys = list(cavs_dict.keys())
-
-    if processes > len(keys):
-        processes = len(keys)
-
-    shape_space_len = len(keys)
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    jobs = []
-    start_idx = 0
-
-    for p in range(processes):
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        start_idx += current_chunk_size
-
-        processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
-
-        if processes == 1:
-            # Inline path: avoids Windows spawn guard requirement and
-            # surfaces stdout/stderr directly in Jupyter.
-            solver_config['target'](processor_cavs_dict, solver_config, subdir)
-        else:
-            service = mp.Process(target=solver_config['target'], args=(processor_cavs_dict, solver_config, subdir))
-            service.start()
-            jobs.append(service)
-
-    for job in jobs:
-        job.join()
+    processes = min(processes, len(cavs_dict))
+    target = solver_config['target']
+    if processes <= 1:
+        # Inline path: no process-spawn overhead, and stdout/stderr show
+        # directly in Jupyter.
+        target(dict(cavs_dict), solver_config, subdir)
+    else:
+        # Each worker runs one cavity and writes its results to disk. (These
+        # were multiprocessing.Process workers, which Windows' spawn start
+        # re-imports __main__ for: they failed in a notebook or an unguarded
+        # script.)
+        run_each(target, [({key: cav}, solver_config, subdir)
+                          for key, cav in cavs_dict.items()], processes, 'Wakefield')
 
 
 def run_wakefield_s(cavs_dict, wakefield_config, subdir):

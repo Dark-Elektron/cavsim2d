@@ -10,7 +10,8 @@ pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
 
 from conftest import MIDCELL
-from cavsim2d import Study, EllipticalCavity
+from cavsim2d import CavsimWarning, EllipticalCavity, EllipticalCavityFlatTop, Study
+from cavsim2d.solvers.tune_solver import TuneSolver
 
 _GUN_GEOM = {'y1': 1.5e-2, 'R2': 3e-2, 'T2': np.deg2rad(45), 'L3': 24e-2,
              'R4': 5e-2, 'L5': 11e-2, 'R6': 6e-2, 'L7': 19e-2, 'R8': 4e-2,
@@ -271,6 +272,42 @@ def test_flattop_now_tunes(project_dir):
     cavs.run_tune({'freqs': 790.0, 'cell_type': {'mid-cell': 'Req'}, 'processes': 1})
     assert cav.tuned is not None, 'run_tune reported success but tuned nothing'
     assert cav.tuned.parameters['Req_m'] != pytest.approx(171.20)
+
+
+def test_qoi_newton_solves_the_flattop_it_tunes(project_dir):
+    """The QoI Newton built its candidates as plain EllipticalCavity objects from the
+    cell vectors, which silently dropped a flat top's length ``l``: the 'flat top' it
+    tuned had no flat. Started at the flat top's own frequency, its first evaluation
+    must give that frequency back."""
+    ft = [62.22, 66.13, 30.22, 23.11, 80, 93.5, 171.20, 20]
+    mesh = {'h': 30, 'p': 2}
+    cav = EllipticalCavityFlatTop(1, ft, ft, ft, beampipe='none')
+    cav.set_workspace(os.path.join(project_dir, 'ft'))
+    cav.eigenmode.run(mesh_config=mesh, n_modes=3)
+    f0 = cav.eigenmode.qois['freq [MHz]']
+
+    res = cav.tune._solve_qoi_targets(['Req'], {'freq [MHz]': f0}, mesh_config=mesh,
+                                      maxit=1)
+    first = res['history'][0][1]['freq [MHz]']
+    assert first == pytest.approx(f0, abs=0.05), (first, f0)
+    assert res['parameters']['l_m'] == pytest.approx(20)
+
+
+def test_flattop_staged_request_tunes_the_assembly(project_dir, monkeypatch):
+    """The staged per-cup recipe is derived for elliptical cells; a flat top asking
+    for it is warned and tuned by the assembly Newton, never the elliptical cup path."""
+    def assembly_newton(self, *args, **kwargs):
+        raise ValueError('reached the assembly Newton')
+
+    monkeypatch.setattr(TuneSolver, '_solve_qoi_targets', assembly_newton)
+    ft = [62.22, 66.13, 30.22, 23.11, 72, 93.5, 171.20, 20]
+    cav = EllipticalCavityFlatTop(2, ft, ft, ft, beampipe='both')
+    cav.set_workspace(os.path.join(project_dir, 'fts'))
+    with pytest.warns(CavsimWarning, match='derived for elliptical cells'), \
+            pytest.raises(ValueError, match='reached the assembly Newton'):
+        cav.tune.run({'freqs': 801.58, 'qoi_targets': {'R/Q [Ohm]': 180},
+                      'cell_type': {'mid-cell': 'Req', 'end-cell': ['L', 'A']},
+                      'rerun': True})
 
 
 # --- the tune variable resolver asks the model, not a hardcoded list ---------

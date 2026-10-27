@@ -1632,13 +1632,15 @@ class EigenmodeSolver(_ConfigSampleMixin):
             s.uq_fm_results = {cav.name: cav.uq_fm_results}
         return s
 
+    # tuned=False below: a cavity's own plot reads that cavity. Study comparisons
+    # put a tuned version in its place; a single cavity's results never do.
     def plot_fm_scatter(self, ncols=3, uq=False, qois=None, show=True):
         """Scatter this cavity's fundamental-mode QOIs. With ``uq=True`` each QOI
         is a mean with a ±1σ error bar and the nominal design point overlaid."""
         return self._single_study(uq=uq).eigenmode.plot_fm_scatter(
-            ncols=ncols, uq=uq, qois=qois, show=show)
+            ncols=ncols, uq=uq, qois=qois, show=show, tuned=False)
 
     def plot_fm_bar(self, ncols=3, uq=False, qois=None, show=True):
         """Bar chart of this cavity's fundamental-mode QOIs (optionally UQ)."""
         return self._single_study(uq=uq).eigenmode.plot_fm_bar(
-            ncols=ncols, uq=uq, qois=qois, show=show)
+            ncols=ncols, uq=uq, qois=qois, show=show, tuned=False)

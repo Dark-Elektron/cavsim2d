@@ -67,7 +67,6 @@ class RFGun(Cavity):
             'CELL PARAMETERISATION': self.cell_parameterisation,
             'kind': self.kind}
 
-        self.shape_multicell = {'kind': self.kind}
 
         self.get_geometric_parameters()
 

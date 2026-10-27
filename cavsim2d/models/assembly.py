@@ -129,7 +129,6 @@ class Assembly(Cavity):
         self.check_continuity()
         self.pull()
         self.shape = {'IC': list(self.labels), 'BP': 'none'}
-        self.shape_multicell = None
 
     # -- element bookkeeping -------------------------------------------------
 

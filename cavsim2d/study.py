@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from cavsim2d.models.base import Cavity
 from cavsim2d.processes.eigenmode import run_eigenmode_parallel, run_eigenmode_s
@@ -37,6 +38,48 @@ def _sweep_point_name(keys, combo):
         s = f'{v:g}' if isinstance(v, (int, float)) else str(v)
         parts.append(f'{k}{s}'.replace('.', 'p').replace('-', 'm').replace(' ', ''))
     return '_'.join(parts)
+
+
+# The study's per-cavity result caches, keyed by cavity name.
+_RESULT_CACHES = ('eigenmode_qois', 'eigenmode_qois_all_modes', 'uq_fm_results',
+                  'uq_nodes', 'uq_fm_results_all_modes', 'wakefield_qois',
+                  'wakefield_qois_op', 'uq_hom_results')
+# Study state that belongs to its cavities, which a comparison view replaces.
+_PER_CAVITY_STATE = {'cavities_list', 'cavities_dict', 'shape_space', '_eigenmode_ns',
+                     '_wakefield_ns', '_optimisation_solver', 'power_qois', 'power_qois_uq',
+                     'tune_results', 'fm_results', 'hom_results', *_RESULT_CACHES}
+_UQ_FILES = {'eigenmode': [('uq', 'uq.json')],
+             'wakefield': [('wakefield', 'uq', 'uq.json')],
+             'all': [('uq', 'uq.json'), ('wakefield', 'uq', 'uq.json')]}
+_NOMINAL_RESULTS = {'eigenmode': ('eigenmode_qois',), 'wakefield': ('wakefield_qois',),
+                    'all': ('eigenmode_qois', 'wakefield_qois')}
+
+
+def _has_results(cav, analysis, uq=False):
+    """Whether *cav* has the results a comparison of *analysis* (``'eigenmode'``,
+    ``'wakefield'`` or ``'all'``) reads; with *uq*, its UQ results."""
+    folder = getattr(cav, 'self_dir', None)
+    if not folder:
+        return False
+    if uq:
+        return all(os.path.isfile(os.path.join(folder, *f)) for f in _UQ_FILES[analysis])
+    return all(bool(getattr(cav, name)) for name in _NOMINAL_RESULTS[analysis])
+
+
+def _hom_uq_by_operating_point(results, uq_config):
+    """A cavity's wakefield UQ results, split per operating point and bunch length
+    when the UQ ran over ``uq_config['operating_points']``, else as they are."""
+    op_points = (uq_config or {}).get('operating_points')
+    if not op_points:
+        return results
+    split = {}
+    for op, val in op_points.items():
+        split[op] = {}
+        for sig_id, v in bunch_lengths(val).items():
+            ident = f'_{bunch_tag(op, sig_id, v)}'
+            split[op][sig_id] = {kk.replace(ident, ''): vv
+                                 for kk, vv in results.items() if ident in kk}
+    return split
 
 
 class Study(StudyPlotting):
@@ -93,7 +136,6 @@ class Study(StudyPlotting):
             self.name = name
 
         self.shape_space = {}
-        self.shape_space_multicell = {}
 
         # The project folder first, then the cavities: added the other way round
         # they were created outside the study folder it then made.
@@ -122,7 +164,6 @@ class Study(StudyPlotting):
         self.operating_points = None
         self.operating_points_threshold = {}
 
-        self.returned_results = None
         self.ls = ['solid', 'dashed', 'dashdot', 'dotted',
                    'solid', 'dashed', 'dashdot', 'dotted',
                    'solid', 'dashed', 'dashdot', 'dotted']
@@ -170,7 +211,6 @@ class Study(StudyPlotting):
             view.cavities_list.append(tc)
             view.cavities_dict[nm] = tc
             view.shape_space[nm] = getattr(tc, 'shape', None)
-            view.shape_space_multicell[nm] = getattr(tc, 'shape_multicell', None)
         return view
 
     def add_cavity(self, cavs, names=None, plot_labels=None):
@@ -227,7 +267,6 @@ class Study(StudyPlotting):
             self.cavities_list.append(cav)
             self.cavities_dict[cav.name] = cav
             self.shape_space[cav.name] = cav.shape
-            self.shape_space_multicell[cav.name] = cav.shape_multicell
 
     # -- Parameter sweep ----------------------------------------------------
 
@@ -401,7 +440,6 @@ class Study(StudyPlotting):
             study.cavities_list.append(cav)
             study.cavities_dict[cav.name] = cav
             study.shape_space[cav.name] = getattr(cav, 'shape', None)
-            study.shape_space_multicell[cav.name] = getattr(cav, 'shape_multicell', None)
             loaded += 1
 
         if loaded == 0:
@@ -973,23 +1011,86 @@ class Study(StudyPlotting):
                 # Wakefield UQ lives in <cav>/wakefield/uq/, apart from the
                 # eigenmode UQ in <cav>/uq/.
                 cav.get_uq_hom_results(os.path.join(cav.self_dir, 'wakefield', 'uq', 'uq.json'))
-                cav_uq_hom_results = cav.uq_hom_results
-                if 'operating_points' in uq_config:
-                    # separate into opearating points
-                    op_points = uq_config['operating_points']
-                    uq_hom_results_op = {}
-                    for op, val in op_points.items():
-                        uq_hom_results_op[op] = {}
-                        for sig_id, v in bunch_lengths(val).items():
-                            ident = f'_{bunch_tag(op, sig_id, v)}'
-                            uq_hom_results_op[op][sig_id] = {kk.replace(ident, ''): vv for (kk, vv) in
-                                                             cav_uq_hom_results.items() if ident in kk}
-                else:
-                    uq_hom_results_op = cav.uq_hom_results
+                self.uq_hom_results[cav.name] = _hom_uq_by_operating_point(cav.uq_hom_results,
+                                                                           uq_config)
 
-                self.uq_hom_results[cav.name] = uq_hom_results_op
-            # except FileNotFoundError:
-            #     error("Oops! Something went wrong. Could not find the tune results. Please run tune again.")
+    def _comparison_view(self, analysis, tuned='auto', uq=False):
+        """The study a comparison across its cavities reads: tuned-first.
+
+        With ``tuned='auto'`` each cavity's current tuned version
+        (:func:`~cavsim2d.utils.integrity.current_tuned`) stands in for it when
+        that version has the results the comparison needs, labelled
+        ``'<name> (tuned)'``. A cavity whose tuned version lacks them is compared
+        untuned, with a warning. ``tuned=False`` compares every cavity as it is.
+        Only study-level comparisons read this way: ``cav.eigenmode.qois`` and the
+        other cavity-level reads always mean that cavity's own geometry.
+
+        *analysis* is ``'eigenmode'``, ``'wakefield'`` or ``'all'`` (both); *uq*
+        asks for UQ results instead of the nominal ones. Returns the study itself
+        when no cavity is replaced.
+        """
+        if tuned not in ('auto', True, False, None):
+            raise ValueError(f"tuned={tuned!r}: pass 'auto' (the default) or False.")
+        if not tuned:
+            return self
+        pairs, lacking = [], []
+        for cav in self.cavities_list:
+            version = current_tuned(cav)
+            if version is not None and not _has_results(version, analysis, uq):
+                lacking.append(cav.name)
+                version = None
+            pairs.append((cav, version))
+        if lacking:
+            one = len(lacking) == 1
+            what = {'eigenmode': 'eigenmode', 'wakefield': 'wakefield',
+                    'all': 'eigenmode and wakefield'}[analysis] + (' UQ' if uq else '')
+            warning(f"{', '.join(map(repr, lacking))} "
+                    f"{'has a tuned version' if one else 'have tuned versions'} without "
+                    f"{what} results, so {'it is' if one else 'they are'} compared untuned. "
+                    f"Solve the tuned versions (study.tuned.run_eigenmode(...) or "
+                    f"run_wakefield(...)) to compare them, or pass tuned=False to compare "
+                    f"every cavity untuned.")
+        if all(version is None for _, version in pairs):
+            return self
+
+        view = Study(self.projectDir, name=self.name, _skip_project_init=True)
+        view.__dict__.update({k: v for k, v in self.__dict__.items()
+                              if k not in _PER_CAVITY_STATE})
+        hom_uq_config = (getattr(self, 'wakefield_config', None) or {}).get('uq_config')
+        for cav, version in pairs:
+            if version is None:
+                member = cav
+                for cache in _RESULT_CACHES:
+                    if cav.name in getattr(self, cache):
+                        getattr(view, cache)[cav.name] = getattr(self, cache)[cav.name]
+            else:
+                # A copy, so the label does not stick to cav.tuned itself.
+                member = copy.copy(version)
+                member.name = member.plot_label = f'{cav.name} (tuned)'
+                view._read_results_of(member, hom_uq_config)
+            view.cavities_list.append(member)
+            view.cavities_dict[member.name] = member
+            view.shape_space[member.name] = getattr(member, 'shape', None)
+        return view
+
+    def _read_results_of(self, member, hom_uq_config):
+        """Fill this study's result caches for *member* from its own folder."""
+        key = member.name
+        self.eigenmode_qois[key] = member.eigenmode_qois
+        self.eigenmode_qois_all_modes[key] = member.eigenmode_qois_all_modes
+        uq_folder = os.path.join(member.self_dir, 'uq')
+        if os.path.isfile(os.path.join(uq_folder, 'uq.json')):
+            member.get_uq_fm_results(uq_folder)
+            self.uq_fm_results[key] = member.uq_fm_results
+            self.uq_nodes[key] = member.uq_nodes
+            self.uq_fm_results_all_modes[key] = getattr(member, 'uq_fm_results_all_modes', None)
+        self.wakefield_qois[key] = member.wakefield_qois
+        self.wakefield_qois_op[key] = member.wakefield_qois_op
+        hom_uq = os.path.join(member.self_dir, 'wakefield', 'uq', 'uq.json')
+        if os.path.isfile(hom_uq):
+            member.get_uq_hom_results(hom_uq)
+            self.uq_hom_results[key] = _hom_uq_by_operating_point(member.uq_hom_results,
+                                                                  hom_uq_config)
 
     @property
     def eigenmode(self):
@@ -1064,14 +1165,20 @@ class Study(StudyPlotting):
 
     cfg_sample = sample_config = sample_cfg = config_sample
 
-    def qois_fm(self):
+    def qois_fm(self, tuned='auto'):
         """
-        Retrieves the fundamental mode quantities of interest
+        Retrieves the fundamental mode quantities of interest, one row per cavity.
+
+        Each cavity's current tuned version stands in for it when it has eigenmode
+        results (see :meth:`summary`); ``tuned=False`` reads every cavity as it is.
 
         Returns
         -------
-        Dictionary containing fundamental mode quantities of interest (normed optional).
+        List of dictionaries of fundamental mode quantities of interest.
         """
+        view = self._comparison_view('eigenmode', tuned)
+        if view is not self:
+            return view.qois_fm(tuned=False)
         # Read from the results themselves (cav.eigenmode_qois): the summary
         # attributes were never filled on a loaded study, whose summary was all
         # zeros. They remain the fallback for objects that carry only those.
@@ -1100,13 +1207,19 @@ class Study(StudyPlotting):
 
         return results
 
-    def summary(self):
+    def summary(self, tuned='auto'):
         """Fundamental-mode QOIs for all cavities as a DataFrame, indexed by
         cavity name. In Jupyter it renders as an HTML table; elsewhere use
         ``.to_string()`` / ``.to_markdown()``. Requires eigenmode results
-        (run ``run_eigenmode`` first)."""
-        names = [cav.name for cav in self.cavities_list]
-        return pd.DataFrame(self.qois_fm(), index=names)
+        (run ``run_eigenmode`` first).
+
+        Like every comparison across a study, it reads tuned-first: a cavity with a
+        current tuned version that has eigenmode results is shown by that version,
+        as ``'<name> (tuned)'``. Pass ``tuned=False`` to show every cavity untuned.
+        """
+        view = self._comparison_view('eigenmode', tuned)
+        names = [cav.name for cav in view.cavities_list]
+        return pd.DataFrame(view.qois_fm(tuned=False), index=names)
 
     def define_operating_points(self, ops):
         self.operating_points = ops

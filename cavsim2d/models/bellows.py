@@ -102,7 +102,6 @@ class Bellows(Cavity):
         self.cell_parameterisation = 'simplecell'
         self.shape = {'IC': [float(Ri), float(A), float(L_p),
                              float(R_root), float(R_crest)], 'BP': 'none'}
-        self.shape_multicell = None
         self.check_feasible()
 
     # -- geometry ------------------------------------------------------------

@@ -51,23 +51,6 @@ def save_tune_result(d, folder, filename):
         file.write(json.dumps(d, indent=4, separators=(',', ': ')))
 
 
-def to_multicell(n_cells, shape):
-    shape_multicell = {}
-    mid_cell = shape['IC']
-    mid_cell_multi = np.array([[[a, a] for _ in range(n_cells - 1)] for a in mid_cell])
-
-    shape_multicell['OC'] = shape['OC']
-    shape_multicell['OC_R'] = shape['OC_R']
-    shape_multicell['IC'] = mid_cell_multi
-    # shape_multicell['BP'] = shape['BP']
-    shape_multicell['n_cells'] = shape['n_cells']
-    shape_multicell['CELL TYPE'] = 'multicell'
-
-    return shape_multicell
-
-
-
-
 def expand_cells(cav: dict, cells):
     """
     Given shape['n_cells'], expand 'all' to every half-cell:

@@ -17,6 +17,7 @@ from cavsim2d.utils.shapes import (half_cells_to_dataframe, perturb_geometry,
 from cavsim2d.utils.quadrature import (bootstrap_moment_errors, is_sampling_rule,
                                        sigma_relative_standard_error, weighted_mean_obj)
 from cavsim2d.utils.printing import error, warning
+from cavsim2d.utils.parallel import run_each
 from cavsim2d.utils.scratch import scratch_folders
 
 ngsolve_mevp = NGSolveMEVP()
@@ -354,12 +355,10 @@ def uq_parallel(cav, eigenmode_config, solver='eigenmode'):
                          for scav in cavlist]
                 nproc = min(int(uq_processes or 1), len(cavlist))
                 if nproc > 1:
-                    # Deferred: joblib is only pulled in for parallel runs.
-                    from joblib import Parallel, delayed
-                    tuned_hcs = Parallel(n_jobs=nproc, backend='loky')(
-                        delayed(_tune_half_cells_quarter)(hc, target_freq, sr, bp,
-                                                          tune_mode, mesh_h, mesh_p)
-                        for hc, sr, bp in specs)
+                    tuned_hcs = run_each(_tune_half_cells_quarter,
+                                         [(hc, target_freq, sr, bp, tune_mode, mesh_h, mesh_p)
+                                          for hc, sr, bp in specs], nproc,
+                                         'Tuning half-cells')
                 else:
                     tuned_hcs = [_tune_half_cells_quarter(hc, target_freq, sr, bp,
                                                           tune_mode, mesh_h, mesh_p)

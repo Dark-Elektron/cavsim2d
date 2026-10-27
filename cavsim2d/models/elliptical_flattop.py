@@ -105,8 +105,6 @@ class EllipticalCavityFlatTop(Cavity):
             "geo_file": None
         }
 
-        # Produce multicell representation
-        self.to_multicell()
         self.get_geometric_parameters()
 
     def create(self, n_cells=None, beampipe=None, mode=None):

@@ -146,6 +146,11 @@ class TuneSolver(_ConfigSampleMixin):
     def run(self, tune_config=None, **kwargs):
         """Run frequency tuning. Delegates to processes/tune.py.
 
+        The cavity itself is never changed: the tuned geometry becomes
+        ``cav.tuned``, in ``<cav>/tuned/``. Before replacing an existing tune, or
+        anything in the cavity's folder computed for another geometry, it asks
+        (see :func:`cavsim2d.utils.integrity.guard_runs`).
+
         Parameters
         ----------
         tune_config : dict, optional
@@ -156,12 +161,10 @@ class TuneSolver(_ConfigSampleMixin):
             ``cell_type={'mid-cell': 'Req'}``). Merged in last, so they take final
             precedence; a key given in both with different values warns.
 
-        The cavity itself is never changed: the tuned geometry becomes
-        ``cav.tuned``, in ``<cav>/tuned/``. Before replacing an existing tune, or
-        anything in the cavity's folder computed for another geometry, it asks
-        (see :func:`cavsim2d.utils.integrity.guard_runs`).
-
-        Returns this namespace, so calls chain: ``cav.tune.run(cfg).qois``.
+        Returns
+        -------
+        TuneSolver
+            This namespace, so calls chain: ``cav.tune.run(cfg).qois``.
         """
         # Deferred: breaks the solver_objects <-> processes.tune import cycle.
         from cavsim2d.processes.tune import resolve_tune_defaults, run_tune_parallel
@@ -322,13 +325,20 @@ class TuneSolver(_ConfigSampleMixin):
 
     def _family_scan(self, scratch, freq, n, fraction, mesh_config, vary):
         # Deferred: models and study both import solver_objects (cycle).
-        from cavsim2d.models.elliptical import EllipticalCavity
         from cavsim2d.study import Study
 
         cav = self.cavity
         if not getattr(cav, 'uses_cell_suffixes', False):
             raise ValueError('family_scan is defined for elliptical-family cavities only.')
-        A, B, aa, bb, Ri, L0, Req0 = (float(x) for x in np.asarray(cav.half_cells()[0], float))
+        # Members are built with the cavity's own model, whose cells keep every
+        # parameter it has (a flat top's length ``l`` too); ``L`` and ``Req`` sit
+        # at the same positions in both elliptical families.
+        model = type(cav)
+        try:
+            base = [float(x) for x in np.asarray(cav.half_cells()[0], float)]
+        except NotImplementedError:
+            base = [float(x) for x in cav.end_cell_left]
+        L0, Req0 = base[5], base[6]
         ncells = int(cav.n_cells or 1)
         bp = getattr(cav, 'beampipe', 'both')
         mesh = mesh_config or {'h': 20, 'p': 3}
@@ -344,7 +354,7 @@ class TuneSolver(_ConfigSampleMixin):
             def asmf(Req, Le):
                 m = mid[:]; m[6] = Req
                 e = end[:]; e[5] = Le; e[6] = Req
-                c = EllipticalCavity(ncells, m, e, e, beampipe=bp)
+                c = model(ncells, m, e, e, beampipe=bp)
                 if c.profile() is None:
                     return np.nan
                 c.set_workspace(scratch())
@@ -358,7 +368,7 @@ class TuneSolver(_ConfigSampleMixin):
                 # fundamental of a single cell: the mid cell's periodic frequency
                 # (bp='none') or the end cup's beampipe-loaded quarter frequency
                 # (bp='both' = the symmetric two-end-cup cell the quarter halves).
-                c = EllipticalCavity(1, params, params, params, beampipe=bpx)
+                c = model(1, params, params, params, beampipe=bpx)
                 if c.profile() is None:
                     return np.nan
                 c.set_workspace(scratch())
@@ -394,17 +404,20 @@ class TuneSolver(_ConfigSampleMixin):
             for i, rr in enumerate(rows):
                 m = mid[:]; m[6] = rr['Req']
                 e = end[:]; e[5] = rr['L_e']; e[6] = rr['Req']
-                c = EllipticalCavity(ncells, m, e, e, beampipe=bp, name='family_%d' % i)
+                c = model(ncells, m, e, e, beampipe=bp, name='family_%d' % i)
                 c.set_workspace(os.path.join(folder, c.name))
                 family.cavities_list.append(c)
                 family.cavities_dict[c.name] = c
             family.designs = pd.DataFrame(rows)
             return family
 
+        def cell(Req, L):
+            c = base[:]
+            c[5], c[6] = L, Req
+            return c
+
         def fcav(Req, L):
-            c = EllipticalCavity(ncells, [A, B, aa, bb, Ri, L, Req],
-                                 [A, B, aa, bb, Ri, L, Req],
-                                 [A, B, aa, bb, Ri, L, Req], beampipe=bp)
+            c = model(ncells, cell(Req, L), cell(Req, L), cell(Req, L), beampipe=bp)
             if c.profile() is None:
                 return np.nan
             c.set_workspace(scratch())
@@ -437,10 +450,8 @@ class TuneSolver(_ConfigSampleMixin):
         folder = tempfile.mkdtemp(prefix='cavsim2d_family_')
         family = Study(folder, _skip_project_init=True)
         for i, rr in enumerate(rows):
-            c = EllipticalCavity(ncells, [A, B, aa, bb, Ri, rr['L'], rr['Req']],
-                                 [A, B, aa, bb, Ri, rr['L'], rr['Req']],
-                                 [A, B, aa, bb, Ri, rr['L'], rr['Req']],
-                                 beampipe=bp, name='family_%d' % i)
+            c = model(ncells, cell(rr['Req'], rr['L']), cell(rr['Req'], rr['L']),
+                      cell(rr['Req'], rr['L']), beampipe=bp, name='family_%d' % i)
             c.set_workspace(os.path.join(folder, c.name))
             family.cavities_list.append(c)
             family.cavities_dict[c.name] = c
@@ -483,32 +494,30 @@ class TuneSolver(_ConfigSampleMixin):
 
     def _solve_qoi_targets_in(self, scratch, var_names, targets, mesh_config, maxit,
                               n_family, fraction, bc, tol):
-        # Deferred: models imports solver_objects (cycle).
-        from cavsim2d.models.elliptical import EllipticalCavity
-
         cav = self.cavity
         if not getattr(cav, 'uses_cell_suffixes', False):
             raise ValueError('QoI-constrained tuning is defined for elliptical-family '
                              'cavities only.')
         ncells = int(cav.n_cells or 1)
-        bp = getattr(cav, 'beampipe', 'both')
         mesh = mesh_config or {'h': 20, 'p': 3}
 
-        cells = {'m': [float(x) for x in cav.mid_cell],
-                 'el': [float(x) for x in cav.end_cell_left],
-                 'er': [float(x) for x in getattr(cav, 'end_cell_right', cav.end_cell_left)]}
-        pidx = {'A': 0, 'B': 1, 'a': 2, 'b': 3, 'Ri': 4, 'L': 5, 'Req': 6}
-        bare_of = {v: k for k, v in pidx.items()}
-        suf = {'m': '_m', 'el': '_el', 'er': '_er'}
+        # Candidates are the cavity's own model rebuilt from its suffixed
+        # parameters, so every dimension it has takes part -- a flat top's ``l``
+        # too. Building a plain EllipticalCavity from the cell vectors dropped it
+        # without a word.
+        base = dict(cav.parameters)
+        cell_names = sorted({k.rsplit('_', 1)[0] for k in base
+                             if k.endswith(cav.CELL_SUFFIXES)})
 
         def resolve(name):
-            for sx, whichs in (('_m', ['m']), ('_el', ['el']), ('_er', ['er']),
-                               ('_e', ['el', 'er'])):
-                if name.endswith(sx) and name[:-len(sx)] in pidx:
-                    return [(w, pidx[name[:-len(sx)]]) for w in whichs]
-            if name in pidx:
-                return [(w, pidx[name]) for w in ('m', 'el', 'er')]
-            return None
+            """The suffixed parameter keys a tune variable moves together."""
+            for sx, sufs in (('_m', ('_m',)), ('_el', ('_el',)), ('_er', ('_er',)),
+                             ('_e', ('_el', '_er'))):
+                if name.endswith(sx):
+                    keys = [name[:-len(sx)] + s for s in sufs]
+                    return keys if all(k in base for k in keys) else None
+            keys = [name + s for s in cav.CELL_SUFFIXES]
+            return keys if all(k in base for k in keys) else None
 
         var_names = list(var_names)
         loc = {}
@@ -516,7 +525,7 @@ class TuneSolver(_ConfigSampleMixin):
             r = resolve(n)
             if not r:
                 raise ValueError("Unknown tune variable '%s' (expected one of %s, optionally "
-                                 "suffixed _m/_el/_er/_e)." % (n, sorted(pidx)))
+                                 "suffixed _m/_el/_er/_e)." % (n, cell_names))
             loc[n] = r
 
         tgt_names = list(targets)
@@ -526,12 +535,15 @@ class TuneSolver(_ConfigSampleMixin):
             raise ValueError('Over-constrained: %d target(s) but %d tune variable(s). Give at '
                              'least as many variables as targets.' % (nt, nv))
 
-        def build(x):
+        def parameters_at(x):
+            params = dict(base)
             for k, n in enumerate(var_names):
-                for w, i in loc[n]:
-                    cells[w][i] = float(x[k])
-            return EllipticalCavity(ncells, cells['m'][:], cells['el'][:], cells['er'][:],
-                                    beampipe=bp)
+                for key in loc[n]:
+                    params[key] = float(x[k])
+            return params
+
+        def build(x):
+            return cav.rebuild(parameters_at(x))
 
         def evaluate(x):
             c = build(x)
@@ -573,7 +585,7 @@ class TuneSolver(_ConfigSampleMixin):
         # costs ONE eigensolve rather than re-probing the whole Jacobian -- the full FD
         # Jacobian is (re)built only at the start and whenever a step stops reducing the
         # residual. A short backtrack steps off degenerate geometry.
-        x = np.array([float(cells[loc[n][0][0]][loc[n][0][1]]) for n in var_names], float)
+        x = np.array([float(base[loc[n][0]]) for n in var_names], float)
         fd = np.maximum(0.3, 0.01 * np.abs(x))
         # Per-target ABSOLUTE convergence tolerance, in each target's own units:
         # frequency 1e-2 MHz and R/Q 0.1 Ohm by default -- the practical acceptance band
@@ -632,13 +644,8 @@ class TuneSolver(_ConfigSampleMixin):
             prev = cur
 
         ach = f if f is not None else evaluate(x)
-        build(x)                                     # leave `cells` at the solution
-        params = dict(cav.parameters)
-        for k, n in enumerate(var_names):
-            for w, i in loc[n]:
-                params['%s%s' % (bare_of[i], suf[w])] = float(x[k])
         return {'mode': 'unique',
-                'parameters': params,
+                'parameters': parameters_at(x),
                 'achieved': dict(zip(tgt_names, ach.tolist())) if ach is not None else {},
                 'variables': list(var_names),
                 'history': history}

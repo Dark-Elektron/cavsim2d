@@ -19,7 +19,10 @@ from cavsim2d.solvers.configs import _ConfigSampleMixin
 #     cav.eigenmode.plot_impedance()        study.eigenmode.plot_impedance()
 #     cav.wakefield.plot_impedance()        study.wakefield.plot_impedance()
 #
-# The study-level versions overlay every cavity, one warm colour each.
+# The study-level versions overlay every cavity, one warm colour each. They read
+# tuned-first: a cavity's current tuned version stands in for it when it has the
+# results, labelled '<name> (tuned)', and tuned=False compares every cavity as it
+# is (see Study._comparison_view).
 
 class _StudyNamespace:
     """Shared plumbing for the study-level solver namespaces."""
@@ -34,14 +37,19 @@ class _StudyNamespace:
     def _colors(self):
         return self.study._compare_colors()
 
-    def _overlay_curves(self, method, ax, empty_msg, show=True, **kwargs):
+    def _view(self, analysis, tuned='auto', uq=False):
+        """The study a comparison reads: each cavity, or its tuned version."""
+        return self.study._comparison_view(analysis, tuned, uq=uq)
+
+    def _overlay_curves(self, method, ax, empty_msg, show=True, tuned='auto', **kwargs):
         """Overlay one per-cavity curve method (e.g. 'plot_k_loss') on one axis,
         one warm colour each."""
+        view = self._view('wakefield', tuned)
         drew = False
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(9, 4.5))
-            for cav, color in zip(self.cavities, self._colors()):
+            for cav, color in zip(view.cavities_list, view._compare_colors()):
                 before = len(ax.lines)
                 # show=False: draw onto the shared overlay axis, show once below
                 getattr(cav.wakefield, method)(ax=ax, color=color,
@@ -70,9 +78,12 @@ class StudyEigenmode(_ConfigSampleMixin, _StudyNamespace):
         """Every mode of every polarisation of every cavity, as one DataFrame.
 
         The single-cavity frame (:attr:`EigenmodeSolver.qois_df`) plus a
-        ``cavity`` column, so a study filters exactly like one cavity does."""
+        ``cavity`` column, so a study filters exactly like one cavity does. A
+        cavity's current tuned version is listed in its place, as
+        ``'<name> (tuned)'``, when it has eigenmode results; the untuned frames are
+        each cavity's own ``cav.eigenmode.qois_df``."""
         frames = []
-        for cav in self.cavities:
+        for cav in self._view('eigenmode').cavities_list:
             df = cav.eigenmode.qois_df
             if df.empty:
                 continue
@@ -82,22 +93,26 @@ class StudyEigenmode(_ConfigSampleMixin, _StudyNamespace):
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     def plot_impedance(self, kind='longitudinal', ax=None, span=None,
-                       n_points=8001, Q=None, unit='k', show=True, **kwargs):
+                       n_points=8001, Q=None, unit='k', show=True, tuned='auto',
+                       **kwargs):
         """Overlay each cavity's impedance, reconstructed from its eigenmodes.
 
         See :meth:`EigenmodeSolver.impedance`. The span defaults to
         ``(0, highest mode across ALL cavities)`` so the curves share one axis
-        and are genuinely comparable.
+        and are genuinely comparable. A cavity's current tuned version is drawn in
+        its place when it has eigenmode results; ``tuned=False`` draws every
+        cavity untuned.
 
         >>> ax = study.eigenmode.plot_impedance(show=False)
         >>> study.wakefield.plot_impedance(ax=ax)      # compare with the wake solve
         """
         transverse = str(kind).lower().startswith('trans')
         m = 1 if transverse else 0
+        view = self._view('eigenmode', tuned)
 
         if span is None:
             highest = [df[df['m'] == m]['freq [MHz]'].max()
-                       for df in (c.eigenmode.qois_df for c in self.cavities)
+                       for df in (c.eigenmode.qois_df for c in view.cavities_list)
                        if not df.empty and (df['m'] == m).any()]
             if not highest:
                 error(f"No {'dipole' if transverse else 'monopole'} eigenmode results "
@@ -110,7 +125,7 @@ class StudyEigenmode(_ConfigSampleMixin, _StudyNamespace):
             if ax is None:
                 _, ax = plt.subplots(figsize=(9, 4.5))
             drawn = 0
-            for cav, color in zip(self.cavities, self._colors()):
+            for cav, color in zip(view.cavities_list, view._compare_colors()):
                 df = cav.eigenmode._impedance_frame(kind=kind, span=span,
                                                     n_points=n_points, Q=Q, unit=unit)
                 if df.empty:
@@ -135,26 +150,33 @@ class StudyEigenmode(_ConfigSampleMixin, _StudyNamespace):
         return ax
 
     # -- Fundamental-mode comparison plots (were Study.plot_compare_fm_*) -----
-    def plot_fm_scatter(self, ncols=3, uq=False, qois=None, show=True):
+    def plot_fm_scatter(self, ncols=3, uq=False, qois=None, show=True, tuned='auto'):
         """Scatter each cavity's fundamental-mode QOIs (optionally UQ mean±std).
 
         With ``uq=True`` each QOI is a mean with a ±1σ error bar and the nominal
-        design point overlaid — the built-in UQ figure-of-merit comparison.
+        design point overlaid — the built-in UQ figure-of-merit comparison. A
+        cavity's current tuned version stands in for it when it has the results;
+        ``tuned=False`` compares every cavity untuned.
         """
-        axd = self.study._fm_scatter_impl(ncols=ncols, uq=uq, qois=qois)
+        axd = self._view('eigenmode', tuned, uq=uq)._fm_scatter_impl(ncols=ncols, uq=uq,
+                                                                     qois=qois)
         _maybe_show(show)
         return axd
 
-    def plot_fm_bar(self, ncols=3, uq=False, qois=None, show=True):
-        """Bar chart of each cavity's fundamental-mode QOIs (optionally UQ)."""
-        axd = self.study._fm_bar_impl(ncols=ncols, uq=uq, qois=qois)
+    def plot_fm_bar(self, ncols=3, uq=False, qois=None, show=True, tuned='auto'):
+        """Bar chart of each cavity's fundamental-mode QOIs (optionally UQ); a
+        cavity's current tuned version stands in for it when it has the results."""
+        axd = self._view('eigenmode', tuned, uq=uq)._fm_bar_impl(ncols=ncols, uq=uq,
+                                                                 qois=qois)
         _maybe_show(show)
         return axd
 
-    def plot_compare(self, kind='scatter', uq=False, ncols=3, qois=None, show=True):
+    def plot_compare(self, kind='scatter', uq=False, ncols=3, qois=None, show=True,
+                     tuned='auto'):
         """Dispatch to :meth:`plot_fm_scatter` (``kind='scatter'``) or
         :meth:`plot_fm_bar` (``kind='bar'``)."""
-        r = self.study._eigenmode_compare_impl(kind=kind, uq=uq, ncols=ncols, qois=qois)
+        r = self._view('eigenmode', tuned, uq=uq)._eigenmode_compare_impl(
+            kind=kind, uq=uq, ncols=ncols, qois=qois)
         _maybe_show(show)
         return r
 
@@ -170,13 +192,15 @@ class StudyWakefield(_ConfigSampleMixin, _StudyNamespace):
         return self.study.run_wakefield(wakefield_config, **kwargs)
 
     def plot_impedance(self, kind='longitudinal', ax=None, unit='k', show=True,
-                       **kwargs):
-        """Overlay each cavity's wakefield impedance (|Z| vs f)."""
+                       tuned='auto', **kwargs):
+        """Overlay each cavity's wakefield impedance (|Z| vs f); a cavity's
+        current tuned version is drawn in its place when it has wakefield results."""
+        view = self._view('wakefield', tuned)
         drew = False
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(9, 4.5))
-            for cav, color in zip(self.cavities, self._colors()):
+            for cav, color in zip(view.cavities_list, view._compare_colors()):
                 if cav.wakefield.impedance(kind, unit=unit).empty:
                     continue
                 # show=False: overlay onto the shared axis, show once below
@@ -191,11 +215,11 @@ class StudyWakefield(_ConfigSampleMixin, _StudyNamespace):
         _maybe_show(show)
         return ax
 
-    def plot_wake(self, kind='longitudinal', ax=None, show=True, **kwargs):
+    def plot_wake(self, kind='longitudinal', ax=None, show=True, tuned='auto', **kwargs):
         """Overlay each cavity's wake potential (W vs s)."""
-        return self._overlay(kind, 'wake', ax, show=show, **kwargs)
+        return self._overlay(kind, 'wake', ax, show=show, tuned=tuned, **kwargs)
 
-    def plot_k_loss(self, ax=None, show=True, **kwargs):
+    def plot_k_loss(self, ax=None, show=True, tuned='auto', **kwargs):
         """Overlay each cavity's cumulative loss-factor spectrum k_loss(F) vs f.
 
         (The single cumulative number per cavity is what the study comparison
@@ -203,22 +227,23 @@ class StudyWakefield(_ConfigSampleMixin, _StudyNamespace):
         return self._overlay_curves(
             'plot_k_loss', ax,
             "No loss-factor spectra in this study — run study.wakefield.run(...).",
-            show=show, **kwargs)
+            show=show, tuned=tuned, **kwargs)
 
-    def plot_k_kick(self, ax=None, show=True, **kwargs):
+    def plot_k_kick(self, ax=None, show=True, tuned='auto', **kwargs):
         """Overlay each cavity's cumulative kick-factor spectrum k_kick(F) vs f."""
         return self._overlay_curves(
             'plot_k_kick', ax,
             "No kick-factor spectra in this study — run study.wakefield.run(...).",
-            show=show, **kwargs)
+            show=show, tuned=tuned, **kwargs)
 
-    def _overlay(self, kind, quantity, ax, show=True, **kwargs):
+    def _overlay(self, kind, quantity, ax, show=True, tuned='auto', **kwargs):
         transverse = str(kind).lower().startswith('trans')
+        view = self._view('wakefield', tuned)
         drew = False
         with house_style():
             if ax is None:
                 _, ax = plt.subplots(figsize=(9, 4.5))
-            for cav, color in zip(self.cavities, self._colors()):
+            for cav, color in zip(view.cavities_list, view._compare_colors()):
                 wf = cav.wakefield
                 df = wf.wake_t if transverse else wf.wake_z
                 if df is None or df.empty:
@@ -236,49 +261,44 @@ class StudyWakefield(_ConfigSampleMixin, _StudyNamespace):
 
     # -- HOM / power comparison plots (were Study.plot_compare_{hom,power}_*) --
     def plot_hom_scatter(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3),
-                         qois=None, show=True):
+                         qois=None, show=True, tuned='auto'):
         """Scatter each cavity's higher-order-mode QOIs (optionally UQ mean±std).
 
         ``op_points_list`` names the operating points for the per-operating-point
         QOIs (``k_loss``, ``k_kick``, ``p_hom``). Omit it with ``uq=True`` to plot
         a wakefield UQ run whose objectives are impedance windows instead
         (``ZL``/``ZT`` peaks): one panel per window, each cavity's mean with its
-        ±1σ error bar."""
-        axd = self.study._hom_scatter_impl(op_points_list, ncols=ncols, uq=uq,
-                                           figsize=figsize, qois=qois)
+        ±1σ error bar. A cavity's current tuned version stands in for it when it
+        has the results; ``tuned=False`` compares every cavity untuned."""
+        axd = self._view('wakefield', tuned, uq=uq)._hom_scatter_impl(
+            op_points_list, ncols=ncols, uq=uq, figsize=figsize, qois=qois)
         _maybe_show(show)
         return axd
 
     def plot_hom_bar(self, op_points_list=None, ncols=3, uq=False, figsize=(12, 3),
-                     qois=None, show=True):
+                     qois=None, show=True, tuned='auto'):
         """Bar chart of each cavity's higher-order-mode QOIs (optionally UQ).
 
         ``op_points_list`` may be omitted with ``uq=True`` for impedance-window
         objectives — see :meth:`plot_hom_scatter`."""
-        axd = self.study._hom_bar_impl(op_points_list, ncols=ncols, uq=uq,
-                                       figsize=figsize, qois=qois)
+        axd = self._view('wakefield', tuned, uq=uq)._hom_bar_impl(
+            op_points_list, ncols=ncols, uq=uq, figsize=figsize, qois=qois)
         _maybe_show(show)
         return axd
 
     def plot_power_scatter(self, rf_config, op_points_list, ncols=3, uq=False,
-                           figsize=(12, 3), qois=None, show=True):
+                           figsize=(12, 3), qois=None, show=True, tuned='auto'):
         """Scatter each cavity's RF-power QOIs across operating points."""
-        axd = self.study._power_scatter_impl(rf_config, op_points_list, ncols=ncols,
-                                             uq=uq, figsize=figsize, qois=qois)
+        axd = self._view('all', tuned, uq=uq)._power_scatter_impl(
+            rf_config, op_points_list, ncols=ncols, uq=uq, figsize=figsize, qois=qois)
         _maybe_show(show)
         return axd
 
-    def plot_power_bar(self, show=True):
-        """Bar chart of each cavity's normalised RF-power QOIs."""
-        r = self.study._power_bar_impl()
-        _maybe_show(show)
-        return r
-
     def plot_compare(self, opt, kind='scatter', uq=False, ncols=3, figsize=(12, 3),
-                     qois=None, show=True):
+                     qois=None, show=True, tuned='auto'):
         """Dispatch to :meth:`plot_hom_scatter` (``kind='scatter'``) or
         :meth:`plot_hom_bar` (``kind='bar'``)."""
-        r = self.study._wakefield_compare_impl(opt, kind=kind, uq=uq, ncols=ncols,
-                                               figsize=figsize, qois=qois)
+        r = self._view('wakefield', tuned, uq=uq)._wakefield_compare_impl(
+            opt, kind=kind, uq=uq, ncols=ncols, figsize=figsize, qois=qois)
         _maybe_show(show)
         return r

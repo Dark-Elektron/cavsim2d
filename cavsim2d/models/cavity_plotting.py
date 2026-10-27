@@ -390,9 +390,10 @@ class CavityPlotting:
             return axes[0]
 
     def plot_dispersion(self, ax=None, pol=None, bands=None, break_axis=True,
-                        breaks=None, light_line=True, **kwargs):
+                        breaks=None, light_line=True, show=True, **kwargs):
         """Plot the Brillouin (dispersion) diagram: frequency vs per-cell phase
-        advance.
+        advance. Shows the figure like every ``plot_*`` method; ``show=False``
+        leaves it open to compose on.
 
         ``pol`` selects the polarisation(s):
 
@@ -438,8 +439,10 @@ class CavityPlotting:
             else:
                 info(f"No light line: cell period is undefined for "
                      f"{type(self).__name__}.")
-        return self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
-                                       breaks=breaks, light_lines=light_lines, **kwargs)
+        ax = self._render_dispersion(series, n, ax=ax, break_axis=break_axis,
+                                     breaks=breaks, light_lines=light_lines, **kwargs)
+        _maybe_show(show)
+        return ax
 
     def axis_field_profile(self, mode, pol='monopole', n=801, normalise=True):
         """Signed on-axis accelerating field of one mode: ``(z_mm, Ez)``.

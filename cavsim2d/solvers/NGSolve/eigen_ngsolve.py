@@ -7,11 +7,9 @@ import pickle
 import sys
 import time
 import warnings
-from cavsim2d.utils.printing import CavsimWarning, error, warning
+from cavsim2d.utils.printing import CavsimWarning, warning
 
 from matplotlib import tri
-from cavsim2d.geometry.writers.gmsh import (write_cavity_geometry_cli_flattop,
-                                            write_cavity_geometry_cli_multicell)
 from cavsim2d.utils.shapes import make_dirs_from_dict
 from netgen.occ import Glue, OCCGeometry, WorkPlane
 from ngsolve import (ArnoldiSolver, BilinearForm, BND, BoundaryFromVolumeCF, Conj, curl, dx,
@@ -754,17 +752,6 @@ class NGSolveMEVP:
     # Geometry
     # ──────────────────────────────────────────────────────────────────────
 
-    def write_geometry_multicell(self, folder, n_cells, multicell,
-                                 beampipe='none', plot=False, cell_parameterisation='normal'):
-        """Write a multicell cavity geometry file to *folder*."""
-        os.makedirs(folder, exist_ok=True)
-
-        file_path = os.path.join(folder, 'geodata.n')
-        if cell_parameterisation == 'normal':
-            write_cavity_geometry_cli_multicell(n_cells, multicell, beampipe, write=file_path, plot=plot)
-        else:
-            write_cavity_geometry_cli_flattop(multicell, 'both', n_cell=n_cells, write=file_path)
-
     def load_geo(self, filepath, output_filepath=None, maxh=1):
         """Load a .geo file via Gmsh, mesh it, and return an NGSolve-ready mesh."""
         if output_filepath is None:
@@ -1198,6 +1185,7 @@ class NGSolveMEVP:
         n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = (eigenmode_config or {}).get('conductivity', SIGMA_COPPER)
         rs_ohm = (eigenmode_config or {}).get('surface_resistance', None)
+        beta = (eigenmode_config or {}).get('beta') or 1.0
         materials = self.resolve_materials(cav, eigenmode_config)
         # Lossless / perturbative / full complex — decided once, from the loss
         # tangents and eigenmode_config['loss_model'], and reported in the QOIs so a
@@ -1262,7 +1250,7 @@ class NGSolveMEVP:
 
         qois_moi = {}
         for idx in moi:
-            q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=idx,
+            q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, beta=beta, mode_idx=idx,
                                    n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
                                    conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                    write_axis=(idx == moi[0]), materials=materials,
@@ -1281,81 +1269,14 @@ class NGSolveMEVP:
 
         qois_all_modes = {}
         for ii in range(len(freq_fes)):
-            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m, mode_idx=ii,
+            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, m,
+                                                    beta=beta, mode_idx=ii,
                                                     n_cells=cav.n_cells, L=L_norm, save_dir=pol_dir,
                                                     conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                                     materials=materials, loss_model=loss_model,
                                                     q_diel=q_diel)
 
         with open(os.path.join(pol_dir, 'qois_all_modes.json'), "w") as f:
-            json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
-
-        return True
-
-    def cavity_multicell(self, no_of_cells=1, no_of_modules=1, multicell=None,
-                         fid=None, bc=33, pol='monopole', f_shift='default', beta=1,
-                         n_modes=None, beampipes='None', sim_folder='NGSolveMEVP',
-                         parentDir=None, projectDir=None, subdir='',
-                         expansion=None, expansion_r=None, mesh_args=None, opt=False,
-                         deformation_params=None, eigenmode_config=None):
-        """Write geometry and run eigenmode analysis for a multicell cavity."""
-        if mesh_args is None:
-            mesh_args = [20, 20]
-
-        # Unified eigenmode folder — flat structure, no Cavities/ subfolder
-        if opt:
-            run_save_directory = projectDir / f'{fid}/eigenmode'
-        elif subdir == '':
-            run_save_directory = projectDir / f'{fid}/eigenmode'
-        else:
-            run_save_directory = projectDir / f'{subdir}/eigenmode/{fid}'
-
-        self.write_geometry_multicell(run_save_directory, no_of_cells, multicell,
-                                      beampipes, plot=False)
-
-        if not os.path.exists(os.path.join(run_save_directory, 'geodata.geo')):
-            error('Could not run eigenmode analysis due to error in geometry.')
-            return False
-
-        mesh_h, mesh_p = 20, 3
-        A_m, B_m, a_m, b_m, Ri_m, L, Req = np.array(multicell[:7])
-        maxh = L / mesh_h * 1e-3
-
-        gmsh.initialize()
-        gmsh.option.setNumber("General.Verbosity", 0)
-        gmsh.option.setNumber("General.Terminal", 0)
-        gmsh.open(os.path.join(run_save_directory, "geodata.geo"))
-        gmsh.model.mesh.generate(2)
-
-        with suppress_c_stdout_stderr():
-            gmsh.write(os.path.join(run_save_directory, "mesh.step"))
-
-        step_geo = OCCGeometry(os.path.join(run_save_directory, "mesh.step"), dim=2)
-        ngmesh = step_geo.GenerateMesh(maxh=maxh)
-        bcs = self._get_boundaries_from_gmsh()
-        gmsh.finalize()
-
-        for key, bc_name in bcs.items():
-            ngmesh.SetBCName(key - 1, bc_name)
-
-        mesh = Mesh(ngmesh)
-        mesh.Curve(geometry_order(mesh_p))
-        self.save_mesh(run_save_directory, mesh)
-
-        n_modes = self.requested_n_modes(n_modes=n_modes if n_modes is not None else no_of_cells + 2)
-        freq_fes, gfu_E, gfu_H = self._solve_eigenproblem(run_save_directory, run_save_directory, mesh, mesh_p, n_modes)
-
-        qois = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=no_of_cells - 1, n_cells=no_of_cells,
-                                  L=L, save_dir=run_save_directory, write_axis=True)
-
-        with open(os.path.join(run_save_directory, 'qois.json'), "w") as f:
-            json.dump(qois, f, indent=4, separators=(',', ': '))
-
-        qois_all_modes = {}
-        for ii in range(len(freq_fes)):
-            qois_all_modes[ii] = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii, n_cells=no_of_cells, L=L)
-
-        with open(os.path.join(run_save_directory, 'qois_all_modes.json'), "w") as f:
             json.dump(qois_all_modes, f, indent=4, separators=(',', ': '))
 
         return True
@@ -2283,6 +2204,7 @@ class NGSolveMEVP:
         n_modes = self.requested_n_modes(cav, eigenmode_config)
         conductivity = eigenmode_config.get('conductivity', SIGMA_COPPER)
         rs_ohm = eigenmode_config.get('surface_resistance', None)
+        beta = eigenmode_config.get('beta') or 1.0
         materials = self.resolve_materials(cav, eigenmode_config)
         # One active length for every polarisation (see _solve_pol).
         L_norm = eigenmode_normalisation(cav, eigenmode_config)
@@ -2315,7 +2237,7 @@ class NGSolveMEVP:
             level_rows = []
             if 0 in pols:
                 for ii in range(len(freq_fes)):
-                    q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, mode_idx=ii,
+                    q = self.evaluate_qois(mesh, gfu_E, gfu_H, freq_fes, beta=beta, mode_idx=ii,
                                            n_cells=cav.n_cells, L=L_norm,
                                            conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                            materials=materials)
@@ -2332,7 +2254,7 @@ class NGSolveMEVP:
                 fr_m, gE_m, gH_m = fr_m[:n_modes], gE_m[:n_modes], gH_m[:n_modes]
                 m_err = self._error_fields(mesh, gE_m[0].components[0].space, gE_m) if gE_m else []
                 for ii in range(len(fr_m)):
-                    q = self.evaluate_qois(mesh, gE_m, gH_m, fr_m, m_pol, mode_idx=ii,
+                    q = self.evaluate_qois(mesh, gE_m, gH_m, fr_m, m_pol, beta=beta, mode_idx=ii,
                                            n_cells=cav.n_cells, L=L_norm,
                                            conductivity=conductivity, surface_resistance_ohm=rs_ohm,
                                            materials=materials)
@@ -2401,6 +2323,7 @@ class NGSolveMEVP:
             t2 = time.perf_counter()
             L_norm = eigenmode_normalisation(cav, cfg)
             qois = [self.evaluate_qois(mesh, gfu_E, gfu_H, freqs, m, mode_idx=i,
+                                       beta=cfg.get('beta') or 1.0,
                                        n_cells=cav.n_cells, L=L_norm,
                                        conductivity=cfg.get('conductivity', SIGMA_COPPER),
                                        surface_resistance_ohm=cfg.get('surface_resistance'),
@@ -3328,20 +3251,46 @@ def get_boundary_nodes(mesh, boundary_name):
 
 
 class suppress_c_stdout_stderr:
-    """Context manager to suppress C-level stdout/stderr (e.g. from Gmsh)."""
+    """Context manager to suppress C-level stdout/stderr (e.g. from Gmsh).
+
+    Where the process has no real stdout/stderr descriptors (``pythonw``, some
+    embedded consoles, a stream without ``fileno``) there is nothing to redirect,
+    and it does nothing rather than failing the run.
+    """
 
     def __enter__(self):
-        self.stdout_fd = sys.__stdout__.fileno()
-        self.stderr_fd = sys.__stderr__.fileno()
-        self.saved_stdout_fd = os.dup(self.stdout_fd)
-        self.saved_stderr_fd = os.dup(self.stderr_fd)
-        self.null_fd = os.open(os.devnull, os.O_RDWR)
-        os.dup2(self.null_fd, self.stdout_fd)
-        os.dup2(self.null_fd, self.stderr_fd)
+        self._saved = []
+        self._null_fd = None
+        self._flush()
+        try:
+            targets = [sys.__stdout__.fileno(), sys.__stderr__.fileno()]
+            self._null_fd = os.open(os.devnull, os.O_RDWR)
+            for fd in targets:
+                self._saved.append((fd, os.dup(fd)))
+                os.dup2(self._null_fd, fd)
+        except (AttributeError, OSError, ValueError):
+            self._restore()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        os.dup2(self.saved_stdout_fd, self.stdout_fd)
-        os.dup2(self.saved_stderr_fd, self.stderr_fd)
-        os.close(self.null_fd)
-        os.close(self.saved_stdout_fd)
-        os.close(self.saved_stderr_fd)
+        self._flush()
+        self._restore()
+
+    def _restore(self):
+        for fd, saved in reversed(self._saved):
+            os.dup2(saved, fd)
+            os.close(saved)
+        self._saved = []
+        if self._null_fd is not None:
+            os.close(self._null_fd)
+            self._null_fd = None
+
+    @staticmethod
+    def _flush():
+        # Python's buffered output must reach the real descriptor before it is
+        # pointed at devnull, and the C library's output must not leak after.
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except (AttributeError, OSError, ValueError):
+                pass

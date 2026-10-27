@@ -12,6 +12,7 @@ from cavsim2d.analysis.tune.pyTuner import TUNE_DEFECTS
 from cavsim2d.constants import c0
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.integrity import stamp_matches, write_stamp
+from cavsim2d.utils.parallel import run_each
 from cavsim2d.utils.scratch import scratch_folders
 
 tuner = Tuner()
@@ -336,44 +337,17 @@ def run_tune_parallel(cavs_dict, tune_config, solver='NGSolveMEVP',
         freqs = np.asarray(freqs, dtype=float)
     tune_config['freqs'] = freqs
 
-    # split shape_space for different processes/ MPI share process by rank
     keys = list(cavs_dict.keys())
-
-    if processes > len(keys):
-        processes = len(keys)
-
-    shape_space_len = len(keys)
-    jobs = []
-
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    specs = []
-    start_idx = 0
-    for p in range(processes):
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        proc_freqs = freqs[start_idx:start_idx + current_chunk_size]
-        start_idx += current_chunk_size
-
-        proc_tune_config = dict(tune_config)
-        proc_tune_config['freqs'] = proc_freqs
-        proc_tune_config['cell_type'] = cell_type_config
-        processor_cavs_dict = {key: cavs_dict[key] for key in proc_keys_list}
-        specs.append((processor_cavs_dict, proc_tune_config, p))
-
-    if processes == 1:
+    processes = min(processes, len(keys))
+    if processes <= 1:
         # Run inline: no spawn overhead, keeps stdout in Jupyter, and lets the
         # caller retain direct references to the tuned cavity objects.
-        run_tune_s(*specs[0])
+        run_tune_s(dict(cavs_dict), tune_config, 0)
     else:
-        # Parallel across cavities via joblib's loky backend — notebook-safe on
-        # Windows (unlike multiprocessing.Process spawn, which needs a __main__
-        # guard). Each worker tunes its chunk and writes results to disk.
-        # Deferred: joblib is only pulled in for parallel runs.
-        from joblib import Parallel, delayed
-        Parallel(n_jobs=processes, backend='loky')(
-            delayed(run_tune_s)(*spec) for spec in specs)
+        # Each worker tunes one cavity, to its own target, and writes the result
+        # to disk.
+        run_each(run_tune_s, [({key: cavs_dict[key]}, dict(tune_config, freqs=freqs[i:i + 1]), i)
+                              for i, key in enumerate(keys)], processes, 'Tuning')
 
 
 def run_tune_s(processor_cavs_dict, tune_config, p):
@@ -1271,9 +1245,18 @@ def run_tune_s(processor_cavs_dict, tune_config, p):
         # wherever the assembly needs it (spreads of tens of MHz were measured).
         # The cup accounting already holds at n == 2 -- (2N-2) = 2 mid cups plus
         # 2 end cups covers the [end_l, mid, mid, end_r] half-cell sequence.
-        _staged = (qoi_targets and 'R/Q [Ohm]' in qoi_targets and (cav.n_cells or 0) >= 2
-                   and 'mid-cell' in cell_type_config and 'end-cell' in cell_type_config
-                   and getattr(cav, 'uses_cell_suffixes', False))
+        _wants_staged = (qoi_targets and 'R/Q [Ohm]' in qoi_targets
+                         and (cav.n_cells or 0) >= 2
+                         and 'mid-cell' in cell_type_config and 'end-cell' in cell_type_config
+                         and getattr(cav, 'uses_cell_suffixes', False))
+        _staged = _wants_staged and getattr(cav, 'supports_staged_qoi_tune', False)
+        if _wants_staged and not _staged:
+            # The cup recipe builds plain elliptical cells; run on a flat top it
+            # tuned a cavity without its flat sections.
+            warning(f"Tune {key}: the staged per-cup R/Q tune is derived for "
+                    f"elliptical cells, not {type(cav).__name__}, so the whole "
+                    f"cavity is tuned in one Newton solve instead. That solve is "
+                    f"exact but slower, and beyond two cells it may not converge.")
         if _staged:
             _run_staged_qoi_tune(cav, key, target_freq, qoi_targets, qoi_split)
         elif qoi_targets:

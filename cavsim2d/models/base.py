@@ -148,7 +148,6 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
         self.uq_fm_results = None
         self.mesh = None
         self.shape = None
-        self.shape_multicell = None
 
         # plot_label: default to `name` if not provided
         self.name = name
@@ -425,6 +424,13 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
 
     #: Suffixes appended to per-cell parameter names when ``uses_cell_suffixes``.
     CELL_SUFFIXES = ('_m', '_el', '_er')
+
+    #: Whether the staged per-cup R/Q tune applies: the mid cell is tuned on its
+    #: own (periodic), then the end cups take the rest of the R/Q by cup
+    #: additivity. The recipe was derived for plain elliptical cells, so only
+    #: :class:`EllipticalCavity` sets this; any other model asking for it is
+    #: tuned on the assembled cavity instead.
+    supports_staged_qoi_tune = False
 
     def tune_variables(self):
         """The names this model accepts as tune variables.
@@ -1116,7 +1122,6 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
         """
         self.mid_cell = cell
         self.shape['IC'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
 
     def set_end_cell_left(self, cell):
         """
@@ -1133,7 +1138,6 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
         """
         self.end_cell_left = cell
         self.shape['OC'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
 
     def set_end_cell_right(self, cell):
         """
@@ -1150,7 +1154,6 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
         """
         self.end_cell_right = cell
         self.shape['OC_R'] = update_alpha(cell, self.cell_parameterisation)
-        self.to_multicell()
 
     def set_boundary_conditions(self, bc):
         """
@@ -1820,34 +1823,9 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
     cfg_sample = sample_config = sample_cfg = config_sample
 
     def _set_shape_key(self, key, value):
-        """Record *key* in ``shape`` and rebuild ``shape_multicell`` from it."""
+        """Record *key* in ``shape``."""
         if isinstance(self.shape, dict):
             self.shape[key] = value
-        self.to_multicell()
-
-    def to_multicell(self):
-        """Rebuild ``shape_multicell`` from the elliptical cell dict in ``shape``.
-
-        Only a model described by mid and end cells (``IC``, ``OC``, ``OC_R``) has
-        one; for the others this does nothing. It used to raise ``KeyError``, so
-        ``set_n_cells`` and ``set_beampipe`` failed on a pillbox, a spline or a gun.
-        """
-        if not (isinstance(self.shape, dict)
-                and all(k in self.shape for k in ('IC', 'OC', 'OC_R', 'BP', 'n_cells'))):
-            return
-        mid_cell = self.shape['IC']
-
-        self.shape_multicell = {}
-        mid_cell_multi = np.array([[[a, a] for _ in range(self.n_cells - 1)] for a in mid_cell])
-
-        self.shape_multicell['OC'] = self.shape['OC']
-        self.shape_multicell['OC_R'] = self.shape['OC_R']
-        self.shape_multicell['IC'] = mid_cell_multi
-        self.shape_multicell['BP'] = self.shape['BP']
-        self.shape_multicell['n_cells'] = self.shape['n_cells']
-        self.shape_multicell['CELL PARAMETERISATION'] = 'multicell'
-        self.shape_multicell['kind'] = self.kind
-        self.shape_multicell['geo_file'] = None
 
     def _create_project(self, overwrite):
         project_name = self.name
@@ -2009,7 +1987,6 @@ class Cavity(CavityPlotting, AbciDeck, ABC):
             spawn.cavities_list.append(scav)
             spawn.cavities_dict[scav.name] = scav
             spawn.shape_space[scav.name] = getattr(scav, 'shape', None)
-            spawn.shape_space_multicell[scav.name] = getattr(scav, 'shape_multicell', None)
 
         return spawn
 

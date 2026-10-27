@@ -227,6 +227,12 @@ def validate_eigenmode_config(cfg):
                 require(cfg[key] > 0,
                         f"eigenmode_config: '{key}' must be greater than zero.")
         _check_mode_of_interest(cfg)
+        if cfg.get('beta') is not None:
+            beta = cfg['beta']
+            require(isinstance(beta, (int, float)) and not isinstance(beta, bool)
+                    and 0 < beta <= 1,
+                    f"eigenmode_config: 'beta'={beta!r} is the particle velocity v/c and "
+                    "must be a number in (0, 1].")
         # Explicit None means "unset" under the complete-config convention, so only
         # a typed value is checked. A misspelled loss model must not fall through to
         # the default and silently return a perturbative Q for a lossy material.

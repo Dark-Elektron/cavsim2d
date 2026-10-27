@@ -53,6 +53,7 @@ DEFAULT_EIGENMODE_CONFIG, EIGENMODE_NOTES = _documented({
     'rerun': (True, 'False -> reuse results computed for this geometry'),
     'conductivity': (5.96e7, 'wall conductivity [S/m]; copper'),
     'surface_resistance': (None, 'fixed surface resistance [Ohm] instead (e.g. SRF)'),
+    'beta': (1.0, 'particle velocity v/c in the voltage (R/Q, Eacc, kick); 1 = ultra-relativistic'),
     'materials': (None, "{'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}} overrides a region "
                         "declared with cav.add_dielectric()"),
     'loss_model': (None, "None/'auto' -> from tan_delta; 'lossless', 'perturbation' or "

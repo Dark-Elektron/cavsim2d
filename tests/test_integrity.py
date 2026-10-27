@@ -166,6 +166,42 @@ def test_a_tuned_version_is_announced_and_must_match_its_parent(tmp_path, monkey
         assert study.tuned is None
 
 
+def test_study_comparisons_read_tuned_first(tmp_path, monkeypatch):
+    """Comparisons across a study show each cavity's current tuned version when
+    that version has the results, labelled '(tuned)'. A tuned version without
+    them is compared untuned, with a warning; tuned=False compares every cavity
+    as it is; and cavity-level reads always mean the cavity's own geometry."""
+    monkeypatch.chdir(tmp_path)
+    mm = {'boundary_conditions': 'mm'}
+    study = Study('proj')
+    a = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
+    b = Pillbox(1, [100, 104, 20, 0, 0], beampipe='none')
+    study.add_cavity([a, b], ['a', 'b'])
+    study.run_eigenmode(mm)
+    f_a = a.eigenmode.qois['freq [MHz]']
+    a.tune.run(freq=1100.0, cell_type={'mid-cell': 'Req'}, eigenmode_config=mm,
+               solve_tuned=True)
+    b.tune.run(freq=1100.0, cell_type={'mid-cell': 'Req'}, eigenmode_config=mm)
+
+    with pytest.warns(CavsimWarning, match="'b' has a tuned version without eigenmode"):
+        table = study.summary()
+    assert list(table.index) == ['a (tuned)', 'b']
+    assert table.loc['a (tuned)', 'freq [MHz]'] == pytest.approx(1100, abs=1.0)
+    assert set(study.eigenmode.qois_df['cavity']) == {'a (tuned)', 'b'}
+    axd = study.eigenmode.plot_fm_scatter(show=False)
+    assert 'a (tuned)' in next(iter(axd.values())).get_legend_handles_labels()[1]
+
+    literal = study.summary(tuned=False)
+    assert list(literal.index) == ['a', 'b']
+    assert literal.loc['a', 'freq [MHz]'] == pytest.approx(f_a)
+    assert a.eigenmode.qois['freq [MHz]'] == pytest.approx(f_a)
+    own = a.eigenmode.plot_fm_scatter(show=False)   # built on a one-cavity study
+    assert next(iter(own.values())).get_legend_handles_labels()[1] == ['a']
+    assert a.tuned.name != 'a (tuned)'           # the label sits on a copy
+    with pytest.raises(ValueError, match='tuned='):
+        study.summary(tuned='yes')
+
+
 # -- the run guard ----------------------------------------------------------------
 
 def test_stale_results_from_another_analysis_block_a_silent_run(tmp_path, monkeypatch):

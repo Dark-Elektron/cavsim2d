@@ -49,7 +49,6 @@ class Pillbox(Cavity):
             'IC': [L, Req, Ri, S, L_bp],
             'BP': beampipe
         }
-        self.shape_multicell = None
 
         self.get_geometric_parameters()
 

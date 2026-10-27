@@ -19,6 +19,8 @@ class EllipticalCavity(Cavity):
     ``help(EllipticalCavity)`` prints the parameterisation.
     """
     uses_cell_suffixes = True
+    supports_staged_qoi_tune = True
+
     def __init__(self, n_cells=None, mid_cell=None, end_cell_left=None,
                  end_cell_right=None, beampipe='none', name='cavity',
                  cell_parameterisation='simplecell', color='k', plot_label=None,
@@ -157,7 +159,6 @@ class EllipticalCavity(Cavity):
             "kind": self.kind
         }
 
-        self.to_multicell()
         self.get_geometric_parameters()
 
     def create(self, n_cells=None, beampipe=None, mode=None):
@@ -245,7 +246,6 @@ class EllipticalCavity(Cavity):
             'OC': update_alpha(self.end_cell_left[:7], self.cell_parameterisation),
             'OC_R': update_alpha(self.end_cell_right[:7], self.cell_parameterisation),
         })
-        self.to_multicell()
         self.get_geometric_parameters()
         self.l_cavity = self.l_active + 8 * self.L * 1e-3
 
@@ -1327,7 +1327,6 @@ class EllipticalCavity(Cavity):
             spawn.cavities_list.append(scav)
             spawn.cavities_dict[name] = scav
             spawn.shape_space[name] = scav.shape
-            spawn.shape_space_multicell[name] = scav.shape_multicell
 
         return spawn
 
@@ -1360,7 +1359,6 @@ class EllipticalCavity(Cavity):
             spawn.cavities_list.append(scav)
             spawn.cavities_dict[name] = scav
             spawn.shape_space[name] = scav.shape
-            spawn.shape_space_multicell[name] = scav.shape_multicell
 
         return spawn
 

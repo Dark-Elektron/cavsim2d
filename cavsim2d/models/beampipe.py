@@ -61,7 +61,6 @@ class Beampipe(Cavity):
         self.cell_parameterisation = 'simplecell'
         self.get_geometric_parameters()
         self.shape = {'IC': [self.R, self.L], 'BP': 'none'}
-        self.shape_multicell = None
 
     @classmethod
     def _parse_ends(cls, ends):

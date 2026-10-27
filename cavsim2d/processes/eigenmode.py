@@ -12,6 +12,7 @@ from cavsim2d.processes.uq import uq_parallel
 from cavsim2d.utils.run_log import RunTimer
 from cavsim2d.utils.config_validation import require
 from cavsim2d.utils.integrity import stamp_matches, write_stamp
+from cavsim2d.utils.parallel import run_each
 
 ngsolve_mevp = NGSolveMEVP()
 
@@ -23,37 +24,17 @@ def run_eigenmode_parallel(cavs_dict, solver_config, subdir=''):
         error('Number of processes must be greater than zero.')
         processes = 1
 
-    keys = list(cavs_dict.keys())
-
-    if processes > len(keys):
-        processes = len(keys)
-
-    shape_space_len = len(keys)
-    base_chunk_size = shape_space_len // processes
-    remainder = shape_space_len % processes
-
-    chunks = []
-    start_idx = 0
-    for p in range(processes):
-        current_chunk_size = base_chunk_size + (1 if p < remainder else 0)
-        proc_keys_list = keys[start_idx:start_idx + current_chunk_size]
-        start_idx += current_chunk_size
-        chunks.append({key: cavs_dict[key] for key in proc_keys_list})
-
+    processes = min(processes, len(cavs_dict))
     target = solver_config['target']
-    if processes == 1:
+    if processes <= 1:
         # Inline path: avoids process-spawn overhead and surfaces stdout/stderr
         # directly in Jupyter; keeps the caller's cavity objects updated in place.
-        target(chunks[0], solver_config, subdir)
+        target(dict(cavs_dict), solver_config, subdir)
     else:
-        # Parallel across cavities via joblib's loky backend. Unlike
-        # multiprocessing.Process (spawn), loky works inside a Jupyter notebook on
-        # Windows without an ``if __name__ == '__main__'`` guard — each worker
-        # solves its chunk and writes results to disk, which callers re-read.
-        # Deferred: joblib is only pulled in for parallel runs.
-        from joblib import Parallel, delayed
-        Parallel(n_jobs=processes, backend='loky')(
-            delayed(target)(chunk, solver_config, subdir) for chunk in chunks)
+        # Each worker solves one cavity and writes its results to disk, which
+        # callers re-read.
+        run_each(target, [({key: cav}, solver_config, subdir)
+                          for key, cav in cavs_dict.items()], processes, 'Eigenmode')
 
 
 def run_eigenmode_s(cavs_dict, eigenmode_config, subdir):

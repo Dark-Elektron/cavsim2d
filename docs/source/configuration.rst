@@ -187,6 +187,11 @@ Eigenmode — ``cav.eigenmode.run`` / ``study.run_eigenmode``
 ``surface_resistance``
    *(float, default None)* Fixed surface resistance [Ohm] override (e.g. for SRF),
    used instead of ``conductivity``.
+``beta``
+   *(float, default 1)* Particle velocity v/c. It sets the phase of the voltage
+   integral, so it changes the accelerating voltage, R/Q, Eacc and the peak-field
+   ratios (and the transverse kick for m ≥ 1), not the field or the frequency. Set it
+   for a β < 1 structure, e.g. ``0.6`` for a medium-β proton cavity.
 ``materials``
    *(dict, default None)* Overrides the properties of dielectric regions declared with
    ``cav.add_dielectric``, e.g. ``{'quartz': {'eps_r': 3.8, 'tan_delta': 1e-4}}``.

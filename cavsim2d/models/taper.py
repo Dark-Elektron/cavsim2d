@@ -76,7 +76,6 @@ class Taper(Cavity):
             'R_fillet': float(R_fillet),
         }
         self.shape = {'IC': [float(R_left), float(R_right), float(L)], 'BP': 'none'}
-        self.shape_multicell = None
         self.check_feasible()
 
     # -- geometry ------------------------------------------------------------

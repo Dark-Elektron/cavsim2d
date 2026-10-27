@@ -71,7 +71,7 @@ def test_base_setters_work_on_every_model():
     mid = [42, 42, 12, 19, 35, 57.7, 103.353]
     ell = EllipticalCavity(1, mid, mid, mid, beampipe='none')
     ell.set_n_cells(3)
-    assert ell.shape_multicell['n_cells'] == 3
+    assert ell.shape['n_cells'] == 3 and len(ell.half_cells()) == 6
 
 
 def test_pillbox_inherits_base_run_eigenmode():
@@ -126,6 +126,31 @@ def test_parallel_eigenmode_processes_gt_1(project_dir):
         qp = os.path.join(project_dir, 'cavities', name,
                           'eigenmode', 'monopole', 'qois.json')
         assert os.path.exists(qp), f"{name} results missing from processes=2 run"
+
+
+def test_parallel_tune_gives_each_cavity_its_own_target(project_dir):
+    """processes>1 tunes one cavity per worker; each must reach its own target."""
+    cavs = Study(project_dir)
+    a = Pillbox(1, [100, 100, 20, 0, 0], beampipe='none')
+    b = Pillbox(1, [100, 104, 20, 0, 0], beampipe='none')
+    cavs.add_cavity([a, b], ['A', 'B'])
+    cavs.run_tune({'freqs': [1100.0, 1090.0], 'cell_type': {'mid-cell': 'Req'},
+                   'processes': 2, 'eigenmode_config': {'boundary_conditions': 'mm'}})
+    assert a.tune.qois['mid-cell']['FREQ'] == pytest.approx(1100.0, abs=0.5)
+    assert b.tune.qois['mid-cell']['FREQ'] == pytest.approx(1090.0, abs=0.5)
+
+
+@requires_abci
+def test_parallel_wakefield_processes_gt_1(project_dir):
+    """processes>1 used multiprocessing.Process workers, which Windows' spawn start
+    re-imports __main__ for; they now run on the same workers as eigenmode."""
+    cavs = Study(project_dir)
+    a = Pillbox(1, [100, 100, 20, 0, 50], beampipe='both')
+    b = Pillbox(1, [100, 104, 20, 0, 50], beampipe='both')
+    cavs.add_cavity([a, b], ['A', 'B'])
+    cavs.run_wakefield({'processes': 2, 'MROT': 0, 'wakelength': 3, 'bunch_length': 25})
+    for cav in (a, b):
+        assert cav.wakefield.qois, f'{cav.name}: no wakefield results from processes=2'
 
 
 def test_per_cavity_run_eigenmode_delegates(project_dir):

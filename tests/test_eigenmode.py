@@ -1,12 +1,16 @@
 """Eigenmode regression tests: monopole baseline, m-pole solver vs analytic,
 per-polarisation result folders and rerun semantics, legacy-layout fallback."""
 import gc
+import io
 import os
 import shutil
+import sys
 import warnings
 
 import numpy as np
+import pandas as pd
 import pytest
+from scipy.constants import c as c0
 
 pytest.importorskip("ngsolve")
 pytest.importorskip("gmsh")
@@ -16,7 +20,8 @@ from cavsim2d import Beampipe, Study, EllipticalCavity, Pillbox
 from cavsim2d.solvers.NGSolve import eigen_ngsolve
 from cavsim2d.solvers.NGSolve.eigen_ngsolve import (DEFAULT_PINVIT_MAXIT, DEFAULT_PINVIT_TOL,
                                                     NGSolveMEVP, default_direct_solver,
-                                                    direct_solver_available, geometry_order)
+                                                    direct_solver_available, geometry_order,
+                                                    suppress_c_stdout_stderr)
 from cavsim2d.solvers.solver_objects import DEFAULT_EIGENMODE_CONFIG
 
 TESLA_MID = [42, 42, 12, 19, 35, 57.652, 103.3536]
@@ -155,6 +160,57 @@ def test_pillbox_matches_analytic_for_every_m(m):
     ana = np.sort(np.concatenate([tm, te]))
     for a in ana[:3]:
         assert np.min(np.abs(freqs - a) / a) < 0.01, (m, a, freqs)
+
+
+def test_beta_scales_rq_by_the_transit_time_factor(tmp_path):
+    """``eigenmode_config['beta']`` is the particle velocity in the voltage integral,
+    V = |int E_z exp(i w z / (beta c)) dz|. The field does not depend on beta, so
+    R/Q(0.5)/R/Q(1) must equal that ratio of voltages, taken over the solved on-axis
+    field. (Not the uniform-field sinc: E_z dips within ~1 mm of the pillbox's
+    aperture discs, which shifts the ratio by several percent.)"""
+    qois = {}
+    for beta in (1.0, 0.5):
+        cav = Pillbox(1, [100.0, 100.0, 1.0, 0, 0], beampipe='none')
+        cav.set_workspace(str(tmp_path / f'beta_{beta}'))
+        cav.eigenmode.run(mesh_config={'h': 20, 'p': 3}, beta=beta)
+        qois[beta] = cav.eigenmode.qois
+    assert qois[0.5]['freq [MHz]'] == pytest.approx(qois[1.0]['freq [MHz]'], rel=1e-9)
+
+    axis = pd.read_csv(os.path.join(cav.eigenmode.pol_folder(0), 'Ez_0_abs.csv'), sep='\t')
+    z, ez = axis['z(0, 0)'].to_numpy(), axis['|Ez(0, 0)|'].to_numpy()
+    w = 2 * np.pi * qois[1.0]['freq [MHz]'] * 1e6
+
+    trapz = getattr(np, 'trapezoid', None) or np.trapz      # renamed in numpy 2
+
+    def voltage(beta):
+        return abs(trapz(ez * np.exp(1j * w * z / (beta * c0)), z))
+
+    ratio = qois[0.5]['R/Q [Ohm]'] / qois[1.0]['R/Q [Ohm]']
+    assert ratio == pytest.approx((voltage(0.5) / voltage(1.0)) ** 2, rel=2e-2)
+
+
+def test_suppress_c_output_silences_the_descriptors(capfd):
+    with suppress_c_stdout_stderr():
+        os.write(1, b'hidden\n')
+    os.write(1, b'shown\n')
+    out = capfd.readouterr().out
+    assert 'hidden' not in out and 'shown' in out
+
+
+@pytest.mark.parametrize('stream', [None, 'no-fileno'])
+def test_suppress_c_output_without_real_streams(monkeypatch, stream):
+    """Under pythonw sys.__stdout__ is None, and some consoles hand Python a
+    stream without a file descriptor: meshing must not fail on either."""
+    monkeypatch.setattr(sys, '__stdout__', None if stream is None else io.StringIO())
+    with suppress_c_stdout_stderr():
+        pass
+
+
+def test_beta_outside_zero_one_is_refused(tmp_path):
+    cav = Pillbox(1, [100.0, 100.0, 1.0, 0, 0], beampipe='none')
+    cav.set_workspace(str(tmp_path / 'bad_beta'))
+    with pytest.raises(ValueError, match="'beta'"):
+        cav.eigenmode.run(beta=1.5)
 
 
 def test_monopole_te_modes_are_found():
