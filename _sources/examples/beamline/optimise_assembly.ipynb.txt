@@ -212,7 +212,7 @@
      "name": "stderr",
      "output_type": "stream",
      "text": [
-      "C:\\Users\\Soske\\anaconda3\\envs\\cavsim2d\\Lib\\site-packages\\scipy\\optimize\\_root_scalar.py:305: RuntimeWarning: Tolerance of 8.560000000000002 reached.\n",
+      "scipy\\optimize\\_root_scalar.py:305: RuntimeWarning: Tolerance of 8.560000000000002 reached.\n",
       "  r, sol = methodc(f, x0, args=args, fprime=None, fprime2=None,\n"
      ]
     },
