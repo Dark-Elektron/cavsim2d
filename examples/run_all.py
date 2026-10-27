@@ -5,12 +5,14 @@ Usage:
     python run_all.py 1 2 5      # run only examples 1, 2 and 5
 
 Each example writes its results and plots under
-    <SIM_ROOT>/examples/<name>/
-(see _common.SIM_ROOT). The wakefield example self-skips off Windows.
+    <SIM_ROOT>/<name>/
+(see _common.SIM_ROOT). The wakefield example skips itself when ABCI is
+not installed.
 """
 import importlib
 import sys
 import time
+import traceback
 
 from _common import banner
 
@@ -36,7 +38,6 @@ def main(argv):
             mod.main()
             ran.append((title, time.time() - t0, 'ok'))
         except Exception as e:  # noqa: BLE001 - keep going through the suite
-            import traceback
             traceback.print_exc()
             ran.append((title, time.time() - t0, f'FAILED: {e!r}'))
 

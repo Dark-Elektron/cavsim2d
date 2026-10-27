@@ -202,6 +202,8 @@ implemented.md
 benchmark/
 benchmark_test_proj/
 playground/
+# results and plots written by the example scripts
+examples/output/
 # Sphinx/myst-nb build artefacts. docs/jupyter_execute/ holds GENERATED copies of
 # the example notebooks — editing them does nothing, the build overwrites them.
 # The source notebooks live in docs/source/examples/.
