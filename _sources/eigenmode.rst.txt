@@ -73,6 +73,9 @@ Settings description:
 ``surface_resistance``
    *(float, default: None, in Ohm)* Explicit surface resistance. Useful for superconducting cavities (SRF) where the BCS surface resistance replaces the normal-conducting calculation.
 
+``beta``
+   *(float, default:* ``1`` *)* Particle velocity :math:`v/c` in the voltage integral :math:`V = \left|\int E_z\, e^{i\omega z/(\beta c)}\, dz\right|`. It changes the accelerating voltage, R/Q, :math:`E_{acc}` and the peak-field ratios, not the field or the frequency. Set it for a :math:`\beta < 1` structure, e.g. ``0.6`` for a medium-β proton cavity.
+
 ``mode_of_interest``
    *(int, list, or dict)* 1-based index of the physical mode(s) whose results are reported. For monopole modes, this defaults to the accelerating :math:`\pi`-mode (index equals ``n_cells``).
 

@@ -2946,6 +2946,11 @@ pipe end. <code class="docutils literal notranslate"><span class="pre">None</spa
 <dt><code class="docutils literal notranslate"><span class="pre">surface_resistance</span></code></dt><dd><p><em>(float, default None)</em> Fixed surface resistance [Ohm] override (e.g. for SRF),
 used instead of <code class="docutils literal notranslate"><span class="pre">conductivity</span></code>.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">beta</span></code></dt><dd><p><em>(float, default 1)</em> Particle velocity v/c. It sets the phase of the voltage
+integral, so it changes the accelerating voltage, R/Q, Eacc and the peak-field
+ratios (and the transverse kick for m ≥ 1), not the field or the frequency. Set it
+for a β &lt; 1 structure, e.g. <code class="docutils literal notranslate"><span class="pre">0.6</span></code> for a medium-β proton cavity.</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">materials</span></code></dt><dd><p><em>(dict, default None)</em> Overrides the properties of dielectric regions declared with
 <code class="docutils literal notranslate"><span class="pre">cav.add_dielectric</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'eps_r':</span> <span class="pre">3.8,</span> <span class="pre">'tan_delta':</span> <span class="pre">1e-4}}</span></code>.
 Overrides <em>merge</em>, so <code class="docutils literal notranslate"><span class="pre">{'quartz':</span> <span class="pre">{'tan_delta':</span> <span class="pre">0.05}}</span></code> sweeps the loss and leaves
